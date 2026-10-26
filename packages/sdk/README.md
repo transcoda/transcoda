@@ -1,6 +1,6 @@
 # @transcoda/sdk
 
-The plugin SDK (version `1.0.0`), on npm as [`@transcoda/sdk`](https://www.npmjs.com/package/@transcoda/sdk): `npm install --save-dev @transcoda/sdk zod`. Plugins bundle it, so it is a dev dependency; a bundle has no runtime `dependencies`. The author guide (manifest, limits, secrets, finish phases, dev mode, releasing, the security promise) is [`docs/plugin-sdk.md`](../../docs/plugin-sdk.md). `@transcoda/sdk/testing` holds the test helpers.
+The plugin SDK (version `1.0.1`), on npm as [`@transcoda/sdk`](https://www.npmjs.com/package/@transcoda/sdk): `npm install --save-dev @transcoda/sdk zod`. Plugins bundle it, so it is a dev dependency; a bundle has no runtime `dependencies`. The author guide (manifest, limits, secrets, finish phases, dev mode, releasing, the security promise) is [`docs/plugin-sdk.md`](../../docs/plugin-sdk.md). `@transcoda/sdk/testing` holds the test helpers.
 
 ## Surface
 
