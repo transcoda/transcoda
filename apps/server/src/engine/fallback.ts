@@ -55,9 +55,13 @@ export function softwareFallback(
   return { ...model, streams };
 }
 
-/** Does this failure text look like the GPU (encoder, decoder or its driver) gave up? */
+/**
+ * Does this failure text look like the GPU (encoder, decoder or its driver) gave up? QSV runs on
+ * libvpl, whose errors name MFX ("Error initializing an MFX session", `MFX_ERR_…`); a render node
+ * it cannot open fails as "No VA display found for device …" and "Device creation failed".
+ */
 export function looksLikeGpuFailure(text: string): boolean {
-  return /nvenc|cuda|cuvid|nvdec|hwaccel|hw_frames|qsv|vaapi|videotoolbox|InitializeEncoder|OpenEncodeSession/i.test(
+  return /nvenc|cuda|cuvid|nvdec|hwaccel|hw_frames|qsv|vaapi|videotoolbox|InitializeEncoder|OpenEncodeSession|MFX|No VA display|Device creation failed/i.test(
     text,
   );
 }

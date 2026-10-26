@@ -8,6 +8,7 @@ import {
   ChangePasswordInputSchema,
   CredentialsSchema,
   contract,
+  EncodeDeviceSchema,
   EngineEventSchema,
   errorDefs,
   HealthInputSchema,
@@ -919,5 +920,18 @@ describe('licences', () => {
       ThirdPartyFileSchema.safeParse({ ...fixture, packages: [{ ...pkg, origin: 'cdn' }] }).success,
     ).toBe(false);
     expect(ThirdPartyFileSchema.safeParse({ ...fixture, format: 2 }).success).toBe(false);
+  });
+});
+
+describe('EncodeDeviceSchema', () => {
+  it('accepts auto, cpu, nvidia:<n> and intel:<pci address>', () => {
+    for (const v of ['auto', 'cpu', 'nvidia:0', 'intel:0000:07:00.0', 'intel:0000:0a:1f.7']) {
+      expect(EncodeDeviceSchema.safeParse(v).success).toBe(true);
+    }
+  });
+  it('rejects a short or out-of-range Intel address', () => {
+    for (const v of ['intel:7:0.0', 'intel:0000:07:00.8', 'intel:0', 'intel:0000:07:00.0:x']) {
+      expect(EncodeDeviceSchema.safeParse(v).success).toBe(false);
+    }
   });
 });

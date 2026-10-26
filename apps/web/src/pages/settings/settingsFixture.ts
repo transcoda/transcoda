@@ -28,6 +28,9 @@ export function settingsFixture(): Settings {
         { id: 'cpu', label: 'CPU only', missing: false },
         { id: 'nvidia:0', label: 'GPU 0 · NVIDIA GeForce RTX 3060', missing: false },
       ],
+      gpuOrder: { value: [], default: [], source: { kind: 'default' } },
+      gpus: [],
+      pinnedVendorWorkflows: [],
     },
     recycle: {
       retentionDays: { value: 7, default: 7, source: { kind: 'default' } },

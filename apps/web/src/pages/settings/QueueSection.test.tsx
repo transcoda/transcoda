@@ -35,7 +35,112 @@ async function keepField() {
   return screen.getByRole('spinbutton', { name: 'Test encodes kept for' }) as HTMLInputElement;
 }
 
+const gpu = (
+  id: string,
+  label: string,
+  vendor: 'nvidia' | 'intel' = 'nvidia',
+  missing = false,
+) => ({
+  id,
+  label,
+  vendor,
+  missing,
+});
+function twoGpus() {
+  const s = settingsFixture();
+  s.queue.gpus = [
+    gpu('nvidia:0', 'GPU 0 · NVIDIA GeForce RTX 3060'),
+    gpu('intel:0000:07:00.0', 'Intel Arc A310 · 07:00.0', 'intel'),
+  ];
+  return s;
+}
+const orderRows = () =>
+  within(screen.getByRole('group', { name: 'GPU order' }))
+    .getAllByRole('listitem')
+    .map((li) => li.textContent);
+
 describe('QueueSection', () => {
+  it('lists the GPUs in order and Save sends the new order after a move', async () => {
+    mocks.get.mockResolvedValue(twoGpus());
+    mocks.update.mockResolvedValue(twoGpus());
+    renderAt('/settings/queue', <QueueSection />);
+    await screen.findByRole('group', { name: 'GPU order' });
+    expect(screen.getByText('Jobs go to the first free GPU in this order.')).toBeTruthy();
+    expect(orderRows()[0]).toContain('GPU 0 · NVIDIA GeForce RTX 3060');
+    const first = 'GPU 0 · NVIDIA GeForce RTX 3060';
+    const second = 'Intel Arc A310 · 07:00.0';
+    // Both buttons on every row; the ones that cannot move are disabled.
+    expect(screen.getAllByRole('button', { name: /^Move .* (up|down)$/ })).toHaveLength(4);
+    expect(
+      (screen.getByRole('button', { name: `Move ${first} up` }) as HTMLButtonElement).disabled,
+    ).toBe(true);
+    expect(
+      (screen.getByRole('button', { name: `Move ${second} down` }) as HTMLButtonElement).disabled,
+    ).toBe(true);
+    fireEvent.click(screen.getByRole('button', { name: `Move ${first} down` }));
+    // Focus follows the moved row (now last, so its down button is disabled: up).
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: `Move ${first} up` }));
+    expect(orderRows()[0]).toContain('Intel Arc A310');
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(mocks.update).toHaveBeenCalledWith(
+        expect.objectContaining({ gpuOrder: ['intel:0000:07:00.0', 'nvidia:0'] }),
+      ),
+    );
+  });
+
+  it('marks a GPU that is gone', async () => {
+    const s = twoGpus();
+    s.queue.gpus.push(gpu('intel:0000:09:00.0', 'intel:0000:09:00.0 (not found)', 'intel', true));
+    mocks.get.mockResolvedValue(s);
+    renderAt('/settings/queue', <QueueSection />);
+    await screen.findByRole('group', { name: 'GPU order' });
+    expect(orderRows()[2]).toContain('(not found)');
+  });
+
+  it('hides the order with one GPU or a device other than auto', async () => {
+    const one = settingsFixture();
+    one.queue.gpus = [gpu('nvidia:0', 'GPU 0')];
+    mocks.get.mockResolvedValue(one);
+    const view = renderAt('/settings/queue', <QueueSection />);
+    await screen.findByText('Lanes');
+    expect(screen.queryByRole('group', { name: 'GPU order' })).toBeNull();
+    view.unmount();
+    const cpu = twoGpus();
+    cpu.queue.encodeDevice = { value: 'cpu', default: 'auto', source: { kind: 'database' } };
+    mocks.get.mockResolvedValue(cpu);
+    renderAt('/settings/queue', <QueueSection />);
+    await screen.findByText('Lanes');
+    expect(screen.queryByRole('group', { name: 'GPU order' })).toBeNull();
+  });
+
+  it('names the workflows pinned to one vendor, three at most', async () => {
+    const s = twoGpus();
+    s.queue.pinnedVendorWorkflows = [
+      { id: 'w1', name: 'Archive', encoder: 'hevc_nvenc' },
+      { id: 'w2', name: 'Two', encoder: 'h264_qsv' },
+      { id: 'w3', name: 'Three', encoder: 'hevc_nvenc' },
+      { id: 'w4', name: 'Four', encoder: 'hevc_nvenc' },
+      { id: 'w5', name: 'Five', encoder: 'hevc_nvenc' },
+    ];
+    mocks.get.mockResolvedValue(s);
+    renderAt('/settings/queue', <QueueSection />);
+    const note = await screen.findByRole('note');
+    expect(note.textContent).toContain(
+      'Archive uses hevc_nvenc, so its jobs only run on that kind of GPU. Set its Encode video encoder to Auto to use every GPU.',
+    );
+    expect(note.textContent).toContain('Three uses');
+    expect(note.textContent).not.toContain('Four uses');
+    expect(note.textContent).toContain('and 2 more');
+  });
+
+  it('shows no hint without pinned workflows', async () => {
+    mocks.get.mockResolvedValue(twoGpus());
+    renderAt('/settings/queue', <QueueSection />);
+    await screen.findByRole('group', { name: 'GPU order' });
+    expect(screen.queryByRole('note')).toBeNull();
+  });
+
   it('groups the queue, encoding, then what the server sets (read-only, last)', async () => {
     renderAt('/settings/queue', <QueueSection />);
     await screen.findByText('Lanes');

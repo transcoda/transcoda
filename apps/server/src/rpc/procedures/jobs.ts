@@ -17,6 +17,8 @@ function toJob(r: JobListRow & { heldByRunHours: RunHoursHold | null }): Job {
     paused: r.paused,
     lane: r.lane,
     attempt: r.attempt,
+    encodedOn: r.encodedOn,
+    failedGpus: r.failedGpus,
     priority: r.priority,
     dryRun: r.dryRun,
     testEncode: r.testEncode,

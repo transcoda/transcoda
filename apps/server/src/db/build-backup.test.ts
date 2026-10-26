@@ -72,7 +72,7 @@ describe('backupOnBuildChange', () => {
   it('an existing database with no stored id is backed up once (an install from before this check)', () => {
     const r = run('aaa');
     expect(r.backupFile && path.basename(r.backupFile)).toBe(
-      'transcoda-20261021-180001-v12-build.sqlite',
+      'transcoda-20261021-180001-v13-build.sqlite',
     );
     expect(stored()).toBe('aaa');
     expect(log).toHaveBeenCalledOnce();
@@ -90,7 +90,7 @@ describe('backupOnBuildChange', () => {
     setSetting(db, LAST_BUILD_ID_KEY, 'aaa', at);
     const r = run('bbb');
     expect(r).toMatchObject({ previous: 'aaa' });
-    expect(listBackups(dir)).toEqual(['transcoda-20261021-180001-v12-build.sqlite']);
+    expect(listBackups(dir)).toEqual(['transcoda-20261021-180001-v13-build.sqlite']);
     expect(stored()).toBe('bbb');
     expect(log.mock.calls[0]?.[0]).toMatch(/^Build changed \(aaa → bbb\); backed up database to /);
     // The backup holds the old id: restoring it and starting this build backs up again.
@@ -123,7 +123,7 @@ describe('backupOnBuildChange', () => {
       'transcoda-20261012-120000-v7-build.sqlite',
       'transcoda-20261013-120000-v7-build.sqlite',
       'transcoda-20261014-120000-v7-build.sqlite',
-      'transcoda-20261021-180001-v12-build.sqlite',
+      'transcoda-20261021-180001-v13-build.sqlite',
     ]);
   });
 });

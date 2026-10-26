@@ -362,6 +362,17 @@ const AUTO_ENCODERS: Record<'hevc' | 'h264' | 'av1', string[]> = {
   av1: ['libsvtav1', 'libaom-av1'],
 };
 
+/** ffmpeg has the encoder and, for NVENC, the CUDA hwaccel it needs. */
+export function encoderUsable(
+  encoder: string,
+  caps: { encoders: readonly string[]; hwaccels: readonly string[] },
+): boolean {
+  const hwaccel = NEEDS_HWACCEL[encoder];
+  return (
+    caps.encoders.includes(encoder) && (hwaccel === undefined || caps.hwaccels.includes(hwaccel))
+  );
+}
+
 /**
  * `auto` → the first available encoder in preference order (hardware first); a named encoder →
  * itself when ffmpeg has it. Null when nothing fits.
@@ -372,9 +383,5 @@ export function resolveEncoder(
   caps: { encoders: string[]; hwaccels: string[] },
 ): string | null {
   if (encoder !== 'auto') return caps.encoders.includes(encoder) ? encoder : null;
-  const usable = (e: string) => {
-    const hwaccel = NEEDS_HWACCEL[e];
-    return caps.encoders.includes(e) && (hwaccel === undefined || caps.hwaccels.includes(hwaccel));
-  };
-  return AUTO_ENCODERS[codec].find(usable) ?? null;
+  return AUTO_ENCODERS[codec].find((e) => encoderUsable(e, caps)) ?? null;
 }

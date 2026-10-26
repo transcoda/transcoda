@@ -147,6 +147,34 @@ describe('newest migration', () => {
   });
 });
 
+describe('job GPU fields', () => {
+  it('reads a corrupt failed_gpus cell as an empty list', () => {
+    job('g');
+    db.prepare("UPDATE jobs SET failed_gpus = 'not json' WHERE id = 'g'").run();
+    expect(findJob(db, 'g')?.failedGpus).toEqual([]);
+    expect(findJobListRow(db, 'g')).toBeTruthy();
+  });
+
+  it('start empty and round-trip encodedOn and failedGpus through updateJob', () => {
+    expect(job('g')).toMatchObject({ encodedOn: null, failedGpus: [] });
+    const updated = updateJob(
+      db,
+      'g',
+      { encodedOn: 'GPU 1', failedGpus: ['nvidia:0', 'intel:0000:07:00.0'] },
+      at(1),
+    );
+    expect(updated).toMatchObject({
+      encodedOn: 'GPU 1',
+      failedGpus: ['nvidia:0', 'intel:0000:07:00.0'],
+    });
+    expect(findJobListRow(db, 'g')).toMatchObject({ encodedOn: 'GPU 1' });
+    expect(updateJob(db, 'g', { encodedOn: null, failedGpus: [] }, at(2))).toMatchObject({
+      encodedOn: null,
+      failedGpus: [],
+    });
+  });
+});
+
 describe('libraries', () => {
   it('migration notices: [] without the settings row, its array with one; clearing removes the row', () => {
     expect(listMigrationNotices(db)).toEqual([]);
@@ -697,6 +725,7 @@ describe('settings', () => {
       pluginCallTimeoutMs: 30_000,
       testEncodeKeepHours: 2,
       encodeDevice: 'auto',
+      gpuOrder: [],
     });
     setSetting(db, SETTING_KEYS.queuePaused, true, now);
     expect(getSettingOr(db, SETTING_KEYS.queuePaused, z.boolean(), false)).toBe(true);

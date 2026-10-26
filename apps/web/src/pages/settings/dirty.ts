@@ -9,6 +9,10 @@ function norm(v: unknown): unknown {
 
 /** One field: numbers as numbers ("07" is 7, "" is no number), '' ≡ null, text trimmed. */
 function same(a: unknown, b: unknown): boolean {
+  // A list (the GPU order) is the same when it holds the same items in the same order.
+  if (Array.isArray(a) && Array.isArray(b)) {
+    return a.length === b.length && a.every((v, i) => v === b[i]);
+  }
   const x = norm(a);
   const y = norm(b);
   if (typeof x === 'number' || typeof y === 'number') {

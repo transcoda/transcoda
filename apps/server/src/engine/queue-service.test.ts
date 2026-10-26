@@ -950,4 +950,12 @@ describe('QueueService.retryFailed', () => {
     expect(findJob(db, jobB.id)?.state).toBe('done');
     expect(onQueued).toHaveBeenCalledTimes(1);
   });
+
+  it('a retried job starts with no failed GPUs', async () => {
+    const run = await queued(await settled(join(root, 'Show', 'a.mkv')));
+    const id = run.jobs[0]?.id ?? '';
+    updateJob(db, id, { state: 'failed', failedGpus: ['nvidia:0'] }, new Date());
+    expect(svc.retryFailed()).toEqual({ retried: 1 });
+    expect(findJob(db, id)).toMatchObject({ state: 'queued', attempt: 2, failedGpus: [] });
+  });
 });

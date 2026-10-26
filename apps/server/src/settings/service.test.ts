@@ -1,10 +1,11 @@
-import type { Capabilities, Gpu } from '@transcoda/contract';
-import { DEFAULT_LIMITS } from '@transcoda/shared';
+import { type Capabilities, type Gpu, SettingsUpdateInputSchema } from '@transcoda/contract';
+import { DEFAULT_LIMITS, emptyGraph, type WorkflowGraph } from '@transcoda/shared';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { type Config, loadConfig } from '../config.ts';
 import type { Database } from '../db/open.ts';
 import { insertRecycled } from '../db/repos/jobs.ts';
 import { setSetting } from '../db/repos/settings.ts';
+import { insertWorkflow, setActiveVersion } from '../db/repos/workflows.ts';
 import { createTestDb } from '../db/test-db.ts';
 import type { Logger } from '../logger.ts';
 import { readAppearance, readSettings, type SettingsDeps, updateSettings } from './service.ts';
@@ -24,6 +25,14 @@ const RTX = {
   vendor: 'nvidia',
   index: 0,
   name: 'NVIDIA GeForce RTX 3060',
+} as const;
+const ARC = {
+  id: 'intel:0000:07:00.0',
+  vendor: 'intel',
+  index: 0,
+  name: 'Intel Arc A310',
+  renderNode: '/dev/dri/renderD128',
+  pci: '0000:07:00.0',
 } as const;
 const withGpus = (gpus: Gpu[], encoders = ['libx265', 'hevc_nvenc']): Capabilities => ({
   available: true,
@@ -79,6 +88,76 @@ describe('readSettings: encoding device', () => {
       { id: 'nvidia:0', label: 'GPU 0 · NVIDIA GeForce RTX 3060', missing: false },
       { id: 'nvidia:1', label: 'GPU 1 · NVIDIA GeForce RTX 3060', missing: false },
     ]);
+  });
+
+  it('an Intel card is offered by its name', () => {
+    const s = readSettings(make({ capabilities: withGpus([RTX, ARC]) }));
+    expect(s.queue.encodeDevices.map((d) => [d.id, d.label])).toEqual([
+      ['auto', 'Auto'],
+      ['cpu', 'CPU only'],
+      ['nvidia:0', 'GPU 0 · NVIDIA GeForce RTX 3060'],
+      ['intel:0000:07:00.0', 'Intel Arc A310'],
+    ]);
+  });
+
+  it('gpus lists the effective order, plus gone stored ids as missing', () => {
+    const caps = withGpus([RTX, ARC], ['libx265', 'hevc_nvenc', 'hevc_qsv']);
+    expect(readSettings(make({ capabilities: caps })).queue.gpus.map((g) => g.id)).toEqual([
+      'nvidia:0',
+      'intel:0000:07:00.0',
+    ]);
+    setSetting(db, 'engine.gpuOrder', ['intel:0000:07:00.0', 'intel:0000:09:00.0'], NOW);
+    expect(readSettings(make({ capabilities: caps })).queue.gpus).toEqual([
+      {
+        id: 'intel:0000:07:00.0',
+        label: 'Intel Arc A310 · 07:00.0',
+        vendor: 'intel',
+        missing: false,
+      },
+      {
+        id: 'nvidia:0',
+        label: 'GPU 0 · NVIDIA GeForce RTX 3060',
+        vendor: 'nvidia',
+        missing: false,
+      },
+      {
+        id: 'intel:0000:09:00.0',
+        label: 'intel:0000:09:00.0 (not found)',
+        vendor: 'intel',
+        missing: true,
+      },
+    ]);
+  });
+
+  it('gpus tell identical cards apart, and an unnamed GPU 0 is just GPU 0', () => {
+    const rtx1 = { ...RTX, id: 'nvidia:1', index: 1 };
+    const caps = withGpus([RTX, rtx1]);
+    expect(readSettings(make({ capabilities: caps })).queue.gpus.map((g) => g.label)).toEqual([
+      'GPU 0 · NVIDIA GeForce RTX 3060',
+      'GPU 1 · NVIDIA GeForce RTX 3060',
+    ]);
+    const unnamed = withGpus([{ ...RTX, name: '' }]);
+    expect(readSettings(make({ capabilities: unnamed })).queue.gpus[0]?.label).toBe('GPU 0');
+  });
+
+  it('a corrupt stored gpuOrder reads as the default', () => {
+    setSetting(db, 'engine.gpuOrder', ['gpu-please'], NOW);
+    expect(readSettings(deps).queue.gpuOrder.source).toEqual({ kind: 'default' });
+  });
+
+  it('an id that is not a GPU id is refused', () => {
+    expect(SettingsUpdateInputSchema.safeParse({ gpuOrder: ['gpu-please'] }).success).toBe(false);
+    expect(SettingsUpdateInputSchema.safeParse({ gpuOrder: ['intel:0000:07:00.0'] }).success).toBe(
+      true,
+    );
+  });
+
+  it('the encode lane reads Encode ×2 (one per GPU) with NVIDIA plus Intel', () => {
+    const caps = withGpus([RTX, ARC], ['libx265', 'hevc_nvenc', 'hevc_qsv']);
+    expect(readSettings(make({ capabilities: caps })).queue.lanes[0]).toEqual({
+      id: 'encode',
+      label: 'Encode ×2 (one per GPU)',
+    });
   });
 
   it('lanes: one encode slot per GPU on auto with two GPUs, else the one encode lane', () => {
@@ -383,5 +462,54 @@ describe('readAppearance', () => {
     expect(readAppearance(db)).toEqual({ theme: 'light', serverName: 'Basement' });
     setSetting(db, 'ui.theme', 'blue', NOW);
     expect(readAppearance(db).theme).toBe('system');
+  });
+});
+
+describe('readSettings: pinnedVendorWorkflows', () => {
+  const both = () => withGpus([RTX, ARC], ['libx265', 'hevc_nvenc', 'hevc_qsv']);
+  const encodeGraph = (encoder: string, bypassed = false) => ({
+    ...emptyGraph('workflow'),
+    nodes: [
+      {
+        id: 'e',
+        type: 'core:encode-video',
+        typeVersion: 1,
+        settings: { encoder },
+        position: { x: 0, y: 0 },
+        ...(bypassed && { bypassed }),
+      },
+    ],
+  });
+  const activate = (id: string, name: string, graph: WorkflowGraph) => {
+    insertWorkflow(db, { id, kind: 'workflow', name, graph, createdBy: 'u' }, NOW);
+    setActiveVersion(db, id, 1, 'u', NOW, null);
+  };
+
+  it('lists a workflow whose active version names a vendor encoder, not auto or bypassed', () => {
+    activate('w1', 'Archive', encodeGraph('hevc_nvenc'));
+    activate('w2', 'Anything', encodeGraph('auto'));
+    activate('w3', 'Skipped', encodeGraph('hevc_qsv', true));
+    insertWorkflow(
+      db,
+      {
+        id: 'w4',
+        kind: 'workflow',
+        name: 'Inactive',
+        graph: encodeGraph('hevc_qsv'),
+        createdBy: 'u',
+      },
+      NOW,
+    );
+    expect(readSettings(make({ capabilities: both() })).queue.pinnedVendorWorkflows).toEqual([
+      { id: 'w1', name: 'Archive', encoder: 'hevc_nvenc' },
+    ]);
+  });
+
+  it('is empty unless GPUs of two vendors are usable', () => {
+    activate('w1', 'Archive', encodeGraph('hevc_nvenc'));
+    expect(
+      readSettings(make({ capabilities: withGpus([RTX]) })).queue.pinnedVendorWorkflows,
+    ).toEqual([]);
+    expect(readSettings(make()).queue.pinnedVendorWorkflows).toEqual([]);
   });
 });

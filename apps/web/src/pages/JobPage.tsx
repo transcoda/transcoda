@@ -362,6 +362,9 @@ function JobView({ id }: { id: string }) {
           </Link>
         </p>
         <p className="job-head-times">{jobTimesLine(job)}</p>
+        {job.encodedOn && (
+          <p className="job-head-at">{`${active ? 'Encoding' : 'Encoded'} on ${job.encodedOn}`}</p>
+        )}
         {atText && <p className="job-head-at">{`At: ${atText}`}</p>}
         {!active && (
           <ProcessAgain

@@ -22,13 +22,23 @@ export const HealthOutputSchema = z.object({
 });
 export type HealthOutput = z.infer<typeof HealthOutputSchema>;
 
-/** A GPU found at startup (`nvidia-smi -L`); `id` is how the encoding-device setting names it. */
+/**
+ * A GPU found at startup; `id` is how the encoding-device setting names it (`nvidia:<index>`,
+ * `intel:<pci address>`).
+ */
 export const GpuSchema = z.object({
   id: z.string(),
-  vendor: z.literal('nvidia'),
-  /** nvidia-smi's index; ffmpeg runs with CUDA_DEVICE_ORDER=PCI_BUS_ID, so CUDA uses the same. */
+  vendor: z.enum(['nvidia', 'intel']),
+  /**
+   * NVIDIA: nvidia-smi's index; ffmpeg runs with CUDA_DEVICE_ORDER=PCI_BUS_ID, so CUDA uses the
+   * same. Intel: the ordinal among Intel GPUs, display only (never an id).
+   */
   index: z.number().int().nonnegative(),
   name: z.string(),
+  /** Intel only, e.g. `/dev/dri/renderD128`. */
+  renderNode: z.string().optional(),
+  /** Intel only, e.g. `0000:07:00.0`. */
+  pci: z.string().optional(),
 });
 export type Gpu = z.infer<typeof GpuSchema>;
 
@@ -38,13 +48,19 @@ export const GpuLoadSampleSchema = z.object({
   encoder: z.number(),
   decoder: z.number(),
 });
-/** The last hour of NVENC/NVDEC load per NVIDIA GPU (kept in memory; empty after a restart). */
+/** The last hour of video engine load per GPU (kept in memory; empty after a restart). */
 export const GpuLoadOutputSchema = z.object({
   /** Time between samples. */
   intervalMs: z.number().int(),
-  /** GPUs with at least one sample; empty without NVIDIA GPUs or nvidia-smi. */
+  /**
+   * GPUs with at least one sample: NVIDIA ones through nvidia-smi, Intel ones from the i915 fdinfo
+   * of Transcoda's own encodes (none before the first). Empty without either.
+   */
   gpus: z.array(
     z.object({
+      /** The GPU's setting id (`nvidia:0`, `intel:<pci>`). */
+      id: z.string(),
+      /** Kept for older clients. */
       index: z.number().int(),
       name: z.string(),
       samples: z.array(GpuLoadSampleSchema),

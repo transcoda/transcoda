@@ -1,9 +1,10 @@
-// The GPU's video engines over the last hour, for the Jobs page: `nvidia-smi` every few seconds,
-// kept in memory only (nothing is stored, so the graph starts empty after a restart).
+// The GPUs' video engines over the last hour, for the Jobs page: `nvidia-smi` for NVIDIA and the
+// i915 fdinfo counters for Intel, every few seconds, kept in memory only (nothing is stored, so the graph starts empty after a restart).
 import type { GpuLoadOutput } from '@transcoda/contract';
 import type { Logger } from '../logger.ts';
 import type { Gpu } from './devices.ts';
 import { type Exec, makeExec } from './ffmpeg.ts';
+import { IntelLoadReader } from './intel-load.ts';
 
 const QUERY = [
   '--query-gpu=index,utilization.encoder,utilization.decoder',
@@ -26,22 +27,25 @@ export function parseGpuLoad(stdout: string): Reading[] {
 }
 
 export interface GpuLoadSamplerOptions {
-  /** The GPUs found at startup; none means the sampler never runs. */
+  /** The GPUs found at startup; no GPU means the sampler never runs. */
   gpus: () => Gpu[];
   exec?: Exec;
+  intel?: IntelLoadReader;
   intervalMs?: number;
   windowMs?: number;
   now?: () => Date;
   log?: Logger;
 }
 
-/** Samples NVENC/NVDEC load every `intervalMs` and keeps the last `windowMs` per GPU. */
+/** Samples NVENC/NVDEC and Intel video-engine load every `intervalMs` and keeps the last `windowMs` per GPU. */
 export class GpuLoadSampler {
   private readonly exec: Exec;
   private readonly intervalMs: number;
   private readonly windowMs: number;
   private readonly now: () => Date;
-  private readonly samples = new Map<number, Sample[]>();
+  private readonly intel: IntelLoadReader;
+  /** Samples per `Gpu.id`. */
+  private readonly samples = new Map<string, Sample[]>();
   private timer: NodeJS.Timeout | null = null;
   private inFlight = false;
   private failing = false;
@@ -49,6 +53,7 @@ export class GpuLoadSampler {
   constructor(private readonly opts: GpuLoadSamplerOptions) {
     this.exec = opts.exec ?? sampleExec;
     this.intervalMs = opts.intervalMs ?? 5000;
+    this.intel = opts.intel ?? new IntelLoadReader();
     this.windowMs = opts.windowMs ?? 3_600_000;
     this.now = opts.now ?? (() => new Date());
   }
@@ -69,15 +74,29 @@ export class GpuLoadSampler {
     if (this.inFlight) return;
     this.inFlight = true;
     try {
+      const gpus = this.opts.gpus();
+      if (gpus.some((g) => g.vendor === 'nvidia')) await this.sampleNvidia();
+      const intel = gpus.filter((g) => g.vendor === 'intel');
+      if (intel.length > 0) this.sampleIntel(intel);
+    } finally {
+      this.inFlight = false;
+    }
+  }
+
+  private record(id: string, at: Date, encoder: number, decoder: number): void {
+    const cutoff = at.getTime() - this.windowMs;
+    const list = this.samples.get(id) ?? [];
+    list.push({ at: at.toISOString(), encoder, decoder });
+    while (list.length > 0 && Date.parse(list[0]?.at ?? '') <= cutoff) list.shift();
+    this.samples.set(id, list);
+  }
+
+  private async sampleNvidia(): Promise<void> {
+    try {
       const { stdout } = await this.exec('nvidia-smi', QUERY);
       const at = this.now();
-      const cutoff = at.getTime() - this.windowMs;
-      for (const r of parseGpuLoad(stdout)) {
-        const list = this.samples.get(r.index) ?? [];
-        list.push({ at: at.toISOString(), encoder: r.encoder, decoder: r.decoder });
-        while (list.length > 0 && Date.parse(list[0]?.at ?? '') <= cutoff) list.shift();
-        this.samples.set(r.index, list);
-      }
+      for (const r of parseGpuLoad(stdout))
+        this.record(`nvidia:${r.index}`, at, r.encoder, r.decoder);
       this.failing = false;
     } catch (err) {
       if (!this.failing) {
@@ -86,17 +105,31 @@ export class GpuLoadSampler {
         );
       }
       this.failing = true;
-    } finally {
-      this.inFlight = false;
+    }
+  }
+
+  private sampleIntel(gpus: Gpu[]): void {
+    const pcis = gpus.flatMap((g) => (g.pci ? [g.pci] : []));
+    const at = this.now();
+    let load: Map<string, number>;
+    try {
+      load = this.intel.sample(pcis);
+    } catch {
+      return;
+    }
+    for (const g of gpus) {
+      const pct = g.pci === undefined ? undefined : load.get(g.pci);
+      // One video engine does both encode and decode, so the one reading fills both lines.
+      if (pct !== undefined) this.record(g.id, at, pct, pct);
     }
   }
 
   snapshot(): GpuLoadOutput {
     const gpus: GpuLoadOutput['gpus'] = [];
     for (const gpu of this.opts.gpus()) {
-      const samples = this.samples.get(gpu.index);
+      const samples = this.samples.get(gpu.id);
       if (samples && samples.length > 0) {
-        gpus.push({ index: gpu.index, name: gpu.name, samples: [...samples] });
+        gpus.push({ id: gpu.id, index: gpu.index, name: gpu.name, samples: [...samples] });
       }
     }
     return { intervalMs: this.intervalMs, gpus };

@@ -21,7 +21,7 @@ A change to `PUID`, `PGID`, `PLUGIN_UID` or `PLUGIN_GID` takes effect when the c
 | `UMASK` | `022` | umask for files the server creates. |
 | `TRANSCODA_CHOWN_CONFIG` | unset | `1` recursively re-owns everything in `/config` to `PUID:PGID` on start. Use once after changing `PUID`/`PGID`. |
 
-Devices `/dev/dri/*` and `/dev/mpp_service` that are passed into the container add their owning group to the server process, so hardware transcoding works without extra configuration. Devices owned by group `root` are skipped.
+Devices `/dev/dri/*` and `/dev/mpp_service` that are passed into the container add their owning group to the server process, so hardware transcoding works without extra configuration. Devices owned by group `root` are skipped. An Intel GPU is found by its render node (`/dev/dri/renderD*` whose PCI vendor is `0x8086`, read from `/sys/class/drm`), so passing `/dev/dri/renderD128:/dev/dri/renderD128` is enough; in a Proxmox LXC container pass it in first with `devN: /dev/dri/renderD128,gid=<the host's render gid>`.
 
 The compose file in `docker/docker-compose.yml` adds `cap_drop: [ALL]` with only the capabilities the root entrypoint needs (`CHOWN`, `DAC_OVERRIDE`, `FOWNER`, `FSETID`, `SETUID`, `SETGID`, `SETPCAP`, `KILL`), `no-new-privileges`, `read_only: true`, tmpfs mounts at `/tmp` and `/run/transcoda`, `pids_limit: 1024` and `mem_limit: 4g` (the only hard ceiling on total memory; size it as server ~512 MB + 256 MB per enabled plugin + what your ffmpeg settings need). Keep them: the plugin isolation needs the tmpfs at `/run/transcoda` and the three capabilities; the image CI job checks all of it.
 

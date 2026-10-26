@@ -840,8 +840,8 @@ describe('Jobs page stats', () => {
     mocks.gpuLoad.mockResolvedValue({
       intervalMs: 5000,
       gpus: [
-        { index: 0, name: 'RTX 3060', samples: samples(10, end, 97) },
-        { index: 1, name: 'RTX 4060', samples: samples(10, end, 40) },
+        { id: 'nvidia:0', index: 0, name: 'RTX 3060', samples: samples(10, end, 97) },
+        { id: 'nvidia:1', index: 1, name: 'RTX 4060', samples: samples(10, end, 40) },
       ],
     });
     await renderPage();
@@ -855,7 +855,7 @@ describe('Jobs page stats', () => {
   it('one GPU shows its encoder and decoder', async () => {
     mocks.gpuLoad.mockResolvedValue({
       intervalMs: 5000,
-      gpus: [{ index: 0, name: 'RTX 3060', samples: samples(10, Date.now(), 97) }],
+      gpus: [{ id: 'nvidia:0', index: 0, name: 'RTX 3060', samples: samples(10, Date.now(), 97) }],
     });
     await renderPage();
     const strip = await screen.findByRole('region', { name: 'Encoder · last hour' });

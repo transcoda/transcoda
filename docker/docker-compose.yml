@@ -21,9 +21,10 @@ services:
       - /mnt/ssd/transcode:/transcode
       # Your media library:
       # - /data:/data
-    # Intel/AMD (VAAPI, QSV) hardware transcoding:
+    # Intel (Quick Sync, VA-API) and AMD (VA-API) hardware transcoding: all of /dev/dri, or one GPU's render node
     # devices:
     #   - /dev/dri:/dev/dri
+    #   - /dev/dri/renderD128:/dev/dri/renderD128
     # NVIDIA (needs the NVIDIA Container Toolkit on the host):
     # deploy:
     #   resources:

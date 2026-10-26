@@ -26,6 +26,7 @@ export const SETTING_KEYS = {
   pluginCallTimeoutMs: 'plugins.limits.callTimeoutMs',
   testEncodeKeepHours: 'engine.testEncodeKeepHours',
   encodeDevice: 'engine.encodeDevice',
+  gpuOrder: 'engine.gpuOrder',
 } as const;
 export type SettingKey = (typeof SETTING_KEYS)[keyof typeof SETTING_KEYS];
 
@@ -39,8 +40,10 @@ export const SETTING_DEFAULTS = {
   pluginCallTimeoutMs: DEFAULT_LIMITS.callTimeoutMs,
   /** Hours a test-encode output is kept (0: deleted right after measuring). */
   testEncodeKeepHours: 2,
-  /** Where video is decoded and encoded: `auto`, `cpu` or `nvidia:<index>`. */
+  /** Where video is decoded and encoded: `auto`, `cpu`, `nvidia:<index>` or `intel:<pci>`. */
   encodeDevice: 'auto',
+  /** GPU ids in the order they are tried; empty is the default order (NVIDIA by index, then Intel). */
+  gpuOrder: [],
 } as const satisfies Record<keyof typeof SETTING_KEYS, JsonValue>;
 
 /** A typed setting, or `fallback` when the row is missing. */

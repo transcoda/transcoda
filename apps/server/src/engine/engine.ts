@@ -11,7 +11,7 @@ import {
   type WorkflowGraph,
 } from '@transcoda/shared';
 import { z } from 'zod';
-import { encodeSlots, readEncodeDevice } from '../capabilities/devices.ts';
+import { encodeSlots, readEncodeDevice, readGpuOrder } from '../capabilities/devices.ts';
 import type { Exec } from '../capabilities/ffmpeg.ts';
 import type { Config } from '../config.ts';
 import type { Database } from '../db/open.ts';
@@ -58,7 +58,7 @@ import { QueueService } from './queue-service.ts';
 import { pruneRecycle } from './recycle.ts';
 import type { ReplaceDeps } from './replace.ts';
 import { closedLibraries, type RunHoursHold, runHoursHold, serverTimeZone } from './run-hours.ts';
-import { Scheduler } from './scheduler.ts';
+import { pickSlot, Scheduler } from './scheduler.ts';
 import { SpaceWaits } from './space-waits.ts';
 import { removeOrigCopy, type SweepResult, startupSweep } from './sweep.ts';
 import { type TestOutputRow, TestOutputStore } from './test-outputs.ts';
@@ -137,6 +137,9 @@ export class EngineService {
       now: deps.now,
       ...(deps.heartbeatMs !== undefined ? { heartbeatMs: deps.heartbeatMs } : {}),
     });
+    // The encode slots now, from the GPUs, the "Encoding device" and the GPU order settings.
+    const slots = () =>
+      encodeSlots(deps.capabilities(), readEncodeDevice(deps.db), readGpuOrder(deps.db));
     this.pipeline = new Pipeline({
       db: deps.db,
       config: deps.config,
@@ -155,6 +158,10 @@ export class EngineService {
       ...(deps.hooks ? { hooks: deps.hooks } : {}),
       ...(deps.restartGate ? { restartGate: deps.restartGate } : {}),
       testOutputs: this.testOutputs,
+      otherGpuFor: (fit, failed) => {
+        const all = slots();
+        return pickSlot(all, all, fit, failed) !== undefined;
+      },
     });
     this.scheduler = new Scheduler({
       db: deps.db,
@@ -163,7 +170,7 @@ export class EngineService {
       now: deps.now,
       log: deps.log,
       // Asked at every grant, so a changed "Encoding device" applies to the next job.
-      encodeSlots: () => encodeSlots(deps.capabilities(), readEncodeDevice(deps.db)),
+      encodeSlots: slots,
       timeZone: this.timeZone,
     });
     this.queue = new QueueService({

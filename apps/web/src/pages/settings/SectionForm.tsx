@@ -11,7 +11,7 @@ import { changedFields, sectionDirty } from './dirty.ts';
 import { useSettings } from './useSettings.ts';
 
 /** A section's form values: text while typed, numbers and null as loaded. */
-export type Draft = Record<string, string | number | null>;
+export type Draft = Record<string, string | number | string[] | null>;
 export type Issues<D extends Draft> = Partial<Record<keyof D, string>>;
 
 const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null;

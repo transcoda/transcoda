@@ -38,6 +38,8 @@ const PROFILES: Record<string, Profiles> = {
   libx265: { main: MAIN, main10: MAIN10, main12: { name: 'main12', bitDepth: 12 } },
   hevc_nvenc: { main: MAIN, main10: MAIN10 },
   h264_nvenc: { baseline: BASELINE, 'constrained-baseline': BASELINE, main: MAIN, high: HIGH },
+  hevc_qsv: { main: MAIN, main10: MAIN10 },
+  h264_qsv: { baseline: BASELINE, main: MAIN, high: HIGH },
 };
 
 /**
@@ -133,7 +135,7 @@ const nvenc: EncoderArgs = (i, s, profile) => {
 };
 // QSV: global_quality alone is ICQ, a bitrate alone VBR. A quality with a bitrate below the maxrate
 // is QVBR (a bitrate equal to the maxrate would pick CBR), so the target sits 1k under the cap.
-const qsv: EncoderArgs = (i, s) => {
+const qsv: EncoderArgs = (i, s, profile) => {
   const rate = rateOf(s);
   const args =
     rate === null
@@ -149,7 +151,7 @@ const qsv: EncoderArgs = (i, s) => {
               kbps(Math.max(1, rate.kbps - 1)),
               ...ceiling(i, rate.kbps),
             ];
-  return [...args, ...opt('preset', i, s.preset)];
+  return [...args, ...opt('preset', i, s.preset), ...opt('profile', i, profile)];
 };
 // VAAPI has no presets; constant QP via rc_mode CQP. Without an rc_mode ffmpeg picks the best mode
 // the driver has: a bitrate tries AVBR, VBR, CBR; a quality with a bitrate tries QVBR, then ICQ
@@ -205,7 +207,7 @@ function deviceArgs(encoder: string, i: number, device: RenderDevice | undefined
   return device?.kind === 'cuda' && encoder.endsWith('_nvenc') ? opt('gpu', i, device.index) : [];
 }
 
-function codecArgs(s: StreamPlan, i: number, device?: RenderDevice): string[] {
+function codecArgs(s: StreamPlan, i: number, device?: RenderDevice, vpp?: string): string[] {
   // Data streams (timecode, metadata tracks) are always copied; nothing can encode them.
   if (s.mode === 'copy' || s.type === 'data') return [`-c:${i}`, 'copy'];
   if (s.type === 'subtitle') {
@@ -221,7 +223,8 @@ function codecArgs(s: StreamPlan, i: number, device?: RenderDevice): string[] {
     args.push(...opt('b', i, s.bitrateKbps === null ? null : `${s.bitrateKbps}k`));
     args.push(...opt('ac', i, s.channels));
   }
-  args.push(...opt('pix_fmt', i, s.pixelFormat));
+  if (vpp) args.push(`-filter:${i}`, `vpp_qsv=format=${vpp}`);
+  else args.push(...opt('pix_fmt', i, s.pixelFormat));
   return args;
 }
 
@@ -240,8 +243,17 @@ function metadataArgs(s: StreamPlan, i: number): string[] {
   return args;
 }
 
-/** The GPU a job decodes and encodes on; CUDA's index (ffmpeg runs with PCI bus order). */
-export type RenderDevice = { kind: 'cuda'; index: number };
+/**
+ * The GPU a job decodes and encodes on: CUDA's index (ffmpeg runs with PCI bus order) or an Intel
+ * GPU's DRM render node (QSV).
+ */
+export type RenderDevice = { kind: 'cuda'; index: number } | { kind: 'qsv'; renderNode: string };
+
+/** The vendor of a device; null for none (ffmpeg's default). */
+export function deviceVendor(d: RenderDevice | null): 'nvidia' | 'intel' | null {
+  if (!d) return null;
+  return d.kind === 'cuda' ? 'nvidia' : 'intel';
+}
 
 export interface RenderInput {
   model: BuildModel;
@@ -318,19 +330,67 @@ function coverArgs(
   });
 }
 
+/** Per QSV-encoded stream, the `vpp_qsv` format that replaces its `-pix_fmt`. */
+type QsvFrames = Map<StreamPlan, 'nv12' | 'p010'>;
+
+/**
+ * When the source can decode on the Intel GPU and stay there: a QSV device, no device or hwaccel
+ * of the model's own, and every converted video stream encoded with QSV from the source at a known
+ * 8- or 10-bit 4:2:0 format. GPU frames reach no CPU filter, so the format conversion is
+ * `vpp_qsv=format=nv12|p010` on the GPU. Null keeps the CPU decode (measured on an Arc A310: the CPU
+ * decode starved a parallel NVENC job on a 4-core box). A source the GPU cannot decode (4:2:2, say)
+ * fails as a GPU failure, which tries another GPU, then software.
+ */
+function qsvFrames(
+  model: BuildModel,
+  streams: StreamPlan[],
+  device?: RenderDevice,
+): QsvFrames | null {
+  if (device?.kind !== 'qsv') return null;
+  const own = [...model.globalArgs, ...model.inputArgs];
+  if (own.includes('-hwaccel') || own.includes('-init_hw_device')) return null;
+  const videos = streams.filter((s) => s.type === 'video' && s.mode === 'convert');
+  const frames: QsvFrames = new Map();
+  for (const s of videos) {
+    if (!s.encoder?.endsWith('_qsv') || (s.input ?? 0) !== 0 || s.pixelFormat === null) return null;
+    const depth = yuv420Depth(s.pixelFormat);
+    if (depth !== 8 && depth !== 10) return null;
+    frames.set(s, depth === 8 ? 'nv12' : 'p010');
+  }
+  return frames.size > 0 ? frames : null;
+}
+
 /**
  * `-hwaccel cuda` for the source when a video stream is encoded with NVENC, so the GPU decodes it
  * as well as encoding it (on a 4-core box the CPU decode, not NVENC, set the pace). Frames come back
  * to system memory, so pixel formats and filters work as before, and ffmpeg decodes on the CPU
  * where the GPU has no decoder for the codec. A model that already picks a `-hwaccel` keeps its own.
  * With a device, the decode runs on the GPU that encodes (`-hwaccel_device`).
+ * A QSV device with a QSV encode opens that Intel GPU for the encoders instead. With `frames`
+ * (see `qsvFrames`) the source also decodes on it into GPU frames (`-hwaccel_output_format qsv`;
+ * ffmpeg decodes on the CPU where the GPU cannot); otherwise it decodes on the CPU. A model that
+ * opens its own device keeps it.
  */
-function gpuDecodeArgs(model: BuildModel, streams: StreamPlan[], device?: RenderDevice): string[] {
-  if ([...model.globalArgs, ...model.inputArgs].includes('-hwaccel')) return [];
-  const nvenc = streams.some(
-    (s) => s.type === 'video' && s.mode === 'convert' && s.encoder?.endsWith('_nvenc'),
-  );
-  if (!nvenc) return [];
+function gpuDeviceArgs(
+  model: BuildModel,
+  streams: StreamPlan[],
+  device: RenderDevice | undefined,
+  frames: QsvFrames | null,
+): string[] {
+  const own = [...model.globalArgs, ...model.inputArgs];
+  const encodes = (suffix: string) =>
+    streams.some((s) => s.type === 'video' && s.mode === 'convert' && s.encoder?.endsWith(suffix));
+  if (device?.kind === 'qsv' && encodes('_qsv') && !own.includes('-init_hw_device')) {
+    return [
+      '-init_hw_device',
+      `qsv=qsv:hw,child_device=${device.renderNode}`,
+      '-filter_hw_device',
+      'qsv',
+      ...(frames ? ['-hwaccel', 'qsv', '-hwaccel_output_format', 'qsv'] : []),
+    ];
+  }
+  if (own.includes('-hwaccel')) return [];
+  if (!encodes('_nvenc')) return [];
   const index = device?.kind === 'cuda' ? ['-hwaccel_device', String(device.index)] : [];
   return ['-hwaccel', 'cuda', ...index];
 }
@@ -423,6 +483,7 @@ export function renderArgs(r: RenderInput): string[] {
   // Covers in mkv become attachments after every mapped stream (see outputOrder).
   const streams = all.filter((s) => !isMkvCover(model, s));
   const covers = all.filter((s) => isMkvCover(model, s));
+  const frames = qsvFrames(model, streams, r.device);
   const args = [
     '-nostdin',
     '-hide_banner',
@@ -432,7 +493,7 @@ export function renderArgs(r: RenderInput): string[] {
     'pipe:1',
     ...model.globalArgs,
     ...model.inputArgs,
-    ...gpuDecodeArgs(model, streams, r.device),
+    ...gpuDeviceArgs(model, streams, r.device, frames),
     '-i',
     r.input,
     // Every extra input is listed, used or not, so input numbers match `StreamPlan.input`.
@@ -449,7 +510,10 @@ export function renderArgs(r: RenderInput): string[] {
     '0',
     // An extra stream is stream 0 of its own input.
     ...streams.flatMap((s) => ['-map', isExtraStream(s) ? `${s.input}:0` : `0:${s.sourceIndex}`]),
-    ...streams.flatMap((s, i) => [...codecArgs(s, i, r.device), ...metadataArgs(s, i)]),
+    ...streams.flatMap((s, i) => [
+      ...codecArgs(s, i, r.device, frames?.get(s)),
+      ...metadataArgs(s, i),
+    ]),
     ...coverArgs(covers, streams.length, r.coverFiles),
     '-f',
     model.container === 'mp4' ? 'mp4' : 'matroska',

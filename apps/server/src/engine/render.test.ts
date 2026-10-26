@@ -250,6 +250,122 @@ describe('renderArgs: GPU decode', () => {
     expect(args.some((a) => a.startsWith('-gpu'))).toBe(false);
   });
 
+  it('a QSV device opens that Intel GPU before the inputs: no -gpu and no CUDA decode', () => {
+    const device = { kind: 'qsv', renderNode: '/dev/dri/renderD128' } as const;
+    const args = renderArgs({
+      model: encode('hevc_qsv'),
+      input: '/in.mkv',
+      output: '/o.mkv',
+      device,
+    });
+    expect(beforeInput(args).slice(-4)).toEqual([
+      '-init_hw_device',
+      'qsv=qsv:hw,child_device=/dev/dri/renderD128',
+      '-filter_hw_device',
+      'qsv',
+    ]);
+    expect(args).not.toContain('-hwaccel');
+    expect(args.some((a) => a.startsWith('-gpu'))).toBe(false);
+  });
+
+  describe('a QSV encode with a known 8- or 10-bit pixel format decodes and converts on the Intel GPU', () => {
+    const device = { kind: 'qsv', renderNode: '/dev/dri/renderD128' } as const;
+    const qsv = (pixelFormat: string | null, encoder = 'hevc_qsv') =>
+      withStream(encode(encoder), 0, { pixelFormat });
+
+    it.each([
+      ['yuv420p', 'nv12'],
+      ['nv12', 'nv12'],
+      ['yuv420p10le', 'p010'],
+      ['p010le', 'p010'],
+    ])('%s: QSV decode into GPU frames, vpp_qsv=format=%s in place of -pix_fmt', (pix, format) => {
+      const args = renderArgs({ model: qsv(pix), input: '/in.mkv', output: '/o.mkv', device });
+      expect(beforeInput(args).slice(-8)).toEqual([
+        '-init_hw_device',
+        'qsv=qsv:hw,child_device=/dev/dri/renderD128',
+        '-filter_hw_device',
+        'qsv',
+        '-hwaccel',
+        'qsv',
+        '-hwaccel_output_format',
+        'qsv',
+      ]);
+      const f = args.indexOf('-filter:0');
+      expect(args.slice(f, f + 2)).toEqual(['-filter:0', `vpp_qsv=format=${format}`]);
+      expect(args).not.toContain('-pix_fmt:0');
+    });
+
+    it('renders the whole argv', () => {
+      const args = renderArgs({
+        model: qsv('yuv420p10le'),
+        input: '/in.mkv',
+        output: '/o.mkv',
+        device,
+      });
+      expect(renderCommandLine('ffmpeg', args)).toMatchInlineSnapshot(
+        `"ffmpeg -nostdin -hide_banner -y -nostats -progress pipe:1 -init_hw_device qsv=qsv:hw,child_device=/dev/dri/renderD128 -filter_hw_device qsv -hwaccel qsv -hwaccel_output_format qsv -i /in.mkv -map_metadata 0 -map_chapters 0 -map 0:0 -map 0:1 -map 0:2 -map 0:3 -map 0:4 -c:0 hevc_qsv -global_quality:0 24 -filter:0 vpp_qsv=format=p010 -metadata:s:0 language=und -metadata:s:0 title= -disposition:0 default -c:1 copy -metadata:s:1 language=eng -metadata:s:1 title=Atmos -disposition:1 default -c:2 copy -metadata:s:2 language=deu -metadata:s:2 title= -disposition:2 0 -c:3 copy -metadata:s:3 language=tur -metadata:s:3 title= -disposition:3 0 -c:4 copy -metadata:s:4 language=eng -metadata:s:4 title= -disposition:4 0 -f matroska /o.mkv"`,
+      );
+    });
+
+    it('keeps decoding on the CPU (and -pix_fmt) where GPU frames would not fit', () => {
+      const twoVideos = withStream(
+        withStream(
+          modelFromProbe(
+            probeOf([
+              { type: 'video', codec: 'h264' },
+              { type: 'video', codec: 'h264' },
+            ]),
+          ),
+          0,
+          {
+            mode: 'convert',
+            codec: 'hevc',
+            encoder: 'hevc_qsv',
+            quality: 24,
+            pixelFormat: 'yuv420p',
+          },
+        ),
+        1,
+        { mode: 'convert', codec: 'hevc', encoder: 'libx265', quality: 24, pixelFormat: 'yuv420p' },
+      );
+      const cases = [
+        qsv(null), // the source's format, unknown here
+        qsv('yuv422p'),
+        qsv('yuv420p12le'),
+        { ...qsv('yuv420p'), inputArgs: ['-hwaccel', 'vaapi'] },
+        twoVideos, // a software encode from the same input cannot take GPU frames
+      ];
+      for (const model of cases) {
+        const args = renderArgs({ model, input: '/in.mkv', output: '/o.mkv', device });
+        expect(args).not.toContain('-hwaccel_output_format');
+        expect(args.some((a) => a.startsWith('-filter:'))).toBe(false);
+        if (model.streams[0]?.pixelFormat) expect(args).toContain('-pix_fmt:0');
+      }
+    });
+  });
+
+  it('a QSV device leaves software encodes and copies alone', () => {
+    const device = { kind: 'qsv', renderNode: '/dev/dri/renderD128' } as const;
+    for (const model of [encode('libx265'), modelFromProbe(movie)]) {
+      const args = renderArgs({ model, input: '/in.mkv', output: '/o.mkv', device });
+      expect(args).not.toContain('-init_hw_device');
+      expect(args).not.toContain('-filter_hw_device');
+    }
+  });
+
+  it('an NVENC encode on a CUDA device renders the same argv as before', () => {
+    const device = { kind: 'cuda', index: 1 } as const;
+    const args = renderArgs({
+      model: encode('hevc_nvenc'),
+      input: '/in.mkv',
+      output: '/o.mkv',
+      device,
+    });
+    expect(renderCommandLine('ffmpeg', args)).toMatchInlineSnapshot(
+      `"ffmpeg -nostdin -hide_banner -y -nostats -progress pipe:1 -hwaccel cuda -hwaccel_device 1 -i /in.mkv -map_metadata 0 -map_chapters 0 -map 0:0 -map 0:1 -map 0:2 -map 0:3 -map 0:4 -c:0 hevc_nvenc -rc:0 constqp -qp:0 24 -gpu:0 1 -metadata:s:0 language=und -metadata:s:0 title= -disposition:0 default -c:1 copy -metadata:s:1 language=eng -metadata:s:1 title=Atmos -disposition:1 default -c:2 copy -metadata:s:2 language=deu -metadata:s:2 title= -disposition:2 0 -c:3 copy -metadata:s:3 language=tur -metadata:s:3 title= -disposition:3 0 -c:4 copy -metadata:s:4 language=eng -metadata:s:4 title= -disposition:4 0 -f matroska /o.mkv"`,
+    );
+  });
+
   it('a model with its own -hwaccel still encodes on the chosen GPU', () => {
     const model = { ...encode('hevc_nvenc'), inputArgs: ['-hwaccel', 'vaapi'] };
     const device = { kind: 'cuda', index: 2 } as const;
@@ -327,6 +443,20 @@ describe('renderArgs: profiles', () => {
       '-pix_fmt:0',
       'p010le',
     ]);
+    expect(videoArgs('hevc_qsv', 'main10', 'p010le')).toEqual([
+      '-c:0',
+      'hevc_qsv',
+      '-global_quality:0',
+      '24',
+      '-profile:0',
+      'main10',
+      '-pix_fmt:0',
+      'p010le',
+    ]);
+    expect(videoArgs('hevc_qsv', 'main', 'nv12')).toContain('main');
+    for (const profile of ['baseline', 'main', 'high']) {
+      expect(videoArgs('h264_qsv', profile, 'nv12')).toContain(profile);
+    }
     expect(videoArgs('libx265', null, 'yuv420p')).not.toContain('-x265-params:0');
   });
 
@@ -339,9 +469,13 @@ describe('renderArgs: profiles', () => {
     expect(() => videoArgs('libx265', 'main10', null)).toThrow(
       new RenderError('profile main10 needs a pixel format'),
     );
-    expect(() => videoArgs('hevc_qsv', 'main', 'nv12')).toThrow(
-      new RenderError('profile main is not supported by hevc_qsv'),
+    expect(() => videoArgs('hevc_vaapi', 'main', 'nv12')).toThrow(
+      new RenderError('profile main is not supported by hevc_vaapi'),
     );
+    expect(() => videoArgs('h264_qsv', 'constrained-baseline', 'nv12')).toThrow(
+      new RenderError('profile constrained-baseline is not supported by h264_qsv'),
+    );
+    expect(() => videoArgs('hevc_qsv', 'main10', 'nv12')).toThrow(RenderError);
     expect(() => videoArgs('h264_nvenc', 'high10', 'yuv420p10le')).toThrow(
       new RenderError('profile high10 is not supported by h264_nvenc'),
     );

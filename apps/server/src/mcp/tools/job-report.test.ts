@@ -34,6 +34,8 @@ const detail: JobDetail = {
   paused: false,
   lane: null,
   attempt: 2,
+  encodedOn: null,
+  failedGpus: [],
   priority: 0,
   heldByRunHours: null,
   dryRun: false,

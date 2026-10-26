@@ -28,7 +28,12 @@ import {
   sameLanguage,
   type TraceEntry,
 } from '@transcoda/shared';
-import { devicePlan, readEncodeDevice } from '../capabilities/devices.ts';
+import {
+  devicePlan,
+  type EncodeSlot,
+  readEncodeDevice,
+  slotGpuLabel,
+} from '../capabilities/devices.ts';
 import { type Exec, makeExec } from '../capabilities/ffmpeg.ts';
 import type { Config } from '../config.ts';
 import type { Database } from '../db/open.ts';
@@ -61,6 +66,7 @@ import {
   containerCanHold,
   coverFile,
   diffFromProbe,
+  encoderUsable,
   extraInputOf,
   isExtraStream,
   isIdentity,
@@ -83,6 +89,7 @@ import { toJobProgress, toVerifyProgress, type VerifyProgress } from './progress
 import { defaultRecycleFolder } from './recycle.ts';
 import {
   coverExtractArgs,
+  deviceVendor,
   outputExtension,
   type RenderDevice,
   RenderError,
@@ -100,7 +107,8 @@ import {
   replaceOriginal as replaceOriginalFile,
   spaceWaitText,
 } from './replace.ts';
-import type { ExecuteOutcome, JobControl, JobExecutor } from './scheduler.ts';
+import { autoStreams, retarget } from './retarget.ts';
+import type { ExecuteOutcome, JobControl, JobExecutor, SlotFit } from './scheduler.ts';
 import { recycleSidecars } from './sidecar-recycle.ts';
 import type { SpaceWaits } from './space-waits.ts';
 import { removeOrigCopy, settleReplaceNow } from './sweep.ts';
@@ -134,6 +142,8 @@ const MAX_TRACE_REASON = 2000;
 export const PLUGIN_RETRY_MS = 10_000;
 /** How often a job paused outside ffmpeg checks whether it was resumed. */
 const PAUSE_POLL_MS = 100;
+/** The end of a GPU failure's requeue reason (and warning). */
+const TRYING_ANOTHER_GPU = '; trying another GPU';
 /** Error lines kept for a reason or a warning. */
 const MAX_ERROR_LINES = 3;
 /** Bytes read from the end of a job log for a failure reason. */
@@ -168,6 +178,11 @@ export interface PipelineDeps {
   restartGate?: PluginRestartGate;
   /** Keeps test-encode outputs and makes room for real jobs (absent: nothing kept). */
   testOutputs?: TestOutputStore;
+  /**
+   * Is there a slot for a job with `fit` on a GPU not in `failed`? (absent: never; a failed GPU
+   * encode then goes to software at once.)
+   */
+  otherGpuFor?(fit: SlotFit, failed: string[]): boolean;
 }
 
 /** What prepare learned about a job, kept in memory until it finishes. */
@@ -179,12 +194,18 @@ interface Prepared {
   stat: Stats;
   probe: ProbeResult;
   model: BuildModel;
+  /** Indexes into `model.streams` that Encode video put on an encoder by itself (`auto`). */
+  autoStreams: Set<number>;
+  /** The encode slots the job fits, as computed at prepare. */
+  fit: SlotFit;
   actions: AnyFinishAction[];
   /** Per size gate, the non-writing steps behind its `else` (run when the gate fails). */
   gates: GateBranch[];
   /** The walk through `pass` as the build left it; a failing gate swaps the tail for its else. */
   walkPath: WalkStep[];
   plan: JobPlan;
+  /** The plan of another model for the same streams (a retarget or the software fallback). */
+  replan: (model: BuildModel) => JobPlan;
   tempDir: string;
   outputPath: string;
   logPath: string;
@@ -196,6 +217,8 @@ interface Prepared {
   lastBuildNode: CurrentNode | null;
   args: string[];
   command: string;
+  /** The encode slot execute got (null: the quick lane, or before execute). */
+  slot: EncodeSlot | null;
   /** Set once a failed GPU encode was rerun on the software encoder (only once per attempt). */
   softwareFallback?: boolean;
   estimatedBytes: number | null;
@@ -234,6 +257,23 @@ export function laneFor(model: BuildModel, probe: ProbeResult): Lane {
   return kept(model).some((s) => s.type === 'video' && s.mode === 'convert' && !pictureOf(s, probe))
     ? 'encode'
     : 'quick';
+}
+
+/**
+ * The encode slots a job fits, from its kept video streams in convert mode: a named NVENC
+ * encoder needs an NVIDIA slot, a named QSV encoder an Intel one; else auto hardware encoders go
+ * on any GPU, and software encodes on any slot.
+ */
+export function slotFitOf(model: BuildModel, auto: ReadonlySet<number>): SlotFit {
+  const video = [...model.streams.entries()].filter(
+    ([, s]) => s.keep && s.type === 'video' && s.mode === 'convert',
+  );
+  const named = video.filter(([i]) => !auto.has(i)).map(([, s]) => s.encoder ?? '');
+  if (named.some((e) => e.endsWith('_nvenc'))) return 'nvidia';
+  if (named.some((e) => e.endsWith('_qsv'))) return 'intel';
+  const hardware = ([i, s]: [number, StreamPlan]) =>
+    auto.has(i) && /_(nvenc|qsv)$/.test(s.encoder ?? '');
+  return video.some(hardware) ? 'gpu' : 'software';
 }
 
 /** A planned stream is a picture when its source is one (isPicture); an added one when flagged. */
@@ -496,6 +536,8 @@ class Stop extends Error {}
 
 export class Pipeline implements JobExecutor {
   private readonly prepared = new Map<string, Prepared>();
+  /** The warnings of a job's failed GPU encodes, kept across its requeues to another GPU. */
+  private readonly gpuWarnings = new Map<string, string[]>();
   private readonly settleMinutes: number;
 
   constructor(private readonly deps: PipelineDeps) {
@@ -507,7 +549,7 @@ export class Pipeline implements JobExecutor {
   async prepare(
     job: JobRow,
     ctl: JobControl,
-  ): Promise<{ lane: Lane } | { final: true } | ExecuteOutcome> {
+  ): Promise<{ lane: Lane; fit: SlotFit } | { final: true } | ExecuteOutcome> {
     try {
       return await this.runPrepare(job, ctl);
     } catch (err) {
@@ -519,7 +561,7 @@ export class Pipeline implements JobExecutor {
   private async runPrepare(
     job: JobRow,
     ctl: JobControl,
-  ): Promise<{ lane: Lane } | { final: true } | ExecuteOutcome> {
+  ): Promise<{ lane: Lane; fit: SlotFit } | { final: true } | ExecuteOutcome> {
     const { db, config, fs } = this.deps;
     let loaded = loadWorkflowForJob(this.deps.workflows, job);
     const pluginDown = (l: typeof loaded): boolean =>
@@ -671,7 +713,8 @@ export class Pipeline implements JobExecutor {
     // Default flags as the output will have them (verify compares them strictly); a model that
     // writes nothing is left as it is.
     const defaultNotes = isIdentity(model, probe) ? new Map() : normalizeDefaults(model);
-    const plan = planOf(model, probe, originalLanguageOf(decided), defaultNotes);
+    const originalLanguage = originalLanguageOf(decided);
+    const plan = planOf(model, probe, originalLanguage, defaultNotes);
     const estimatedBytes = estimateBytes(db, job.workflowId, fp.sizeBytes);
     const base = { fp, plan, estimatedBytes };
 
@@ -720,7 +763,13 @@ export class Pipeline implements JobExecutor {
       return { final: true };
     }
     const command = renderCommandLine(config.ffmpegPath, args);
-    const warnings: string[] = [];
+    // A job back from a failed GPU keeps saying so; a retry (no failed GPUs) starts clean. After a
+    // restart the map is empty: the row's reason still says why it moved.
+    if (job.failedGpus.length === 0) this.gpuWarnings.delete(job.id);
+    else if (!this.gpuWarnings.has(job.id) && job.reason?.endsWith(TRYING_ANOTHER_GPU)) {
+      this.gpuWarnings.set(job.id, [job.reason]);
+    }
+    const warnings: string[] = [...(this.gpuWarnings.get(job.id) ?? [])];
     if (config.puid !== null && config.puid !== stat.uid) {
       warnings.push(`owner would change from ${stat.uid} to ${config.puid}`);
     }
@@ -753,6 +802,8 @@ export class Pipeline implements JobExecutor {
       return { final: true };
     }
 
+    const auto = autoStreams(model, built.autoPicks);
+    const fit = slotFitOf(model, auto);
     this.prepared.set(job.id, {
       realPath,
       library,
@@ -760,10 +811,22 @@ export class Pipeline implements JobExecutor {
       stat,
       probe,
       model,
+      autoStreams: auto,
+      fit,
       actions,
       gates,
       walkPath: built.path.map(stepOf),
       plan,
+      // Retarget and the software fallback keep the streams in order, so each note stays with
+      // the stream at its index.
+      replan: (other) => {
+        const notes = new Map<StreamPlan, string>();
+        for (const [i, s] of other.streams.entries()) {
+          const note = defaultNotes.get(model.streams[i] as StreamPlan);
+          if (note !== undefined) notes.set(s, note);
+        }
+        return planOf(other, probe, originalLanguage, notes);
+      },
       tempDir,
       outputPath,
       logPath: logPathFor(config, job),
@@ -772,12 +835,13 @@ export class Pipeline implements JobExecutor {
       lastBuildNode,
       args,
       command,
+      slot: null,
       estimatedBytes,
       warnings,
       outputProbe: null,
       written: null,
     });
-    return { lane: laneFor(model, probe) };
+    return { lane: laneFor(model, probe), fit };
   }
 
   // ---- execute ----
@@ -786,14 +850,48 @@ export class Pipeline implements JobExecutor {
     job: JobRow,
     _lane: Lane,
     ctl: JobControl,
-    device: RenderDevice | null = null,
+    slot: EncodeSlot | null = null,
   ): Promise<ExecuteOutcome | null> {
     const p = this.prepared.get(job.id);
     if (!p) throw new Error(`job ${job.id} was not prepared`);
-    // The slot's GPU is known only now: the argv rendered at Build names none (or the pinned one).
-    if (device !== null) {
-      p.args = [...PASS_LOG_ARGS, ...renderArgs({ ...renderInputOf(p), device })];
-      p.command = renderCommandLine(this.deps.config.ffmpegPath, p.args);
+    p.slot = slot;
+    if (slot !== null) {
+      // The slot's GPU is known only now: the argv rendered at Build names none (or the pinned one).
+      const { device } = slot;
+      const vendor = deviceVendor(device);
+      let encodedOn: string | null = null;
+      if (device !== null && vendor !== null) {
+        // Auto's encoders move to the slot's vendor; a named encoder never does. Null (ffmpeg
+        // lacks the target, which the slot rules prevent) or a target that cannot render: the
+        // job encodes as built.
+        const caps = this.capabilitiesOf();
+        const usable = caps.encoders.filter((e) => encoderUsable(e, caps));
+        const target = retarget(p.model, p.autoStreams, vendor, usable) ?? p.model;
+        const moved = target === p.model ? null : this.renderFor(p, target, device);
+        if (moved) {
+          p.model = target;
+          p.plan = p.replan(target);
+          p.args = moved;
+        } else {
+          if (target !== p.model) {
+            this.deps.log.warn({
+              msg: `could not render for the ${vendor} GPU; encoding as built`,
+              job: job.id,
+            });
+          }
+          p.args = [...PASS_LOG_ARGS, ...renderArgs({ ...renderInputOf(p), device })];
+        }
+        p.command = renderCommandLine(this.deps.config.ffmpegPath, p.args);
+        // Only a job that encodes on that GPU names it: not a software encode, not the other
+        // vendor's encoder.
+        const suffix = vendor === 'nvidia' ? '_nvenc' : '_qsv';
+        const onGpu = kept(p.model).some(
+          (s) => s.type === 'video' && s.mode === 'convert' && s.encoder?.endsWith(suffix),
+        );
+        if (onGpu) encodedOn = slotGpuLabel(slot, this.deps.capabilities());
+      }
+      // A retry clears what an earlier attempt recorded.
+      if (job.encodedOn !== encodedOn) job = this.update(job, ctl, { encodedOn });
     }
     try {
       return await this.conclude(job, ctl, p, await this.runExecute(job, ctl, p));
@@ -824,6 +922,7 @@ export class Pipeline implements JobExecutor {
   async discard(job: JobRow): Promise<void> {
     const p = this.prepared.get(job.id);
     this.prepared.delete(job.id);
+    this.gpuWarnings.delete(job.id);
     await this.removeTemp(job.id);
     if (p) this.recordResult(job, p.fp, { ...resultOf(p), outcome: 'cancelled', logPath: null });
   }
@@ -838,7 +937,14 @@ export class Pipeline implements JobExecutor {
     if (end.kind === 'settled') return null;
     await this.removeTemp(job.id);
     if (end.kind === 'requeue') {
-      return { requeue: { reason: end.reason, requeues: end.requeues } };
+      const { reason, requeues, failedGpus } = end;
+      return {
+        requeue: {
+          reason,
+          ...(requeues !== undefined ? { requeues } : {}),
+          ...(failedGpus !== undefined ? { failedGpus } : {}),
+        },
+      };
     }
     const f = end.failure;
     const row = findJob(this.deps.db, job.id) ?? job;
@@ -1200,18 +1306,31 @@ export class Pipeline implements JobExecutor {
           : `ffmpeg exited ${result.code}`;
       const tail = await readTail(p.logPath, REASON_TAIL_BYTES);
       const cause = ffmpegFailure(tail);
-      // The GPU gave up: the same plan once more on the software encoder, in this attempt.
+      // The GPU gave up: back to the queue for a GPU it has not failed on, when there is one
+      // (never for a software job); else the same plan once more on the software encoder, in
+      // this attempt.
       if (!p.softwareFallback && looksLikeGpuFailure(tail)) {
+        const { slot } = p;
+        const failed = slot?.gpuId ? [...job.failedGpus, slot.gpuId] : null;
+        if (slot && failed && p.fit !== 'software' && this.deps.otherGpuFor?.(p.fit, failed)) {
+          const reason = `${slot.label} failed (${cause ?? why})${TRYING_ANOTHER_GPU}`;
+          this.gpuWarnings.set(job.id, [...(this.gpuWarnings.get(job.id) ?? []), reason]);
+          this.deps.log.warn({ msg: 'GPU encode failed, trying another GPU', job: job.id });
+          if (job.encodedOn !== null) this.update(job, ctl, { encodedOn: null });
+          return { kind: 'requeue', reason, failedGpus: failed };
+        }
         const soft = softwareFallback(p.model, this.capabilitiesOf().encoders);
         const args = soft && this.renderFor(p, soft);
         if (soft && args) {
           p.model = soft;
+          p.plan = p.replan(soft);
           p.args = args;
           p.command = renderCommandLine(config.ffmpegPath, args);
           p.softwareFallback = true;
           p.warnings.push(`the GPU encode failed (${cause ?? why}); encoded in software instead`);
           this.deps.log.warn({ msg: 'GPU encode failed, retrying in software', job: job.id });
-          return this.encode(job, ctl, p);
+          const row = job.encodedOn === null ? job : this.update(job, ctl, { encodedOn: null });
+          return this.encode(row, ctl, p);
         }
       }
       return fail(retryable(cause ? `${why}: ${cause}` : why));
@@ -1775,6 +1894,7 @@ export class Pipeline implements JobExecutor {
     r: Partial<Omit<ResultInput, 'outcome'>> & { fp?: Fingerprint } = {},
   ): void {
     const { db } = this.deps;
+    this.gpuWarnings.delete(job.id);
     const row = db.transaction(() => {
       const updated = this.write(job.id, {
         state,
@@ -2054,17 +2174,11 @@ export class Pipeline implements JobExecutor {
   }
 
   /** The ffmpeg arguments for another plan of the same prepared job; null when it cannot render. */
-  private renderFor(p: Prepared, model: BuildModel): string[] | null {
+  private renderFor(p: Prepared, model: BuildModel, device?: RenderDevice): string[] | null {
     try {
       return [
         ...PASS_LOG_ARGS,
-        ...renderArgs({
-          model,
-          input: p.realPath,
-          output: p.outputPath,
-          coverFiles: p.coverFiles,
-          extraInputFiles: p.extraInputFiles,
-        }),
+        ...renderArgs({ ...renderInputOf(p), model, ...(device ? { device } : {}) }),
       ];
     } catch (err) {
       if (err instanceof RenderError) return null;
@@ -2129,7 +2243,7 @@ export class Pipeline implements JobExecutor {
 /** How execute ended: settled (recorded), a requeue for the scheduler, or a failure. */
 type End =
   | { kind: 'settled' }
-  | { kind: 'requeue'; reason: string; requeues: number }
+  | { kind: 'requeue'; reason: string; requeues?: number; failedGpus?: string[] }
   | { kind: 'fail'; failure: Failure };
 const SETTLED: End = { kind: 'settled' };
 const fail = (failure: Failure): End => ({ kind: 'fail', failure });
