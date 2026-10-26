@@ -1,0 +1,7 @@
+export const INSTRUCTIONS =
+  'Transcoda runs ffmpeg workflows on media libraries. Through MCP you can read jobs, runs, libraries and workflows; create, change, duplicate, rename and delete workflows; and queue dry runs. ' +
+  'You can never activate a workflow version, queue a real run or read a webhook URL — a person activates a version in the UI after checking a dry run of it. Saving creates a new version that does not run on files until activated; the previously activated version keeps running. ' +
+  "A workflow takes files from a library through its Library input; the active version's Library input is the binding, and only one active workflow can feed a library. dry_run without workflowId uses that workflow. " +
+  'You can see which plugins are installed and whether they run, but never install, change or configure them or read their settings — a person does that on the Plugins page. ' +
+  'Typical flow: get_job (why a job failed) → get_job_log → get_workflow → save_workflow with the current baseVersion (VERSION_CONFLICT means reload with get_workflow) → dry_run on the same file (browse_library finds paths) → get_job until its state is final. dry_run with testEncode: true measures the real output size; it is slow and queues behind real jobs. ' +
+  'save_workflow takes a graph as get_workflow returns it; webhook URLs are shown as scheme://host/… — send them back unchanged to keep them, or enter a full new URL.';

@@ -1,0 +1,20 @@
+{
+  "include": [],
+  "references": [
+    {
+      "path": "packages/shared"
+    },
+    {
+      "path": "packages/sdk"
+    },
+    {
+      "path": "packages/contract"
+    },
+    {
+      "path": "apps/server"
+    },
+    {
+      "path": "apps/web"
+    }
+  ]
+}

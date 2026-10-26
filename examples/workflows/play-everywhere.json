@@ -1,0 +1,133 @@
+{
+  "formatVersion": 1,
+  "kind": "workflow",
+  "nodes": [
+    {
+      "id": "input",
+      "type": "core:input-manual",
+      "typeVersion": 1,
+      "settings": {},
+      "position": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "encode",
+      "type": "core:encode-video",
+      "typeVersion": 2,
+      "settings": {
+        "codec": "h264",
+        "encoder": "auto",
+        "quality": 22,
+        "preset": "medium",
+        "skipIf": "plays-on-all-targets",
+        "targets": ["android-tv"]
+      },
+      "position": {
+        "x": 240,
+        "y": 0
+      },
+      "links": {
+        "targets": "Devices"
+      }
+    },
+    {
+      "id": "audio",
+      "type": "core:encode-audio",
+      "typeVersion": 3,
+      "settings": {
+        "mode": "copy",
+        "whenUnsupported": "add-track",
+        "targets": ["android-tv"]
+      },
+      "position": {
+        "x": 480,
+        "y": 0
+      },
+      "links": {
+        "targets": "Devices"
+      }
+    },
+    {
+      "id": "replace",
+      "type": "core:replace-original",
+      "typeVersion": 1,
+      "settings": {},
+      "position": {
+        "x": 720,
+        "y": 0
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "input-encode",
+      "from": {
+        "node": "input",
+        "port": "file"
+      },
+      "to": {
+        "node": "encode",
+        "port": "file"
+      }
+    },
+    {
+      "id": "encode-audio",
+      "from": {
+        "node": "encode",
+        "port": "file"
+      },
+      "to": {
+        "node": "audio",
+        "port": "file"
+      }
+    },
+    {
+      "id": "audio-replace",
+      "from": {
+        "node": "audio",
+        "port": "file"
+      },
+      "to": {
+        "node": "replace",
+        "port": "file"
+      }
+    }
+  ],
+  "groups": [
+    {
+      "id": "start",
+      "name": "Start here",
+      "collapsed": false,
+      "position": {
+        "x": 0,
+        "y": -380
+      },
+      "size": {
+        "width": 560,
+        "height": 320
+      },
+      "note": "## Play everywhere\n\nFixes files your TV or browser can't play as they are, so your media server doesn't have to convert them while you watch.\n\n- The video is re-encoded to **H.264** only when one of your devices can't play it.\n- When the default audio can't play there (DTS, TrueHD), a **stereo AAC** track is added and becomes the default. The original track stays.\n\nPick your devices on the **Shared values** card: both nodes follow **Devices**. Adding `chrome` covers browsers too, but browsers can't play HEVC everywhere, so HEVC files are then re-encoded to H.264 and get bigger."
+    }
+  ],
+  "values": {
+    "position": {
+      "x": 560,
+      "y": -300
+    },
+    "entries": [
+      {
+        "name": "Devices",
+        "schema": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["android-tv", "chrome"]
+          }
+        },
+        "value": ["android-tv"]
+      }
+    ]
+  }
+}

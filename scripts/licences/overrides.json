@@ -1,0 +1,7 @@
+{
+  "$comment": "Keyed by package name or name@version. reason is required. licence replaces what pnpm reports; text names a file in this folder (for a package that ships none); allow: true accepts a licence outside the allow-list (an exception, explained in reason).",
+  "wouter": {
+    "reason": "The npm package ships no licence file; its package.json and repository say Unlicense.",
+    "text": "Unlicense.txt"
+  }
+}

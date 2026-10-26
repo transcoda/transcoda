@@ -1,0 +1,108 @@
+import { DeviceProfileIdSchema } from '@transcoda/shared';
+import { z } from 'zod';
+
+/** `?deep=1` (or `true`) runs the deep check; absent is the plain liveness answer. */
+export const HealthInputSchema = z.object({ deep: z.enum(['1', 'true']).optional() }).optional();
+export type HealthInput = z.infer<typeof HealthInputSchema>;
+
+const CheckSchema = z.enum(['ok', 'fail']);
+/** Names and ok/fail only: the answer is public, so it never carries a path or a message. */
+export const HealthChecksSchema = z.object({
+  database: CheckSchema,
+  ffmpeg: CheckSchema,
+  scratchSpace: CheckSchema,
+  queue: CheckSchema,
+});
+export type HealthChecksOutput = z.infer<typeof HealthChecksSchema>;
+
+export const HealthOutputSchema = z.object({
+  status: z.literal('ok'),
+  version: z.string(),
+  checks: HealthChecksSchema.optional(),
+});
+export type HealthOutput = z.infer<typeof HealthOutputSchema>;
+
+/** A GPU found at startup (`nvidia-smi -L`); `id` is how the encoding-device setting names it. */
+export const GpuSchema = z.object({
+  id: z.string(),
+  vendor: z.literal('nvidia'),
+  /** nvidia-smi's index; ffmpeg runs with CUDA_DEVICE_ORDER=PCI_BUS_ID, so CUDA uses the same. */
+  index: z.number().int().nonnegative(),
+  name: z.string(),
+});
+export type Gpu = z.infer<typeof GpuSchema>;
+
+/** One reading of a GPU's video engines, in percent. */
+export const GpuLoadSampleSchema = z.object({
+  at: z.iso.datetime(),
+  encoder: z.number(),
+  decoder: z.number(),
+});
+/** The last hour of NVENC/NVDEC load per NVIDIA GPU (kept in memory; empty after a restart). */
+export const GpuLoadOutputSchema = z.object({
+  /** Time between samples. */
+  intervalMs: z.number().int(),
+  /** GPUs with at least one sample; empty without NVIDIA GPUs or nvidia-smi. */
+  gpus: z.array(
+    z.object({
+      index: z.number().int(),
+      name: z.string(),
+      samples: z.array(GpuLoadSampleSchema),
+    }),
+  ),
+});
+export type GpuLoadOutput = z.infer<typeof GpuLoadOutputSchema>;
+
+const ffmpegAvailable = z.object({
+  available: z.literal(true),
+  path: z.string(),
+  version: z.string(),
+  encoders: z.array(z.string()),
+  hwaccels: z.array(z.string()),
+  filters: z.array(z.string()),
+  /** Absent from probes made before GPU detection (and in tests): none detected. */
+  gpus: z.array(GpuSchema).optional(),
+});
+const ffmpegUnavailable = z.object({
+  available: z.literal(false),
+  path: z.string(),
+  error: z.string(),
+});
+
+/** The startup ffmpeg probe, as the server keeps it. */
+export const FfmpegCapabilitiesSchema = z.discriminatedUnion('available', [
+  ffmpegAvailable,
+  ffmpegUnavailable,
+]);
+/** The ffmpeg probe result (server side); the API answer adds `deviceProfiles`. */
+export type Capabilities = z.infer<typeof FfmpegCapabilitiesSchema>;
+
+export const DeviceProfileInfoSchema = z.object({ id: DeviceProfileIdSchema, name: z.string() });
+export type DeviceProfileInfo = z.infer<typeof DeviceProfileInfoSchema>;
+
+/** `system.capabilities`: the ffmpeg probe plus the device profiles (labels for `targets`). */
+export const CapabilitiesSchema = z.discriminatedUnion('available', [
+  ffmpegAvailable.extend({ deviceProfiles: z.array(DeviceProfileInfoSchema) }),
+  ffmpegUnavailable.extend({ deviceProfiles: z.array(DeviceProfileInfoSchema) }),
+]);
+export type CapabilitiesOutput = z.infer<typeof CapabilitiesSchema>;
+
+/** Why a backup was taken: before migrations, on a new build, or by "Back up now". */
+export const BackupReasonSchema = z.enum(['migration', 'build', 'manual']);
+export type BackupReason = z.infer<typeof BackupReasonSchema>;
+
+/** One database backup: the file name only, never a server path. */
+export const BackupSchema = z.object({
+  name: z.string(),
+  size: z.number().int().nonnegative(),
+  createdAt: z.string(),
+  reason: BackupReasonSchema,
+});
+export type Backup = z.infer<typeof BackupSchema>;
+
+/** `system.backups.list`: newest first; `keep` is how many the server keeps. */
+export const BackupsListOutputSchema = z.object({
+  backups: z.array(BackupSchema),
+  keep: z.number().int().positive(),
+});
+export type BackupsListOutput = z.infer<typeof BackupsListOutputSchema>;

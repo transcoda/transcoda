@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security problem
+    url: https://github.com/transcoda/transcoda/security/advisories/new
+    about: Report vulnerabilities privately, never in a public issue.
+  - name: Plugin bug or idea
+    url: https://github.com/transcoda/transcoda-plugins/issues
+    about: Sonarr, Radarr, Jellyfin, Bazarr, Seerr, TMDB, ntfy and Discord plugins live there.

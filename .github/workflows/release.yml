@@ -1,0 +1,69 @@
+name: Release
+
+# Push a tag v<version> on main (or a release/* branch for a patch) after the release pull request is merged (docs/releasing.md).
+# This checks the tag against the version in apps/server/package.json and publishes the GitHub
+# Release with that version's CHANGELOG.md section. docker.yml builds and pushes the image.
+on:
+  push:
+    tags: ['v[0-9]*']
+
+concurrency:
+  group: release-${{ github.ref }}
+
+permissions:
+  contents: read
+
+jobs:
+  github-release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Check the tag
+        id: tag
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -eu
+          version="${TAG#v}"
+          pkg="$(jq -r .version apps/server/package.json)"
+          if [ "$version" != "$pkg" ]; then
+            echo "::error::tag $TAG does not match apps/server/package.json version $pkg"; exit 1
+          fi
+          # On main, or on a release/* branch for a patch cut from an older release.
+          if ! git branch -r --contains "$GITHUB_SHA" | grep -qE '^ *origin/(main|release/.+)$'; then
+            echo "::error::tag $TAG is not on main or a release/* branch"; exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - name: Release notes from CHANGELOG.md
+        env:
+          VERSION: ${{ steps.tag.outputs.version }}
+        run: |
+          set -eu
+          awk -v v="$VERSION" '
+            index($0, "## " v " — ") == 1 { on = 1; next }
+            on && /^## / { exit }
+            on { print }
+          ' CHANGELOG.md > notes.md
+          if [ ! -s notes.md ]; then
+            echo "::error::CHANGELOG.md has no section for $VERSION"; exit 1
+          fi
+          cat >> notes.md <<NOTES
+
+          **Docker image:** \`ghcr.io/transcoda/transcoda:$VERSION\`
+          NOTES
+          cat notes.md
+      - name: Publish the GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+          VERSION: ${{ steps.tag.outputs.version }}
+        run: |
+          set -eu
+          flags=""
+          case "$VERSION" in *-*) flags="--prerelease" ;; *) flags="--latest" ;; esac
+          gh release create "$TAG" --title "Transcoda $VERSION" --notes-file notes.md --verify-tag $flags

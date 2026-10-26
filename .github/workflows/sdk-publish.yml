@@ -1,0 +1,57 @@
+name: SDK publish
+
+# Push a tag sdk-v<version> on main after the pull request that sets packages/sdk/package.json to
+# that version is merged (docs/releasing.md). This checks the tag, tests and builds the SDK, and
+# publishes @transcoda/sdk to npm with provenance through npm trusted publishing (no token).
+on:
+  push:
+    tags: ['sdk-v[0-9]*']
+
+concurrency:
+  group: sdk-publish-${{ github.ref }}
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: npm
+    permissions:
+      contents: read
+      # The OIDC token npm exchanges for a short-lived publish credential, also used for provenance.
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Check the tag
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -eu
+          version="${TAG#sdk-v}"
+          pkg="$(jq -r .version packages/sdk/package.json)"
+          if [ "$version" != "$pkg" ]; then
+            echo "::error::tag $TAG does not match packages/sdk/package.json version $pkg"; exit 1
+          fi
+          if ! git branch -r --contains "$GITHUB_SHA" | grep -qE '^ *origin/main$'; then
+            echo "::error::tag $TAG is not on main"; exit 1
+          fi
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+          registry-url: https://registry.npmjs.org
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm --filter @transcoda/sdk test
+      - run: pnpm --filter @transcoda/sdk build
+      # pnpm pack applies publishConfig (the built exports) and rewrites workspace: ranges;
+      # npm publishes the tarball, since npm is what speaks trusted publishing.
+      - name: Publish
+        run: |
+          set -eu
+          pnpm --filter @transcoda/sdk pack --pack-destination "$RUNNER_TEMP"
+          npm publish "$RUNNER_TEMP"/transcoda-sdk-*.tgz --provenance --access public

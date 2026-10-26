@@ -1,0 +1,95 @@
+{
+  "format": 1,
+  "packages": [
+    {
+      "name": "Debian bookworm base packages",
+      "version": "bookworm",
+      "licence": "Various",
+      "homepage": "https://www.debian.org",
+      "origin": "image",
+      "usedBy": ["image"],
+      "textKey": "sha256:b8f8ffd259d3a7d87a7fe935a417b72379bf74eed49be35a50eae64277d2dfd5"
+    },
+    {
+      "name": "jellyfin-ffmpeg",
+      "version": "8.1.3-1-bookworm",
+      "licence": "GPL-3.0-or-later",
+      "homepage": "https://github.com/jellyfin/jellyfin-ffmpeg",
+      "origin": "image",
+      "usedBy": ["image"],
+      "textKey": "sha256:cbcdaba0361899748305ddab7fb01104c8dc78fc8a6975cf3264c8fb4dc1bb99"
+    },
+    {
+      "name": "lucide",
+      "version": "path data",
+      "licence": "ISC",
+      "homepage": "https://lucide.dev",
+      "origin": "vendored",
+      "usedBy": ["web"],
+      "textKey": "sha256:db2aa0494fd05285f6698526fc281d329ad588f0187f8491e272a8001170bc17"
+    },
+    {
+      "name": "Node.js",
+      "version": "24.22",
+      "licence": "MIT",
+      "homepage": "https://nodejs.org",
+      "origin": "image",
+      "usedBy": ["image"],
+      "textKey": "sha256:23dfdb23b596f290a67218e3a9dff0b1569ecc23a4c2231d537cd898500fae68"
+    },
+    {
+      "name": "pkg-a",
+      "version": "1.0.0",
+      "licence": "ISC",
+      "homepage": "https://example.org/pkg-a",
+      "origin": "npm",
+      "usedBy": ["web"],
+      "textKey": "sha256:d3aae4ca121b6098410ad6005c9fe0224bb840882130c744b892521d5b3f9c5a"
+    },
+    {
+      "name": "pkg-b",
+      "version": "2.0.0",
+      "licence": "MIT",
+      "homepage": null,
+      "origin": "npm",
+      "usedBy": ["web", "server"],
+      "textKey": "sha256:6dbb0f633035a362f594b5d57e18becf58be673b387e420571dc810de7024199"
+    },
+    {
+      "name": "pkg-b",
+      "version": "10.0.0",
+      "licence": "MIT",
+      "homepage": null,
+      "origin": "npm",
+      "usedBy": ["web", "server"],
+      "textKey": "sha256:6dbb0f633035a362f594b5d57e18becf58be673b387e420571dc810de7024199"
+    },
+    {
+      "name": "pkg-c",
+      "version": "0.1.0",
+      "licence": "MIT",
+      "homepage": "https://example.org/pkg-c",
+      "origin": "npm",
+      "usedBy": ["web", "server"],
+      "textKey": "sha256:6dbb0f633035a362f594b5d57e18becf58be673b387e420571dc810de7024199"
+    },
+    {
+      "name": "pkg-d",
+      "version": "3.0.0",
+      "licence": "(MIT OR CC0-1.0)",
+      "homepage": null,
+      "origin": "npm",
+      "usedBy": ["web"],
+      "textKey": "sha256:6e8d1a7017011bc6df98ec3fda7a450b48d81d197fcdec86bf6b256e0b6fac6c"
+    }
+  ],
+  "texts": {
+    "sha256:23dfdb23b596f290a67218e3a9dff0b1569ecc23a4c2231d537cd898500fae68": "Node.js 24.22 (the image's node:24.22-bookworm-slim base; `node --version` in the\ncontainer names the exact release) is licensed under the MIT licence and bundles\nthird-party components under their own licences. The full text, with every bundled\ncomponent, is the LICENSE file of that release, for example\nhttps://github.com/nodejs/node/blob/v24.22.0/LICENSE\n",
+    "sha256:6dbb0f633035a362f594b5d57e18becf58be673b387e420571dc810de7024199": "MIT License\n\nCopyright (c) Example Author\n\nPermission is hereby granted, free of charge, to any person obtaining a copy of this software.\n",
+    "sha256:6e8d1a7017011bc6df98ec3fda7a450b48d81d197fcdec86bf6b256e0b6fac6c": "Hand-supplied licence text for pkg-d\n",
+    "sha256:b8f8ffd259d3a7d87a7fe935a417b72379bf74eed49be35a50eae64277d2dfd5": "The image is based on Debian bookworm (node:24.22-bookworm-slim) and adds Debian packages\n(ca-certificates, tini, procps and the libraries jellyfin-ffmpeg needs). Each package\ncarries its own licence; its copyright file is in the image at\n/usr/share/doc/<package>/copyright.\n",
+    "sha256:cbcdaba0361899748305ddab7fb01104c8dc78fc8a6975cf3264c8fb4dc1bb99": "jellyfin-ffmpeg is a separate program in the image (/usr/lib/jellyfin-ffmpeg/ffmpeg),\ninstalled from the Jellyfin Debian repository and run by Transcoda as a process.\nIts source code: https://github.com/jellyfin/jellyfin-ffmpeg at tag v8.1.3-1.\n\nhand text GPL-3.0.txt\n",
+    "sha256:d3aae4ca121b6098410ad6005c9fe0224bb840882130c744b892521d5b3f9c5a": "Apache-ish licence of pkg-a\n\npkg-a NOTICE: includes code by Someone\n",
+    "sha256:db2aa0494fd05285f6698526fc281d329ad588f0187f8491e272a8001170bc17": "Icon path data copied into apps/web/src/components/Icon.tsx.\n\nhand text lucide-ISC.txt\n"
+  }
+}

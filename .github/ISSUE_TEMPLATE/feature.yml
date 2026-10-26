@@ -1,0 +1,21 @@
+name: Feature idea
+description: Something Transcoda should do, a node, or an integration.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What you want to do
+      description: The situation you're in and what you'd like Transcoda to do about it. Real examples help most.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: How it could work
+      description: Optional. A node, a setting, a page — whatever you have in mind.
+  - type: textarea
+    id: today
+    attributes:
+      label: What you do today
+      description: Optional. Workarounds, or another tool that does this.

@@ -1,0 +1,33 @@
+{
+  "name": "transcoda",
+  "private": true,
+  "type": "module",
+  "version": "0.1.0",
+  "license": "GPL-3.0-only",
+  "packageManager": "pnpm@12.6.0",
+  "engines": {
+    "node": ">=24.22.1"
+  },
+  "scripts": {
+    "typecheck": "tsc -b",
+    "lint": "biome check .",
+    "format": "biome check --write .",
+    "test": "vitest run",
+    "build": "pnpm --filter @transcoda/web build && pnpm --filter @transcoda/server build",
+    "release": "node scripts/release-notes.mjs",
+    "release-notes": "node scripts/release-notes.mjs",
+    "check-deps": "node scripts/check-deps.mjs && node --test scripts/check-deps.test.mjs",
+    "fixtures": "node scripts/fixtures/generate.mjs",
+    "notices": "node scripts/third-party-notices.ts",
+    "check-licences": "node --test scripts/third-party-notices.test.ts && node scripts/third-party-notices.ts --check",
+    "check": "pnpm typecheck && pnpm lint && pnpm check-deps && pnpm check-licences && pnpm test"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.15",
+    "@types/node": "24.19.2",
+    "tsdown": "0.23.1",
+    "tsx": "4.23.15",
+    "typescript": "7.0.2",
+    "vitest": "5.0.5"
+  }
+}

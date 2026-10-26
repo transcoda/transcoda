@@ -1,0 +1,167 @@
+{
+  "formatVersion": 1,
+  "kind": "workflow",
+  "nodes": [
+    {
+      "id": "input",
+      "type": "core:input-manual",
+      "typeVersion": 1,
+      "settings": {},
+      "position": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "is-hevc",
+      "type": "core:video-is",
+      "typeVersion": 1,
+      "settings": {
+        "codecs": ["hevc"]
+      },
+      "position": {
+        "x": 240,
+        "y": 0
+      },
+      "label": "Already HEVC?"
+    },
+    {
+      "id": "encode",
+      "type": "core:encode-video",
+      "typeVersion": 2,
+      "settings": {
+        "codec": "hevc",
+        "encoder": "auto",
+        "quality": 23,
+        "preset": "medium",
+        "skipIf": "already-target-codec",
+        "targets": []
+      },
+      "position": {
+        "x": 480,
+        "y": 120
+      }
+    },
+    {
+      "id": "audio",
+      "type": "core:encode-audio",
+      "typeVersion": 3,
+      "settings": {
+        "mode": "copy"
+      },
+      "position": {
+        "x": 720,
+        "y": 120
+      }
+    },
+    {
+      "id": "gate",
+      "type": "core:size-gate",
+      "typeVersion": 2,
+      "settings": {
+        "minSavingPercent": 15
+      },
+      "position": {
+        "x": 960,
+        "y": 120
+      }
+    },
+    {
+      "id": "replace",
+      "type": "core:replace-original",
+      "typeVersion": 1,
+      "settings": {},
+      "position": {
+        "x": 1200,
+        "y": 120
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "input-is-hevc",
+      "from": {
+        "node": "input",
+        "port": "file"
+      },
+      "to": {
+        "node": "is-hevc",
+        "port": "file"
+      }
+    },
+    {
+      "id": "is-hevc-encode",
+      "from": {
+        "node": "is-hevc",
+        "port": "else"
+      },
+      "to": {
+        "node": "encode",
+        "port": "file"
+      }
+    },
+    {
+      "id": "encode-audio",
+      "from": {
+        "node": "encode",
+        "port": "file"
+      },
+      "to": {
+        "node": "audio",
+        "port": "file"
+      }
+    },
+    {
+      "id": "audio-gate",
+      "from": {
+        "node": "audio",
+        "port": "file"
+      },
+      "to": {
+        "node": "gate",
+        "port": "file"
+      }
+    },
+    {
+      "id": "gate-replace",
+      "from": {
+        "node": "gate",
+        "port": "pass"
+      },
+      "to": {
+        "node": "replace",
+        "port": "file"
+      }
+    }
+  ],
+  "groups": [
+    {
+      "id": "start",
+      "name": "Start here",
+      "collapsed": false,
+      "position": {
+        "x": 0,
+        "y": -330
+      },
+      "size": {
+        "width": 600,
+        "height": 280
+      },
+      "note": "## Save space\n\nMakes video files smaller by re-encoding the video to **HEVC** (H.265). Most files shrink by a third or more without a visible difference. Audio and subtitles are copied as they are.\n\n1. Try a **Dry run** on a few files first: it shows what would change and writes nothing.\n2. Want smaller files? Raise **Quality (CRF)** on Encode video. Lower numbers look better and take more space.\n3. A file that doesn't get at least **15 %** smaller keeps its original."
+    },
+    {
+      "id": "hevc-note",
+      "name": "Already HEVC",
+      "collapsed": false,
+      "position": {
+        "x": 240,
+        "y": 220
+      },
+      "size": {
+        "width": 210,
+        "height": 200
+      },
+      "note": "Files that are already HEVC take **Yes** and are left alone. That output is open on purpose, so the editor shows a warning on it."
+    }
+  ]
+}

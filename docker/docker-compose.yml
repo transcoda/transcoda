@@ -1,0 +1,58 @@
+services:
+  transcoda:
+    image: ${IMAGE:-ghcr.io/transcoda/transcoda:main}
+    container_name: transcoda
+    ports:
+      - "8080:8080"
+    environment:
+      PUID: "1000"
+      PGID: "1000"
+      UMASK: "022"
+      TZ: "America/New_York"  # your local time zone: run hours and job stats use it
+      # Plugin processes run as this user; it must differ from PUID/PGID.
+      PLUGIN_UID: "65001"
+      PLUGIN_GID: "65001"
+      # Host names (no port) the UI is reached by, besides the one recorded at setup:
+      # TRANSCODA_ALLOWED_HOSTS: "transcoda.example.lan,192.168.1.10"
+      # NVIDIA: also uncomment the deploy block below.
+      # NVIDIA_DRIVER_CAPABILITIES: "video,compute,utility"
+    volumes:
+      - ./config:/config
+      - /mnt/ssd/transcode:/transcode
+      # Your media library:
+      # - /data:/data
+    # Intel/AMD (VAAPI, QSV) hardware transcoding:
+    # devices:
+    #   - /dev/dri:/dev/dri
+    # NVIDIA (needs the NVIDIA Container Toolkit on the host):
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:          # what the root entrypoint needs; the server keeps SETUID, SETGID, KILL
+      - CHOWN
+      - DAC_OVERRIDE
+      - FOWNER
+      - FSETID        # keeps the setgid bit on /run/transcoda/plugins (chmod 2710 by root)
+      - SETUID
+      - SETGID
+      - SETPCAP
+      - KILL
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m
+      - /run/transcoda:size=256m,mode=0755   # staged plugin bundles (32 MB each at most)
+    pids_limit: 1024                          # ffmpeg threads count; raise on very wide machines
+    # The only hard ceiling on total memory (plugins included): size it as server ~512 MB
+    # + 256 MB per enabled plugin (its rssMb limit; at most 16 hosts run at once by default)
+    # + what your ffmpeg settings need (4K/HEVC software encodes can take 1-2 GB each).
+    mem_limit: 4g
+    # Never: privileged: true, security_opt seccomp=unconfined, or a /var/run/docker.sock volume.
+    restart: unless-stopped

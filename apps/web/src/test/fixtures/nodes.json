@@ -1,0 +1,1335 @@
+{
+  "nodes": [
+    {
+      "type": "core:input-library",
+      "version": 1,
+      "kind": "trigger",
+      "title": "Library input",
+      "description": "Starts the workflow for each file that appears in a library.",
+      "icon": "folder",
+      "inputs": [],
+      "outputs": [
+        {
+          "id": "file",
+          "label": "File",
+          "type": "file"
+        }
+      ],
+      "settingsSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "libraryId": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Library — Files from this library go to this workflow once a version is active."
+          }
+        },
+        "required": [
+          "libraryId"
+        ]
+      },
+      "onNodeSettings": [
+        "libraryId"
+      ],
+      "finishPhase": null,
+      "source": {
+        "kind": "core"
+      },
+      "availability": {
+        "available": true
+      }
+    },
+    {
+      "type": "core:input-webhook",
+      "version": 1,
+      "kind": "trigger",
+      "title": "Webhook input",
+      "description": "Starts the workflow when an HTTP request arrives.",
+      "icon": "webhook",
+      "inputs": [],
+      "outputs": [
+        {
+          "id": "file",
+          "label": "File",
+          "type": "file"
+        }
+      ],
+      "settingsSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {}
+      },
+      "onNodeSettings": [],
+      "finishPhase": null,
+      "source": {
+        "kind": "core"
+      },
+      "availability": {
+        "available": true
+      }
+    },
+    {
+      "type": "core:input-manual",
+      "version": 1,
+      "kind": "trigger",
+      "title": "Manual input",
+      "description": "Starts the workflow on a file you pick by hand.",
+      "icon": "hand",
+      "inputs": [],
+      "outputs": [
+        {
+          "id": "file",
+          "label": "File",
+          "type": "file"
+        }
+      ],
+      "settingsSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {}
+      },
+      "onNodeSettings": [],
+      "finishPhase": null,
+      "source": {
+        "kind": "core"
+      },
+      "availability": {
+        "available": true
+      }
+    },
+    {
+      "type": "core:video-is",
+      "version": 1,
+      "kind": "condition",
+      "title": "Video is",
+      "description": "Branches on the video stream: codec, height and bitrate.",
+      "icon": "film",
+      "inputs": [
+        {
+          "id": "file",
+          "label": "File",
+          "type": "file"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "pass",
+          "label": "Yes",
+          "type": "file"
+        },
+        {
+          "id": "else",
+          "label": "No",
+          "type": "file"
+        }
+      ],
+      "settingsSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "codecs": {
+            "default": [],
+            "description": "Codecs",
+            "x-transcoda": "video-codecs",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "minHeight": {
+            "description": "Minimum height (px)",
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          },
+          "maxHeight": {
+            "description": "Maximum height (px)",
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          },
+          "maxBitrateKbps": {
+            "description": "Maximum bitrate (kb/s)",
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          }
+        }
+      },
+      "onNodeSettings": [],
+      "finishPhase": null,
+      "source": {
+        "kind": "core"
+      },
+      "availability": {
+        "available": true
+      }
+    },
+    {
+      "type": "core:file-matches",
+      "version": 1,
+      "kind": "condition",
+      "title": "File matches",
+      "description": "Branches on file size, age and path.",
+      "icon": "file-search",
+      "inputs": [
+        {
+          "id": "file",
+          "label": "File",
+          "type": "file"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "pass",
+          "label": "Yes",
+          "type": "file"
+        },
+        {
+          "id": "else",
+          "label": "No",
+          "type": "file"
+        }
+      ],
+      "settingsSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "minSizeMb": {
+            "description": "Minimum size (MB)",
+            "type": "number",
+            "minimum": 0
+          },
+          "maxSizeMb": {
+            "description": "Maximum size (MB)",
+            "type": "number",
+            "minimum": 0
+          },
+          "olderThanDays": {
+            "description": "Older than (days)",
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "pathGlob": {
+            "description": "Path glob",
+            "type": "string"
+          }
+        }
+      },
+      "onNodeSettings": [],
+      "finishPhase": null,
+      "source": {
+        "kind": "core"
+      },
+      "availability": {
+        "available": true
+      }
+    },
+    {
+      "type": "core:has-stream",
+      "version": 1,
+      "kind": "condition",
+      "title": "Has stream",
+      "description": "Branches on whether the file has a matching audio or subtitle stream.",
+      "icon": "audio-lines",
+      "inputs": [
+        {
+          "id": "file",
+          "label": "File",
+          "type": "file"
+        },
+        {
+          "id": "language",
+          "label": "Original language",
+          "type": "data:language",
+          "required": false
+        }
+      ],
+      "outputs": [
+        {
+          "id": "pass",
+          "label": "Yes",
+          "type": "file"
+        },
+        {
+          "id": "else",
+          "label": "No",
+          "type": "file"
+        }
+      ],
+      "settingsSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "streamType": {
+            "default": "audio",
+            "description": "Stream type",
+            "type": "string",
+            "enum": [
+              "audio",
+              "subtitle"
+            ]
+          },
+          "language": {
+            "description": "Language",
+            "type": "string",
+            "pattern": "^([a-z]{2,3}|unknown)$"
+          },
+          "codec": {
+            "description": "Codec",
+            "type": "string"
+          },
+          "isDefault": {
+            "description": "Is default",
+            "type": "boolean"
+          },
+          "isForced": {
+            "description": "Is forced",
+            "type": "boolean"
+          }
+        }
+      },
+      "onNodeSettings": [],
+      "finishPhase": null,
+      "source": {
+        "kind": "core"
+      },
+      "availability": {
+        "available": true
+      }
+    },
+    {
+      "type": "core:subworkflow-start",
+      "version": 1,
+      "kind": "subworkflow-io",
+      "title": "Start",
+      "description": "Where a sub-workflow receives its file.",
+      "icon": "log-in",
+      "inputs": [],
+      "outputs": [
+        {
+          "id": "file",
+          "label": "File",
+          "type": "file"
+        }
+      ],
+      "settingsSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {}
+      },
+      "onNodeSettings": [],
+      "finishPhase": null,
+      "source": {
+        "kind": "core"
+      },
+      "availability": {
+        "available": true
+      }
+    },
+    {
+      "type": "core:subworkflow-end",
+      "version": 1,
+      "kind": "subworkflow-io",
+      "title": "End",
+      "description": "Where a sub-workflow hands its file back.",
+      "icon": "log-out",
+      "inputs": [
+        {
+          "id": "file",
+          "label": "File",
+          "type": "file"
+        }
+      ],
+      "outputs": [],
+      "settingsSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {}
+      },
+      "onNodeSettings": [],
+      "finishPhase": null,
+      "source": {
+        "kind": "core"
+      },
+      "availability": {
+        "available": true
+      }
+    },
+    {
+      "type": "core:run-subworkflow",
+      "version": 1,
+      "kind": "action",
+      "title": "Run sub-workflow",
+      "description": "Runs another workflow on the file and continues with its result.",
+      "icon": "workflow",
+      "inputs": [
+        {
+          "id": "file",
+          "label": "File",
+          "type": "file"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "file",
+          "label": "File",
+          "type": "file"
+        }
+      ],
+      "settingsSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "subworkflowId": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Sub-workflow"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991,
+            "description": "Pinned version"
+          },
+          "overrides": {
+            "default": {},
+            "description": "Setting overrides",
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {
+              "$ref": "#/$defs/__schema0"
+            }
+          }
+        },
+        "required": [
+          "subworkflowId",
+          "version"
+        ],
+        "$defs": {
+          "__schema0": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/__schema0"
+                }
+              },
+              {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {
+                  "$ref": "#/$defs/__schema0"
+                }
+              }
+            ]
+          }
+        }
+      },
+      "onNodeSettings": [],
+      "finishPhase": null,
+      "source": {
+        "kind": "core"
+      },
+      "availability": {
+        "available": true
+      }
+    },
+    {
+      "type": "core:keep-languages",
+      "version": 1,
+      "kind": "action",
+      "title": "Keep languages",
+      "description": "Removes audio and subtitle tracks that are not in the chosen languages.",
+      "icon": "languages",
+      "inputs": [
+        {
+          "id": "file",
+          "label": "File",
+          "type": "file"
+        },
+        {
+          "id": "language",
+          "label": "Original language",
+          "type": "data:language",
+          "required": false
+        }
+      ],
+      "outputs": [
+        {
+          "id": "file",
+          "label": "File",
+          "type": "file"
+        }
+      ],
+      "settingsSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "languages": {
+            "default": [
+              "en"
+            ],
+            "description": "Languages to keep",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^([a-z]{2,3}|unknown)$"
+            }
+          },
+          "keepOriginal": {
+            "default": true,
+            "description": "Keep the original language",
+            "type": "boolean"
+          },
+          "keepUntagged": {
+            "default": true,
+            "description": "Keep tracks without a language tag",
+            "type": "boolean"
+          }
+        }
+      },
+      "onNodeSettings": [
+        "languages"
+      ],
+      "finishPhase": null,
+      "source": {
+        "kind": "core"
+      },
+      "availability": {
+        "available": true
+      }
+    },
+    {
+      "type": "core:set-default-track",
+      "version": 1,
+      "kind": "action",
+      "title": "Set default track",
+      "description": "Marks the default audio and subtitle tracks by language preference.",
+      "icon": "star",
+      "inputs": [
+        {
+          "id": "file",
+          "label": "File",
+          "type": "file"
+        },
+        {
+          "id": "language",
+          "label": "Original language",
+          "type": "data:language",
+          "required": false
+        }
+      ],
+      "outputs": [
+        {
+          "id": "file",
+          "label": "File",
+          "type": "file"
+        }
+      ],
+      "settingsSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "audioLanguages": {
+            "default": [
+              "en"
+            ],
+            "description": "Audio languages in order of preference; the original language comes first",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^([a-z]{2,3}|unknown)$"
+            }
+          },
+          "subtitleLanguages": {
+            "default": [],
+            "description": "Subtitle languages in order of preference; empty means no default subtitle (an mp4 output still flags its first subtitle: the mp4 muxer always marks one)",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^([a-z]{2,3}|unknown)$"
+            }
+          }
+        }
+      },
+      "onNodeSettings": [
+        "audioLanguages"
+      ],
+      "finishPhase": null,
+      "source": {
+        "kind": "core"
+      },
+      "availability": {
+        "available": true
+      }
+    },
+    {
+      "type": "core:reorder-tracks",
+      "version": 1,
+      "kind": "action",
+      "title": "Reorder tracks",
+      "description": "Puts audio and subtitle tracks in language order.",
+      "icon": "list-ordered",
+      "inputs": [
+        {
+          "id": "file",
+          "label": "File",
+          "type": "file"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "file",
+          "label": "File",
+          "type": "file"
+        }
+      ],
+      "settingsSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "languages": {
+            "default": [
+              "en"
+            ],
+            "description": "Language order",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^([a-z]{2,3}|unknown)$"
+            }
+          }
+        }
+      },
+      "onNodeSettings": [
+        "languages"
+      ],
+      "finishPhase": null,
+      "source": {
+        "kind": "core"
+      },
+      "availability": {
+        "available": true
+      }
+    },
+    {
+      "type": "core:cover-attachments",
+      "version": 1,
+      "kind": "action",
+      "title": "Cover and attachments",
+      "description": "Keeps or removes cover images and attachments.",
+      "icon": "image",
+      "inputs": [
+        {
+          "id": "file",
+          "label": "File",
+          "type": "file"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "file",
+          "label": "File",
+          "type": "file"
+        }
+      ],
+      "settingsSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "keepCover": {
+            "default": true,
+            "description": "Keep cover images",
+            "type": "boolean"
+          },
+          "keepAttachments": {
+            "default": false,
+            "description": "Keep attachments such as fonts",
+            "type": "boolean"
+          }
+        }
+      },
+      "onNodeSettings": [],
+      "finishPhase": null,
+      "source": {
+        "kind": "core"
+      },
+      "availability": {
+        "available": true
+      }
+    },
+    {
+      "type": "core:encode-video",
+      "version": 2,
+      "kind": "action",
+      "title": "Encode video",
+      "description": "Re-encodes the video stream.",
+      "icon": "video",
+      "inputs": [
+        {
+          "id": "file",
+          "label": "File",
+          "type": "file"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "file",
+          "label": "File",
+          "type": "file"
+        }
+      ],
+      "settingsSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "codec": {
+            "default": "hevc",
+            "description": "Target codec",
+            "type": "string",
+            "enum": [
+              "hevc",
+              "h264",
+              "av1"
+            ]
+          },
+          "encoder": {
+            "default": "auto",
+            "description": "Encoder (auto picks hardware first)",
+            "type": "string"
+          },
+          "rateControl": {
+            "default": "quality",
+            "description": "Rate control; quality keeps a constant quality (CRF, or CQ/QP on hardware), bitrate aims at the target bitrate",
+            "type": "string",
+            "enum": [
+              "quality",
+              "bitrate"
+            ]
+          },
+          "quality": {
+            "default": 24,
+            "description": "Quality (CRF); lower is better",
+            "x-transcoda-show-when": {
+              "rateControl": "quality"
+            },
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 63
+          },
+          "bitrateKbps": {
+            "default": 6000,
+            "description": "Target bitrate (kb/s)",
+            "x-transcoda-show-when": {
+              "rateControl": "bitrate"
+            },
+            "type": "integer",
+            "minimum": 100,
+            "maximum": 200000
+          },
+          "neverIncreaseBitrate": {
+            "default": true,
+            "description": "Never above the source bitrate; caps the encode at the source video's bitrate (the whole file's when the stream has none)",
+            "type": "boolean"
+          },
+          "preset": {
+            "default": "medium",
+            "description": "Encoder preset",
+            "type": "string"
+          },
+          "skipIf": {
+            "default": "already-target-codec",
+            "description": "Skip encoding when",
+            "type": "string",
+            "enum": [
+              "never",
+              "already-target-codec",
+              "plays-on-all-targets"
+            ]
+          },
+          "targets": {
+            "default": [],
+            "description": "Target devices",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "android-tv",
+                "chrome"
+              ],
+              "description": "Target devices"
+            }
+          }
+        }
+      },
+      "onNodeSettings": [
+        "quality",
+        "bitrateKbps"
+      ],
+      "finishPhase": null,
+      "source": {
+        "kind": "core"
+      },
+      "availability": {
+        "available": true
+      }
+    },
+    {
+      "type": "core:encode-audio",
+      "version": 3,
+      "kind": "action",
+      "title": "Encode audio",
+      "description": "Copies or re-encodes the audio streams.",
+      "icon": "volume-2",
+      "inputs": [
+        {
+          "id": "file",
+          "label": "File",
+          "type": "file"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "file",
+          "label": "File",
+          "type": "file"
+        }
+      ],
+      "settingsSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "mode": {
+            "default": "copy",
+            "description": "Mode",
+            "type": "string",
+            "enum": [
+              "copy",
+              "reencode"
+            ]
+          },
+          "codec": {
+            "default": "aac",
+            "description": "Codec",
+            "type": "string",
+            "enum": [
+              "aac",
+              "ac3",
+              "opus"
+            ]
+          },
+          "bitrateKbps": {
+            "default": 160,
+            "description": "Bitrate (kb/s)",
+            "type": "integer",
+            "minimum": 32,
+            "maximum": 1024
+          },
+          "neverIncreaseBitrate": {
+            "default": true,
+            "description": "Never above the source bitrate; a track is encoded at most at its source bitrate, when it's known",
+            "type": "boolean"
+          },
+          "downmixTo": {
+            "default": "none",
+            "description": "Downmix to",
+            "type": "string",
+            "enum": [
+              "none",
+              "stereo"
+            ]
+          },
+          "updateTitles": {
+            "default": true,
+            "description": "Update track titles; a re-encoded track's title names its new format (codec, channels, bitrate) instead of the old one, and keeps its other words",
+            "type": "boolean"
+          },
+          "targets": {
+            "default": [],
+            "description": "Target devices",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "android-tv",
+                "chrome"
+              ],
+              "description": "Target devices"
+            }
+          },
+          "whenUnsupported": {
+            "default": "add-track",
+            "description": "When a target cannot play a kept track",
+            "type": "string",
+            "enum": [
+              "add-track",
+              "convert",
+              "fail"
+            ]
+          }
+        }
+      },
+      "onNodeSettings": [],
+      "finishPhase": null,
+      "source": {
+        "kind": "core"
+      },
+      "availability": {
+        "available": true
+      }
+    },
+    {
+      "type": "core:remove-duplicate-audio",
+      "version": 1,
+      "kind": "action",
+      "title": "Remove duplicate audio",
+      "description": "Drops an audio track that ends up the same as another one (language, codec and channels), keeping the one made from the best source.",
+      "icon": "copy",
+      "inputs": [
+        {
+          "id": "file",
+          "label": "File",
+          "type": "file"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "file",
+          "label": "File",
+          "type": "file"
+        }
+      ],
+      "settingsSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {}
+      },
+      "onNodeSettings": [],
+      "finishPhase": null,
+      "source": {
+        "kind": "core"
+      },
+      "availability": {
+        "available": true
+      }
+    },
+    {
+      "type": "core:remux",
+      "version": 1,
+      "kind": "action",
+      "title": "Remux",
+      "description": "Moves the streams into another container without re-encoding.",
+      "icon": "package",
+      "inputs": [
+        {
+          "id": "file",
+          "label": "File",
+          "type": "file"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "file",
+          "label": "File",
+          "type": "file"
+        }
+      ],
+      "settingsSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "container": {
+            "default": "mkv",
+            "description": "Container",
+            "type": "string",
+            "enum": [
+              "mkv",
+              "mp4"
+            ]
+          },
+          "subtitleConversion": {
+            "default": "convert",
+            "description": "Subtitle conversion ('keep' and 'convert': text subtitles are converted to the container's text format and image subtitles the container or targets cannot carry fail the job; 'drop-incompatible': Drop subtitles the container or targets cannot carry)",
+            "type": "string",
+            "enum": [
+              "keep",
+              "convert",
+              "drop-incompatible"
+            ]
+          },
+          "targets": {
+            "default": [],
+            "description": "Target devices",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "android-tv",
+                "chrome"
+              ],
+              "description": "Target devices"
+            }
+          }
+        }
+      },
+      "onNodeSettings": [],
+      "finishPhase": null,
+      "source": {
+        "kind": "core"
+      },
+      "availability": {
+        "available": true
+      }
+    },
+    {
+      "type": "core:embed-sidecar-subtitles",
+      "version": 1,
+      "kind": "action",
+      "title": "Embed subtitle files",
+      "description": "Adds the subtitle files next to the video (.srt, .ass, .ssa, .vtt, .sup) as subtitle tracks, for example the ones Bazarr downloads.",
+      "icon": "captions",
+      "inputs": [
+        {
+          "id": "file",
+          "label": "File",
+          "type": "file"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "file",
+          "label": "File",
+          "type": "file"
+        }
+      ],
+      "settingsSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "languages": {
+            "default": [],
+            "description": "Languages to embed (empty: all)",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^([a-z]{2,3}|unknown)$"
+            }
+          },
+          "afterEmbed": {
+            "default": "recycle",
+            "description": "After the file is replaced, move the subtitle files to the recycle folder or keep them",
+            "type": "string",
+            "enum": [
+              "keep",
+              "recycle"
+            ]
+          },
+          "skipExisting": {
+            "default": true,
+            "description": "Skip a file whose language, forced and SDH flags match a track the video already has",
+            "type": "boolean"
+          }
+        }
+      },
+      "onNodeSettings": [
+        "languages"
+      ],
+      "finishPhase": null,
+      "source": {
+        "kind": "core"
+      },
+      "availability": {
+        "available": true
+      }
+    },
+    {
+      "type": "core:size-gate",
+      "version": 2,
+      "kind": "finish",
+      "title": "Size gate",
+      "description": "Did the result save enough space? Yes: the finish steps continue. No: the original is kept and only the steps wired to No run.",
+      "icon": "scale",
+      "inputs": [
+        {
+          "id": "file",
+          "label": "File",
+          "type": "file"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "pass",
+          "label": "Yes",
+          "type": "file"
+        },
+        {
+          "id": "else",
+          "label": "No",
+          "type": "file"
+        }
+      ],
+      "settingsSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "minSavingPercent": {
+            "default": 10,
+            "description": "Saved at least (%)",
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          }
+        }
+      },
+      "onNodeSettings": [
+        "minSavingPercent"
+      ],
+      "finishPhase": "gate",
+      "source": {
+        "kind": "core"
+      },
+      "availability": {
+        "available": true
+      }
+    },
+    {
+      "type": "core:replace-original",
+      "version": 1,
+      "kind": "finish",
+      "title": "Replace original",
+      "description": "Replaces the source file with the result.",
+      "icon": "replace",
+      "inputs": [
+        {
+          "id": "file",
+          "label": "File",
+          "type": "file"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "file",
+          "label": "File",
+          "type": "file"
+        }
+      ],
+      "settingsSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "recycleFolder": {
+            "description": "Recycle folder for the original; unset means the library default",
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "onNodeSettings": [],
+      "finishPhase": "write",
+      "source": {
+        "kind": "core"
+      },
+      "availability": {
+        "available": true
+      }
+    },
+    {
+      "type": "core:move-copy",
+      "version": 1,
+      "kind": "finish",
+      "title": "Move or copy",
+      "description": "Writes the result to another folder.",
+      "icon": "folder-output",
+      "inputs": [
+        {
+          "id": "file",
+          "label": "File",
+          "type": "file"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "file",
+          "label": "File",
+          "type": "file"
+        }
+      ],
+      "settingsSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "mode": {
+            "default": "copy",
+            "description": "Mode",
+            "type": "string",
+            "enum": [
+              "move",
+              "copy"
+            ]
+          },
+          "outputRoot": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Output folder"
+          }
+        },
+        "required": [
+          "outputRoot"
+        ]
+      },
+      "onNodeSettings": [],
+      "finishPhase": "write",
+      "source": {
+        "kind": "core"
+      },
+      "availability": {
+        "available": true
+      }
+    },
+    {
+      "type": "core:notify-webhook",
+      "version": 1,
+      "kind": "finish",
+      "title": "Notify webhook",
+      "description": "Sends an HTTP request when the file is done.",
+      "icon": "send",
+      "inputs": [
+        {
+          "id": "file",
+          "label": "File",
+          "type": "file"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "file",
+          "label": "File",
+          "type": "file"
+        }
+      ],
+      "settingsSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "description": "URL"
+          },
+          "method": {
+            "default": "POST",
+            "description": "HTTP method",
+            "type": "string",
+            "enum": [
+              "POST",
+              "PUT"
+            ]
+          }
+        },
+        "required": [
+          "url"
+        ]
+      },
+      "onNodeSettings": [],
+      "finishPhase": "notify",
+      "source": {
+        "kind": "core"
+      },
+      "availability": {
+        "available": true
+      }
+    },
+    {
+      "type": "test:unavailable",
+      "version": 1,
+      "kind": "action",
+      "title": "Generate subtitles",
+      "description": "Copies or re-encodes the audio streams.",
+      "icon": "volume-2",
+      "inputs": [
+        {
+          "id": "file",
+          "label": "File",
+          "type": "file"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "file",
+          "label": "File",
+          "type": "file"
+        }
+      ],
+      "settingsSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "mode": {
+            "default": "copy",
+            "description": "Mode",
+            "type": "string",
+            "enum": [
+              "copy",
+              "reencode"
+            ]
+          },
+          "codec": {
+            "default": "aac",
+            "description": "Codec",
+            "type": "string",
+            "enum": [
+              "aac",
+              "ac3",
+              "opus"
+            ]
+          },
+          "bitrateKbps": {
+            "default": 160,
+            "description": "Bitrate (kbps)",
+            "type": "integer",
+            "minimum": 32,
+            "maximum": 1024
+          },
+          "downmixTo": {
+            "default": "none",
+            "description": "Downmix to",
+            "type": "string",
+            "enum": [
+              "none",
+              "stereo"
+            ]
+          }
+        }
+      },
+      "onNodeSettings": [],
+      "source": {
+        "kind": "plugin",
+        "name": "whisper",
+        "version": "0.1.0"
+      },
+      "availability": {
+        "available": false,
+        "reason": "Needs the Whisper plugin"
+      }
+    }
+  ]
+}

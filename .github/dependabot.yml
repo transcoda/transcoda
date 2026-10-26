@@ -1,0 +1,18 @@
+version: 2
+updates:
+  # Keeps the SHA-pinned actions current; Dependabot rewrites the SHA and the version comment.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ['*']
+    commit-message:
+      prefix: chore(ci)
+    # Action bumps change no behaviour, so they carry the label the release-note check accepts.
+    # Listing labels replaces Dependabot's defaults, so those are listed too.
+    labels:
+      - dependencies
+      - github_actions
+      - no user-facing change

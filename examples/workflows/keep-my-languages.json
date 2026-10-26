@@ -1,0 +1,201 @@
+{
+  "formatVersion": 1,
+  "kind": "workflow",
+  "nodes": [
+    {
+      "id": "input",
+      "type": "core:input-manual",
+      "typeVersion": 1,
+      "settings": {},
+      "position": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "languages",
+      "type": "core:keep-languages",
+      "typeVersion": 1,
+      "settings": {
+        "languages": ["en"],
+        "keepOriginal": true,
+        "keepUntagged": true
+      },
+      "position": {
+        "x": 240,
+        "y": 0
+      },
+      "links": {
+        "languages": "Languages"
+      }
+    },
+    {
+      "id": "duplicates",
+      "type": "core:remove-duplicate-audio",
+      "typeVersion": 1,
+      "settings": {},
+      "position": {
+        "x": 480,
+        "y": 0
+      }
+    },
+    {
+      "id": "defaults",
+      "type": "core:set-default-track",
+      "typeVersion": 1,
+      "settings": {
+        "audioLanguages": ["en"],
+        "subtitleLanguages": ["en"]
+      },
+      "position": {
+        "x": 720,
+        "y": 0
+      },
+      "links": {
+        "audioLanguages": "Languages",
+        "subtitleLanguages": "Languages"
+      }
+    },
+    {
+      "id": "order",
+      "type": "core:reorder-tracks",
+      "typeVersion": 1,
+      "settings": {
+        "languages": ["en"]
+      },
+      "position": {
+        "x": 960,
+        "y": 0
+      },
+      "links": {
+        "languages": "Languages"
+      }
+    },
+    {
+      "id": "extras",
+      "type": "core:cover-attachments",
+      "typeVersion": 1,
+      "settings": {
+        "keepCover": true,
+        "keepAttachments": false
+      },
+      "position": {
+        "x": 1200,
+        "y": 0
+      }
+    },
+    {
+      "id": "replace",
+      "type": "core:replace-original",
+      "typeVersion": 1,
+      "settings": {},
+      "position": {
+        "x": 1440,
+        "y": 0
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "input-languages",
+      "from": {
+        "node": "input",
+        "port": "file"
+      },
+      "to": {
+        "node": "languages",
+        "port": "file"
+      }
+    },
+    {
+      "id": "languages-duplicates",
+      "from": {
+        "node": "languages",
+        "port": "file"
+      },
+      "to": {
+        "node": "duplicates",
+        "port": "file"
+      }
+    },
+    {
+      "id": "duplicates-defaults",
+      "from": {
+        "node": "duplicates",
+        "port": "file"
+      },
+      "to": {
+        "node": "defaults",
+        "port": "file"
+      }
+    },
+    {
+      "id": "defaults-order",
+      "from": {
+        "node": "defaults",
+        "port": "file"
+      },
+      "to": {
+        "node": "order",
+        "port": "file"
+      }
+    },
+    {
+      "id": "order-extras",
+      "from": {
+        "node": "order",
+        "port": "file"
+      },
+      "to": {
+        "node": "extras",
+        "port": "file"
+      }
+    },
+    {
+      "id": "extras-replace",
+      "from": {
+        "node": "extras",
+        "port": "file"
+      },
+      "to": {
+        "node": "replace",
+        "port": "file"
+      }
+    }
+  ],
+  "groups": [
+    {
+      "id": "start",
+      "name": "Start here",
+      "collapsed": false,
+      "position": {
+        "x": 0,
+        "y": -380
+      },
+      "size": {
+        "width": 600,
+        "height": 320
+      },
+      "note": "## Keep my languages\n\nRemoves audio and subtitle tracks in languages you don't watch, drops duplicate audio, puts your languages first and makes them the default. Nothing is re-encoded, so it's quick.\n\n1. Click the **Shared values** card and set **Languages** to yours, for example `en, de`. Every node that follows it changes with it.\n2. The file's original language and tracks without a language tag are always kept.\n3. Run a **Dry run** to see what each file would lose before anything is written."
+    }
+  ],
+  "values": {
+    "position": {
+      "x": 640,
+      "y": -300
+    },
+    "entries": [
+      {
+        "name": "Languages",
+        "schema": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^([a-z]{2,3}|unknown)$"
+          }
+        },
+        "value": ["en"]
+      }
+    ]
+  }
+}

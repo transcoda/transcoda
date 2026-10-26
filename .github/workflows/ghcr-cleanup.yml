@@ -1,0 +1,44 @@
+name: GHCR cleanup
+
+on:
+  workflow_run:
+    workflows: [Docker]
+    types: [completed]
+  schedule:
+    - cron: '17 4 * * 0'
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: List what would be deleted without deleting
+        type: boolean
+        default: true
+
+# Not safe to run in parallel against the same package.
+concurrency:
+  group: ghcr-cleanup
+  cancel-in-progress: false
+
+permissions:
+  packages: write
+
+jobs:
+  cleanup:
+    # After a Docker run, only when it succeeded.
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      # Deletes untagged images only. The action drops child manifests of
+      # multi-arch indexes from its working set first, so the per-platform
+      # manifests of tagged images (main, vX.Y.Z) are kept.
+      - uses: dataaxiom/ghcr-cleanup-action@d52806a0dc70b430571a37da1fde39733ffd640f # v1.2.2
+        with:
+          owner: transcoda
+          package: transcoda
+          delete-untagged: true
+          # Grace period: never touch images younger than a day, so the untagged manifests of
+          # a push that is still in flight are not pruned.
+          older-than: 1 day
+          # Manual runs default to dry-run (input); push/schedule runs delete.
+          dry-run: ${{ github.event_name == 'workflow_dispatch' && inputs.dry-run }}
+          validate: true

@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "generated": "2026-10-17T12:00:00.000Z",
+  "plugins": [
+    {
+      "name": "example",
+      "title": "Example",
+      "description": "Reference plugin: a condition node that branches on the file extension.",
+      "latest": "1.0.0",
+      "versions": [
+        {
+          "version": "1.0.0",
+          "sdk": "^1",
+          "coreTested": [],
+          "url": "http://127.0.0.1:18931/example-1.0.0.js",
+          "manifestUrl": "http://127.0.0.1:18931/example-1.0.0.manifest.json",
+          "sha256": "549f96130a9d04956affea690769573c6a030bc87c3267d8dcc96ca36113240f",
+          "size": 382635,
+          "attestation": null,
+          "releasedAt": "2026-10-17T12:00:00.000Z"
+        }
+      ]
+    }
+  ]
+}

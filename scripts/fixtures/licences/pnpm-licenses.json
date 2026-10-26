@@ -1,0 +1,42 @@
+{
+  "ISC": [
+    {
+      "name": "pkg-a",
+      "versions": ["1.0.0"],
+      "paths": ["packages/pkg-a"],
+      "license": "ISC",
+      "homepage": "https://example.org/pkg-a"
+    }
+  ],
+  "MIT": [
+    {
+      "name": "pkg-b",
+      "versions": ["2.0.0", "10.0.0"],
+      "paths": ["packages/pkg-b", "packages/pkg-b"],
+      "license": "MIT"
+    },
+    {
+      "name": "pkg-c",
+      "versions": ["0.1.0"],
+      "paths": ["packages/pkg-c"],
+      "license": "MIT",
+      "homepage": "https://example.org/pkg-c"
+    }
+  ],
+  "(MIT OR CC0-1.0)": [
+    {
+      "name": "pkg-d",
+      "versions": ["3.0.0"],
+      "paths": ["packages/pkg-d"],
+      "license": "(MIT OR CC0-1.0)"
+    }
+  ],
+  "GPL-3.0-only": [
+    {
+      "name": "@transcoda/shared",
+      "versions": ["0.0.0"],
+      "paths": ["packages/transcoda-shared"],
+      "license": "GPL-3.0-only"
+    }
+  ]
+}

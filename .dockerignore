@@ -1,0 +1,25 @@
+# Required by the plan
+node_modules
+**/dist
+.local
+.git
+docs
+*.md
+# Also excluded: nested installs and dev state (apps/server/.local holds a dev secret key)
+**/node_modules
+**/.local
+**/dist-types
+**/*.tsbuildinfo
+**/coverage
+.superpowers
+.claude
+.DS_Store
+docker/docker-compose.yml
+# Secrets and local data that must never reach the build context
+.env*
+**/*.sqlite*
+**/*.pem
+**/secret.key
+CLAUDE.local.md
+docs/plans
+docs/design

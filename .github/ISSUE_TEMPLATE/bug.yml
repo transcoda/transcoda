@@ -1,0 +1,54 @@
+name: Bug report
+description: Something doesn't work the way it should.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. Security problems go through private reporting instead (see SECURITY.md).
+        Take out secrets, API keys and file names you don't want public before you paste logs.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What did you do, what happened, and what did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Create a workflow with …
+        2. Run it on a file that …
+  - type: input
+    id: version
+    attributes:
+      label: Transcoda version
+      description: Settings → About, or the Docker image tag.
+      placeholder: 0.1.0
+    validations:
+      required: true
+  - type: dropdown
+    id: install
+    attributes:
+      label: How you run it
+      options:
+        - Docker on Linux
+        - Docker on another system
+        - Docker on a NAS (Unraid, Synology, …)
+        - From source
+    validations:
+      required: true
+  - type: input
+    id: gpu
+    attributes:
+      label: GPU
+      description: If the bug is about encoding, which GPU (or none).
+      placeholder: NVIDIA RTX 3060, Intel Arc, none
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or job details
+      description: The job page's log, or `docker logs transcoda`. Long logs are fine.
+      render: text

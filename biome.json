@@ -1,0 +1,25 @@
+{
+  "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+  "files": {
+    "includes": [
+      "**",
+      "!**/dist",
+      "!**/dist-types",
+      "!packages/sdk/build",
+      "!**/node_modules",
+      "!**/.local",
+      "!**/.superpowers",
+      "!docs/design",
+      "!apps/web/src/styles/tokens.css",
+      "!apps/web/src/test/fixtures/nodes.json",
+      "!apps/web/src/assets/tmdb.svg",
+      "!apps/server/src/engine/fixtures/*.json",
+      "!apps/server/third-party.json",
+      "!pnpm-lock.yaml"
+    ]
+  },
+  "formatter": { "indentStyle": "space", "lineWidth": 100 },
+  "javascript": { "formatter": { "quoteStyle": "single" } },
+  "linter": { "rules": { "preset": "recommended" } },
+  "assist": { "actions": { "source": { "organizeImports": "on" } } }
+}

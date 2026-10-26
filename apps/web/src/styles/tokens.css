@@ -1,0 +1,167 @@
+/* Transcoda design tokens — direction "Patchbay".
+   Dark is the default; light follows prefers-color-scheme, or <html data-theme="light"> / "dark" force one.
+   Fonts are OFL and must be bundled with the app (no runtime CDN):
+   Bricolage Grotesque (400/500/700/800) and JetBrains Mono (400/600). */
+
+:root {
+  /* Surfaces and text */
+  --bg: #17161A;
+  --surface: #1D1C21;
+  --raised: #26252B;
+  --line: #2E2D34;
+  --line-strong: #3A3940;
+  --text: #EDEBE6;
+  --muted: #B5B1A8;
+  --faint: #9C988F;
+
+  /* Accent: --accent is the fill (with --on-accent ink); text and lines on the page use
+     --accent-text, which is the same lime here and a deep green in light. */
+  --accent: #C6F35A;
+  --on-accent: #17161A;
+  --accent-text: #C6F35A;
+
+  /* Node kinds (always paired with an icon and a label) */
+  --kind-trigger: #5AA9FF;
+  --kind-condition: #B79BFF;
+  --kind-action: #FF9F5A;
+  --kind-finish: #3FD9B5;
+  --kind-data: #F2D04B;
+
+  /* Job verdicts and states (always paired with an icon and a word) */
+  --st-replaced: #C6F35A;   --st-replaced-ink: #17161A;
+  --st-replaced-text: #C6F35A;
+  --st-kept: #5AA9FF;       --st-kept-ink: #0D1A2B;
+  --st-noop: #2E2D34;       --st-noop-ink: #D6D2CA;
+  --st-skipped: #B79BFF;    --st-skipped-ink: #1E1336;
+  --st-failed: #FF6B5A;     --st-failed-ink: #2A0A05;
+  --st-failed-bg: #3A1A16;  --st-failed-text: #FFB4AA;
+  --st-running: #EDEBE6;    --st-running-ink: #17161A;
+  --st-dry: #FFC46B;        --st-dry-bg: #3A2F12;   /* dry run: dashed border */
+  --st-dry-ink: #2A1D00;    /* ink on a solid --st-dry fill (needs attention) */
+  --st-needs-setting: #FFC46B;
+
+  /* Editor edges */
+  --edge-path: var(--accent-text);     /* path taken: 3.5px, dash 10 6, animated */
+  --edge-file: var(--muted);           /* file flow: 3px solid */
+  --edge-data: var(--kind-data);       /* data: 2px dotted (dash 0.01 6, round caps) */
+  --edge-untaken: #6A6770;             /* not taken: 2px dash 6 6 */
+  --edge-broken: var(--st-failed);     /* into a broken node: 2.5px dash 6 5 */
+
+  /* Type */
+  --font-ui: "Bricolage Grotesque", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --fs-display: 44px;  /* 700, -0.03em */
+  --fs-h1: 28px;       /* 700, -0.01em (page titles use 32px) */
+  --fs-h2: 20px;       /* 700 */
+  --fs-body: 15px;     /* 400 */
+  --fs-small: 13px;    /* 500 */
+  --fs-mono: 12px;     /* 600, labels in caps */
+  --fw-wordmark: 800;  /* "transcoda", -0.04em */
+
+  /* Space (4px base) */
+  --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px;
+  --sp-6: 24px; --sp-8: 32px; --sp-12: 48px;
+
+  /* Radii */
+  --r-sm: 6px; --r-md: 12px; --r-lg: 16px; --r-pill: 999px;
+
+  /* Focus: 2px ring with 2px offset */
+  --focus-ring: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent-text);
+  /* On a lime (accent) fill the accent ring would vanish: ring in the text colour instead. */
+  --focus-ring-on-accent: 0 0 0 2px var(--accent), 0 0 0 4px var(--text);
+
+  /* Hit targets */
+  --target-min: 44px;
+
+  /* Sticky top bar: 12px padding x2 + 44px brand + 1px border. */
+  --topbar-h: 69px;
+}
+
+/* Light follows the OS preference unless the user chose dark; data-theme="light" forces it.
+   The two blocks below hold the same declarations (a test keeps them equal). The colours that
+   are not tokens (styles.css) have their light values next to their dark ones there. */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg: #F6F5F0;
+    --surface: #FFFFFF;
+    --raised: #ECEAE3;
+    --line: #D9D6CC;
+    --line-strong: #C6C2B6;
+    --text: #17161A;
+    --muted: #55524B;
+    --faint: #625E57;
+
+    /* Bold light: the dark theme's lime stays the fill, with dark ink; text and lines on the light
+       page take the deep green (AA on white and on the page). */
+    --accent: #C6F35A;
+    --on-accent: #17161A;
+    --accent-text: #3E6A00;
+
+    /* Kinds darkened for AA on the light surfaces. */
+    --kind-trigger: #1B5DB8;
+    --kind-condition: #6A44C8;
+    --kind-action: #A84A0C;
+    --kind-finish: #08705A;
+    --kind-data: #7E6000;
+
+    /* Verdicts and states: the dark theme's bright fills and dark inks; -text variants are deep. */
+    --st-replaced: #C6F35A;   --st-replaced-ink: #17161A;
+    --st-replaced-text: #3E6A00;
+    --st-kept: #5AA9FF;       --st-kept-ink: #0D1A2B;
+    --st-noop: #E3DFD5;       --st-noop-ink: #3D3A34;
+    --st-skipped: #B79BFF;    --st-skipped-ink: #1E1336;
+    --st-failed: #FF6B5A;     --st-failed-ink: #2A0A05;
+    --st-failed-bg: #FFE5E1;  --st-failed-text: #8F1D10;
+    --st-running: #17161A;    --st-running-ink: #F6F5F0;
+    --st-dry: #8A5300;        --st-dry-bg: #FFE9B8;
+    --st-dry-ink: #FFFFFF;
+    --st-needs-setting: #8A5300;
+
+    --edge-untaken: #6A6770;
+  }
+}
+
+:root[data-theme="light"] {
+  --bg: #F6F5F0;
+  --surface: #FFFFFF;
+  --raised: #ECEAE3;
+  --line: #D9D6CC;
+  --line-strong: #C6C2B6;
+  --text: #17161A;
+  --muted: #55524B;
+  --faint: #625E57;
+
+  /* Bold light: the dark theme's lime stays the fill, with dark ink; text and lines on the light
+     page take the deep green (AA on white and on the page). */
+  --accent: #C6F35A;
+  --on-accent: #17161A;
+  --accent-text: #3E6A00;
+
+  /* Kinds darkened for AA on the light surfaces. */
+  --kind-trigger: #1B5DB8;
+  --kind-condition: #6A44C8;
+  --kind-action: #A84A0C;
+  --kind-finish: #08705A;
+  --kind-data: #7E6000;
+
+  /* Verdicts and states: the dark theme's bright fills and dark inks; -text variants are deep. */
+  --st-replaced: #C6F35A;   --st-replaced-ink: #17161A;
+  --st-replaced-text: #3E6A00;
+  --st-kept: #5AA9FF;       --st-kept-ink: #0D1A2B;
+  --st-noop: #E3DFD5;       --st-noop-ink: #3D3A34;
+  --st-skipped: #B79BFF;    --st-skipped-ink: #1E1336;
+  --st-failed: #FF6B5A;     --st-failed-ink: #2A0A05;
+  --st-failed-bg: #FFE5E1;  --st-failed-text: #8F1D10;
+  --st-running: #17161A;    --st-running-ink: #F6F5F0;
+  --st-dry: #8A5300;        --st-dry-bg: #FFE9B8;
+  --st-dry-ink: #FFFFFF;
+  --st-needs-setting: #8A5300;
+
+  --edge-untaken: #6A6770;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; }
+}
+
+:focus-visible { outline: none; box-shadow: var(--focus-ring); }

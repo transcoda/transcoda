@@ -1,0 +1,292 @@
+{
+  "formatVersion": 1,
+  "kind": "workflow",
+  "nodes": [
+    {
+      "id": "input",
+      "type": "core:input-manual",
+      "typeVersion": 1,
+      "settings": {},
+      "position": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "orig",
+      "type": "sonarr:original-language",
+      "typeVersion": 1,
+      "settings": {},
+      "position": {
+        "x": 240,
+        "y": -160
+      }
+    },
+    {
+      "id": "languages",
+      "type": "core:keep-languages",
+      "typeVersion": 1,
+      "settings": {
+        "languages": ["en"],
+        "keepOriginal": true,
+        "keepUntagged": true
+      },
+      "position": {
+        "x": 240,
+        "y": 0
+      },
+      "links": {
+        "languages": "Languages"
+      }
+    },
+    {
+      "id": "duplicates",
+      "type": "core:remove-duplicate-audio",
+      "typeVersion": 1,
+      "settings": {},
+      "position": {
+        "x": 480,
+        "y": 0
+      }
+    },
+    {
+      "id": "defaults",
+      "type": "core:set-default-track",
+      "typeVersion": 1,
+      "settings": {
+        "audioLanguages": ["en"],
+        "subtitleLanguages": ["en"]
+      },
+      "position": {
+        "x": 720,
+        "y": 0
+      },
+      "links": {
+        "audioLanguages": "Languages",
+        "subtitleLanguages": "Languages"
+      }
+    },
+    {
+      "id": "order",
+      "type": "core:reorder-tracks",
+      "typeVersion": 1,
+      "settings": {
+        "languages": ["en"]
+      },
+      "position": {
+        "x": 960,
+        "y": 0
+      },
+      "links": {
+        "languages": "Languages"
+      }
+    },
+    {
+      "id": "extras",
+      "type": "core:cover-attachments",
+      "typeVersion": 1,
+      "settings": {
+        "keepCover": true,
+        "keepAttachments": false
+      },
+      "position": {
+        "x": 1200,
+        "y": 0
+      }
+    },
+    {
+      "id": "replace",
+      "type": "core:replace-original",
+      "typeVersion": 1,
+      "settings": {},
+      "position": {
+        "x": 1440,
+        "y": 0
+      }
+    },
+    {
+      "id": "rescan",
+      "type": "sonarr:rescan",
+      "typeVersion": 1,
+      "settings": {
+        "timeoutSeconds": 240
+      },
+      "position": {
+        "x": 1680,
+        "y": -160
+      }
+    },
+    {
+      "id": "refresh",
+      "type": "jellyfin:refresh",
+      "typeVersion": 1,
+      "settings": {
+        "scope": "file"
+      },
+      "position": {
+        "x": 1680,
+        "y": 0
+      }
+    },
+    {
+      "id": "notify",
+      "type": "ntfy:notify",
+      "typeVersion": 1,
+      "settings": {
+        "topic": "transcoda-CHANGE-ME",
+        "events": "done"
+      },
+      "position": {
+        "x": 1680,
+        "y": 160
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "input-languages",
+      "from": {
+        "node": "input",
+        "port": "file"
+      },
+      "to": {
+        "node": "languages",
+        "port": "file"
+      }
+    },
+    {
+      "id": "languages-duplicates",
+      "from": {
+        "node": "languages",
+        "port": "file"
+      },
+      "to": {
+        "node": "duplicates",
+        "port": "file"
+      }
+    },
+    {
+      "id": "duplicates-defaults",
+      "from": {
+        "node": "duplicates",
+        "port": "file"
+      },
+      "to": {
+        "node": "defaults",
+        "port": "file"
+      }
+    },
+    {
+      "id": "defaults-order",
+      "from": {
+        "node": "defaults",
+        "port": "file"
+      },
+      "to": {
+        "node": "order",
+        "port": "file"
+      }
+    },
+    {
+      "id": "order-extras",
+      "from": {
+        "node": "order",
+        "port": "file"
+      },
+      "to": {
+        "node": "extras",
+        "port": "file"
+      }
+    },
+    {
+      "id": "extras-replace",
+      "from": {
+        "node": "extras",
+        "port": "file"
+      },
+      "to": {
+        "node": "replace",
+        "port": "file"
+      }
+    },
+    {
+      "id": "replace-rescan",
+      "from": {
+        "node": "replace",
+        "port": "file"
+      },
+      "to": {
+        "node": "rescan",
+        "port": "file"
+      }
+    },
+    {
+      "id": "replace-refresh",
+      "from": {
+        "node": "replace",
+        "port": "file"
+      },
+      "to": {
+        "node": "refresh",
+        "port": "file"
+      }
+    },
+    {
+      "id": "replace-notify",
+      "from": {
+        "node": "replace",
+        "port": "file"
+      },
+      "to": {
+        "node": "notify",
+        "port": "file"
+      }
+    },
+    {
+      "id": "orig-languages",
+      "from": {
+        "node": "orig",
+        "port": "language"
+      },
+      "to": {
+        "node": "languages",
+        "port": "language"
+      }
+    }
+  ],
+  "groups": [
+    {
+      "id": "start",
+      "name": "Start here",
+      "collapsed": false,
+      "position": {
+        "x": 0,
+        "y": -440
+      },
+      "size": {
+        "width": 600,
+        "height": 260
+      },
+      "note": "## Keep my languages, with plugins\n\n**Keep my languages**, plus your *arr apps and media server:\n\n- **Original language (Sonarr)** tells Keep languages which language the show was made in, so that track is always kept.\n- After the file is replaced, Sonarr rescans it, Jellyfin refreshes it and ntfy sends a notification.\n\nNeeds the Sonarr, Jellyfin and ntfy plugins. Change the ntfy **Topic** to a private one."
+    }
+  ],
+  "values": {
+    "position": {
+      "x": 640,
+      "y": -360
+    },
+    "entries": [
+      {
+        "name": "Languages",
+        "schema": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^([a-z]{2,3}|unknown)$"
+          }
+        },
+        "value": ["en"]
+      }
+    ]
+  }
+}
