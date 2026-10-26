@@ -2250,6 +2250,28 @@ a.nav-item.is-active:focus-visible,
   cursor: pointer;
 }
 
+.gpu-order {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.gpu-order-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+  min-height: var(--target-min);
+}
+
+.gpu-order-label {
+  flex: 1;
+  min-width: 0;
+}
+
 .setting-radio-input {
   width: 20px;
   height: 20px;

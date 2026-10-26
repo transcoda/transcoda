@@ -2,8 +2,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Gpu } from './devices.ts';
 import type { Exec } from './ffmpeg.ts';
 import { GpuLoadSampler, parseGpuLoad } from './gpu-load.ts';
+import type { IntelLoadReader } from './intel-load.ts';
 
 const rtx: Gpu = { id: 'nvidia:0', vendor: 'nvidia', index: 0, name: 'NVIDIA GeForce RTX 3060' };
+const arc: Gpu = {
+  id: 'intel:0000:07:00.0',
+  vendor: 'intel',
+  index: 0,
+  name: 'Intel Arc A310',
+  pci: '0000:07:00.0',
+};
 const ok = (stdout: string): Exec => vi.fn(async () => ({ stdout, stderr: '' }));
 
 describe('parseGpuLoad', () => {
@@ -38,6 +46,39 @@ describe('GpuLoadSampler', () => {
     expect(samples[0]).toMatchObject({ encoder: 97, decoder: 41 });
   });
 
+  it('samples NVIDIA and Intel side by side, keyed by GPU id', async () => {
+    const intel = { sample: vi.fn(() => new Map([[arc.pci as string, 50]])) };
+    const s = new GpuLoadSampler({
+      exec: ok('0, 10, 5\n'),
+      intel: intel as unknown as IntelLoadReader,
+      now,
+      gpus: () => [rtx, arc],
+    });
+    await s.sampleOnce();
+    const gpus = s.snapshot().gpus;
+    expect(gpus.map((g) => g.id)).toEqual(['nvidia:0', 'intel:0000:07:00.0']);
+    // one video engine does both jobs, so both lines carry the reading
+    expect(gpus[1]?.samples[0]).toMatchObject({ encoder: 50, decoder: 50 });
+    expect(intel.sample).toHaveBeenCalledWith(['0000:07:00.0']);
+  });
+
+  it('starts for Intel alone, without calling nvidia-smi; no engine lines means no entry', async () => {
+    const exec = ok('0, 10, 5\n');
+    const intel = { sample: vi.fn(() => new Map<string, number>()) };
+    const s = new GpuLoadSampler({
+      exec,
+      intel: intel as unknown as IntelLoadReader,
+      now,
+      gpus: () => [arc],
+    });
+    s.start();
+    await vi.advanceTimersByTimeAsync(10_000);
+    s.stop();
+    expect(intel.sample).toHaveBeenCalledTimes(2);
+    expect(exec).not.toHaveBeenCalled();
+    expect(s.snapshot().gpus).toEqual([]);
+  });
+
   it('names GPUs from capabilities; a GPU nvidia-smi does not report has no entry', async () => {
     const two: Gpu = { id: 'nvidia:1', vendor: 'nvidia', index: 1, name: 'Second' };
     const s = new GpuLoadSampler({ exec: ok('0, 10, 5\n'), now, gpus: () => [rtx, two] });
@@ -46,6 +87,7 @@ describe('GpuLoadSampler', () => {
       intervalMs: 5000,
       gpus: [
         {
+          id: 'nvidia:0',
           index: 0,
           name: 'NVIDIA GeForce RTX 3060',
           samples: [{ at: '2026-10-25T23:00:00.000Z', encoder: 10, decoder: 5 }],

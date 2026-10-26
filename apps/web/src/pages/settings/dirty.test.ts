@@ -36,4 +36,11 @@ describe('changedFields', () => {
     ).toEqual({ serverName: null, theme: 'dark' });
     expect(changedFields({ serverName: 'Den' }, { serverName: 'Den' })).toEqual({});
   });
+
+  it('a list is changed only when its items or their order differ', () => {
+    expect(changedFields({ gpuOrder: ['a', 'b'] }, { gpuOrder: ['a', 'b'] })).toEqual({});
+    expect(changedFields({ gpuOrder: ['b', 'a'] }, { gpuOrder: ['a', 'b'] })).toEqual({
+      gpuOrder: ['b', 'a'],
+    });
+  });
 });

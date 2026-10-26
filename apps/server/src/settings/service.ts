@@ -1,6 +1,7 @@
 import {
   type Capabilities,
   EncodeDeviceSchema,
+  GpuIdSchema,
   type SettingSource,
   type Settings,
   type SettingsUpdateInput,
@@ -10,7 +11,13 @@ import {
 } from '@transcoda/contract';
 import { DEFAULT_LIMITS } from '@transcoda/shared';
 import { type ZodType, z } from 'zod';
-import { devicePlan, encodeSlots, parseEncodeDevice } from '../capabilities/devices.ts';
+import {
+  devicePlan,
+  encodeSlots,
+  gpuLabel,
+  orderGpus,
+  parseEncodeDevice,
+} from '../capabilities/devices.ts';
 import type { Config } from '../config.ts';
 import type { Database } from '../db/open.ts';
 import { recycledTotals } from '../db/repos/jobs.ts';
@@ -22,6 +29,7 @@ import {
   type SettingKey,
   setSetting,
 } from '../db/repos/settings.ts';
+import { findVersion, listWorkflows } from '../db/repos/workflows.ts';
 import { ALWAYS_ALLOWED_HOSTS } from '../http/host-check.ts';
 import type { Logger } from '../logger.ts';
 import { LIMIT_BOUNDS } from '../plugins/limits.ts';
@@ -53,6 +61,7 @@ const ROW_SCHEMAS = {
   pluginCallTimeoutMs: z.number().int().positive().max(LIMIT_BOUNDS.callTimeoutMs),
   testEncodeKeepHours: z.number().int().min(0).max(TEST_ENCODE_KEEP_HOURS_MAX),
   encodeDevice: EncodeDeviceSchema,
+  gpuOrder: z.array(GpuIdSchema).max(16),
 } satisfies Partial<Record<keyof typeof SETTING_KEYS, ZodType>>;
 
 const FINISH_RUN_KEY = 'plugins.limits.finishRunTimeoutMs';
@@ -124,35 +133,96 @@ function allowedHosts(deps: SettingsDeps): Settings['general']['allowedHosts'] {
 }
 
 /**
- * The "Encoding device" choices: auto, CPU only and each GPU nvidia-smi listed (GPU 0 unnamed when
- * ffmpeg has NVENC but nvidia-smi listed none). A stored GPU that is gone is kept as a choice so the
- * page can show it, marked missing.
+ * The "Encoding device" choices: auto, CPU only and each GPU detected (GPU 0 unnamed when ffmpeg
+ * has NVENC but nvidia-smi listed none). A stored GPU that is gone is kept as a choice so the page
+ * can show it, marked missing.
  */
 function encodeDevices(caps: Capabilities, stored: string): Settings['queue']['encodeDevices'] {
   const out = [
     { id: 'auto', label: 'Auto', missing: false },
     { id: 'cpu', label: 'CPU only', missing: false },
   ];
-  const gpus = caps.available ? (caps.gpus ?? []) : [];
-  for (const g of gpus) out.push({ id: g.id, label: `GPU ${g.index} · ${g.name}`, missing: false });
+  const all = caps.available ? (caps.gpus ?? []) : [];
+  const nvidia = all.filter((g) => g.vendor === 'nvidia');
+  for (const g of nvidia)
+    out.push({ id: g.id, label: `GPU ${g.index} · ${g.name}`, missing: false });
   const zero = parseEncodeDevice('nvidia:0');
-  if (gpus.length === 0 && !devicePlan(caps, zero).missing) {
+  if (nvidia.length === 0 && !devicePlan(caps, zero).missing) {
     out.push({ id: 'nvidia:0', label: 'GPU 0', missing: false });
   }
+  for (const g of all.filter((x) => x.vendor === 'intel')) {
+    out.push({ id: g.id, label: g.name, missing: false });
+  }
   const setting = parseEncodeDevice(stored);
-  if (setting.kind === 'nvidia' && !out.some((d) => d.id === stored)) {
+  if (
+    (setting.kind === 'nvidia' || setting.kind === 'intel') &&
+    !out.some((d) => d.id === stored)
+  ) {
+    const name = setting.kind === 'nvidia' ? `GPU ${setting.index}` : `Intel GPU ${setting.pci}`;
+    out.push({ id: stored, label: `${name} (not found: encodes on the CPU)`, missing: true });
+  }
+  return out;
+}
+
+/**
+ * Every GPU the order can name, in the effective order: the detected ones, then ids that are only
+ * in the stored order (gone), marked missing.
+ */
+function queueGpus(caps: Capabilities, order: string[]): Settings['queue']['gpus'] {
+  const detected = orderGpus(caps.available ? (caps.gpus ?? []) : [], order);
+  const out: Settings['queue']['gpus'] = detected.map((g) => ({
+    id: g.id,
+    label: gpuLabel(g),
+    vendor: g.vendor,
+    missing: false,
+  }));
+  for (const id of order) {
+    if (out.some((g) => g.id === id)) continue;
     out.push({
-      id: stored,
-      label: `GPU ${setting.index} (not found: encodes on the CPU)`,
+      id,
+      label: `${id} (not found)`,
+      vendor: id.startsWith('intel:') ? 'intel' : 'nvidia',
       missing: true,
     });
   }
   return out;
 }
 
+const VENDOR_ENCODER = /_(nvenc|qsv)$/;
+
+/**
+ * Workflows whose active version has a live Encode video node pinned to a vendor's encoder. Only
+ * worth a hint when auto can use GPUs of two vendors; otherwise empty.
+ */
+function pinnedVendorWorkflows(
+  db: Database,
+  caps: Capabilities,
+  order: string[],
+): Settings['queue']['pinnedVendorWorkflows'] {
+  const vendors = new Set(
+    encodeSlots(caps, { kind: 'auto' }, order).map((s) => s.gpuId?.split(':')[0]),
+  );
+  if (vendors.size < 2) return [];
+  const out: Settings['queue']['pinnedVendorWorkflows'] = [];
+  for (const w of listWorkflows(db)) {
+    if (w.kind !== 'workflow' || w.activeVersion === null) continue;
+    const v = findVersion(db, w.id, w.activeVersion);
+    if (!v?.ok) continue;
+    for (const n of v.row.graph.nodes) {
+      const encoder = (n.settings as { encoder?: unknown } | null)?.encoder;
+      if (n.type !== 'core:encode-video' || n.bypassed) continue;
+      if (typeof encoder === 'string' && VENDOR_ENCODER.test(encoder)) {
+        out.push({ id: w.id, name: w.name, encoder });
+        break;
+      }
+    }
+  }
+  return out;
+}
+
 /** The encode lane: one job, or one per GPU when the scheduler gives each GPU its own slot. */
-function encodeLaneLabel(caps: Capabilities, stored: string): string {
-  const n = encodeSlots(caps, parseEncodeDevice(stored)).length;
+function encodeLaneLabel(caps: Capabilities, stored: string, order: string[]): string {
+  const n = encodeSlots(caps, parseEncodeDevice(stored), order).length;
   return n > 1 ? `Encode ×${n} (one per GPU)` : 'Encode';
 }
 
@@ -165,6 +235,7 @@ function isolationMode(config: Config): Settings['plugins']['isolation']['mode']
 export function readSettings(deps: SettingsDeps): Settings {
   const { db, config } = deps;
   const encodeDevice = editable(deps, 'encodeDevice');
+  const gpuOrder = editable(deps, 'gpuOrder');
   const paused = row(db, SETTING_KEYS.queuePaused, z.boolean(), deps.log);
   const finishRun = row(
     db,
@@ -182,7 +253,10 @@ export function readSettings(deps: SettingsDeps): Settings {
     queue: {
       paused: paused.found ? paused.value : SETTING_DEFAULTS.queuePaused,
       lanes: [
-        { id: 'encode', label: encodeLaneLabel(deps.capabilities(), encodeDevice.value) },
+        {
+          id: 'encode',
+          label: encodeLaneLabel(deps.capabilities(), encodeDevice.value, gpuOrder.value),
+        },
         { id: 'quick', label: 'Quick' },
       ],
       stallHours: fromEnv(deps, 'TRANSCODA_HEALTH_STALL_HOURS', config.healthStallHours),
@@ -190,6 +264,9 @@ export function readSettings(deps: SettingsDeps): Settings {
       testEncodeKeepHours: editable(deps, 'testEncodeKeepHours'),
       encodeDevice,
       encodeDevices: encodeDevices(deps.capabilities(), encodeDevice.value),
+      gpuOrder,
+      gpus: queueGpus(deps.capabilities(), gpuOrder.value),
+      pinnedVendorWorkflows: pinnedVendorWorkflows(db, deps.capabilities(), gpuOrder.value),
     },
     recycle: {
       retentionDays: editable(deps, 'recycleRetentionDays'),
@@ -216,6 +293,7 @@ const FIELD_KEYS = {
   pluginCallTimeoutMs: SETTING_KEYS.pluginCallTimeoutMs,
   testEncodeKeepHours: SETTING_KEYS.testEncodeKeepHours,
   encodeDevice: SETTING_KEYS.encodeDevice,
+  gpuOrder: SETTING_KEYS.gpuOrder,
 } as const satisfies Record<keyof SettingsUpdateInput, SettingKey>;
 
 /**

@@ -70,6 +70,10 @@ export interface JobRow {
   lane: Lane | null;
   attempt: number;
   requeues: number;
+  /** The label of the slot that ran the encode; null before one did. */
+  encodedOn: string | null;
+  /** GPU ids this job's encode already failed on; a retry clears it. */
+  failedGpus: string[];
   progress: JobProgress | null;
   reason: string | null;
   replaceJournal: ReplaceJournal | null;
@@ -185,6 +189,8 @@ export type JobPatch = Partial<
     | 'lane'
     | 'attempt'
     | 'requeues'
+    | 'encodedOn'
+    | 'failedGpus'
     | 'progress'
     | 'reason'
     | 'replaceJournal'
@@ -212,6 +218,8 @@ interface DbJob {
   lane: Lane | null;
   attempt: number;
   requeues: number;
+  encoded_on: string | null;
+  failed_gpus: string;
   progress: string | null;
   reason: string | null;
   replace_journal: string | null;
@@ -276,6 +284,15 @@ interface DbRecycled {
 }
 
 const parseJson = <T>(s: string | null): T | null => (s === null ? null : (JSON.parse(s) as T));
+/** A GPU id list that survives a corrupt cell: one bad row must not break every job read. */
+const parseIdList = (s: string): string[] => {
+  try {
+    const v: unknown = JSON.parse(s);
+    return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [];
+  } catch {
+    return [];
+  }
+};
 const toJson = (v: unknown): string | null => (v === null ? null : JSON.stringify(v));
 const placeholders = (n: number): string => Array.from({ length: n }, () => '?').join(', ');
 const ACTIVE_SQL = ACTIVE_JOB_STATES.map((s) => `'${s}'`).join(',');
@@ -297,6 +314,8 @@ const toJob = (r: DbJob): JobRow => ({
   lane: r.lane,
   attempt: r.attempt,
   requeues: r.requeues,
+  encodedOn: r.encoded_on,
+  failedGpus: parseIdList(r.failed_gpus),
   progress: parseJson<JobProgress>(r.progress),
   reason: r.reason,
   replaceJournal: parseJson<ReplaceJournal>(r.replace_journal),
@@ -391,6 +410,8 @@ const PATCH_COLUMNS: Record<keyof JobPatch, [string, (v: unknown) => unknown]> =
   lane: ['lane', same],
   attempt: ['attempt', same],
   requeues: ['requeues', same],
+  encodedOn: ['encoded_on', same],
+  failedGpus: ['failed_gpus', toJson],
   progress: ['progress', toJson],
   reason: ['reason', same],
   replaceJournal: ['replace_journal', toJson],

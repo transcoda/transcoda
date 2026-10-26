@@ -46,7 +46,8 @@ export function LoadStrip({
   intervalMs,
   now,
 }: {
-  series: Array<{ name: string; color: string; points: Point[] }>;
+  /** `id` keys a series when names can repeat (two identical cards); it defaults to the name. */
+  series: Array<{ id?: string; name: string; color: string; points: Point[] }>;
   windowMs: number;
   intervalMs: number;
   now: Date;
@@ -78,7 +79,7 @@ export function LoadStrip({
         {series.map((s, k) =>
           runs(s.points, intervalMs * 3).map((pts, j) => (
             // biome-ignore lint/suspicious/noArrayIndexKey: runs are positional
-            <g key={`${s.name}-${j}`}>
+            <g key={`${s.id ?? s.name}-${j}`}>
               {k === 0 && pts.length > 1 && (
                 <path
                   className="load-area"
@@ -104,7 +105,7 @@ export function LoadStrip({
           {series.map((s) => {
             const p = nearest(s.points, t, intervalMs * 1.5);
             return (
-              <span key={s.name}>
+              <span key={s.id ?? s.name}>
                 <i style={{ background: s.color }} />
                 {p ? `${s.name} ${Math.round(p.value)}%` : `${s.name}: no reading`}
               </span>

@@ -1,7 +1,8 @@
-import { TEST_ENCODE_KEEP_HOURS_MAX } from '@transcoda/contract';
-import { useId, useState } from 'react';
+import { type Settings, TEST_ENCODE_KEEP_HOURS_MAX } from '@transcoda/contract';
+import { useEffect, useId, useRef, useState } from 'react';
 import { api } from '../../api/client.ts';
 import { Disclosure } from '../../components/Disclosure.tsx';
+import { Icon } from '../../components/Icon.tsx';
 import { useToast } from '../../components/Toast.tsx';
 import { QUEUE_PAUSED_TEXT } from '../../jobs/QueueBar.tsx';
 import { useQueue } from '../../jobs/useQueue.ts';
@@ -68,8 +69,101 @@ function PausedSwitch() {
   );
 }
 
+const MAX_PINNED_SHOWN = 3;
+
+/** "GPU order": which GPU a job takes first. Moves only change the draft; Save stores them. */
+function GpuOrder({
+  gpus,
+  order,
+  pinned,
+  onChange,
+}: {
+  gpus: Settings['queue']['gpus'];
+  order: string[];
+  pinned: Settings['queue']['pinnedVendorWorkflows'];
+  onChange(next: string[]): void;
+}) {
+  const rows = order.flatMap((id) => gpus.find((g) => g.id === id) ?? []);
+  const buttons = useRef(new Map<string, HTMLButtonElement>());
+  const setButton = (id: string, dir: 'up' | 'down', el: HTMLButtonElement | null) => {
+    if (el) buttons.current.set(`${id}/${dir}`, el);
+    else buttons.current.delete(`${id}/${dir}`);
+  };
+  // The moved row and the button that was clicked; focus follows it after the re-render.
+  const [moved, setMoved] = useState<{ id: string; dir: 'up' | 'down' } | null>(null);
+  useEffect(() => {
+    if (!moved) return;
+    const same = buttons.current.get(`${moved.id}/${moved.dir}`);
+    const other = buttons.current.get(`${moved.id}/${moved.dir === 'up' ? 'down' : 'up'}`);
+    (same && !same.disabled ? same : other)?.focus();
+    setMoved(null);
+  }, [moved]);
+  const move = (from: number, to: number, dir: 'up' | 'down') => {
+    const next = [...order];
+    const [id] = next.splice(from, 1);
+    if (id !== undefined) {
+      next.splice(to, 0, id);
+      setMoved({ id, dir });
+    }
+    onChange(next);
+  };
+  return (
+    <SettingFieldset
+      label="GPU order"
+      hint="Jobs go to the first free GPU in this order."
+      after={
+        pinned.length > 0 ? (
+          <div role="note" className="setting-hint">
+            {pinned.slice(0, MAX_PINNED_SHOWN).map((w) => (
+              <p key={w.id}>
+                {`${w.name} uses ${w.encoder}, so its jobs only run on that kind of GPU. Set its Encode video encoder to Auto to use every GPU.`}
+              </p>
+            ))}
+            {pinned.length > MAX_PINNED_SHOWN ? (
+              <p>{`and ${pinned.length - MAX_PINNED_SHOWN} more`}</p>
+            ) : null}
+          </div>
+        ) : null
+      }
+    >
+      <ul className="gpu-order">
+        {rows.map((g, i) => (
+          <li key={g.id} className="gpu-order-row">
+            <span className="gpu-order-label">
+              {/* A GPU that is gone already says "(not found)" in its label. */}
+              {g.label}
+            </span>
+            <button
+              type="button"
+              className="btn btn-sm btn-ghost"
+              aria-label={`Move ${g.label} up`}
+              disabled={i === 0}
+              ref={(el) => setButton(g.id, 'up', el)}
+              onClick={() => move(i, i - 1, 'up')}
+            >
+              <Icon name="chevron-up" size={14} />
+            </button>
+            <button
+              type="button"
+              className="btn btn-sm btn-ghost"
+              aria-label={`Move ${g.label} down`}
+              disabled={i === rows.length - 1}
+              ref={(el) => setButton(g.id, 'down', el)}
+              onClick={() => move(i, i + 1, 'down')}
+            >
+              <Icon name="chevron-down" size={14} />
+            </button>
+          </li>
+        ))}
+      </ul>
+    </SettingFieldset>
+  );
+}
+
 interface EngineDraft extends Draft {
   encodeDevice: string;
+  /** GPU ids, first is tried first. */
+  gpuOrder: string[];
   testEncodeKeepHours: string | number;
 }
 
@@ -89,14 +183,20 @@ function EngineForm() {
   const form = useSettingsForm<EngineDraft>({
     draftOf: (s) => ({
       encodeDevice: s.queue.encodeDevice.value,
+      gpuOrder: s.queue.gpus.map((g) => g.id),
       testEncodeKeepHours: s.queue.testEncodeKeepHours.value,
     }),
     inputOf: (d) => ({
       encodeDevice: d.encodeDevice,
+      gpuOrder: d.gpuOrder,
       testEncodeKeepHours: Number(d.testEncodeKeepHours),
     }),
     check: checkEngine,
-    fieldOf: { encodeDevice: 'encodeDevice', testEncodeKeepHours: 'testEncodeKeepHours' },
+    fieldOf: {
+      encodeDevice: 'encodeDevice',
+      gpuOrder: 'gpuOrder',
+      testEncodeKeepHours: 'testEncodeKeepHours',
+    },
   });
   const { settings, draft } = form;
   if (!settings || !draft) return null;
@@ -141,6 +241,14 @@ function EngineForm() {
           </label>
         ))}
       </SettingFieldset>
+      {draft.encodeDevice === 'auto' && queue.gpus.length >= 2 ? (
+        <GpuOrder
+          gpus={queue.gpus}
+          order={draft.gpuOrder}
+          pinned={queue.pinnedVendorWorkflows}
+          onChange={(next) => form.setField('gpuOrder', next)}
+        />
+      ) : null}
       {/* Rarely changed: closed unless it has a problem to show. */}
       <Disclosure
         title="Advanced"

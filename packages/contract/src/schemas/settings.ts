@@ -17,8 +17,16 @@ export type SettingSource = z.infer<typeof SettingSourceSchema>;
 /** The longest "Test encodes kept for" may keep a test-encode output, in hours. */
 export const TEST_ENCODE_KEEP_HOURS_MAX = 72;
 
-/** An "Encoding device" value: `auto`, `cpu` or an NVIDIA GPU by its nvidia-smi index. */
-export const EncodeDeviceSchema = z.string().regex(/^(auto|cpu|nvidia:\d{1,3})$/);
+/** The GPU part of an encoding-device value: an NVIDIA index or an Intel PCI address. */
+const GPU_ID_PATTERN = 'nvidia:\\d{1,3}|intel:[0-9a-f]{4}:[0-9a-f]{2}:[0-9a-f]{2}\\.[0-7]';
+/** A GPU id: `nvidia:<index>` or `intel:<pci address>`. */
+export const GpuIdSchema = z.string().regex(new RegExp(`^(${GPU_ID_PATTERN})$`));
+
+/**
+ * An "Encoding device" value: `auto`, `cpu`, an NVIDIA GPU by its nvidia-smi index or an Intel GPU
+ * by its PCI address.
+ */
+export const EncodeDeviceSchema = z.string().regex(new RegExp(`^(auto|cpu|${GPU_ID_PATTERN})$`));
 
 /** An editable value: what is used now, the default, and why. */
 const editable = <T extends z.ZodType>(v: T) =>
@@ -47,10 +55,28 @@ export const SettingsSchema = z.object({
     minFreeGib: fromEnv(z.number()),
     /** "Test encodes kept for", hours; 0 deletes a test output right after measuring. */
     testEncodeKeepHours: editable(z.number()),
-    /** "Encoding device": `auto`, `cpu` or `nvidia:<index>`; decoding follows it. */
+    /** "Encoding device": `auto`, `cpu`, `nvidia:<index>` or `intel:<pci>`; decoding follows it. */
     encodeDevice: editable(z.string()),
     /** Its choices: auto, CPU only, each detected GPU, and a stored GPU that is gone (`missing`). */
     encodeDevices: z.array(z.object({ id: z.string(), label: z.string(), missing: z.boolean() })),
+    /** "GPU order": GPU ids, first is tried first; empty is the default order (NVIDIA, then Intel). */
+    gpuOrder: editable(z.array(z.string())),
+    /** Every GPU the order can name: detected ones and stored ones that are gone (`missing`). */
+    gpus: z.array(
+      z.object({
+        id: z.string(),
+        label: z.string(),
+        vendor: z.enum(['nvidia', 'intel']),
+        missing: z.boolean(),
+      }),
+    ),
+    /**
+     * Workflows whose active version pins Encode video to a `*_nvenc` or `*_qsv` encoder, so their
+     * jobs only run on that vendor's GPUs. Empty unless GPUs of two vendors are usable.
+     */
+    pinnedVendorWorkflows: z.array(
+      z.object({ id: z.string(), name: z.string(), encoder: z.string() }),
+    ),
   }),
   recycle: z.object({
     retentionDays: editable(z.number()),
@@ -88,6 +114,7 @@ export const SettingsUpdateInputSchema = z
     pluginCallTimeoutMs: z.number().int().min(1_000).max(3_600_000),
     testEncodeKeepHours: z.number().int().min(0).max(TEST_ENCODE_KEEP_HOURS_MAX),
     encodeDevice: EncodeDeviceSchema,
+    gpuOrder: z.array(GpuIdSchema).max(16),
   })
   .partial()
   .strict()

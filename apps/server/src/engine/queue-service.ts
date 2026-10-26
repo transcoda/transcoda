@@ -377,8 +377,9 @@ export class QueueService {
 
   /**
    * "Retry failed": every failed real job whose file has no newer job goes back to the queue in its
-   * own run, as one more attempt (its own log), on the version active when it starts. A job left
-   * with a replace journal is not touched: the startup sweep settles it. Wakes the scheduler.
+   * own run, as one more attempt (its own log, every GPU again), on the version active when it
+   * starts. A job left with a replace journal is not touched: the startup sweep settles it. Wakes
+   * the scheduler.
    */
   retryFailed(): { retried: number } {
     const rows = this.db
@@ -398,6 +399,7 @@ export class QueueService {
         {
           state: 'queued',
           attempt: attempt + 1,
+          failedGpus: [],
           reason: null,
           lane: null,
           progress: null,

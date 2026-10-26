@@ -138,6 +138,8 @@ export function jobDetail(over: Partial<JobDetail> = {}): JobDetail {
     paused: false,
     lane: null,
     attempt: 1,
+    encodedOn: null,
+    failedGpus: [],
     priority: 0,
     heldByRunHours: null,
     dryRun: false,

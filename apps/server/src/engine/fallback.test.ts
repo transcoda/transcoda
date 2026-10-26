@@ -64,4 +64,26 @@ describe('softwareFallback', () => {
     expect(looksLikeGpuFailure(PADDINGTON)).toBe(true);
     expect(looksLikeGpuFailure('No space left on device')).toBe(false);
   });
+
+  it('tells QSV (libvpl) failures', () => {
+    expect(looksLikeGpuFailure('[hevc_qsv @ 0x55] Error initializing an MFX session: -9.')).toBe(
+      true,
+    );
+    expect(looksLikeGpuFailure('MFX_ERR_DEVICE_FAILED')).toBe(true);
+    expect(looksLikeGpuFailure('Error creating a MFX session: -9.')).toBe(true);
+    expect(looksLikeGpuFailure('Failed to create a VAAPI device')).toBe(true);
+  });
+
+  it('tells a QSV device that cannot be opened (CT 126, Arc A310, wrong render node)', () => {
+    const tail = [
+      '[VAAPI @ 0x58b8655a4600] [error] No VA display found for device /dev/dri/renderD129.',
+      '[error] Device creation failed: -22.',
+      "[error] Failed to set value 'qsv=qsv:hw,child_device=/dev/dri/renderD129' for option 'init_hw_device': Invalid argument",
+      '[fatal] Error parsing global options: Invalid argument',
+    ].join('\n');
+    expect(looksLikeGpuFailure(tail)).toBe(true);
+    // The lines that name no encoder or API on their own
+    expect(looksLikeGpuFailure('No VA display found for device /dev/dri/renderD129.')).toBe(true);
+    expect(looksLikeGpuFailure('Device creation failed: -22.')).toBe(true);
+  });
 });

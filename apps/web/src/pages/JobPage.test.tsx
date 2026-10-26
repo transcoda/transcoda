@@ -102,6 +102,25 @@ async function open(path = '/jobs/j1') {
 }
 
 describe('JobPage', () => {
+  it('shows which GPU encoded the job, and no row when none did', async () => {
+    mocks.jobs.get.mockResolvedValue({ ...jobDetail(), encodedOn: 'Intel Arc A310 · 07:00.0' });
+    const view = await open();
+    expect(screen.getByText('Encoded on Intel Arc A310 · 07:00.0')).toBeTruthy();
+    view.unmount();
+    mocks.jobs.get.mockResolvedValue(jobDetail());
+    await open();
+    expect(screen.queryByText(/^Encoded on/)).toBeNull();
+  });
+
+  it('says "Encoding on" while the job is active', async () => {
+    mocks.jobs.get.mockResolvedValue(
+      jobDetail({ state: 'building', lane: 'encode', encodedOn: 'GPU 0' }),
+    );
+    await open();
+    expect(screen.getByText('Encoding on GPU 0')).toBeTruthy();
+    expect(screen.queryByText(/^Encoded on/)).toBeNull();
+  });
+
   it("the trace's Run cards show their sub-workflow's name and pinned version", async () => {
     await open();
     await waitFor(() =>

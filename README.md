@@ -101,7 +101,8 @@ Image tags: `latest` (newest release), `0.1` (newest 0.1.x), `0.1.0` (exact), `m
 - The container also gives the server the groups of any `/dev/dri/*` or `/dev/mpp_service` devices you pass in. Existing files in `/config` are not re-owned unless `TRANSCODA_CHOWN_CONFIG=1`.
 - With `--user uid:gid` (or `user:` in compose) the user switch is skipped; the mounted `/config` and `/transcode` must then be writable by that user.
 - Keep the `cap_drop`/`cap_add`, `no-new-privileges`, `read_only` and `tmpfs` lines from the example: they are what the security notes in `docs/plugin-sdk.md` assume. Never run the container privileged, with `seccomp=unconfined`, or with the Docker socket mounted — a plugin that reaches `docker.sock` is root on the host.
-- Hardware transcoding: add `devices: ["/dev/dri:/dev/dri"]` for Intel/AMD; for NVIDIA see the commented block in `docker/docker-compose.yml`.
+- Hardware transcoding: for NVIDIA see the commented block in `docker/docker-compose.yml`. For an Intel GPU (Quick Sync), pass its render node, for example `devices: ["/dev/dri/renderD128:/dev/dri/renderD128"]` (or all of `/dev/dri`); Transcoda finds Intel GPUs by their render node, so `/dev/dri/by-path` is not needed. NVIDIA and Intel GPUs can be used together: set their order in Settings → Queue.
+- In a Proxmox LXC container, pass the render node into the container first, with the host's `render` group id: `dev0: /dev/dri/renderD128,gid=993` in `/etc/pve/lxc/<id>.conf` (use the next free `devN`; `getent group render` on the host prints the gid), then restart the container.
 
 Build the image yourself from the repo root: `docker build -f docker/Dockerfile -t transcoda:dev .`
 

@@ -49,6 +49,8 @@ function trace(nodeId: string, seq: number, reason: string) {
   return {
     seq,
     attempt: 1,
+    encodedOn: null,
+    failedGpus: [],
     nodeId,
     workflowPath: [],
     phase: 'decide' as const,
@@ -68,6 +70,8 @@ function job(over: Partial<JobDetail> = {}): JobDetail {
     paused: false,
     lane: null,
     attempt: 1,
+    encodedOn: null,
+    failedGpus: [],
     priority: 0,
     heldByRunHours: null,
     dryRun: true,

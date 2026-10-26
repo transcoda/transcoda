@@ -11,6 +11,7 @@ import { testEncode } from './0009_test_encode.ts';
 import { outputProbe } from './0010_output_probe.ts';
 import { runHours } from './0011_run_hours.ts';
 import { pluginStartAttempts } from './0012_plugin_start_attempts.ts';
+import { gpuFields } from './0013_gpu_fields.ts';
 
 export const migrations: Migration[] = [
   initial,
@@ -25,4 +26,5 @@ export const migrations: Migration[] = [
   outputProbe,
   runHours,
   pluginStartAttempts,
+  gpuFields,
 ];

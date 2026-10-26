@@ -19,7 +19,9 @@ import {
   type JobExecutor,
   MAX_READY,
   MAX_WAKE_MS,
+  pickSlot,
   Scheduler,
+  type SlotFit,
   type StopReason,
 } from './scheduler.ts';
 
@@ -66,7 +68,7 @@ class FakeProcess implements RunnerProcess {
 interface Prep {
   job: JobRow;
   ctl: JobControl;
-  d: Deferred<{ lane: Lane } | { final: true }>;
+  d: Deferred<{ lane: Lane; fit?: SlotFit } | { final: true }>;
 }
 interface Exec {
   job: JobRow;
@@ -92,8 +94,8 @@ class FakeExecutor implements JobExecutor {
   attachOnExecute = true;
   constructor(private readonly db: Database) {}
 
-  prepare(job: JobRow, ctl: JobControl): Promise<{ lane: Lane } | { final: true }> {
-    const d = deferred<{ lane: Lane } | { final: true }>();
+  prepare(job: JobRow, ctl: JobControl): Promise<{ lane: Lane; fit?: SlotFit } | { final: true }> {
+    const d = deferred<{ lane: Lane; fit?: SlotFit } | { final: true }>();
     this.prepareOrder.push(job.id);
     this.preps.set(job.id, { job, ctl, d });
     ctl.signal.addEventListener('abort', () => {
@@ -106,12 +108,12 @@ class FakeExecutor implements JobExecutor {
     job: JobRow,
     lane: Lane,
     ctl: JobControl,
-    device: RenderDevice | null,
+    slot: EncodeSlot | null,
   ): Promise<ExecuteOutcome | null> {
     const d = deferred<ExecuteOutcome | null>();
     const proc = new FakeProcess();
     this.executeOrder.push(job.id);
-    this.execs.set(job.id, { job, lane, device, ctl, proc, d });
+    this.execs.set(job.id, { job, lane, device: slot?.device ?? null, ctl, proc, d });
     updateJob(this.db, job.id, { state: 'encoding' }, now());
     if (this.attachOnExecute) ctl.attach(proc);
     ctl.signal.addEventListener('abort', () => {
@@ -127,9 +129,9 @@ class FakeExecutor implements JobExecutor {
     this.discarded.push(job.id);
   }
 
-  /** Prepares `id` into `lane`. */
-  ready(id: string, lane: Lane): void {
-    this.prep(id).d.resolve({ lane });
+  /** Prepares `id` into `lane` (with `fit`, the slots it fits). */
+  ready(id: string, lane: Lane, fit?: SlotFit): void {
+    this.prep(id).d.resolve(fit ? { lane, fit } : { lane });
   }
   /** Ends `id`'s execute as done. */
   finish(id: string): void {
@@ -191,7 +193,26 @@ function newScheduler(exec: JobExecutor = executor, slots?: () => EncodeSlot[]):
 
 const cuda = (index: number): RenderDevice => ({ kind: 'cuda', index });
 const gpuSlots = (n: number): EncodeSlot[] =>
-  Array.from({ length: n }, (_, i) => ({ id: `gpu:${i}`, label: `GPU ${i}`, device: cuda(i) }));
+  Array.from({ length: n }, (_, i) => ({
+    id: `gpu:${i}`,
+    label: `GPU ${i}`,
+    device: cuda(i),
+    gpuId: `nvidia:${i}`,
+  }));
+
+const qsv = (renderNode: string): RenderDevice => ({ kind: 'qsv', renderNode });
+const NVIDIA_SLOT: EncodeSlot = {
+  id: 'gpu:0',
+  label: 'GPU 0',
+  device: cuda(0),
+  gpuId: 'nvidia:0',
+};
+const INTEL_SLOT: EncodeSlot = {
+  id: 'gpu:intel:0000:07:00.0',
+  label: 'Intel Arc A310 · 07:00.0',
+  device: qsv('/dev/dri/renderD128'),
+  gpuId: 'intel:0000:07:00.0',
+};
 
 const row = (id: string): JobRow => {
   const r = findJob(db, id);
@@ -442,7 +463,7 @@ describe('Scheduler', () => {
     expect(executor.exec('b').device).toEqual(cuda(1));
     scheduler.pauseJob('b');
     await flush();
-    slots = [{ id: 'encode', label: 'Encode', device: null }];
+    slots = [{ id: 'encode', label: 'Encode', device: null, gpuId: null }];
     scheduler.resumeJob('b');
     await flush();
     // a still runs on GPU 0 (shown until it ends); b continues in the one slot there is now.
@@ -888,6 +909,248 @@ describe('Scheduler', () => {
     expect(errors).toContainEqual(
       expect.objectContaining({ msg: 'scheduler task failed', error: 'publish broke' }),
     );
+  });
+});
+
+describe('Scheduler with an NVIDIA and an Intel slot', () => {
+  const nvidiaFirst = (): EncodeSlot[] => [NVIDIA_SLOT, INTEL_SLOT];
+  const intelFirst = (): EncodeSlot[] => [INTEL_SLOT, NVIDIA_SLOT];
+  /** The slot ids in status order, each with its job. */
+  const holders = () => scheduler.status().encodeSlots.map((s) => [s.id, s.jobId]);
+
+  beforeEach(async () => {
+    await scheduler.stop();
+    scheduler = newScheduler(executor, nvidiaFirst);
+  });
+
+  it('one ready gpu job takes gpu:0', async () => {
+    job('a', { queuedAt: 1 });
+    scheduler.start();
+    await flush();
+    executor.ready('a', 'encode', 'gpu');
+    await flush();
+    expect(executor.exec('a').device).toEqual(cuda(0));
+  });
+
+  it('two ready gpu jobs take one slot each', async () => {
+    job('a', { queuedAt: 1 });
+    job('b', { queuedAt: 2 });
+    scheduler.start();
+    await flush();
+    executor.ready('a', 'encode', 'gpu');
+    executor.ready('b', 'encode', 'gpu');
+    await flush();
+    expect(holders()).toEqual([
+      ['gpu:0', 'a'],
+      ['gpu:intel:0000:07:00.0', 'b'],
+    ]);
+  });
+
+  it('an nvidia job waits for the NVIDIA slot; a gpu job behind it takes the free Intel slot', async () => {
+    job('x', { queuedAt: 1 });
+    job('a', { queuedAt: 2 });
+    job('b', { queuedAt: 3 });
+    scheduler.start();
+    await flush();
+    executor.ready('x', 'encode', 'gpu');
+    await flush();
+    expect(executor.exec('x').device).toEqual(cuda(0));
+    executor.ready('a', 'encode', 'nvidia');
+    await flush();
+    // Only the Intel slot is free and a does not fit it: preparation goes on to b.
+    expect(executor.executeOrder).toEqual(['x']);
+    executor.ready('b', 'encode', 'gpu');
+    await flush();
+    expect(executor.executeOrder).toEqual(['x', 'b']);
+    expect(executor.exec('b').device).toEqual(qsv('/dev/dri/renderD128'));
+    executor.finish('x');
+    await flush();
+    expect(executor.executeOrder).toEqual(['x', 'b', 'a']);
+    expect(executor.exec('a').device).toEqual(cuda(0));
+  });
+
+  it('with gpu:0 busy, the Intel slot free and only an nvidia job ready, another queued job is prepared', async () => {
+    await scheduler.stop();
+    scheduler = new Scheduler({
+      db,
+      executor,
+      events,
+      now,
+      log,
+      prepWorkers: 1,
+      encodeSlots: nvidiaFirst,
+    });
+    for (const [i, id] of ['x', 'q1', 'q2', 'a', 'b'].entries()) job(id, { queuedAt: i });
+    scheduler.start();
+    await flush();
+    executor.ready('x', 'encode', 'gpu');
+    await flush();
+    executor.ready('q1', 'quick');
+    await flush();
+    executor.ready('q2', 'quick'); // the quick lane has a job waiting
+    await flush();
+    executor.ready('a', 'encode', 'nvidia');
+    await flush();
+    expect(executor.executeOrder).toEqual(['x', 'q1']);
+    expect(executor.prepareOrder).toEqual(['x', 'q1', 'q2', 'a', 'b']);
+  });
+
+  it('a software job takes the last free slot', async () => {
+    job('a', { queuedAt: 1 });
+    scheduler.start();
+    await flush();
+    executor.ready('a', 'encode', 'software');
+    await flush();
+    expect(executor.exec('a').device).toEqual(qsv('/dev/dri/renderD128'));
+  });
+
+  it('a paused job on the Intel slot gets it back after the order changes to Intel first', async () => {
+    let slots = nvidiaFirst();
+    await scheduler.stop();
+    scheduler = newScheduler(executor, () => slots);
+    for (const [i, id] of ['x', 'a', 'c'].entries()) job(id, { queuedAt: i });
+    scheduler.start();
+    await flush();
+    executor.ready('x', 'encode', 'gpu');
+    executor.ready('a', 'encode', 'gpu');
+    await flush();
+    expect(executor.exec('a').device).toEqual(qsv('/dev/dri/renderD128'));
+    scheduler.pauseJob('a');
+    await flush();
+    executor.ready('c', 'encode', 'gpu');
+    await flush();
+    expect(executor.exec('c').device).toEqual(qsv('/dev/dri/renderD128'));
+    slots = intelFirst();
+    scheduler.resumeJob('a');
+    executor.finish('x'); // gpu:0 frees up; a's ffmpeg runs on the Intel GPU, so it waits
+    await flush();
+    expect(executor.exec('a').proc.signals).toEqual(['SIGSTOP']);
+    executor.finish('c');
+    await flush();
+    expect(executor.exec('a').proc.signals).toEqual(['SIGSTOP', 'SIGCONT']);
+    expect(holders()).toEqual([
+      ['gpu:intel:0000:07:00.0', 'a'],
+      ['gpu:0', null],
+    ]);
+  });
+
+  it('with Intel first, a gpu job takes the Intel slot', async () => {
+    await scheduler.stop();
+    scheduler = newScheduler(executor, intelFirst);
+    job('a', { queuedAt: 1 });
+    scheduler.start();
+    await flush();
+    executor.ready('a', 'encode', 'gpu');
+    await flush();
+    expect(executor.exec('a').device).toEqual(qsv('/dev/dri/renderD128'));
+  });
+
+  it('a requeue after a GPU failure writes the failed GPUs, keeps the attempt, and the next grant skips that GPU', async () => {
+    job('a', { queuedAt: 1 });
+    scheduler.start();
+    await flush();
+    executor.ready('a', 'encode', 'gpu');
+    await flush();
+    expect(executor.exec('a').device).toEqual(cuda(0));
+    executor.exec('a').d.resolve({
+      requeue: { reason: 'GPU 0 failed (x); trying another GPU', failedGpus: ['nvidia:0'] },
+    });
+    await flush();
+    expect(row('a')).toMatchObject({
+      state: 'probing',
+      attempt: 1,
+      reason: 'GPU 0 failed (x); trying another GPU',
+      failedGpus: ['nvidia:0'],
+    });
+    executor.ready('a', 'encode', 'gpu');
+    await flush();
+    expect(executor.executeOrder).toEqual(['a', 'a']);
+    expect(executor.exec('a').device).toEqual(qsv('/dev/dri/renderD128'));
+  });
+
+  it('a job that failed on every GPU it could take still runs: with only gpu:0 left it gets gpu:0', async () => {
+    let slots = nvidiaFirst();
+    await scheduler.stop();
+    scheduler = newScheduler(executor, () => slots);
+    job('a', { queuedAt: 1 });
+    scheduler.start();
+    await flush();
+    executor.ready('a', 'encode', 'gpu');
+    await flush();
+    executor.exec('a').d.resolve({
+      requeue: { reason: 'GPU 0 failed (x); trying another GPU', failedGpus: ['nvidia:0'] },
+    });
+    await flush();
+    // Encoding device pinned to nvidia:0 while it waits: only gpu:0 is left.
+    slots = [NVIDIA_SLOT];
+    executor.ready('a', 'encode', 'gpu');
+    await flush();
+    expect(executor.executeOrder).toEqual(['a', 'a']);
+    expect(executor.exec('a').device).toEqual(cuda(0));
+  });
+
+  it('a gpu job that failed on NVIDIA GPU 0 takes the Intel slot, and waits while only gpu:0 is free', async () => {
+    job('a', { queuedAt: 1 });
+    updateJob(db, 'a', { failedGpus: ['nvidia:0'] }, now());
+    scheduler.start();
+    await flush();
+    executor.ready('a', 'encode', 'gpu');
+    await flush();
+    expect(executor.exec('a').device).toEqual(qsv('/dev/dri/renderD128'));
+
+    // Only gpu:0 free: x holds the Intel slot.
+    for (const [i, id] of ['x', 'b'].entries()) job(id, { queuedAt: 10 + i });
+    executor.finish('a');
+    await flush();
+    executor.ready('x', 'encode', 'software');
+    await flush();
+    expect(executor.exec('x').device).toEqual(qsv('/dev/dri/renderD128'));
+    updateJob(db, 'b', { failedGpus: ['nvidia:0'] }, now());
+    executor.ready('b', 'encode', 'gpu');
+    await flush();
+    expect(executor.executeOrder).toEqual(['a', 'x']);
+    expect(holders()).toEqual([
+      ['gpu:0', null],
+      ['gpu:intel:0000:07:00.0', 'x'],
+    ]);
+  });
+});
+
+describe('pickSlot', () => {
+  const NULL_SLOT: EncodeSlot = { id: 'encode', label: 'Encode', device: null, gpuId: null };
+  const both = [NVIDIA_SLOT, INTEL_SLOT];
+  const cases: [string, SlotFit, EncodeSlot[], EncodeSlot[], EncodeSlot | undefined][] = [
+    ['gpu: the first free slot', 'gpu', both, both, NVIDIA_SLOT],
+    ['software: the last free slot', 'software', both, both, INTEL_SLOT],
+    ['nvidia: only an NVIDIA slot', 'nvidia', [INTEL_SLOT], both, undefined],
+    ['intel: the first Intel slot', 'intel', both, both, INTEL_SLOT],
+    [
+      'nvidia with no NVIDIA slot at all: the first free one',
+      'nvidia',
+      [INTEL_SLOT],
+      [INTEL_SLOT],
+      INTEL_SLOT,
+    ],
+    ['a slot with no device fits intel', 'intel', [NULL_SLOT], [NULL_SLOT], NULL_SLOT],
+    [
+      'a slot with no device fits nvidia',
+      'nvidia',
+      [INTEL_SLOT, NULL_SLOT],
+      [INTEL_SLOT, NULL_SLOT],
+      NULL_SLOT,
+    ],
+    ['nothing free: none', 'gpu', [], both, undefined],
+  ];
+  it.each(cases)('%s', (_name, fit, free, all, want) => {
+    expect(pickSlot(free, all, fit)).toBe(want);
+  });
+
+  it('skips the GPUs a job failed on', () => {
+    expect(pickSlot(both, both, 'gpu', ['nvidia:0'])).toBe(INTEL_SLOT);
+    expect(pickSlot([NVIDIA_SLOT], both, 'gpu', ['nvidia:0'])).toBeUndefined();
+    // Its vendor's only GPU failed: no slot (it never moves to the other vendor).
+    expect(pickSlot(both, both, 'nvidia', ['nvidia:0'])).toBeUndefined();
+    expect(pickSlot(both, both, 'intel', ['intel:0000:07:00.0'])).toBeUndefined();
   });
 });
 

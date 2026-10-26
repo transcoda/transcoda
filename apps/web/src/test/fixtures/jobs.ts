@@ -11,6 +11,8 @@ export function job(overrides: Partial<Job> = {}): Job {
     paused: false,
     lane: null,
     attempt: 1,
+    encodedOn: null,
+    failedGpus: [],
     priority: 0,
     heldByRunHours: null,
     dryRun: false,

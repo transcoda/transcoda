@@ -20,26 +20,55 @@ import { getSettingOr, SETTING_DEFAULTS, SETTING_KEYS, setSetting } from '../db/
 import type { Logger } from '../logger.ts';
 import { type CurrentNode, type EngineEvents, jobChangedEvent } from './events.ts';
 import type { RunnerProcess } from './process.ts';
-import type { RenderDevice } from './render.ts';
+import { deviceVendor } from './render.ts';
 import { closedLibraries, serverTimeZone } from './run-hours.ts';
+
+/**
+ * The encode slots a job fits: any GPU (its encoders were auto-picked), one vendor's (a node named
+ * that vendor's encoder), or any slot, preferring the last (software only).
+ */
+export type SlotFit = 'gpu' | 'nvidia' | 'intel' | 'software';
+
+/**
+ * The slot a job with `fit` takes from `free` (`all`: every slot, in GPU order), skipping the GPUs
+ * in `failed`; undefined when none fits. A slot with no device fits everything. A vendor job takes
+ * the first free slot of its vendor, or the first free slot when there is no slot of its vendor
+ * at all (none when its vendor's slots all failed: it never moves to the other vendor).
+ */
+export function pickSlot(
+  free: EncodeSlot[],
+  all: EncodeSlot[],
+  fit: SlotFit,
+  failed: readonly string[] = [],
+): EncodeSlot | undefined {
+  const usable = (s: EncodeSlot) => s.gpuId === null || !failed.includes(s.gpuId);
+  const open = free.filter(usable);
+  if (fit === 'gpu') return open[0];
+  if (fit === 'software') return open.at(-1);
+  const fits = (s: EncodeSlot) => s.device === null || deviceVendor(s.device) === fit;
+  return all.some(fits) ? open.find(fits) : open[0];
+}
 
 export interface JobExecutor {
   /**
-   * Probe, decide and build; resolves with the lane to run in, `final` when the job ended (dry
-   * run, nothing to do, failed, cancelled), or a requeue (a plugin hook failed in a way a second
-   * attempt may fix; nothing was written).
+   * Probe, decide and build; resolves with the lane to run in and the slots the job fits (absent:
+   * `gpu`), `final` when the job ended (dry run, nothing to do, failed, cancelled), or a requeue
+   * (a plugin hook failed in a way a second attempt may fix; nothing was written).
    */
-  prepare(job: JobRow, ctl: JobControl): Promise<{ lane: Lane } | { final: true } | ExecuteOutcome>;
+  prepare(
+    job: JobRow,
+    ctl: JobControl,
+  ): Promise<{ lane: Lane; fit?: SlotFit } | { final: true } | ExecuteOutcome>;
   /**
    * Encode, verify and finish; records the job's final state (nothing on a shutdown), or asks for
    * the job to go back to the queue: the scheduler writes that once the lane is released.
-   * `device`: the GPU of the encode slot the job got (null: ffmpeg's default, and always for quick).
+   * `slot`: the encode slot the job got, with its GPU (null for quick).
    */
   execute(
     job: JobRow,
     lane: Lane,
     ctl: JobControl,
-    device: RenderDevice | null,
+    slot: EncodeSlot | null,
   ): Promise<ExecuteOutcome | null>;
   /**
    * Cleans up after a job the scheduler itself recorded as `cancelled` once it had been prepared
@@ -53,7 +82,8 @@ export type StopReason = 'cancel' | 'shutdown';
 
 /** Back to the queue (`queued`, not paused, no lane/progress/finish time) with this patch. */
 export interface ExecuteOutcome {
-  requeue: { reason: string; attempt?: number; requeues?: number };
+  /** `failedGpus`: the GPUs the job's encode failed on, skipped when it is placed again. */
+  requeue: { reason: string; attempt?: number; requeues?: number; failedGpus?: string[] };
 }
 
 export interface JobControl {
@@ -118,6 +148,8 @@ class ActiveJob implements JobControl {
   readonly controller = new AbortController();
   phase: Phase = 'preparing';
   lane: Lane | null = null;
+  /** The encode slots it fits (from prepare). */
+  fit: SlotFit = 'gpu';
   /** The encode slot it runs in; kept while frozen, since its ffmpeg is bound to that GPU. */
   slot: EncodeSlot | null = null;
   proc: RunnerProcess | null = null;
@@ -163,7 +195,12 @@ class ActiveJob implements JobControl {
 }
 
 /** The encode lane as it always was: one slot, ffmpeg's default device. */
-export const SINGLE_ENCODE_SLOT: EncodeSlot = { id: 'encode', label: 'Encode', device: null };
+export const SINGLE_ENCODE_SLOT: EncodeSlot = {
+  id: 'encode',
+  label: 'Encode',
+  device: null,
+  gpuId: null,
+};
 
 /** Who holds each encode slot, for status and `queue.changed`. */
 export type EncodeSlotStatus = { id: string; label: string; jobId: string | null };
@@ -239,9 +276,10 @@ export class Scheduler {
   /**
    * Grants free lanes, then starts preparing queued jobs. A job's lane is only known after Build,
    * so preparation looks ahead until every lane has a ready job waiting (a quick job further down
-   * the queue still reaches the idle quick lane while encode jobs wait), bounded by fewer than
-   * `prepWorkers` preparing and at most {@link MAX_READY} jobs preparing or ready (so a long encode
-   * never gets the whole queue prepared). User-paused ready jobs do not count, nor do automatic
+   * the queue still reaches the idle quick lane while encode jobs wait) and every free encode slot
+   * has a ready job that fits it (an NVIDIA-only job does not cover a free Intel slot), bounded by
+   * fewer than `prepWorkers` preparing and at most {@link MAX_READY} jobs preparing or ready (so a
+   * long encode never gets the whole queue prepared). User-paused ready jobs do not count, nor do automatic
    * ones held by their library's run hours: those neither start preparing nor get a lane while
    * the window is closed, and the scheduler wakes when the next window opens. Idempotent.
    */
@@ -253,7 +291,9 @@ export class Scheduler {
     const all = [...this.active.values()];
     const preparing = all.filter((a) => a.phase === 'preparing').length;
     const waiting = all.filter((a) => a.phase === 'ready' && !a.userPaused && !this.held(a));
-    if (LANES.every((lane) => waiting.some((a) => a.lane === lane))) return;
+    const covered = (lane: Lane) =>
+      lane === 'encode' ? this.encodeCovered() : waiting.some((a) => a.lane === lane);
+    if (LANES.every(covered)) return;
     const free = Math.min(this.prepWorkers - preparing, MAX_READY - preparing - waiting.length);
     if (free <= 0) return;
     // A queued job is never in memory (preparation starts by moving it to `probing`).
@@ -453,7 +493,7 @@ export class Scheduler {
     let ready = false;
     let requeue: ExecuteOutcome | null = null;
     try {
-      let out: { lane: Lane } | { final: true } | ExecuteOutcome;
+      let out: { lane: Lane; fit?: SlotFit } | { final: true } | ExecuteOutcome;
       try {
         out = await Promise.resolve().then(() => this.executor.prepare(a.job, a));
       } catch (err) {
@@ -480,6 +520,7 @@ export class Scheduler {
       }
       a.job = findJob(this.db, a.job.id) ?? a.job;
       a.lane = out.lane;
+      a.fit = out.fit ?? 'gpu';
       // Planned: the row names the lane the job waits for (its state stays `building` until it
       // runs), so screens can say "waiting for the encoder" instead of the last node it walked.
       a.job = this.update(a.job.id, { lane: out.lane }) ?? a.job;
@@ -498,8 +539,8 @@ export class Scheduler {
     let outcome: ExecuteOutcome | null = null;
     try {
       try {
-        const device = a.slot?.device ?? null;
-        outcome = await Promise.resolve().then(() => this.executor.execute(a.job, lane, a, device));
+        const { slot } = a;
+        outcome = await Promise.resolve().then(() => this.executor.execute(a.job, lane, a, slot));
       } catch (err) {
         if (!this.stopping && a.stopReason() !== 'cancel') this.failUnexpected(a, err);
       }
@@ -529,41 +570,72 @@ export class Scheduler {
       finishedAt: null,
       ...(requeue.attempt !== undefined ? { attempt: requeue.attempt } : {}),
       ...(requeue.requeues !== undefined ? { requeues: requeue.requeues } : {}),
+      ...(requeue.failedGpus !== undefined ? { failedGpus: requeue.failedGpus } : {}),
     });
     if (queued) this.events.publish({ type: 'run.changed', runId: queued.runId });
+  }
+
+  /** Jobs of `lane` not paused by the user, in any phase. */
+  private waiting(lane: Lane): ActiveJob[] {
+    return [...this.active.values()].filter((a) => a.lane === lane && !a.userPaused);
+  }
+
+  /** Ready jobs of `lane` that may get it, in grant order (priority, queued time, ready order). */
+  private readyJobs(lane: Lane): ActiveJob[] {
+    // A running job keeps or regains its lane whatever the hour; a held one waits for its window.
+    return this.waiting(lane)
+      .filter((a) => a.phase === 'ready' && !this.held(a))
+      .sort(
+        (x, y) =>
+          y.job.priority - x.job.priority ||
+          x.job.queuedAt.localeCompare(y.job.queuedAt) ||
+          x.readySeq - y.readySeq,
+      );
+  }
+
+  /**
+   * Which ready encode job takes which of the `free` slots: each in grant order takes the slot
+   * {@link pickSlot} gives it, or is passed over when none fits. Also the look-ahead's rule.
+   */
+  private placeEncodes(
+    free: EncodeSlot[],
+    slots: EncodeSlot[],
+  ): { job: ActiveJob; slot: EncodeSlot }[] {
+    const left = [...free];
+    const out: { job: ActiveJob; slot: EncodeSlot }[] = [];
+    for (const job of this.readyJobs('encode')) {
+      if (left.length === 0) break;
+      // GPUs it failed on are skipped, unless no slot here would ever take it then (the setting
+      // changed, a GPU is gone): it runs anyway, and a second failure goes to software in place.
+      const failed = job.job.failedGpus;
+      const strands = failed.length > 0 && pickSlot(slots, slots, job.fit, failed) === undefined;
+      const slot = pickSlot(left, slots, job.fit, strands ? [] : failed);
+      if (!slot) continue;
+      left.splice(left.indexOf(slot), 1);
+      out.push({ job, slot });
+    }
+    return out;
   }
 
   /**
    * Lanes go first to resumed jobs waiting to get theirs back, then to ready jobs in order. A
    * resumed encode job waits for its own slot (its ffmpeg runs on that GPU), unless the slot is
-   * gone (the setting changed): then any free one.
+   * gone (the setting changed): then any free one. A ready encode job takes the first free slot it
+   * fits; one that fits none waits, and the jobs behind it may take the free slots.
    */
   private grantLanes(): void {
-    const waiting = (lane: Lane) =>
-      [...this.active.values()].filter((a) => a.lane === lane && !a.userPaused);
-    // A running job keeps or regains its lane whatever the hour; a held one waits for its window.
-    const nextReady = (lane: Lane) =>
-      waiting(lane)
-        .filter((a) => a.phase === 'ready' && !this.held(a))
-        .sort(
-          (x, y) =>
-            y.job.priority - x.job.priority ||
-            x.job.queuedAt.localeCompare(y.job.queuedAt) ||
-            x.readySeq - y.readySeq,
-        )[0];
-
     if (this.quick === null) {
-      const resumed = waiting('quick').find((a) => a.phase === 'running' && !a.holdsLane);
+      const resumed = this.waiting('quick').find((a) => a.phase === 'running' && !a.holdsLane);
       if (resumed) this.regain(resumed, null);
       else {
-        const next = nextReady('quick');
+        const next = this.readyJobs('quick')[0];
         if (next) this.beginExecute(next, 'quick', null);
       }
     }
 
     const slots = this.encodeSlots();
     const free = () => slots.filter((s) => !this.slotHolders.has(s.id));
-    const resuming = waiting('encode').filter(
+    const resuming = this.waiting('encode').filter(
       (j) => j.phase === 'running' && !j.holdsLane && !j.encoderReleased,
     );
     for (const a of resuming) {
@@ -571,11 +643,20 @@ export class Scheduler {
       const slot = own ? free().find((s) => s.id === a.slot?.id) : free()[0];
       if (slot) this.regain(a, slot);
     }
-    for (const slot of free()) {
-      const next = nextReady('encode');
-      if (!next) break;
-      this.beginExecute(next, 'encode', slot);
+    for (const { job, slot } of this.placeEncodes(free(), slots)) {
+      this.beginExecute(job, 'encode', slot);
     }
+  }
+
+  /**
+   * The encode lane needs no more preparation: a ready job waits, and each free slot would get
+   * one (in grant order). A free slot no ready job fits keeps preparation going.
+   */
+  private encodeCovered(): boolean {
+    if (this.readyJobs('encode').length === 0) return false;
+    const slots = this.encodeSlots();
+    const free = slots.filter((s) => !this.slotHolders.has(s.id));
+    return this.placeEncodes(free, slots).length === free.length;
   }
 
   /** A resumed job takes its lane (or `slot`) back and continues. */

@@ -1609,3 +1609,31 @@ describe('walk', () => {
     });
   });
 });
+
+describe('autoPicks', () => {
+  const encodeGraph = (encoder: string) =>
+    mainGraph(
+      [
+        node('in', 'core:input-manual'),
+        node('e', 'core:encode-video', { encoder, skipIf: 'never' }),
+      ],
+      [edge('in', 'e')],
+    );
+
+  it('names the video stream an auto Encode video put on an encoder', async () => {
+    const { deps } = setup();
+    deps.capabilities = capsOf(['hevc_nvenc', 'libx265'], ['cuda']);
+    const r = await walk(deps, input(encodeGraph('auto')));
+    if (r.kind !== 'built') throw new Error(JSON.stringify(r));
+    expect(r.autoPicks).toEqual([{ sourceIndex: 0, input: 0, encoder: 'hevc_nvenc' }]);
+  });
+
+  it('a named encoder is no auto pick', async () => {
+    const { deps } = setup();
+    deps.capabilities = capsOf(['hevc_nvenc', 'libx265'], ['cuda']);
+    const r = await walk(deps, input(encodeGraph('hevc_nvenc')));
+    if (r.kind !== 'built') throw new Error(JSON.stringify(r));
+    expect(r.model.streams[0]?.encoder).toBe('hevc_nvenc');
+    expect(r.autoPicks).toEqual([]);
+  });
+});

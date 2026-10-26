@@ -56,6 +56,13 @@ export const JobSchema = z.object({
    */
   lane: LaneSchema.nullable(),
   attempt: z.number().int(),
+  /** The label of the slot that ran the encode (e.g. `GPU 1`); null before one did. */
+  encodedOn: z.string().nullable(),
+  /**
+   * The GPU ids (`nvidia:0`, `intel:<pci>`) this job's encode already failed on. Empty at the
+   * start; a retry clears it.
+   */
+  failedGpus: z.array(z.string()),
   priority: z.number().int(),
   dryRun: z.boolean(),
   /** Dry runs only: encode, verify and measure for real, then stop before the first write. */

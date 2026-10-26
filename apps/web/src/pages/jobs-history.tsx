@@ -132,7 +132,7 @@ export function JobsHistory({ history }: { history: JobHistoryOutput }) {
   );
 }
 
-/** NVENC/NVDEC load per GPU, polled while the page is visible; nothing without NVIDIA GPUs. */
+/** Video-engine load per GPU, polled while the page is visible; nothing without a GPU. */
 function useGpuLoad(): GpuLoadOutput | undefined {
   const [load, setLoad] = useState<GpuLoadOutput>();
   useEffect(() => {
@@ -161,27 +161,32 @@ function useGpuLoad(): GpuLoadOutput | undefined {
   return load;
 }
 
-/** "Encoder · last hour": one GPU shows encoder and decoder, several show an encoder line each. */
+/** "Encoder · last hour": one NVIDIA GPU shows encoder and decoder, otherwise one line per GPU. */
 export function EncoderStrip() {
   const load = useGpuLoad();
   if (!load || load.gpus.length === 0) return null;
-  const one = load.gpus.length === 1;
+  // An Intel GPU has one video engine for both, so its encoder and decoder readings are the same.
+  const one = load.gpus.length === 1 && load.gpus[0]?.id.startsWith('nvidia:') === true;
   const palette = ['var(--accent-text)', 'var(--st-kept)', 'var(--st-skipped)', 'var(--st-failed)'];
   const series = one
     ? [
         {
+          id: 'encoder',
           name: 'encoder',
           color: palette[0] as string,
           points: (load.gpus[0]?.samples ?? []).map((s) => ({ at: s.at, value: s.encoder })),
         },
         {
+          id: 'decoder',
           name: 'decoder',
           color: palette[1] as string,
           points: (load.gpus[0]?.samples ?? []).map((s) => ({ at: s.at, value: s.decoder })),
         },
       ]
     : load.gpus.map((g, i) => ({
-        name: g.name,
+        id: g.id,
+        // The card's name is already in the heading when it is the only one.
+        name: load.gpus.length === 1 ? 'video' : g.name,
         color: palette[i % palette.length] as string,
         points: g.samples.map((s) => ({ at: s.at, value: s.encoder })),
       }));
@@ -190,7 +195,9 @@ export function EncoderStrip() {
     <section className="encoder-strip" aria-labelledby="encoder-strip-title">
       <div className="encoder-strip-head">
         <h2 id="encoder-strip-title">Encoder · last hour</h2>
-        {one ? <span className="encoder-strip-gpu">{load.gpus[0]?.name}</span> : null}
+        {load.gpus.length === 1 ? (
+          <span className="encoder-strip-gpu">{load.gpus[0]?.name}</span>
+        ) : null}
         <span className="encoder-strip-now">now {current}%</span>
       </div>
       <div className="history-card">
@@ -202,7 +209,7 @@ export function EncoderStrip() {
         />
         <div className="history-legend">
           {series.map((s) => (
-            <span key={s.name}>
+            <span key={s.id}>
               <i style={{ background: s.color }} />
               {s.name}
             </span>

@@ -30,6 +30,10 @@ import { migrationPath } from '../workflows/upgrade.ts';
 import { behaviourHoldText, SIZE_GATE_SHARED_TEXT } from '../workflows/validate.ts';
 import { isExtraStream, modelFromProbe } from './build-model.ts';
 import { modelChanges } from './model-changes.ts';
+import type { AutoPick } from './retarget.ts';
+
+/** The Encode video node, whose `auto` encoder picks the walk records (autoPicks). */
+const ENCODE_VIDEO_TYPE = 'core:encode-video';
 
 export interface WalkDeps {
   registry: NodeRegistry;
@@ -118,6 +122,8 @@ export type WalkResult =
       actions: AnyFinishAction[];
       gates: GateBranch[];
       path: PathStep[];
+      /** Video streams an `auto` Encode video put on an encoder; the main path only. */
+      autoPicks: AutoPick[];
     }
   | WalkFailure;
 
@@ -664,9 +670,10 @@ class Walker {
       prefix?: NodeRef[];
       elseOnly?: boolean;
     } = { model: modelFromProbe(this.input.probe), actions: [] },
-  ): Promise<{ model: BuildModel; actions: AnyFinishAction[] }> {
+  ): Promise<{ model: BuildModel; actions: AnyFinishAction[]; autoPicks: AutoPick[] }> {
     let { model } = run;
     const { actions } = run;
+    const autoPicks: AutoPick[] = [];
     for (const [i, ref] of nodes.entries()) {
       this.steps = [...(run.prefix ?? []), ...nodes.slice(0, i + 1)];
       const { nodeId, workflowPath: path, graph, port } = ref;
@@ -700,12 +707,15 @@ class Walker {
         // registry entry too), whatever its definition looks like.
         const guarded = this.deps.registry.get(n.type)?.source.kind !== 'core';
         const before = guarded ? inputFilesOf(model) : '';
+        // Read inside the hook, so a settings error fails the step like a hook error does.
+        let settings: Record<string, JsonValue> = {};
         const result = await this.hook(
           n,
           path,
           'build',
           async () => {
-            const built = await buildHook(ctx, this.settings(def, n));
+            settings = this.settings(def, n);
+            const built = await buildHook(ctx, settings);
             // Only core nodes choose input files: a plugin could otherwise make ffmpeg read any path.
             if (
               guarded &&
@@ -722,6 +732,9 @@ class Walker {
             changes: modelChanges(model, r.model),
           }),
         );
+        if (n.type === ENCODE_VIDEO_TYPE && !run.elseOnly && settings.encoder === 'auto') {
+          autoPicks.push(...picksOf(model, result.model));
+        }
         model = result.model;
       } else if (def.kind === 'finish' && def.finish) {
         const finishHook = def.finish;
@@ -765,8 +778,26 @@ class Walker {
         this.note(nodeId, path, phase, port, 'no-op');
       }
     }
-    return { model, actions };
+    return { model, actions, autoPicks };
   }
+}
+
+/**
+ * The kept video streams in convert mode that `after` encodes differently from `before`: a new
+ * encoder, or newly converted. Streams match by source index and input file.
+ */
+function picksOf(before: BuildModel, after: BuildModel): AutoPick[] {
+  const picks: AutoPick[] = [];
+  for (const s of after.streams) {
+    if (!(s.keep && s.type === 'video' && s.mode === 'convert' && s.encoder !== null)) continue;
+    const input = s.input ?? 0;
+    const was = before.streams.find(
+      (b) => b.sourceIndex === s.sourceIndex && (b.input ?? 0) === input,
+    );
+    if (was?.mode === 'convert' && was.encoder === s.encoder) continue;
+    picks.push({ sourceIndex: s.sourceIndex, input, encoder: s.encoder });
+  }
+  return picks;
 }
 
 async function guarded<T>(walker: Walker, run: () => Promise<T>): Promise<T | WalkFailure> {
@@ -824,7 +855,7 @@ export async function walkBuild(
 ): Promise<WalkResult> {
   const walker = new Walker(deps, input, decided.data, decided.nextSeq);
   return guarded(walker, async () => {
-    const { model, actions } = await walker.build(decided.nodes, {
+    const { model, actions, autoPicks } = await walker.build(decided.nodes, {
       model: modelFromProbe(input.probe),
       actions: [],
     });
@@ -846,7 +877,14 @@ export async function walkBuild(
         elsePath: refs.map(step),
       });
     }
-    return { kind: 'built' as const, model, actions, gates, path: decided.nodes.map(step) };
+    return {
+      kind: 'built' as const,
+      model,
+      actions,
+      gates,
+      path: decided.nodes.map(step),
+      autoPicks,
+    };
   });
 }
 
