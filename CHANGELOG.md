@@ -2,6 +2,12 @@
 
 All notable changes to Transcoda, newest first. Generated from the notes in `.changes/` when a release is cut.
 
+## 0.2.0 — 2026-10-26
+
+### New
+
+- Transcoda can now encode on Intel Arc and other Intel GPUs with Quick Sync next to NVIDIA ones. Set the order in Settings → Queue: a job goes to the first free GPU, so the second card only works when the first is busy.
+
 ## 0.1.0 — 2026-10-25
 
 ### New
