@@ -395,12 +395,12 @@ describe('install', () => {
     await serve('example', '0.1.0', { manifest: { sdk: '^2' }, indexSdk: '^1' });
     expect(await install(t, 'example')).toEqual({
       ok: false,
-      reason: 'sdk ^2 is not supported by this server (sdk 1.0.0)',
+      reason: 'sdk ^2 is not supported by this server (sdk 1.0.1)',
     });
     await serve('example', '0.1.0', { indexSdk: '^2' });
     expect(await install(t, 'example')).toEqual({
       ok: false,
-      reason: 'sdk ^2 is not supported by this server (sdk 1.0.0)',
+      reason: 'sdk ^2 is not supported by this server (sdk 1.0.1)',
     });
     await clean('example');
 
