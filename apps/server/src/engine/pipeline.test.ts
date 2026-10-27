@@ -21,7 +21,13 @@ import {
   type HookJob,
   type ProbeResult,
 } from '@transcoda/sdk';
-import { type JobState, type JsonValue, planSummary, type WorkflowGraph } from '@transcoda/shared';
+import {
+  type JobState,
+  type JsonValue,
+  type NodeInstance,
+  planSummary,
+  type WorkflowGraph,
+} from '@transcoda/shared';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 import type { Exec } from '../capabilities/ffmpeg.ts';
@@ -48,7 +54,14 @@ import { type HookName, PluginHooksRunner } from '../plugins/hooks.ts';
 import { fixturePluginPath } from '../plugins/testing/build.ts';
 import { createTestApp, type TestApp } from '../test-app.ts';
 import { asSession, createToken, login, send } from '../test-http.ts';
-import { chain, edge, mainGraph, node, testRegistry } from '../workflows/test-helpers.ts';
+import {
+  bareGraph,
+  chain,
+  edge,
+  mainGraph,
+  node,
+  testRegistry,
+} from '../workflows/test-helpers.ts';
 import { fitToContainer, modelFromProbe, normalizeDefaults } from './build-model.ts';
 import { sourceDecoderNames } from './decoder-names.ts';
 import type { EngineEvent } from './events.ts';
@@ -620,6 +633,7 @@ describe('pipeline', () => {
       warnings: [],
       problems: [],
       outputProbe: null,
+      sourceDamaged: false,
       createdAt: t.clock.now().toISOString(),
     });
     const before = await listAll(base);
@@ -1101,8 +1115,14 @@ describe('pipeline', () => {
       ['ev', 'build'],
       ['render-1', 'finish'],
       ['ro', 'finish'],
+      // After verify: Render says the file left by Done.
+      ['render-1', 'finish'],
     ]);
-    expect(trace.map((e) => e.seq)).toEqual([1, 2, 3, 4]);
+    expect(trace.map((e) => e.seq)).toEqual([1, 2, 3, 4, 5]);
+    expect(trace.at(-1)).toMatchObject({
+      port: 'done',
+      reason: 'Render: encoded and verified \u2192 Done',
+    });
     expect(job.walkPath).toEqual([
       { workflowPath: [], nodeId: 'in', port: 'file' },
       { workflowPath: [], nodeId: 'ev', port: 'file' },
@@ -1336,6 +1356,7 @@ describe('pipeline', () => {
       warnings: [],
       problems: [],
       outputProbe: null,
+      sourceDamaged: false,
       createdAt: '2026-10-01T10:00:00.000Z',
     });
   }
@@ -4485,5 +4506,407 @@ describe('cover extraction on big files (the PAW Patrol failures)', () => {
     expect(coverFailure(err, 3, 60_000)).toBe(
       'render: the cover (video #3) could not be copied out of the file: cover.jpg: Invalid argument',
     );
+  });
+});
+
+describe('pipeline: damaged sources (Render’s Damaged)', () => {
+  const URL = 'https://hooks.example.com/damaged';
+  const SOURCE = { kind: 'plugin', name: 'example', version: '1.0.0' } as const;
+  const LFE = '[dca @ 0x55d0] [error] Invalid LFE scale factor index';
+  let fetchMock: ReturnType<typeof vi.fn>;
+  let runCalls: FinishRunContext[];
+  let runImpl: (ctx: FinishRunContext) => Promise<FinishRunResult>;
+  const replaceDamaged = defineNode({
+    type: 'test:replace-damaged',
+    version: 1,
+    kind: 'finish',
+    finishPhase: 'library-manager',
+    damagedOnly: true,
+    title: 'Replace damaged file',
+    description: 'A damagedOnly plugin finish node.',
+    icon: 'bell',
+    inputs: [filePort],
+    outputs: [],
+    settings: z.object({}),
+    async finish() {
+      return {
+        actions: [{ kind: 'plugin', description: 'replace damaged', required: true }],
+        reason: 'would ask for a new copy',
+      };
+    },
+    async run(ctx) {
+      runCalls.push(ctx);
+      return runImpl(ctx);
+    },
+  });
+  const notify = (id = 'nw') => node(id, 'core:notify-webhook', { url: URL, method: 'POST' });
+  /** in → `act` → Render `r`; Done → `done` (chained); Damaged → each of `damaged`. */
+  const rendered = (
+    o: {
+      qualityCheck?: boolean;
+      act?: NodeInstance;
+      done?: NodeInstance[];
+      damaged?: NodeInstance[];
+    } = {},
+  ): string => {
+    const act = o.act ?? toH264();
+    const done = o.done ?? [replaceNode()];
+    const damaged = o.damaged ?? [node('rd', 'test:replace-damaged'), notify()];
+    const nodes = [
+      node('in', 'core:input-manual'),
+      act,
+      node('r', 'core:render', { qualityCheck: o.qualityCheck ?? true }),
+      ...done,
+      ...damaged,
+    ];
+    const edges = [
+      edge('in', act.id),
+      edge(act.id, 'r'),
+      ...done.map((n, i) =>
+        i === 0 ? edge('r', n.id, { from: 'done' }) : edge((done[i - 1] as NodeInstance).id, n.id),
+      ),
+      ...damaged.map((n) => edge('r', n.id, { from: 'damaged' })),
+    ];
+    return workflow(bareGraph(nodes, edges));
+  };
+  const traceOf = (id: string, nodeId: string) =>
+    listTrace(t.db, id)
+      .filter((e) => e.nodeId === nodeId)
+      .map((e) => [e.phase, e.port, e.reason]);
+  const calledUrls = () => fetchMock.mock.calls.map((c) => String((c as unknown[])[0]));
+  const body = (i: number) =>
+    JSON.parse(String((fetchMock.mock.calls[i] as unknown as [string, RequestInit])[1].body));
+  /** Source decodes at a spot report the dca error (the source really is damaged there). */
+  const sourceSpotsSayLfe = () => {
+    execHook = async (f, args) => {
+      if (f === 'ffmpeg' && args.includes('-ss') && args.join(' ').includes(` -i ${root}`)) {
+        throw Object.assign(new Error('Command failed'), {
+          stderr: '[dca @ 0x1] Invalid LFE scale factor index\n',
+        });
+      }
+      return null;
+    };
+  };
+  const dtsSource = () =>
+    probeOf(
+      [
+        { type: 'video', codec: 'hevc', default: true },
+        { type: 'audio', codec: 'dts', language: 'eng', default: true },
+      ],
+      { sizeBytes: 1000 },
+    );
+  /** One encode that reports the dca error mid-file; returns the final row. */
+  const damagedRun = async (id: string): Promise<JobRow> => {
+    await t.deps.engine.start();
+    await until('spawn', () => spawner.calls.length === 1);
+    await spawner.complete({ bytes: 600, at: 30, stderr: [LFE] });
+    return settled(id);
+  };
+
+  beforeEach(async () => {
+    fetchMock = vi.fn(async () => new Response('ok'));
+    vi.stubGlobal('fetch', fetchMock);
+    runCalls = [];
+    runImpl = async () => ({ ok: true, message: 'Radarr: blocklisted the release and searched' });
+    sourceProbe = dtsSource();
+    outputProbe = probeOf(
+      [
+        { type: 'video', codec: 'h264', default: true },
+        { type: 'audio', codec: 'dts', language: 'eng', default: true },
+      ],
+      { sizeBytes: 600 },
+    );
+    await t.deps.engine.stop();
+    await setup({ extra: [{ def: replaceDamaged, source: SOURCE }] });
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('confirmed source damage with Quality check on → runs the Damaged steps and ends kept_original + sourceDamaged', async () => {
+    sourceSpotsSayLfe();
+    const id = await queue(file(), rendered());
+    expect(await damagedRun(id)).toMatchObject({
+      state: 'kept_original',
+      reason: 'source has decode errors; nothing was replaced',
+      attempt: 1,
+    });
+    expect(spawner.calls).toHaveLength(1);
+    expect(findJobResult(t.db, id)).toMatchObject({
+      outcome: 'kept_original',
+      sourceDamaged: true,
+      replacedTo: null,
+    });
+    expect(calledUrls()).toEqual([URL]);
+    expect(body(0)).toMatchObject({
+      outcome: 'kept_original',
+      reason: 'source has decode errors; nothing was replaced',
+      beforeBytes: 1000,
+      afterBytes: 1000,
+      replacedTo: null,
+    });
+    expect(runCalls).toHaveLength(1);
+    const ctx = runCalls[0] as FinishRunContext;
+    expect(ctx).toMatchObject({
+      outcome: 'damaged',
+      originalPath: file(),
+      newPath: file(),
+      beforeBytes: 1000,
+      afterBytes: 1000,
+      replacedTo: null,
+      containerChanged: false,
+      gate: null,
+    });
+    expect(ctx.damage?.reason).toMatch(/Invalid LFE scale factor index/);
+    expect(ctx.damage?.reason).not.toMatch(/^(decode-sample|source):/);
+    expect(traceOf(id, 'r').at(-1)).toEqual([
+      'finish',
+      'damaged',
+      expect.stringMatching(/^Render: source is damaged \(.*Invalid LFE.*\) → Damaged$/),
+    ]);
+    // The plugin's own answer is on the trace.
+    expect(traceOf(id, 'rd').at(-1)).toEqual([
+      'finish',
+      null,
+      'Radarr: blocklisted the release and searched',
+    ]);
+    expect(t.deps.engine.jobDetail(id)?.path).toEqual([
+      { workflowPath: [], nodeId: 'in', port: 'file' },
+      { workflowPath: [], nodeId: 'ev', port: 'file' },
+      { workflowPath: [], nodeId: 'r', port: 'damaged' },
+      { workflowPath: [], nodeId: 'rd', port: null },
+      { workflowPath: [], nodeId: 'nw', port: 'file' },
+    ]);
+    expect(t.deps.engine.listJobs({}).jobs.find((j) => j.id === id)?.result).toMatchObject({
+      sourceDamaged: true,
+    });
+    expect((await stat(file())).size).toBe(1000);
+    expect(await listAll(transcodeDir)).toEqual([]);
+  });
+
+  it('verify source-damaged takes the same Damaged path', async () => {
+    // Every decode fails, the output's and the source's alike: the source is what is damaged.
+    execHook = async (f, args) => {
+      if (f === 'ffmpeg' && !args.includes('image2')) {
+        throw Object.assign(new Error('Command failed'), {
+          stderr: '[dca @ 0x1] Invalid LFE scale factor index\n',
+        });
+      }
+      return null;
+    };
+    const id = await queue(file(), rendered());
+    await t.deps.engine.start();
+    await until('spawn', () => spawner.calls.length >= 1);
+    await spawner.complete({ bytes: 600 });
+    expect(await settled(id)).toMatchObject({
+      state: 'kept_original',
+      reason: 'source has decode errors; nothing was replaced',
+      attempt: 1,
+    });
+    expect(findJobResult(t.db, id)?.sourceDamaged).toBe(true);
+    expect(runCalls.map((c) => c.outcome)).toEqual(['damaged']);
+    expect(runCalls[0]?.damage?.reason).toMatch(/Invalid LFE scale factor index/);
+    expect(calledUrls()).toEqual([URL]);
+    expect(traceOf(id, 'r').at(-1)?.[1]).toBe('damaged');
+    expect((await stat(file())).size).toBe(1000);
+  });
+
+  it('Quality check off: today’s kept_original, sourceDamaged true, no Damaged step runs', async () => {
+    sourceSpotsSayLfe();
+    const id = await queue(file(), rendered({ qualityCheck: false, damaged: [] }));
+    expect(await damagedRun(id)).toMatchObject({
+      state: 'kept_original',
+      reason: 'source has decode errors; nothing was replaced',
+    });
+    expect(findJobResult(t.db, id)?.sourceDamaged).toBe(true);
+    expect(runCalls).toEqual([]);
+    expect(calledUrls()).toEqual([]);
+    expect(traceOf(id, 'r').map((e) => e[1])).not.toContain('damaged');
+  });
+
+  it('output errors never take Damaged: retried once, then failed', async () => {
+    const id = await queue(file(), rendered());
+    await t.deps.engine.start();
+    const stderr = ['[libx264 @ 0x9] [error] malloc of size 1 failed'];
+    await until('spawn', () => spawner.calls.length === 1);
+    await spawner.complete({ bytes: 600, stderr });
+    await until('second spawn', () => spawner.calls.length === 2);
+    await spawner.complete({ bytes: 600, stderr });
+    expect(await settled(id)).toMatchObject({ state: 'failed', attempt: 2 });
+    expect(findJobResult(t.db, id)?.sourceDamaged).toBe(false);
+    expect(runCalls).toEqual([]);
+    expect(calledUrls()).toEqual([]);
+  });
+
+  it('source errors the source does not reproduce never take Damaged', async () => {
+    // The confirming decodes read clean: not damage, whatever the encode said.
+    const id = await queue(file(), rendered());
+    await t.deps.engine.start();
+    await until('spawn', () => spawner.calls.length === 1);
+    await spawner.complete({ bytes: 600, at: 30, stderr: [LFE] });
+    await until('second spawn', () => spawner.calls.length === 2);
+    await spawner.complete({ bytes: 600, at: 30, stderr: [LFE] });
+    const job = await settled(id);
+    expect(job).toMatchObject({ state: 'failed', attempt: 2 });
+    expect(job.reason).toMatch(
+      /^encode reported source decode errors the source does not reproduce/,
+    );
+    expect(runCalls).toEqual([]);
+    expect(calledUrls()).toEqual([]);
+  });
+
+  it('an I/O error or a killed ffmpeg (a timeout) never takes Damaged, even with source-side lines', async () => {
+    sourceSpotsSayLfe();
+    const id = await queue(file(), rendered());
+    await t.deps.engine.start();
+    const stderr = [
+      '[in#0/matroska,webm @ 0x1] [error] Error during demuxing: Input/output error',
+      LFE,
+    ];
+    await until('spawn', () => spawner.calls.length === 1);
+    await spawner.complete({ bytes: 600, stderr, code: 1 });
+    await until('second spawn', () => spawner.calls.length === 2);
+    await spawner.complete({ bytes: 600, stderr, code: 1 });
+    expect(await settled(id)).toMatchObject({ state: 'failed', attempt: 2 });
+    expect(findJobResult(t.db, id)?.sourceDamaged).toBe(false);
+    expect(runCalls).toEqual([]);
+    expect(calledUrls()).toEqual([]);
+  });
+
+  it('a cover copy that times out never takes Damaged: it fails the job', async () => {
+    sourceProbe = probeOf(
+      [
+        { type: 'video', codec: 'h264', default: true },
+        { type: 'audio', codec: 'dts', language: 'eng', default: true },
+        { type: 'video', codec: 'png', attachedPic: true },
+      ],
+      { container: 'mp4', formatName: 'mov,mp4,m4a,3gp,3g2,mj2', sizeBytes: 1000 },
+    );
+    execHook = async (_f, args) => {
+      if (args.includes('image2')) {
+        throw Object.assign(new Error('Command failed: ffmpeg …'), { killed: true });
+      }
+      return null;
+    };
+    await writeFile(join(root, 'Show', 'c.mp4'), Buffer.alloc(1000, 7));
+    const wf = rendered({ act: node('rm', 'core:remux', { container: 'mkv' }) });
+    const id = await queue(join(root, 'Show', 'c.mp4'), wf);
+    await t.deps.engine.start();
+    const job = await settled(id);
+    expect(job.state).toBe('failed');
+    expect(job.reason).toMatch(/cover \(video #2\) out of the file took longer than/);
+    expect(findJobResult(t.db, id)?.sourceDamaged).toBe(false);
+    expect(runCalls).toEqual([]);
+    expect(calledUrls()).toEqual([]);
+  });
+
+  it('a verify failure the source does not share never takes Damaged', async () => {
+    brokenOutput = true;
+    const id = await queue(file(), rendered());
+    await t.deps.engine.start();
+    await until('spawn', () => spawner.calls.length === 1);
+    await spawner.complete({ bytes: 600 });
+    await until('second spawn', () => spawner.calls.length === 2);
+    await spawner.complete({ bytes: 600 });
+    const job = await settled(id);
+    expect(job).toMatchObject({ state: 'failed', attempt: 2 });
+    expect(job.reason).toMatch(/^verify: /);
+    expect(runCalls).toEqual([]);
+    expect(calledUrls()).toEqual([]);
+  });
+
+  it('Done unconnected, Damaged wired: the file is still rendered; a good file ends kept_original "path never writes the result"', async () => {
+    const id = await queue(file(), rendered({ done: [] }));
+    expect(await runOnce(id)).toMatchObject({
+      state: 'kept_original',
+      reason: 'path never writes the result',
+    });
+    expect(spawner.calls).toHaveLength(1);
+    expect(findJobResult(t.db, id)).toMatchObject({ sourceDamaged: false, afterBytes: 600 });
+    expect(runCalls).toEqual([]);
+    expect(calledUrls()).toEqual([]);
+    expect((await stat(file())).size).toBe(1000);
+  });
+
+  it('Done unconnected, Damaged wired: a damaged file takes Damaged', async () => {
+    sourceSpotsSayLfe();
+    const id = await queue(file(), rendered({ done: [] }));
+    expect(await damagedRun(id)).toMatchObject({ state: 'kept_original' });
+    expect(findJobResult(t.db, id)?.sourceDamaged).toBe(true);
+    expect(runCalls).toHaveLength(1);
+  });
+
+  it('a plan-only dry run lists the Damaged side', async () => {
+    const id = await queue(file(), rendered({ damaged: [notify()] }), {
+      dryRun: true,
+      testEncode: false,
+    });
+    await t.deps.engine.start();
+    expect(await settled(id)).toMatchObject({ state: 'dry_run' });
+    expect(spawner.calls).toEqual([]);
+    expect(traceOf(id, 'r').at(-1)).toEqual([
+      'finish',
+      null,
+      'Render: decides while encoding; if the source is damaged: Notify webhook',
+    ]);
+    expect(t.deps.engine.jobDetail(id)?.path).toEqual([
+      { workflowPath: [], nodeId: 'in', port: 'file' },
+      { workflowPath: [], nodeId: 'ev', port: 'file' },
+      { workflowPath: [], nodeId: 'r', port: null },
+      { workflowPath: [], nodeId: 'ro', port: 'file' },
+      { workflowPath: [], nodeId: 'nw', port: 'file' },
+    ]);
+    expect(findJobResult(t.db, id)?.sourceDamaged).toBe(false);
+    expect(calledUrls()).toEqual([]);
+  });
+
+  it('a test-encode dry run that finds damage ends kept_original + sourceDamaged without running any step', async () => {
+    sourceSpotsSayLfe();
+    const id = await queue(file(), rendered(), { dryRun: true, testEncode: true });
+    expect(await damagedRun(id)).toMatchObject({
+      state: 'kept_original',
+      reason: 'source has decode errors; nothing was replaced',
+    });
+    expect(findJobResult(t.db, id)?.sourceDamaged).toBe(true);
+    expect(runCalls).toEqual([]);
+    expect(calledUrls()).toEqual([]);
+    expect(traceOf(id, 'r').at(-1)?.[1]).toBe('damaged');
+  });
+
+  it('the Render node traces port "done" after a successful verify', async () => {
+    const id = await queue(file(), rendered());
+    expect(await runOnce(id)).toMatchObject({ state: 'done' });
+    expect(findJobResult(t.db, id)?.sourceDamaged).toBe(false);
+    expect(traceOf(id, 'r').at(-1)).toEqual([
+      'finish',
+      'done',
+      'Render: encoded and verified → Done',
+    ]);
+    expect(runCalls).toEqual([]);
+    expect(calledUrls()).toEqual([]);
+  });
+
+  it('a stop during the Damaged steps is a warning and the job still ends kept_original', async () => {
+    sourceSpotsSayLfe();
+    let entered = false;
+    runImpl = () => {
+      entered = true;
+      return new Promise<FinishRunResult>(() => {});
+    };
+    const id = await queue(file(), rendered());
+    await t.deps.engine.start();
+    await until('spawn', () => spawner.calls.length === 1);
+    await spawner.complete({ bytes: 600, at: 30, stderr: [LFE] });
+    await until('plugin step runs', () => entered);
+    t.deps.engine.scheduler.cancelJob(id);
+    expect(await settled(id)).toMatchObject({
+      state: 'kept_original',
+      reason: 'source has decode errors; nothing was replaced',
+    });
+    expect(findJobResult(t.db, id)?.warnings).toContain(
+      'cancel before the remaining finish actions',
+    );
+    expect(findJobResult(t.db, id)?.sourceDamaged).toBe(true);
+    expect(calledUrls()).toEqual([]);
   });
 });

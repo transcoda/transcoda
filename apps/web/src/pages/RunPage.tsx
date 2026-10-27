@@ -59,6 +59,7 @@ function measuredLine(f: RunFile): string | null {
       beforeBytes: f.beforeBytes,
       afterBytes: f.afterBytes,
       replacedTo: null,
+      sourceDamaged: false,
     },
   });
 }

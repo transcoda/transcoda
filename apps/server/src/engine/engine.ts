@@ -396,6 +396,7 @@ export class EngineService {
         warnings: [...(previous?.warnings ?? []), 'replace finished by the startup sweep'],
         problems: previous?.problems ?? [],
         outputProbe: previous?.outputProbe ?? null,
+        sourceDamaged: false,
         createdAt: now.toISOString(),
       });
     })();

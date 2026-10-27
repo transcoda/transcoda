@@ -104,6 +104,7 @@ function doneResult(jobId: string, fingerprint: string, extra: Partial<JobResult
     warnings: [],
     problems: [],
     outputProbe: null,
+    sourceDamaged: false,
     createdAt: '2026-10-01T10:00:00.000Z',
     ...extra,
   });

@@ -219,6 +219,7 @@ describe('job report', () => {
           estimatedBytes: null,
           command: null,
           replacedTo: 'recycle',
+          sourceDamaged: false,
           warnings: ['w1', 'w2'],
           problems: [],
         },
@@ -277,6 +278,7 @@ describe('job report', () => {
           estimatedBytes: null,
           command: null,
           replacedTo: 'recycle',
+          sourceDamaged: false,
           warnings: [],
           problems: [
             'notify failed: 503',
@@ -306,6 +308,7 @@ describe('job report', () => {
         estimatedBytes: 700,
         command: null,
         replacedTo: null,
+        sourceDamaged: false,
         warnings: [],
         problems: [],
       },

@@ -13,6 +13,7 @@ export function finishRunContext(
     containerChanged: boolean;
     problemsSoFar: string[];
     gate: FinishRunContext['gate'];
+    damage: FinishRunContext['damage'];
     jobUrl: string | null;
     workflowName: string;
   },

@@ -308,7 +308,13 @@ const dryWith = (extra: Parameters<typeof job>[0]) =>
   job({
     ...fx.dry,
     reason: null,
-    result: { outcome: 'dry_run', beforeBytes: 1000, afterBytes: null, replacedTo: null },
+    result: {
+      outcome: 'dry_run',
+      beforeBytes: 1000,
+      afterBytes: null,
+      replacedTo: null,
+      sourceDamaged: false,
+    },
     ...extra,
   });
 
@@ -326,7 +332,13 @@ describe('dry-run estimate', () => {
       estimateTag(
         dryWith({
           estimatedBytes: 600,
-          result: { outcome: 'dry_run', beforeBytes: 0, afterBytes: null, replacedTo: null },
+          result: {
+            outcome: 'dry_run',
+            beforeBytes: 0,
+            afterBytes: null,
+            replacedTo: null,
+            sourceDamaged: false,
+          },
         }),
       ),
     ).toBeNull();
@@ -348,7 +360,13 @@ describe('a dry run its size gate decides (#41)', () => {
     job({
       ...fx.dry,
       estimatedBytes: 600,
-      result: { outcome: 'dry_run', beforeBytes: 1000, afterBytes: null, replacedTo: null },
+      result: {
+        outcome: 'dry_run',
+        beforeBytes: 1000,
+        afterBytes: null,
+        replacedTo: null,
+        sourceDamaged: false,
+      },
       dependsOnSize: { minSavingPercent: 25 },
       ...extra,
     });
@@ -391,6 +409,7 @@ describe('test-encode outcome', () => {
         beforeBytes: 315_000_000,
         afterBytes: 190_000_000,
         replacedTo: null,
+        sourceDamaged: false,
       },
       ...extra,
     });
@@ -403,6 +422,7 @@ describe('test-encode outcome', () => {
         beforeBytes: 315_000_000,
         afterBytes: 305_000_000,
         replacedTo: null,
+        sourceDamaged: false,
       },
     });
 
@@ -446,6 +466,7 @@ describe('test-encode outcome', () => {
             beforeBytes: 315_000_000,
             afterBytes: null,
             replacedTo: null,
+            sourceDamaged: false,
           },
         }),
       ),
@@ -460,7 +481,13 @@ describe('test-encode outcome', () => {
       detailLine(
         measured({
           planSummary: 'convert 1 video track',
-          result: { outcome: 'dry_run', beforeBytes: null, afterBytes: null, replacedTo: null },
+          result: {
+            outcome: 'dry_run',
+            beforeBytes: null,
+            afterBytes: null,
+            replacedTo: null,
+            sourceDamaged: false,
+          },
         }),
       ),
     ).toBe('Would replace');

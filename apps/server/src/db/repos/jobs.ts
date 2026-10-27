@@ -94,6 +94,8 @@ export interface JobListRow extends JobRow {
     beforeBytes: number | null;
     afterBytes: number | null;
     replacedTo: 'recycle' | 'deleted' | null;
+    /** The original was kept because the source is damaged ("Damaged source"). */
+    sourceDamaged: boolean;
   } | null;
   /** The result's problems (empty when none or no result). */
   problems: string[];
@@ -133,6 +135,8 @@ export interface JobResultRow {
    * that was decided may hold the whole ProbeResult (with `raw`).
    */
   outputProbe: JsonValue | null;
+  /** The original was kept because the source is damaged (decode errors it reproduces). */
+  sourceDamaged: boolean;
   createdAt: string;
 }
 
@@ -237,6 +241,7 @@ interface DbJobList extends DbJob {
   r_before_bytes: number | null;
   r_after_bytes: number | null;
   r_replaced_to: 'recycle' | 'deleted' | null;
+  r_source_damaged: number | null;
   r_problems_json: string | null;
   r_estimated_bytes: number | null;
   r_plan: string | null;
@@ -259,6 +264,7 @@ interface DbResult {
   warnings: string;
   problems_json: string;
   output_probe: string | null;
+  source_damaged: number;
   created_at: string;
 }
 
@@ -342,6 +348,7 @@ const toResult = (r: DbResult): JobResultRow => ({
   warnings: JSON.parse(r.warnings) as string[],
   problems: JSON.parse(r.problems_json) as string[],
   outputProbe: parseJson<JsonValue>(r.output_probe),
+  sourceDamaged: r.source_damaged === 1,
   createdAt: r.created_at,
 });
 
@@ -468,7 +475,8 @@ export const JOB_LIST_LIMIT = 200;
 
 const LIST_SELECT = `SELECT j.*, l.name AS library_name, w.name AS workflow_name,
     r.outcome AS r_outcome, r.before_bytes AS r_before_bytes, r.after_bytes AS r_after_bytes,
-    r.replaced_to AS r_replaced_to, r.problems_json AS r_problems_json,
+    r.replaced_to AS r_replaced_to, r.source_damaged AS r_source_damaged,
+    r.problems_json AS r_problems_json,
     r.estimated_bytes AS r_estimated_bytes, r.plan AS r_plan,
     (SELECT source FROM runs WHERE runs.id = j.run_id) AS run_source
   FROM jobs j
@@ -492,6 +500,7 @@ const toListRow = (r: DbJobList): JobListRow => {
             beforeBytes: r.r_before_bytes,
             afterBytes: r.r_after_bytes,
             replacedTo: r.r_replaced_to,
+            sourceDamaged: r.r_source_damaged === 1,
           },
     problems: r.r_problems_json === null ? [] : (JSON.parse(r.r_problems_json) as string[]),
     estimatedBytes: r.dry_run !== 0 ? r.r_estimated_bytes : null,
@@ -846,8 +855,8 @@ export function insertJobResult(db: Database, r: JobResultRow): void {
   db.prepare(
     `INSERT INTO job_results (job_id, fingerprint, workflow_id, workflow_version, outcome, before_bytes,
        after_bytes, estimated_bytes, command, plan, replaced_to, log_path, warnings, problems_json, output_probe,
-       created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       source_damaged, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     r.jobId,
     r.fingerprint,
@@ -864,6 +873,7 @@ export function insertJobResult(db: Database, r: JobResultRow): void {
     JSON.stringify(r.warnings),
     JSON.stringify(r.problems),
     toJson(r.outputProbe),
+    r.sourceDamaged ? 1 : 0,
     r.createdAt,
   );
 }

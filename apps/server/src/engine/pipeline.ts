@@ -25,8 +25,12 @@ import {
   type JsonValue,
   type Lane,
   normalizeLanguage,
+  RENDER_DAMAGED_PORT,
+  RENDER_DONE_PORT,
+  RENDER_TYPE,
   sameLanguage,
   type TraceEntry,
+  type WorkflowGraph,
 } from '@transcoda/shared';
 import {
   devicePlan,
@@ -115,8 +119,9 @@ import { recycleSidecars } from './sidecar-recycle.ts';
 import type { SpaceWaits } from './space-waits.ts';
 import { removeOrigCopy, settleReplaceNow } from './sweep.ts';
 import type { TestOutputStore } from './test-outputs.ts';
-import { confirmSourceDamage, verifyOutput } from './verify.ts';
+import { confirmSourceDamage, type VerifyFailure, verifyOutput } from './verify.ts';
 import {
+  type DamagedBranch,
   type DecidedPath,
   type GateBranch,
   type WalkDeps,
@@ -203,6 +208,12 @@ interface Prepared {
   actions: AnyFinishAction[];
   /** Per size gate, the non-writing steps behind its `else` (run when the gate fails). */
   gates: GateBranch[];
+  /** The steps behind the path's Render's Damaged (Quality check on and wired); else null. */
+  damaged: DamagedBranch | null;
+  /** The Render on the main path (top level, not bypassed); null for a graph without one. */
+  renderNodeId: string | null;
+  /** The main path writes the result (a replace or move-copy); else it only renders. */
+  writes: boolean;
   /** The walk through `pass` as the build left it; a failing gate swaps the tail for its else. */
   walkPath: WalkStep[];
   plan: JobPlan;
@@ -714,7 +725,7 @@ export class Pipeline implements JobExecutor {
     this.stopIfAborted(ctl);
     if (built.kind === 'failed') return this.walkFailed(job, ctl, built, fp);
     this.update(job, ctl, { walkPath: built.path });
-    const { model, actions, gates } = built;
+    const { model, actions, gates, damaged } = built;
     // Default flags as the output will have them (verify compares them strictly); a model that
     // writes nothing is left as it is.
     const defaultNotes = isIdentity(model, probe) ? new Map() : normalizeDefaults(model);
@@ -727,8 +738,10 @@ export class Pipeline implements JobExecutor {
       this.finish(job, ctl, 'nothing_to_do', { reason: 'already as planned' }, base);
       return { final: true };
     }
-    if (!actions.some((a) => a.kind === 'replace' || a.kind === 'move-copy')) {
-      this.finish(job, ctl, 'kept_original', { reason: 'path never writes the result' }, base);
+    const writes = actions.some((a) => a.kind === 'replace' || a.kind === 'move-copy');
+    // A path that only renders still renders when a damaged source has steps to run (Damaged).
+    if (!writes && damaged === null) {
+      this.finish(job, ctl, 'kept_original', { reason: NEVER_WRITES }, base);
       return { final: true };
     }
 
@@ -785,14 +798,29 @@ export class Pipeline implements JobExecutor {
       // "depends on size" (#41), recorded in the plan.
       const decides = sizeGateDecides(actions);
       const dryBase = decides ? { ...base, plan: { ...plan, dependsOnSize: decides } } : base;
-      if (gates.some((g) => g.elsePath.length > 0)) {
-        // A gate's own step leaves by no port: the result decides, both branches are possible.
-        const gateIds = new Set(gates.map((g) => g.nodeId));
+      // A gate's own step, and a Render with a Damaged side, leave by no port: the result
+      // decides, both branches are possible.
+      const branching = new Set<string>();
+      if (gates.some((g) => g.elsePath.length > 0)) for (const g of gates) branching.add(g.nodeId);
+      if (damaged !== null) branching.add(damaged.nodeId);
+      if (branching.size > 0) {
         const pass = built.path.map((s) =>
-          s.workflowPath.length === 0 && gateIds.has(s.nodeId) ? { ...s, port: null } : s,
+          s.workflowPath.length === 0 && branching.has(s.nodeId) ? { ...s, port: null } : s,
         );
         this.update(job, ctl, {
-          walkPath: [...pass, ...gates.flatMap((g) => g.elsePath)].map(stepOf),
+          walkPath: [...pass, ...gates.flatMap((g) => g.elsePath), ...(damaged?.path ?? [])].map(
+            stepOf,
+          ),
+        });
+      }
+      if (damaged !== null) {
+        const steps = damaged.path.map((s) => this.titleOf(loaded.graph, s.nodeId)).join(', ');
+        this.traceFinish(job, ctl, {
+          nodeId: damaged.nodeId,
+          workflowPath: [],
+          source: 'core',
+          port: null,
+          reason: `Render: decides while encoding; if the source is damaged: ${steps}`,
         });
       }
       for (const g of gates) {
@@ -803,7 +831,13 @@ export class Pipeline implements JobExecutor {
           findings: gateFindings(min),
         });
       }
-      this.finish(job, ctl, 'dry_run', { reason: null, warnings }, { ...dryBase, command });
+      this.finish(
+        job,
+        ctl,
+        writes ? 'dry_run' : 'kept_original',
+        { reason: writes ? null : NEVER_WRITES, warnings },
+        { ...dryBase, command },
+      );
       return { final: true };
     }
 
@@ -820,6 +854,9 @@ export class Pipeline implements JobExecutor {
       fit,
       actions,
       gates,
+      damaged,
+      renderNodeId: renderOnPath(loaded.graph, built.path),
+      writes,
       walkPath: built.path.map(stepOf),
       plan,
       // Retarget and the software fallback keep the streams in order, so each note stays with
@@ -1053,15 +1090,26 @@ export class Pipeline implements JobExecutor {
     });
     this.stopIfAborted(ctl);
     p.warnings.push(...verified.warnings);
-    if (verified.ok) p.outputProbe = verified.probe;
+    if (verified.ok) {
+      p.outputProbe = verified.probe;
+      if (p.renderNodeId !== null) {
+        this.traceFinish(job, ctl, {
+          nodeId: p.renderNodeId,
+          workflowPath: [],
+          source: 'core',
+          port: RENDER_DONE_PORT,
+          reason: 'Render: encoded and verified \u2192 Done',
+        });
+      }
+    }
     if (!verified.ok) {
       if (verified.kind === 'source-damaged') {
-        return this.keepOriginal(
+        return this.sourceDamaged(
           job,
           ctl,
           p,
-          'source has decode errors; nothing was replaced',
           verified.sourceFailures.map((f) => `${f.check}: ${f.message}`),
+          verified.sourceFailures,
         );
       }
       return fail(
@@ -1073,6 +1121,9 @@ export class Pipeline implements JobExecutor {
     const afterBytes = (await fs.stat(p.outputPath)).size;
     // A test-encode stops here: the gates decide on the measured size, nothing is written.
     if (job.dryRun) return this.endTestEncode(job, ctl, p, afterBytes);
+    // Rendered only for its Damaged side: a good file is kept, and Done's steps (none write)
+    // do not run, as when prepare ends such a path.
+    if (!p.writes) return this.keepOriginal(job, ctl, p, NEVER_WRITES, [], afterBytes);
     await this.waitWhilePaused(ctl);
     this.stopIfAborted(ctl);
     const state: Written = {
@@ -1172,8 +1223,8 @@ export class Pipeline implements JobExecutor {
       }
     }
     if (p.written === null) {
-      // Unreachable: prepare only lets a job with replace or move-copy through.
-      return fail(final('path never writes the result'));
+      // Unreachable: a path without replace or move-copy ends before the finish actions.
+      return this.keepOriginal(job, ctl, p, NEVER_WRITES, [], afterBytes);
     }
     await this.finishWritten(job, ctl, p, p.written);
     return SETTLED;
@@ -1203,6 +1254,9 @@ export class Pipeline implements JobExecutor {
         return this.concludeTestEncode(job, ctl, p, 'kept_original', why, afterBytes);
       }
       if (gate) this.traceGatePass(job, ctl, gate, saving, min);
+    }
+    if (!p.writes) {
+      return this.concludeTestEncode(job, ctl, p, 'kept_original', NEVER_WRITES, afterBytes);
     }
     return this.concludeTestEncode(job, ctl, p, 'dry_run', null, afterBytes);
   }
@@ -1358,10 +1412,13 @@ export class Pipeline implements JobExecutor {
       });
       this.stopIfAborted(ctl);
       if (confirmed.length > 0) {
-        return this.keepOriginal(job, ctl, p, 'source has decode errors; nothing was replaced', [
-          ...lines,
-          ...confirmed.map((f) => `${f.check}: ${f.message}`),
-        ]);
+        return this.sourceDamaged(
+          job,
+          ctl,
+          p,
+          [...lines, ...confirmed.map((f) => `${f.check}: ${f.message}`)],
+          confirmed,
+        );
       }
       return fail(
         retryable(
@@ -1758,11 +1815,53 @@ export class Pipeline implements JobExecutor {
     gate: GateBranch | undefined,
     g: { saving: number; minSavingPercent: number; afterBytes: number; why: string },
   ): Promise<string[]> {
-    const out: string[] = [];
-    if (!gate) return out;
+    if (!gate) return [];
     this.recordElseBranch(job, ctl, p, gate, g);
+    return this.runNoWriteSteps(job, ctl, p, gate.elseActions, g.afterBytes, g.why, {
+      gate: { savedPercent: Math.round(g.saving * 10) / 10, minSavingPercent: g.minSavingPercent },
+      where: 'the size gate\u2019s No branch',
+    });
+  }
+
+  /**
+   * The source turned out damaged before anything was written (Render's Quality check on and its
+   * Damaged wired, a real job): records the branch, moves the job's walk onto Damaged and runs
+   * the notifications and other non-writing steps there, with nothing rendered or written: a
+   * plugin step sees outcome `damaged`, the original's path and size, and `damage`. Returns the
+   * warnings for the job.
+   */
+  private async takeDamaged(
+    job: JobRow,
+    ctl: JobControl,
+    p: Prepared,
+    branch: DamagedBranch,
+    damage: { reason: string; stream?: string },
+  ): Promise<string[]> {
+    this.recordDamagedBranch(job, ctl, p, branch, damage);
+    return this.runNoWriteSteps(job, ctl, p, branch.actions, p.fp.sizeBytes, SOURCE_DAMAGED, {
+      damage,
+      where: 'Render\u2019s Damaged',
+    });
+  }
+
+  /**
+   * Runs the steps of a side branch where nothing may write (a gate's `else`, Render's Damaged):
+   * notifications (outcome `kept_original` with `why`) and plugin steps, in order. A step that
+   * fails or is cut short by a stop is a warning: the original is kept either way. Returns the
+   * warnings for the job.
+   */
+  private async runNoWriteSteps(
+    job: JobRow,
+    ctl: JobControl,
+    p: Prepared,
+    actions: AnyFinishAction[],
+    afterBytes: number,
+    why: string,
+    side: StepExtra & { where: string },
+  ): Promise<string[]> {
+    const out: string[] = [];
     const kept: Written = {
-      afterBytes: g.afterBytes,
+      afterBytes,
       replacedTo: null,
       dest: null,
       mode: 'kept',
@@ -1770,12 +1869,12 @@ export class Pipeline implements JobExecutor {
       problems: [],
     };
     let lastRank = -1;
-    for (const action of gate.elseActions) {
+    for (const action of actions) {
       try {
         if (action.kind === 'notify') {
-          await this.notify(job, p, action, g.afterBytes, null, {
+          await this.notify(job, p, action, afterBytes, null, {
             outcome: 'kept_original',
-            reason: g.why,
+            reason: why,
           });
         } else if (action.kind === 'plugin' && 'phase' in action) {
           if (finishPhaseRank(action.phase) < lastRank) {
@@ -1785,18 +1884,13 @@ export class Pipeline implements JobExecutor {
             continue;
           }
           lastRank = finishPhaseRank(action.phase);
-          const done = await this.pluginStep(job, ctl, p, action, kept, {
-            savedPercent: Math.round(g.saving * 10) / 10,
-            minSavingPercent: g.minSavingPercent,
-          });
+          const done = await this.pluginStep(job, ctl, p, action, kept, side);
           if (!done) {
             out.push(stoppedBefore(ctl));
             break;
           }
         } else {
-          out.push(
-            `skipped a ${action.kind} step: nothing can be written behind the size gate\u2019s No branch`,
-          );
+          out.push(`skipped a ${action.kind} step: nothing can be written behind ${side.where}`);
         }
       } catch (err) {
         if (!(err instanceof Stop)) throw err;
@@ -1806,6 +1900,65 @@ export class Pipeline implements JobExecutor {
     }
     // A required plugin step's failure is a problem on a written job; here it is a warning.
     return [...out, ...kept.problems];
+  }
+
+  /**
+   * Confirmed source damage (the encode's decoder errors the source reproduces, or verify's
+   * `source-damaged`): the original is kept and the result says the source is damaged. With
+   * Render's Damaged wired, a real job first runs its steps; a dry run only records the branch.
+   * `details` are the job's warnings; `confirmed` says what is wrong (the first one is the
+   * `damage.reason` a plugin step gets).
+   */
+  private async sourceDamaged(
+    job: JobRow,
+    ctl: JobControl,
+    p: Prepared,
+    details: string[],
+    confirmed: VerifyFailure[],
+  ): Promise<End> {
+    const extra: string[] = [];
+    if (p.damaged !== null) {
+      // Nothing is encoded any more: the slot is free for the next file while the steps run.
+      ctl.releaseEncoder?.();
+      const damage = { reason: damageReason(confirmed) };
+      if (job.dryRun) this.recordDamagedBranch(job, ctl, p, p.damaged, damage);
+      else extra.push(...(await this.takeDamaged(job, ctl, p, p.damaged, damage)));
+    }
+    return this.keepOriginal(job, ctl, p, SOURCE_DAMAGED, [...details, ...extra], null, {
+      sourceDamaged: true,
+    });
+  }
+
+  /**
+   * The source is damaged and Render's Damaged is wired: records the branch on the trace and
+   * moves the job's walk onto it (Done's steps were never taken). Runs nothing.
+   */
+  private recordDamagedBranch(
+    job: JobRow,
+    ctl: JobControl,
+    p: Prepared,
+    branch: DamagedBranch,
+    damage: { reason: string },
+  ): void {
+    this.traceFinish(job, ctl, {
+      nodeId: branch.nodeId,
+      workflowPath: [],
+      source: 'core',
+      port: RENDER_DAMAGED_PORT,
+      reason: `Render: source is damaged (${damage.reason}) \u2192 Damaged`,
+    });
+    const at = p.walkPath.findIndex(
+      (s) => s.workflowPath.length === 0 && s.nodeId === branch.nodeId,
+    );
+    if (at >= 0) {
+      this.update(job, ctl, {
+        walkPath: [
+          ...p.walkPath.slice(0, at),
+          { workflowPath: [], nodeId: branch.nodeId, port: RENDER_DAMAGED_PORT },
+          ...branch.path,
+        ].map(stepOf),
+      });
+    }
   }
 
   /**
@@ -1846,6 +1999,7 @@ export class Pipeline implements JobExecutor {
     reason: string,
     extra: string[],
     afterBytes: number | null = null,
+    o: { sourceDamaged?: boolean } = {},
   ): Promise<End> {
     await this.removeTemp(job.id);
     this.finish(
@@ -1853,7 +2007,7 @@ export class Pipeline implements JobExecutor {
       ctl,
       'kept_original',
       { reason, warnings: [...p.warnings, ...extra] },
-      { ...resultOf(p), afterBytes },
+      { ...resultOf(p), afterBytes, sourceDamaged: o.sourceDamaged === true },
     );
     return SETTLED;
   }
@@ -1933,6 +2087,13 @@ export class Pipeline implements JobExecutor {
     }
   }
 
+  /** A top-level node's title as the editor shows it: its label, else its type's title. */
+  private titleOf(graph: WorkflowGraph, nodeId: string): string {
+    const n = graph.nodes.find((x) => x.id === nodeId);
+    if (!n) return nodeId;
+    return n.label ?? this.deps.registry.get(n.type)?.def.title ?? n.type;
+  }
+
   private workflowName(id: string): string {
     return findWorkflow(this.deps.db, id, { includeDeleted: true })?.name ?? '';
   }
@@ -1999,7 +2160,7 @@ export class Pipeline implements JobExecutor {
     p: Prepared,
     action: PluginFinishAction,
     w: Written,
-    gate: NonNullable<FinishRunContext['gate']> | null = null,
+    extra: StepExtra = {},
   ): Promise<boolean> {
     if (job.dryRun) throw new Error('a plugin finish step reached a dry run');
     const { registry } = this.deps;
@@ -2019,10 +2180,11 @@ export class Pipeline implements JobExecutor {
         replacedTo: w.replacedTo,
         beforeBytes: p.fp.sizeBytes,
         afterBytes: w.afterBytes,
-        outcome: w.mode,
+        outcome: extra.damage ? 'damaged' : w.mode,
         containerChanged: w.mode !== 'kept' && p.model.container !== p.probe.container,
         problemsSoFar: [...w.problems],
-        gate,
+        gate: extra.gate ?? null,
+        damage: extra.damage ?? null,
         jobUrl: jobUrl(this.deps.config.publicUrl, job.id),
         workflowName: this.workflowName(job.workflowId),
       },
@@ -2131,6 +2293,7 @@ export class Pipeline implements JobExecutor {
         // Only an outcome that stands on the verified output keeps its probe: a failed or
         // cancelled job threw that output away.
         outputProbe: OUTPUT_OUTCOMES.has(r.outcome) ? (r.outputProbe ?? null) : null,
+        sourceDamaged: r.sourceDamaged ?? false,
         createdAt: this.deps.now().toISOString(),
       });
     })();
@@ -2263,7 +2426,36 @@ type ResultInput = {
   problems: string[];
   /** The verified output's probe as the job page reads it (a JobProbe: no raw JSON). */
   outputProbe: JsonValue | null;
+  /** The original was kept because the source is damaged ("Damaged source"). */
+  sourceDamaged: boolean;
 };
+
+/** What a plugin step on a side branch learns: a gate's numbers, or what is wrong with the source. */
+type StepExtra = {
+  gate?: NonNullable<FinishRunContext['gate']>;
+  damage?: { reason: string; stream?: string };
+};
+
+/** The reason of a job whose source turned out damaged. */
+const SOURCE_DAMAGED = 'source has decode errors; nothing was replaced';
+/** The reason of a job whose path renders but never writes the result. */
+const NEVER_WRITES = 'path never writes the result';
+
+/** What is wrong with the source, from the first confirmed failure (without the check's name). */
+function damageReason(confirmed: VerifyFailure[]): string {
+  const first = confirmed[0];
+  return first ? first.message.replace(/^source: /, '') : 'decode errors';
+}
+
+/** The top-level Render on `path` that runs (not bypassed); null when the path has none. */
+function renderOnPath(graph: WorkflowGraph, path: { workflowPath: string[]; nodeId: string }[]) {
+  for (const s of path) {
+    if (s.workflowPath.length > 0) continue;
+    const n = graph.nodes.find((x) => x.id === s.nodeId);
+    if (n?.type === RENDER_TYPE && n.bypassed !== true) return n.id;
+  }
+  return null;
+}
 
 /** Outcomes whose result keeps the verified output's probe (written, measured, or measured and kept). */
 const OUTPUT_OUTCOMES: ReadonlySet<JobState> = new Set(['done', 'kept_original', 'dry_run']);

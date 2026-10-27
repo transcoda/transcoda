@@ -255,6 +255,7 @@ describe('JobPage: Process again', () => {
           estimatedBytes: 190_000_000,
           command: COMMAND,
           replacedTo: null,
+          sourceDamaged: false,
           warnings: [],
           problems: [],
         },

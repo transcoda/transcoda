@@ -59,7 +59,13 @@ describe('JobStateChip estimate', () => {
   const withSize = (extra: Partial<Parameters<typeof job>[0]>) =>
     job({
       ...fx.dry,
-      result: { outcome: 'dry_run', beforeBytes: 1000, afterBytes: null, replacedTo: null },
+      result: {
+        outcome: 'dry_run',
+        beforeBytes: 1000,
+        afterBytes: null,
+        replacedTo: null,
+        sourceDamaged: false,
+      },
       ...extra,
     });
 

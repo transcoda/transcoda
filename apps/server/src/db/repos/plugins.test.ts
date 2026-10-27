@@ -196,6 +196,7 @@ describe('job result problems', () => {
     warnings: ['kept'],
     problems,
     outputProbe: null,
+    sourceDamaged: false,
     createdAt: now.toISOString(),
   });
 

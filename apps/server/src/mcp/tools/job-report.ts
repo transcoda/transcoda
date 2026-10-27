@@ -272,7 +272,7 @@ export function jobReportText(r: JobReport): string {
   if (r.result) {
     const bytes = (n: number | null) => (n === null ? '?' : String(n));
     lines.push(
-      `Result: ${r.result.outcome}, ${bytes(r.result.beforeBytes)} → ${bytes(r.result.afterBytes)} bytes, ${r.result.replacedTo ?? 'nothing replaced'}`,
+      `Result: ${r.result.outcome}, ${bytes(r.result.beforeBytes)} → ${bytes(r.result.afterBytes)} bytes, ${r.result.replacedTo ?? 'nothing replaced'}${r.result.sourceDamaged ? ', source damaged' : ''}`,
     );
   }
   if (r.plan) {
