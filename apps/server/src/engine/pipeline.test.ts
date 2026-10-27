@@ -5046,12 +5046,19 @@ describe('pipeline: damaged sources (Render’s Damaged)', () => {
     const isPass = (args: string[]) => args.includes('level+error');
     const passes = () => execCalls.filter((c) => isPass(c.slice(1)));
     /**
-     * The pass answers with the dca error (exit 0, as ffmpeg does for decode errors), and the
-     * confirming decode at that spot reproduces it.
+     * The pass answers with the dca error (exit 0, as ffmpeg does for decode errors); the locating
+     * pass puts it 30 s into the DTS stream.
      */
+    const lfeAt30 = async (_f: string, args: string[]) => {
+      if (isPass(args)) return { stdout: '', stderr: `${LFE}\n` };
+      if (!args.includes('level+info')) return null;
+      const mark = (t: number) => `[ashowinfo@s1 @ 0x9] [info] n:0 pts:0 pts_time:${t}`;
+      return { stdout: '', stderr: [mark(0), mark(30), LFE, mark(31)].join('\n') };
+    };
+    /** As {@link lfeAt30}, and the confirming decode at that spot reproduces it. */
     const passFindsLfe = () => {
       sourceSpotsDamaged = true;
-      execHook = async (_f, args) => (isPass(args) ? { stdout: '', stderr: `${LFE}\n` } : null);
+      execHook = lfeAt30;
     };
 
     it('Check source damaged → the Damaged steps run in prepare, the job ends kept_original + sourceDamaged, ffmpeg never encodes', async () => {
@@ -5108,7 +5115,7 @@ describe('pipeline: damaged sources (Render’s Damaged)', () => {
     });
 
     it('a pass error the source does not reproduce at its spot → retried, then failed (never Damaged)', async () => {
-      execHook = async (_f, args) => (isPass(args) ? { stdout: '', stderr: `${LFE}\n` } : null);
+      execHook = lfeAt30;
       const id = await queue(file(), checked());
       await t.deps.engine.start();
       const job = await settled(id);

@@ -35,6 +35,15 @@ const CONFIRM_SECONDS = 7;
 /** …and never more than this. */
 const CONFIRM_MAX_SECONDS = 120;
 
+/**
+ * A source decoder error counts as leading (a stream cut mid-GOP, audio starting mid-frame: the
+ * encode drops it too) when its stream had put out no frame yet, or its last frame before the error
+ * was less than this after the stream's first one.
+ */
+export const LEADING_SECONDS = 2;
+/** The locating pass logs one frame per decoded stream this often (media seconds). */
+const MARK_SECONDS = 1;
+
 /** The encoders of the pass itself (the null muxer's defaults): their lines are never the source's. */
 const NULL_ENCODERS: ReadonlySet<string> = new Set(['pcm_s16le', 'wrapped_avframe']);
 
@@ -69,6 +78,44 @@ export function checkSourceArgs(path: string, probe: ProbeResult, decodeVideo: b
   ];
 }
 
+/** The streams the pass decodes: every audio stream, video when decoded (see {@link checkSourceArgs}). */
+function decodedStreams(probe: ProbeResult, decodeVideo: boolean): ProbeResult['streams'] {
+  const hasAudio = probe.streams.some((s) => s.type === 'audio');
+  return probe.streams.filter(
+    (s) =>
+      s.type === 'audio' ||
+      ((decodeVideo || !hasAudio) && s.type === 'video' && !isPicture(s, probe.streams)),
+  );
+}
+
+/**
+ * The locating pass, run only when the first pass saw a source decoder error: the decoded streams
+ * again, each through a filter that logs (at info level, on stderr like the errors) one frame per
+ * {@link MARK_SECONDS} of media time under `[ashowinfo@s<index> …]` / `[showinfo@s<index> …]`. The
+ * decoder logs an error before it hands on any later frame, so the last mark of a stream before an
+ * error line is a media time at or before the error, however fast the file reads (progress blocks
+ * come by wall clock, so on a fast read every error arrives before the first one).
+ */
+export function locateArgs(path: string, probe: ProbeResult, decodeVideo: boolean): string[] {
+  const args = ['-nostdin', '-hide_banner', '-loglevel', 'level+info', '-i', path];
+  decodedStreams(probe, decodeVideo).forEach((s, out) => {
+    const audio = s.type === 'audio';
+    const select = `${audio ? 'aselect' : 'select'}='isnan(prev_selected_t)+gte(t-prev_selected_t,${MARK_SECONDS})'`;
+    args.push(
+      '-map',
+      `0:${s.index}`,
+      `-filter:${out}`,
+      `${select},${audio ? 'ashowinfo' : 'showinfo'}@s${s.index}`,
+    );
+  });
+  args.push('-f', 'null', '-');
+  return args;
+}
+
+/** A mark of the locating pass: the stream and the frame's media time. */
+const MARK =
+  /^\[a?showinfo@s(\d+) @ 0x[0-9a-f]+\]\s*\[info\]\s*n:\s*\d+\s+pts:\s*-?\d+\s+pts_time:\s*(-?[\d.]+)/;
+
 /** `m:ss`, or `h:mm:ss` from an hour. */
 function clock(seconds: number): string {
   const s = Math.max(0, Math.round(seconds));
@@ -101,6 +148,20 @@ function streamOf(line: string, probe: ProbeResult): string | undefined {
   return mapped.length === 1 ? name(mapped[0] as (typeof mapped)[number]) : undefined;
 }
 
+/**
+ * The decoded streams a source decoder error line may be about: the one an input-stream context
+ * names, else those whose decoder logs under the line's context; every decoded stream when none.
+ */
+function streamsOf(line: string, decoded: ProbeResult['streams']): number[] {
+  const ctx = contextOf(line);
+  const ist = /^[a-z]?ist#0:(\d+)/.exec(ctx);
+  const decoder = ctx.startsWith('dec:') ? ctx.slice(4) : ctx;
+  const hit = decoded.filter((s) =>
+    ist ? s.index === Number(ist[1]) : sourceDecoderNames([s.codec]).has(decoder),
+  );
+  return (hit.length > 0 ? hit : decoded).map((s) => s.index);
+}
+
 /** The first context of a log line (`matroska,webm` of `[matroska,webm @ 0x…] …`); '' when none. */
 function contextOf(line: string): string {
   return /^\[([^\]@]+?)(?: @ 0x[0-9a-f]+)?\]/i.exec(line.trim())?.[1]?.trim() ?? '';
@@ -111,20 +172,98 @@ function messageOf(line: string): string {
   return line.replace(/^(\s*\[[^\]]*\]\s*)+/, '').trim() || line.trim();
 }
 
-/** A stderr line and where the pass was when it came: `at` the last out time (null before any). */
-interface Seen {
+/** A source decoder error of the locating pass at media time `at` (its stream's last mark before it). */
+interface Located {
   line: string;
-  at: number | null;
-  /** The out time of the next progress block (null: none came after it). */
+  leading: boolean;
+  at: number;
+  /** The stream's next mark after it (null: none came). */
   until: number | null;
 }
 
 /**
+ * Runs {@link locateArgs} and places each source decoder error in media time; a string when the
+ * pass could not run or could not read the file (never damage). An abort rethrows.
+ */
+async function locate(input: {
+  path: string;
+  probe: ProbeResult;
+  ffmpegPath: string;
+  decodeVideo: boolean;
+  exec: Exec;
+  timeoutMs: number;
+  signal?: AbortSignal;
+}): Promise<Located[] | string> {
+  const { probe, signal } = input;
+  let stderr: string;
+  try {
+    const r = await input.exec(input.ffmpegPath, locateArgs(input.path, probe, input.decodeVideo), {
+      timeoutMs: input.timeoutMs,
+      ...(signal ? { signal } : {}),
+    });
+    stderr = r.stderr;
+  } catch (err) {
+    if (signal?.aborted || (err as { name?: unknown } | null)?.name === 'AbortError') throw err;
+    const e = (err ?? {}) as { killed?: boolean; stderr?: unknown; message?: unknown };
+    if (e.killed === true || typeof e.stderr !== 'string') {
+      return `the second read to place the decoder errors failed: ${String(e.message ?? err).split('\n')[0]}`;
+    }
+    stderr = e.stderr;
+  }
+  const decoded = decodedStreams(probe, input.decodeVideo);
+  const codecs = sourceDecoderNames(probe.streams.map((s) => s.codec));
+  const first = new Map<number, number>();
+  const last = new Map<number, number>();
+  const located: Located[] = [];
+  let waiting: { l: Located; streams: number[] }[] = [];
+  for (const raw of stderr.split('\n')) {
+    const line = raw.replace(/\r$/, '');
+    const mark = MARK.exec(line.trim());
+    if (mark) {
+      const stream = Number(mark[1]);
+      const t = Math.max(0, Number(mark[2]));
+      if (!first.has(stream)) first.set(stream, t);
+      last.set(stream, t);
+      waiting = waiting.filter((w) => {
+        if (!w.streams.includes(stream)) return true;
+        w.l.until = t;
+        return false;
+      });
+      continue;
+    }
+    // Info lines carry the file's own tags: only a warning or worse says the read failed.
+    if (!/\[(info|verbose|debug|trace)\]/.test(line) && READ_FAILURE.test(line)) {
+      return messageOf(line);
+    }
+    if (classifyErrorLine(line, codecs, NULL_ENCODERS) !== 'source') continue;
+    const streams = streamsOf(line, decoded);
+    // A doubtful line (several streams it may be about) is leading when any of them would be.
+    const leading = streams.some((s) => {
+      const at = last.get(s);
+      return at === undefined || at < (first.get(s) ?? 0) + LEADING_SECONDS;
+    });
+    const at = Math.min(...streams.map((s) => last.get(s) ?? 0));
+    const l: Located = { line, leading, at, until: null };
+    located.push(l);
+    if (!leading) waiting.push({ l, streams });
+  }
+  return located;
+}
+
+/** A stderr line and where the pass was when it came: `at` the last out time (null before any). */
+interface Seen {
+  line: string;
+  at: number | null;
+}
+
+/**
  * Reads the whole file once (see {@link checkSourceArgs}) and says whether the source is damaged.
- * Decoder errors before the first output frame (a stream cut mid-GOP, audio starting mid-frame)
- * are ignored, as the encode does; the first later one is damage only when `confirm` (a decode of
- * the source from `at`, for `seconds`) reproduces it. An abort rethrows (the job was cancelled or
- * the server stops); every other failure of the pass is `error`, never `damaged`.
+ * When a source decoder reported errors, a second pass ({@link locateArgs}) places them in media
+ * time. Decoder errors before a stream's first output frame (a stream cut mid-GOP, audio starting
+ * mid-frame; see {@link LEADING_SECONDS}) are ignored, as the encode does; the first later one is
+ * damage only when `confirm` (a decode of the source from `at`, for `seconds`) reproduces it. An
+ * abort rethrows (the job was cancelled or the server stops); every other failure of either pass is
+ * `error`, never `damaged`.
  */
 export async function checkSource(input: {
   path: string;
@@ -140,18 +279,13 @@ export async function checkSource(input: {
   const timeoutMs = checkSourceTimeoutMs(input.sizeBytes);
   let readTo: number | null = null;
   const seen: Seen[] = [];
-  let waiting: Seen[] = [];
   const onStdout = progressReader((s) => {
     readTo = s.outTimeSeconds;
-    for (const l of waiting) l.until = s.outTimeSeconds;
-    waiting = [];
   });
   let rest = '';
   const take = (line: string) => {
     if (line.trim() === '') return;
-    const l: Seen = { line, at: readTo, until: null };
-    seen.push(l);
-    waiting.push(l);
+    seen.push({ line, at: readTo });
   };
   const onStderr = (chunk: string) => {
     const parts = (rest + chunk).split('\n');
@@ -186,7 +320,7 @@ export async function checkSource(input: {
   // Lines the exec did not hand over as they came have no known time: never after the first frame.
   if (seen.length === 0) {
     for (const line of stderr.split('\n')) {
-      if (line.trim() !== '') seen.push({ line, at: null, until: null });
+      if (line.trim() !== '') seen.push({ line, at: null });
     }
   }
   const lines = seen.map((l) => l.line);
@@ -198,15 +332,42 @@ export async function checkSource(input: {
   const codecs = sourceDecoderNames(probe.streams.map((s) => s.codec));
   const side = (l: Seen) => classifyErrorLine(l.line, codecs, NULL_ENCODERS);
   const afterStart = (l: Seen) => l.at !== null && l.at > 0;
-  const leading = errors.filter((l) => side(l) !== 'output' && !afterStart(l)).length;
+  // Progress comes by wall clock, so it cannot place a decoder error: a second pass does.
+  let leadingSource = 0;
+  let firstSource: Located | undefined;
+  const sourceErrors = errors.filter((l) => side(l) === 'source');
+  if (sourceErrors.length > 0) {
+    const located = await locate({
+      path: input.path,
+      probe,
+      ffmpegPath: input.ffmpegPath,
+      decodeVideo: input.decodeVideo,
+      exec: input.exec,
+      timeoutMs,
+      ...(signal ? { signal } : {}),
+    });
+    if (typeof located === 'string') return { kind: 'error', message: located };
+    if (located.length === 0) {
+      const l = sourceErrors[0] as Seen;
+      const stream = streamOf(l.line, probe);
+      return {
+        kind: 'error',
+        message: `${stream ?? 'source'}: ${messageOf(l.line)}, which a second read does not reproduce`,
+      };
+    }
+    leadingSource = located.filter((l) => l.leading).length;
+    firstSource = located.find((l) => !l.leading);
+  }
+  const leadingDemuxer = errors.filter((l) => side(l) === 'demuxer' && !afterStart(l)).length;
+  const leading = leadingSource + leadingDemuxer;
   const warnings =
     leading > 0 ? [`ignored ${leading} decoder error(s) before the first output frame`] : [];
   // Only a source decoder proves damage: the demuxer also speaks for a disk or a network share.
-  const first = errors.find((l) => side(l) === 'source' && afterStart(l));
-  if (first && first.at !== null) {
+  const first = firstSource;
+  if (first) {
     const stream = streamOf(first.line, probe);
     const reason = `${stream ?? 'source'}: ${messageOf(first.line)}`;
-    const until = first.until ?? (readTo as number | null) ?? first.at;
+    const until = first.until ?? first.at;
     const seconds = Math.min(CONFIRM_MAX_SECONDS, Math.max(0, until - first.at) + CONFIRM_SECONDS);
     const confirmed = await input.confirm({ at: first.at, seconds });
     if (confirmed.length === 0) {

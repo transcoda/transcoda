@@ -1,7 +1,7 @@
 import type { ProbeResult } from '@transcoda/sdk';
 import { describe, expect, it } from 'vitest';
 import type { Exec } from '../capabilities/ffmpeg.ts';
-import { checkSource, checkSourceArgs, checkSourceTimeoutMs } from './check-source.ts';
+import { checkSource, checkSourceArgs, checkSourceTimeoutMs, locateArgs } from './check-source.ts';
 import { probeOf } from './test-helpers.ts';
 import type { VerifyFailure } from './verify.ts';
 
@@ -16,9 +16,15 @@ const dts = (durationSeconds = 3600): ProbeResult =>
     { sizeBytes: 2 * 2 ** 30, durationSeconds },
   );
 
+/** A mark of the locating pass for stream `index` at `t` seconds. */
+const mark = (index: number, t: number) =>
+  `[ashowinfo@s${index} @ 0x9] [info] n:   0 pts:    0 pts_time:${t} fmt:fltp channels:6`;
+
 /**
  * As ffmpeg runs: `leading` stderr lines before any output, a progress block at `errorAt` seconds
  * (when given), the `stderr` lines, then a progress block at `readTo`; then resolves or rejects.
+ * The locating pass (`level+info`) logs `located` when given, else the same lines with each
+ * decoded stream's marks at 0 and `errorAt` before the `stderr` lines and at `readTo` after them.
  */
 function fakeExec(o: {
   readTo?: number;
@@ -26,10 +32,27 @@ function fakeExec(o: {
   leading?: string[];
   stderr?: string[];
   fail?: Record<string, unknown>;
+  located?: string[];
 }): Exec & { calls: { args: string[]; opts: Parameters<Exec>[2] }[] } {
   const calls: { args: string[]; opts: Parameters<Exec>[2] }[] = [];
   const exec = (async (_file, args, opts) => {
     calls.push({ args, opts });
+    if (args.includes('level+info')) {
+      const streams = [...args.join(' ').matchAll(/showinfo@s(\d+)/g)].map((m) => Number(m[1]));
+      const marks = (t: number | undefined) =>
+        t === undefined ? [] : streams.map((i) => mark(i, t));
+      const stderr = (
+        o.located ?? [
+          ...(o.leading ?? []),
+          ...marks(0),
+          ...marks(o.errorAt),
+          ...(o.stderr ?? []),
+          ...marks(o.readTo),
+        ]
+      ).join('\n');
+      if (o.fail) throw Object.assign(new Error('Command failed: ffmpeg'), { stderr, ...o.fail });
+      return { stdout: '', stderr };
+    }
     const progress = (t: number) =>
       opts?.onStdout?.(`out_time_us=${Math.round(t * 1e6)}\nprogress=continue\n`);
     const lines = (l: string[] = []) => {
@@ -150,6 +173,79 @@ describe('checkSource', () => {
       ),
     ).toMatchObject({ kind: 'error' });
     expect(spots.at(-1)).toEqual({ at: 1200, seconds: 10 });
+  });
+
+  it('places errors by media time, not by when they were read (a fast read before any progress)', async () => {
+    const spots: { at: number; seconds: number }[] = [];
+    const confirm = async (spot: { at: number; seconds: number }) => {
+      spots.push(spot);
+      return confirms();
+    };
+    // The whole file read before the first progress block: the error has no out time at all.
+    const exec = fakeExec({
+      leading: [LFE],
+      readTo: 3600,
+      located: [mark(1, 0), mark(1, 137), LFE, mark(1, 138)],
+    });
+    expect(await run(exec, dts(), false, undefined, confirm)).toEqual({
+      kind: 'damaged',
+      reason: 'audio #1 (DTS): Invalid LFE scale factor index',
+      stream: 'audio #1 (DTS)',
+    });
+    expect(spots).toEqual([{ at: 137, seconds: 8 }]);
+    expect(exec.calls[1]?.args).toEqual(locateArgs('/lib/a.mkv', dts(), false));
+    // Within LEADING_SECONDS of the stream's first frame: leading, as the encode drops it.
+    spots.length = 0;
+    const early = fakeExec({
+      leading: [LFE],
+      readTo: 3600,
+      located: [mark(1, 0.5), mark(1, 1.5), LFE, mark(1, 2.5)],
+    });
+    expect(await run(early, dts(), false, undefined, confirm)).toEqual({
+      kind: 'ok',
+      warnings: ['ignored 1 decoder error(s) before the first output frame'],
+    });
+    expect(spots).toEqual([]);
+    // Video decode errors before the video's first frame are leading while audio is far along.
+    const hevc = '[hevc @ 0x7] [error] Could not find ref with POC 12';
+    const late = fakeExec({
+      leading: [hevc],
+      readTo: 3600,
+      located: [mark(1, 0), mark(1, 5), hevc, mark(0, 6), mark(1, 6)],
+    });
+    expect(await run(late, dts(), true, undefined, confirm)).toEqual({
+      kind: 'ok',
+      warnings: ['ignored 1 decoder error(s) before the first output frame'],
+    });
+    // A second read without the error: not proven damaged.
+    expect(
+      await run(fakeExec({ leading: [LFE], readTo: 3600, located: [mark(1, 0)] }), dts()),
+    ).toEqual({
+      kind: 'error',
+      message:
+        'audio #1 (DTS): Invalid LFE scale factor index, which a second read does not reproduce',
+    });
+  });
+
+  it('the locating pass decodes what the first pass decodes, one mark per media second each', () => {
+    expect(locateArgs('/lib/a.mkv', dts(), false)).toEqual([
+      '-nostdin',
+      '-hide_banner',
+      '-loglevel',
+      'level+info',
+      '-i',
+      '/lib/a.mkv',
+      '-map',
+      '0:1',
+      '-filter:0',
+      "aselect='isnan(prev_selected_t)+gte(t-prev_selected_t,1)',ashowinfo@s1",
+      '-f',
+      'null',
+      '-',
+    ]);
+    expect(locateArgs('/lib/a.mkv', dts(), true)).toContain(
+      "select='isnan(prev_selected_t)+gte(t-prev_selected_t,1)',showinfo@s0",
+    );
   });
 
   it('copies video unless decodeVideo; decodes video when the file has no audio', async () => {
