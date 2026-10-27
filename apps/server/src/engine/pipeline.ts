@@ -97,6 +97,7 @@ import {
   type RenderInput,
   renderArgs,
   renderCommandLine,
+  renderEncoders,
   yuv420Depth,
 } from './render.ts';
 // Two functions are named replaceOriginal: the finish node (nodes/core/finish.ts) and this one.
@@ -483,10 +484,11 @@ export async function readTail(path: string, bytes: number): Promise<string> {
 
 /**
  * Which side an ffmpeg error-level line (`[error]`/`[fatal]`/`[panic]`, ffmpeg's `level+` tag) came
- * from; null for any other line. `source`: its first context is the input (`in#…`), an input
- * stream (`…ist#…`), a decoder (`dec:…`), or a bare `[<codec> @ 0x…]` naming a source decoder that is
- * not also an encoder of the job (libavcodec's own decoder messages). Everything else (encoders,
- * the muxer, `out#`, unknown or no context) is the output's.
+ * from; null for any other line. `source`: its first context is the source input (`in#0…`), one
+ * of its streams (`…ist#0:…`), or a decoder context (`dec:<name>`, or a bare `[<name> @ 0x…]`:
+ * libavcodec's own messages) naming a source decoder that is not also an encoder of the job. Everything
+ * else (encoders, the muxer, `out#`, extra inputs such as sidecars, unknown or no context) is the
+ * output's: a source error leads to replacing the file, so a doubtful line never counts.
  */
 export function classifyErrorLine(
   line: string,
@@ -497,8 +499,10 @@ export function classifyErrorLine(
   const m = /^\[([^\]@]+?)(?: @ 0x[0-9a-f]+)?\]/i.exec(line.trim());
   const ctx = m?.[1]?.trim();
   if (!ctx || /^(error|fatal|panic)$/.test(ctx)) return 'output';
-  if (/^(in#|[a-z]?ist#|dec:)/.test(ctx)) return 'source';
-  return sourceCodecs.has(ctx) && !encoders.has(ctx) ? 'source' : 'output';
+  if (/^(in#0\/|[a-z]?ist#0:)/.test(ctx)) return 'source';
+  // A decoder may also read an extra input: it counts only when it is one of the source's.
+  const decoder = ctx.startsWith('dec:') ? ctx.slice(4) : ctx;
+  return sourceCodecs.has(decoder) && !encoders.has(decoder) ? 'source' : 'output';
 }
 
 /** A stream's exact frame count (`nb_frames`) and mkvmerge's NUMBER_OF_FRAMES tag (only advisory). */
@@ -1257,9 +1261,7 @@ export class Pipeline implements JobExecutor {
    */
   private async encode(job: JobRow, ctl: JobControl, p: Prepared): Promise<End | null> {
     const { config } = this.deps;
-    const encoders = new Set(
-      kept(p.model).flatMap((s) => (s.mode === 'convert' ? [s.encoder ?? s.codec] : [])),
-    );
+    const encoders = renderEncoders(p.model);
     const sourceCodecs = sourceDecoderNames(p.probe.streams.map((s) => s.codec));
     let last: ProgressSample | null = null;
     let lastWrite = Number.NEGATIVE_INFINITY;

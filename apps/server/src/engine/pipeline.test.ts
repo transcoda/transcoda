@@ -66,6 +66,7 @@ import {
   redactUrl,
 } from './pipeline.ts';
 import { FakeSpawner, type RunnerProcess, type SpawnOptions } from './process.ts';
+import { renderEncoders } from './render.ts';
 import { probeOf, withSidecar, withStream } from './test-helpers.ts';
 
 /** How long `until` waits; well above any healthy run, below the raised test timeout. */
@@ -3061,6 +3062,37 @@ describe('pipeline: fix round (review)', () => {
         codecs,
         new Set(['libx264']),
       ),
+    ).toBe('source');
+  });
+
+  it('an srt encoder line is the output’s even when the source has a subrip stream', () => {
+    const source = probeOf([
+      { type: 'video', codec: 'hevc', default: true },
+      { type: 'subtitle', codec: 'subrip', language: 'eng' },
+      { type: 'subtitle', codec: 'mov_text', language: 'ger' },
+    ]);
+    const model = withStream(modelFromProbe(source), 2, { mode: 'convert', codec: 'subrip' });
+    const encoders = renderEncoders(model);
+    expect(encoders.has('srt')).toBe(true);
+    const codecs = sourceDecoderNames(source.streams.map((s) => s.codec));
+    for (const line of [
+      '[srt @ 0x55d0] [error] Subtitle encoding failed',
+      '[sost#0:2/srt @ 0x55d1] [error] Error while encoding',
+    ]) {
+      expect([line, classifyErrorLine(line, codecs, encoders)]).toEqual([line, 'output']);
+    }
+  });
+
+  it('an error from an extra input (a sidecar) is never the source’s', () => {
+    const codecs = sourceDecoderNames(['hevc', 'subrip']);
+    for (const line of [
+      '[in#1/srt @ 0x1] [error] Invalid data found when processing input',
+      '[sist#1:0/subrip @ 0x1] [error] Error while decoding stream',
+    ]) {
+      expect([line, classifyErrorLine(line, codecs, new Set())]).toEqual([line, 'output']);
+    }
+    expect(
+      classifyErrorLine('[sist#0:2/subrip @ 0x1] [error] Error while decoding', codecs, new Set()),
     ).toBe('source');
   });
 });

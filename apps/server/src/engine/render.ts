@@ -207,13 +207,29 @@ function deviceArgs(encoder: string, i: number, device: RenderDevice | undefined
   return device?.kind === 'cuda' && encoder.endsWith('_nvenc') ? opt('gpu', i, device.index) : [];
 }
 
+/** The ffmpeg encoder that writes a converted stream (`-c:N <encoder>`). */
+function streamEncoder(s: StreamPlan): string {
+  if (s.type === 'subtitle') return s.encoder ?? SUBTITLE_ENCODERS[s.codec] ?? s.codec;
+  return s.encoder ?? s.codec;
+}
+
+/**
+ * Every ffmpeg encoder the render of `model` runs, by the name ffmpeg logs it under. Error lines
+ * from these are the output's even when a source decoder shares the name.
+ */
+export function renderEncoders(model: BuildModel): Set<string> {
+  return new Set(
+    kept(model).flatMap((s) =>
+      s.mode === 'convert' && s.type !== 'data' ? [streamEncoder(s)] : [],
+    ),
+  );
+}
+
 function codecArgs(s: StreamPlan, i: number, device?: RenderDevice, vpp?: string): string[] {
   // Data streams (timecode, metadata tracks) are always copied; nothing can encode them.
   if (s.mode === 'copy' || s.type === 'data') return [`-c:${i}`, 'copy'];
-  if (s.type === 'subtitle') {
-    return [`-c:${i}`, s.encoder ?? SUBTITLE_ENCODERS[s.codec] ?? s.codec];
-  }
-  const encoder = s.encoder ?? s.codec;
+  if (s.type === 'subtitle') return [`-c:${i}`, streamEncoder(s)];
+  const encoder = streamEncoder(s);
   const profile = profileName(s, encoder);
   const args = [`-c:${i}`, encoder];
   if (s.type === 'video') {

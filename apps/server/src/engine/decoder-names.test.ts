@@ -9,4 +9,9 @@ describe('sourceDecoderNames', () => {
     }
     expect(names.has('aac')).toBe(false);
   });
+
+  it('adds no name that is also an ffmpeg encoder Transcoda runs (srt, ssa)', () => {
+    const names = sourceDecoderNames(['subrip', 'ass']);
+    expect([...names].sort()).toEqual(['ass', 'subrip']);
+  });
 });
