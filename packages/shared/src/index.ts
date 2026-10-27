@@ -17,7 +17,14 @@ export * from './workflow/graph.ts';
 export * from './workflow/issues.ts';
 export { LIBRARY_INPUT_TYPE, libraryInputOf } from './workflow/library-input.ts';
 export { branchPortLabel, branchWord, type PortShownWhen, portShown } from './workflow/ports.ts';
-export { RENDER_DAMAGED_PORT, RENDER_DONE_PORT, RENDER_TYPE } from './workflow/render.ts';
+export {
+  CHECK_SOURCE_DAMAGED_PORT,
+  CHECK_SOURCE_OK_PORT,
+  CHECK_SOURCE_TYPE,
+  RENDER_DAMAGED_PORT,
+  RENDER_DONE_PORT,
+  RENDER_TYPE,
+} from './workflow/render.ts';
 export { shortId } from './workflow/short-id.ts';
 export { upgradeGraphJson } from './workflow/upgrade-v2.ts';
 export { linkedNodes, syncLinkedSettings, valueNamed } from './workflow/values.ts';

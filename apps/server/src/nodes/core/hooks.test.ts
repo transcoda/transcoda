@@ -11,6 +11,7 @@ import {
   type StreamPlan,
 } from '@transcoda/sdk';
 import {
+  CHECK_SOURCE_TYPE,
   type JsonValue,
   portShown,
   RENDER_DAMAGED_PORT,
@@ -19,6 +20,7 @@ import {
 } from '@transcoda/shared';
 import { describe, expect, it } from 'vitest';
 import { kept, modelFromProbe, streamsOf } from '../../engine/build-model.ts';
+import type { CheckSourceResult, CoreTools } from '../../engine/check-source.ts';
 import { parseProbe } from '../../engine/probe.ts';
 import { capsOf, fileOf, probeOf, withStream } from '../../engine/test-helpers.ts';
 import {
@@ -30,6 +32,7 @@ import {
   reorderTracks,
   setDefaultTrack,
 } from './actions.ts';
+import { checkSource } from './check-source.ts';
 import { fileMatches, hasStream, videoIs } from './conditions.ts';
 import { moveCopy, notifyWebhook, render, replaceOriginal, sizeGate } from './finish.ts';
 import { NodeHookError } from './stream-rules.ts';
@@ -1051,5 +1054,62 @@ describe('finish nodes', () => {
       reason: 'render; a damaged source continues on Damaged',
     });
     expect(shown({ qualityCheck: true })).toEqual([RENDER_DONE_PORT, RENDER_DAMAGED_PORT]);
+  });
+
+  it('check-source: ok → port ok; damaged → port damaged with findings; error → throws retryable', async () => {
+    const probe = probeOf([{}]);
+    const asked: boolean[] = [];
+    const withCore = (r: CheckSourceResult): DecideContext => {
+      const core: CoreTools = {
+        async checkSource({ decodeVideo }) {
+          asked.push(decodeVideo);
+          return r;
+        },
+      };
+      return { ...decideCtx(probe), core } as DecideContext;
+    };
+    expect(checkSource).toMatchObject({ kind: 'condition', type: CHECK_SOURCE_TYPE });
+    expect(checkSource.outputs.map((p) => p.id)).toEqual(['ok', 'damaged']);
+    expect(await decide(checkSource, withCore({ kind: 'ok', warnings: [] }))).toEqual({
+      port: 'ok',
+      reason: 'source reads clean',
+      findings: { warnings: [] },
+    });
+    expect(
+      await decide(
+        checkSource,
+        withCore({ kind: 'ok', warnings: ['ends 5 s short of the declared 1:40'] }),
+        { decodeVideo: true },
+      ),
+    ).toMatchObject({
+      port: 'ok',
+      reason: 'source reads clean; ends 5 s short of the declared 1:40',
+    });
+    expect(asked).toEqual([false, true]);
+    expect(
+      await decide(
+        checkSource,
+        withCore({
+          kind: 'damaged',
+          reason: 'audio #1 (DTS): Invalid LFE scale factor index',
+          stream: 'audio #1 (DTS)',
+        }),
+      ),
+    ).toEqual({
+      port: 'damaged',
+      reason: 'audio #1 (DTS): Invalid LFE scale factor index',
+      findings: {
+        reason: 'audio #1 (DTS): Invalid LFE scale factor index',
+        stream: 'audio #1 (DTS)',
+      },
+    });
+    const failed = decide(checkSource, withCore({ kind: 'error', message: 'Input/output error' }));
+    await expect(failed).rejects.toMatchObject({
+      message: 'check source failed: Input/output error',
+      retryable: true,
+    });
+    await expect(decide(checkSource, decideCtx(probe))).rejects.toThrow(
+      'check source is not available here',
+    );
   });
 });

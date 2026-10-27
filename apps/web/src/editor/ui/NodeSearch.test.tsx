@@ -186,9 +186,10 @@ describe('NodeSearch', () => {
     });
     const input = screen.getByRole('combobox', { name: 'Search nodes' });
     fireEvent.change(input, { target: { value: 'encod' } });
-    // "Encode video", "Encode audio", "Remux" and "Render" (re-encoding) and the unavailable
-    // "Generate subtitles".
+    // "Check source" (before anything is encoded), "Encode video", "Encode audio", "Remux" and
+    // "Render" (re-encoding) and the unavailable "Generate subtitles".
     expect(optionNames()).toEqual([
+      'Check source',
       'Encode video',
       'Encode audio',
       'Remux',
@@ -196,6 +197,8 @@ describe('NodeSearch', () => {
       'Generate subtitles, plugin',
     ]);
     const active = () => document.getElementById(input.getAttribute('aria-activedescendant') ?? '');
+    expect(active()?.getAttribute('aria-label')).toBe('Check source');
+    fireEvent.keyDown(input, { key: 'ArrowDown' });
     expect(active()?.getAttribute('aria-label')).toBe('Encode video');
     fireEvent.keyDown(input, { key: 'ArrowDown' });
     fireEvent.keyDown(input, { key: 'ArrowDown' });

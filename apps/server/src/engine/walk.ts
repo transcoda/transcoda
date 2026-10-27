@@ -25,6 +25,8 @@ import {
   type WorkflowGraph,
 } from '@transcoda/shared';
 import {
+  CHECK_SOURCE_DAMAGED_PORT,
+  CHECK_SOURCE_TYPE,
   RENDER_DAMAGED_PORT,
   RENDER_TYPE,
   SIZE_GATE_ELSE_PORT,
@@ -35,6 +37,7 @@ import { isRemoteDefinition, RemoteHookError } from '../nodes/remote.ts';
 import { migrationPath } from '../workflows/upgrade.ts';
 import { behaviourHoldText, SIZE_GATE_SHARED_TEXT } from '../workflows/validate.ts';
 import { isExtraStream, modelFromProbe } from './build-model.ts';
+import type { CoreTools } from './check-source.ts';
 import { modelChanges } from './model-changes.ts';
 import type { AutoPick } from './retarget.ts';
 
@@ -55,6 +58,8 @@ export interface WalkDeps {
   onNodeStart?(node: { workflowPath: string[]; nodeId: string }): void;
   capabilities: HookContextBase['capabilities'];
   log(message: string): void;
+  /** Engine tools for core nodes (Check source); absent: such a node fails the walk. */
+  core?: CoreTools;
 }
 
 export interface WalkInput {
@@ -89,9 +94,18 @@ export type WalkFailure = {
   reason: string;
   /** The path up to and including the failing node. */
   path: PathStep[];
-  /** A plugin hook failed in a way a second attempt may fix (the pipeline's retry-once rule). */
+  /**
+   * A hook failed in a way a second attempt may fix (the pipeline's retry-once rule): a plugin's
+   * retryable error, or a core node's (Check source could not read the file).
+   */
   retryable: boolean;
 };
+
+/** Where the path left a Check source by Damaged, and what it found. */
+export interface SourceDamagedAt {
+  nodeId: string;
+  damage: { reason: string; stream?: string };
+}
 
 /** Data-node values by `dataKey` → `{ [outputPortId]: value }`. */
 type DataMemo = Map<string, Record<string, DataValue>>;
@@ -111,6 +125,11 @@ export type DecidedPath = {
    * turns out damaged while rendering.
    */
   damagedNodes: Map<string, NodeRef[]>;
+  /**
+   * The path left a (top-level) Check source by Damaged: the finish nodes after it are on
+   * `nodes` and run without anything rendered or written. Null otherwise.
+   */
+  sourceDamagedAt: SourceDamagedAt | null;
   /** Keyed by `${workflowPath.join('/')}/${nodeId}` of the data node. */
   data: DataMemo;
   /** The `seq` the build phase continues with. */
@@ -148,6 +167,11 @@ export type WalkResult =
        * Damaged is unconnected, or the path has no running Render.
        */
       damaged: DamagedBranch | null;
+      /**
+       * The path left a Check source by Damaged: `actions` are the (non-writing) finish steps
+       * after it; nothing is rendered. Null otherwise.
+       */
+      sourceDamagedAt: SourceDamagedAt | null;
       path: PathStep[];
       /** Video streams an `auto` Encode video put on an encoder; the main path only. */
       autoPicks: AutoPick[];
@@ -212,8 +236,12 @@ function checksQuality(def: AnyNodeDefinition, n: NodeInstance): boolean {
 const NO_WRITE_WHERE = {
   else: 'the size gate\u2019s No branch',
   damaged: 'Render\u2019s Damaged',
+  source: 'Check source\u2019s Damaged',
 } as const;
 type NoWrite = keyof typeof NO_WRITE_WHERE;
+
+/** A Check source in a sub-workflow (validation refuses one): its Damaged would lead back out. */
+const CHECK_SOURCE_NESTED_TEXT = 'Check source is not allowed in a sub-workflow';
 
 /** Kinds with no hook: the walk traces them as `pass` and ignores their bypass flag. */
 const PASS_KINDS: ReadonlySet<string> = new Set(['trigger', 'subworkflow-io']);
@@ -246,6 +274,8 @@ class Walker {
   readonly gateIndex = new Map<string, number>();
   /** Where each Render's action starts in the actions the build collects. */
   readonly renderIndex = new Map<string, number>();
+  /** Set once the path leaves a Check source by Damaged. */
+  sourceDamagedAt: SourceDamagedAt | null = null;
   /** Where each node seen so far comes from, for the trace's `source`. */
   private readonly sources = new Map<string, Source>();
 
@@ -322,6 +352,10 @@ class Walker {
     return {
       // Server-side only: a plugin node pinned to an older version is migrated by its host.
       nodeVersion: n.typeVersion,
+      // Server-side only too (wireContext strips it): the engine's tools for core nodes.
+      ...(this.deps.core && this.deps.registry.get(n.type)?.source.kind === 'core'
+        ? { core: this.deps.core }
+        : {}),
       probe: this.input.probe,
       file: this.input.file,
       data,
@@ -377,7 +411,9 @@ class Walker {
         n.id,
         [...path],
         reason,
-        err instanceof RemoteHookError && err.retryable,
+        err instanceof RemoteHookError
+          ? err.retryable
+          : (err as { retryable?: unknown } | null)?.retryable === true,
       );
     }
     this.trace(n.id, path, phase, startedAt, outcome(result));
@@ -547,6 +583,19 @@ class Walker {
             (r) => ({ port: r.port, reason: r.reason, findings: r.findings ?? {} }),
           );
           port = result.port;
+          if (n.type === CHECK_SOURCE_TYPE && port === CHECK_SOURCE_DAMAGED_PORT) {
+            // Only finish steps follow (validation); none renders or writes (the build).
+            if (path.length > 0) this.fail(id, path, 'decide', CHECK_SOURCE_NESTED_TEXT);
+            const f = result.findings ?? {};
+            const stream = typeof f.stream === 'string' ? f.stream : undefined;
+            this.sourceDamagedAt = {
+              nodeId: id,
+              damage: {
+                reason: typeof f.reason === 'string' ? f.reason : result.reason,
+                ...(stream !== undefined ? { stream } : {}),
+              },
+            };
+          }
         }
       } else if (def.kind === 'action' || def.kind === 'finish') {
         // Resolved now so data entries precede the build entries; the build reads the memo.
@@ -754,7 +803,10 @@ class Walker {
       }
       if (
         run.noWrite !== undefined &&
-        (def.finishPhase === 'write' || def.finishPhase === 'gate' || def.finishPhase === 'render')
+        (def.kind !== 'finish' ||
+          def.finishPhase === 'write' ||
+          def.finishPhase === 'gate' ||
+          def.finishPhase === 'render')
       ) {
         this.fail(
           nodeId,
@@ -912,6 +964,7 @@ export async function walkDecide(
       nodes: walker.steps,
       elseNodes: walker.elseSteps,
       damagedNodes: walker.damagedSteps,
+      sourceDamagedAt: walker.sourceDamagedAt,
       data: memo,
       nextSeq: walker.seq,
     };
@@ -926,10 +979,25 @@ export async function walkBuild(
 ): Promise<WalkResult> {
   const walker = new Walker(deps, input, decided.data, decided.nextSeq);
   return guarded(walker, async () => {
-    const { model, actions, autoPicks } = await walker.build(decided.nodes, {
+    // Below a Check source's Damaged nothing renders or writes: the steps after it build apart.
+    const at = decided.sourceDamagedAt
+      ? decided.nodes.findIndex(
+          (r) => r.workflowPath.length === 0 && r.nodeId === decided.sourceDamagedAt?.nodeId,
+        )
+      : -1;
+    const head = at >= 0 ? decided.nodes.slice(0, at + 1) : decided.nodes;
+    const { model, actions, autoPicks } = await walker.build(head, {
       model: modelFromProbe(input.probe),
       actions: [],
     });
+    if (at >= 0) {
+      await walker.build(decided.nodes.slice(at + 1), {
+        model,
+        actions,
+        prefix: head,
+        noWrite: 'source',
+      });
+    }
     // The finish steps behind each gate's `else`, built with the model the pass path ended on.
     const gates: GateBranch[] = [];
     for (const [nodeId, refs] of decided.elseNodes) {
@@ -967,6 +1035,7 @@ export async function walkBuild(
       actions,
       gates,
       damaged,
+      sourceDamagedAt: at >= 0 ? decided.sourceDamagedAt : null,
       path: decided.nodes.map(step),
       autoPicks,
     };

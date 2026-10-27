@@ -1,12 +1,14 @@
 import type { Capabilities } from '@transcoda/contract';
 import { defineNode } from '@transcoda/sdk';
 import {
+  type Edge,
   emptyGraph,
   FINISH_PHASES,
   type FinishPhase,
   finishPhaseRank,
   type Issue,
   type JsonValue,
+  type NodeInstance,
   type WorkflowGraph,
 } from '@transcoda/shared';
 import { describe, expect, it } from 'vitest';
@@ -1603,6 +1605,77 @@ describe('validateWorkflow', () => {
       expect(
         find(validateWorkflow(sub, ctx()), 'NODE_NOT_ALLOWED_HERE').map((i) => i.nodeId),
       ).toEqual(['r']);
+    });
+
+    describe('Check source', () => {
+      /** in → cs; OK → `ok` (chained); Damaged → `damaged` (chained). */
+      const checked = (ok: NodeInstance[], damaged: NodeInstance[], extraEdges: Edge[] = []) =>
+        bareGraph(
+          [node('in', 'core:input-manual'), node('cs', 'core:check-source'), ...ok, ...damaged],
+          [
+            edge('in', 'cs'),
+            ...ok.map((n, i) => {
+              if (i === 0) return edge('cs', n.id, { from: 'ok' });
+              const prev = ok[i - 1] as NodeInstance;
+              return edge(prev.id, n.id, prev.type === 'core:render' ? { from: 'done' } : {});
+            }),
+            ...damaged.map((n, i) =>
+              i === 0
+                ? edge('cs', n.id, { from: 'damaged' })
+                : edge((damaged[i - 1] as NodeInstance).id, n.id),
+            ),
+            ...extraEdges,
+          ],
+        );
+      const okSide = () => [node('r', 'core:render'), node('ro', 'core:replace-original')];
+
+      it('after Check source’s Damaged a notify needs no Render and a replace-original is DAMAGED_ONLY_NOTIFY; after OK a Render is still required', () => {
+        expect(validateWorkflow(checked(okSide(), [notifyNode('nd')]), ctx())).toEqual([]);
+        // An unconnected Damaged is fine too: the original is kept as damaged.
+        expect(validateWorkflow(checked(okSide(), []), ctx())).toEqual([]);
+        expect(
+          validateWorkflow(checked(okSide(), [node('rb', 'core:replace-original')]), ctx()),
+        ).toEqual([
+          {
+            severity: 'error',
+            code: 'DAMAGED_ONLY_NOTIFY',
+            message:
+              'After Check source\u2019s Damaged, only notifications and other non-writing finish steps can follow.',
+            nodeId: 'rb',
+          },
+        ]);
+        // No Render below Damaged (nothing is encoded there), and no action either.
+        for (const below of [
+          [node('r2', 'core:render'), notifyNode('nd')],
+          [node('ev', 'core:encode-video', { codec: 'h264', encoder: 'libx264' })],
+        ]) {
+          expect(
+            find(validateWorkflow(checked(okSide(), below), ctx()), 'DAMAGED_ONLY_NOTIFY').map(
+              (i) => i.nodeId,
+            ),
+          ).toEqual([(below[0] as NodeInstance).id]);
+        }
+        const noRender = checked([node('ro', 'core:replace-original')], [notifyNode('nd')]);
+        expect(
+          find(validateWorkflow(noRender, ctx()), 'RENDER_MISSING').map((i) => i.nodeId),
+        ).toEqual(['ro']);
+      });
+
+      it('a damagedOnly node may follow Check source’s Damaged, not OK', () => {
+        const onDamaged = checked(okSide(), [node('rd', 'test:replace-damaged')]);
+        expect(validateWorkflow(onDamaged, damagedCtx())).toEqual([]);
+        const onOk = checked([...okSide(), node('rd', 'test:replace-damaged')], []);
+        expect(
+          find(validateWorkflow(onOk, damagedCtx()), 'DAMAGED_ONLY').map((i) => i.nodeId),
+        ).toEqual(['rd']);
+      });
+
+      it('Check source in a sub-workflow → NODE_NOT_ALLOWED_HERE', () => {
+        const sub = chain('subworkflow', node('cs', 'core:check-source'));
+        expect(
+          find(validateWorkflow(sub, ctx()), 'NODE_NOT_ALLOWED_HERE').map((i) => i.nodeId),
+        ).toEqual(['cs']);
+      });
     });
   });
 

@@ -12,6 +12,8 @@ import {
 import {
   branchPortLabel,
   branchWord,
+  CHECK_SOURCE_DAMAGED_PORT,
+  CHECK_SOURCE_TYPE,
   type DeviceProfileId,
   type Edge,
   finishPhaseRank,
@@ -507,7 +509,10 @@ function checkKindRules(
   } else {
     for (const n of graph.nodes) {
       const kind = kindOf(n);
-      if (kind === 'trigger' || kind === 'finish') notAllowed(n, 'a sub-workflow');
+      // Check source's Damaged would lead back out of the sub-workflow into steps that render.
+      if (kind === 'trigger' || kind === 'finish' || n.type === CHECK_SOURCE_TYPE) {
+        notAllowed(n, 'a sub-workflow');
+      }
     }
     roots = graph.nodes.filter((n) => n.type === SUBWORKFLOW_START_TYPE);
     const ends = graph.nodes.filter((n) => n.type === SUBWORKFLOW_END_TYPE).length;
@@ -868,6 +873,8 @@ const ELSE_ONLY_NOTIFY_TEXT =
 
 const DAMAGED_ONLY_NOTIFY_TEXT =
   'After Render\u2019s Damaged, only notifications and other non-writing finish steps can follow.';
+const SOURCE_DAMAGED_ONLY_NOTIFY_TEXT =
+  'After Check source\u2019s Damaged, only notifications and other non-writing finish steps can follow.';
 
 /** A finish step that renders, gates or writes: none may run where no result is written. */
 function writesOrGates(def: AnyNodeDefinition): boolean {
@@ -956,6 +963,8 @@ function checkPaths(
     afterElse: boolean;
     /** Below Render's Damaged: as below `else`; `damagedOnly` nodes belong here only. */
     afterDamaged: boolean;
+    /** Below Check source's Damaged: as below Render's, and no Render is needed (or allowed). */
+    afterSourceDamaged: boolean;
   };
   const flag = (b: boolean) => (b ? 1 : 0);
   const stack: Visit[] = [
@@ -968,12 +977,13 @@ function checkPaths(
       rendered: false,
       afterElse: false,
       afterDamaged: false,
+      afterSourceDamaged: false,
     },
   ];
   let visits = 0;
   for (let top = stack.pop(); top !== undefined; top = stack.pop()) {
     const { id } = top;
-    const key = `${id}:${flag(top.wrote)}${flag(top.finished)}${flag(top.rendered)}${flag(top.afterElse)}${flag(top.afterDamaged)}:${top.rank}`;
+    const key = `${id}:${flag(top.wrote)}${flag(top.finished)}${flag(top.rendered)}${flag(top.afterElse)}${flag(top.afterDamaged)}${flag(top.afterSourceDamaged)}:${top.rank}`;
     const n = byId.get(id);
     if (!n || expanded.has(key)) continue;
     expanded.add(key);
@@ -981,7 +991,7 @@ function checkPaths(
     const def = defOf(states.get(id));
     const name = title(n, def);
     let { wrote, finished, rank, by, rendered } = top;
-    const { afterElse, afterDamaged } = top;
+    const { afterElse, afterDamaged, afterSourceDamaged } = top;
     const isRender = def?.type === RENDER_TYPE;
     if (isRender && n.bypassed === true) {
       report(
@@ -993,7 +1003,12 @@ function checkPaths(
       rendered = true;
     }
     if (def && n.bypassed !== true) {
-      if (afterDamaged && writesOrGates(def)) {
+      if (afterSourceDamaged && (def.kind !== 'finish' || writesOrGates(def))) {
+        report(
+          `source-damaged-only-notify:${id}`,
+          error('DAMAGED_ONLY_NOTIFY', SOURCE_DAMAGED_ONLY_NOTIFY_TEXT, { nodeId: id }),
+        );
+      } else if (afterDamaged && writesOrGates(def)) {
         report(
           `damaged-only-notify:${id}`,
           error('DAMAGED_ONLY_NOTIFY', DAMAGED_ONLY_NOTIFY_TEXT, { nodeId: id }),
@@ -1069,8 +1084,13 @@ function checkPaths(
     // kept and nothing is written there.
     const isGate = def?.type === SIZE_GATE_TYPE && n.bypassed !== true;
     const runsRender = isRender && n.bypassed !== true;
+    const checksSource = def?.type === CHECK_SOURCE_TYPE && n.bypassed !== true;
+    // Check source's unconnected Damaged likewise: the job keeps the original as damaged.
     const warnPorts = ports.filter(
-      (p) => !(isGate && p === SIZE_GATE_ELSE_PORT) && !(runsRender && p === RENDER_DAMAGED_PORT),
+      (p) =>
+        !(isGate && p === SIZE_GATE_ELSE_PORT) &&
+        !(runsRender && p === RENDER_DAMAGED_PORT) &&
+        !(checksSource && p === CHECK_SOURCE_DAMAGED_PORT),
     );
     if (!wrote && !afterElse && !afterDamaged) {
       if (connected.length === 0) {
@@ -1097,7 +1117,10 @@ function checkPaths(
     for (const port of [...connected].reverse()) {
       const targets = next.get(`${id}:${port}`) ?? [];
       const branchElse = afterElse || (isGate && port === SIZE_GATE_ELSE_PORT);
-      const branchDamaged = afterDamaged || (runsRender && port === RENDER_DAMAGED_PORT);
+      const branchSource =
+        afterSourceDamaged || (checksSource && port === CHECK_SOURCE_DAMAGED_PORT);
+      const branchDamaged =
+        afterDamaged || branchSource || (runsRender && port === RENDER_DAMAGED_PORT);
       // Finish nodes sharing an output run as one set (the write before the rest), so a write
       // anywhere in the set counts for every path through it.
       const setWrites = targets.length > 1 && sharedSetWrites(targets, byId, states, next);
@@ -1111,6 +1134,7 @@ function checkPaths(
           rendered,
           afterElse: branchElse,
           afterDamaged: branchDamaged,
+          afterSourceDamaged: branchSource,
         });
       }
     }

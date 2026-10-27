@@ -4909,4 +4909,155 @@ describe('pipeline: damaged sources (Render’s Damaged)', () => {
     expect(findJobResult(t.db, id)?.sourceDamaged).toBe(true);
     expect(calledUrls()).toEqual([]);
   });
+
+  describe('Check source', () => {
+    /** in → cs; OK → encode → Render → Replace; Damaged → Replace damaged file, Notify. */
+    const checked = (): string =>
+      workflow(
+        bareGraph(
+          [
+            node('in', 'core:input-manual'),
+            node('cs', 'core:check-source'),
+            toH264(),
+            node('r', 'core:render'),
+            replaceNode(),
+            node('rd', 'test:replace-damaged'),
+            notify(),
+          ],
+          [
+            edge('in', 'cs'),
+            edge('cs', 'ev', { from: 'ok' }),
+            edge('ev', 'r'),
+            edge('r', 'ro', { from: 'done' }),
+            edge('cs', 'rd', { from: 'damaged' }),
+            edge('cs', 'nw', { from: 'damaged' }),
+          ],
+        ),
+      );
+    const isPass = (args: string[]) => args.includes('level+error');
+    const passes = () => execCalls.filter((c) => isPass(c.slice(1)));
+    /** The pass answers with the dca error (exit 0, as ffmpeg does for decode errors). */
+    const passFindsLfe = () => {
+      execHook = async (_f, args) => (isPass(args) ? { stdout: '', stderr: `${LFE}\n` } : null);
+    };
+
+    it('Check source damaged → the Damaged steps run in prepare, the job ends kept_original + sourceDamaged, ffmpeg never encodes', async () => {
+      passFindsLfe();
+      const id = await queue(file(), checked());
+      await t.deps.engine.start();
+      expect(await settled(id)).toMatchObject({
+        state: 'kept_original',
+        reason: 'source is damaged: audio #1 (DTS): Invalid LFE scale factor index',
+      });
+      expect(spawner.calls).toEqual([]);
+      expect(passes()).toHaveLength(1);
+      const args = passes()[0] ?? [];
+      expect(args).toContain('copy');
+      expect(args).toContain(file());
+      expect(findJobResult(t.db, id)).toMatchObject({ sourceDamaged: true, replacedTo: null });
+      expect(runCalls).toHaveLength(1);
+      expect(runCalls[0]).toMatchObject({
+        outcome: 'damaged',
+        newPath: file(),
+        afterBytes: 1000,
+        beforeBytes: 1000,
+        damage: {
+          reason: 'audio #1 (DTS): Invalid LFE scale factor index',
+          stream: 'audio #1 (DTS)',
+        },
+      });
+      expect(calledUrls()).toEqual([URL]);
+      expect(body(0)).toMatchObject({
+        outcome: 'kept_original',
+        reason: 'source is damaged: audio #1 (DTS): Invalid LFE scale factor index',
+      });
+      expect(traceOf(id, 'cs').at(-1)).toEqual([
+        'decide',
+        'damaged',
+        'audio #1 (DTS): Invalid LFE scale factor index',
+      ]);
+      expect(t.deps.engine.jobDetail(id)?.path.map((s) => [s.nodeId, s.port])).toEqual([
+        ['in', 'file'],
+        ['cs', 'damaged'],
+        ['rd', null],
+        ['nw', 'file'],
+      ]);
+      expect((await stat(file())).size).toBe(1000);
+    });
+
+    it('Check source OK → the path encodes and replaces as usual', async () => {
+      const id = await queue(file(), checked());
+      expect(await runOnce(id)).toMatchObject({ state: 'done' });
+      expect(passes()).toHaveLength(1);
+      expect(traceOf(id, 'cs').at(-1)).toEqual(['decide', 'ok', 'source reads clean']);
+      expect(runCalls).toEqual([]);
+      expect(calledUrls()).toEqual([]);
+    });
+
+    it('Check source read failure → retried once, then failed (never Damaged)', async () => {
+      execHook = async (_f, args) => {
+        if (!isPass(args)) return null;
+        throw Object.assign(new Error('Command failed: ffmpeg'), {
+          code: 1,
+          stderr: `[in#0/matroska,webm @ 0x1] [error] Error during demuxing: Input/output error\n${LFE}\n`,
+        });
+      };
+      const id = await queue(file(), checked());
+      await t.deps.engine.start();
+      const job = await settled(id);
+      expect(job).toMatchObject({
+        state: 'failed',
+        attempt: 2,
+        reason: 'cs: check source failed: Error during demuxing: Input/output error',
+      });
+      expect(passes()).toHaveLength(2);
+      expect(findJobResult(t.db, id)?.sourceDamaged).toBe(false);
+      expect(spawner.calls).toEqual([]);
+      expect(runCalls).toEqual([]);
+      expect(calledUrls()).toEqual([]);
+    });
+
+    it('a dry run runs Check source for real and ends kept_original + sourceDamaged when damaged; the real run that follows does not read the file again', async () => {
+      passFindsLfe();
+      const wf = checked();
+      const dry = await queue(file(), wf, { dryRun: true, testEncode: false });
+      await t.deps.engine.start();
+      expect(await settled(dry)).toMatchObject({
+        state: 'kept_original',
+        reason: 'source is damaged: audio #1 (DTS): Invalid LFE scale factor index',
+      });
+      expect(findJobResult(t.db, dry)?.sourceDamaged).toBe(true);
+      expect(passes()).toHaveLength(1);
+      expect(runCalls).toEqual([]);
+      expect(calledUrls()).toEqual([]);
+      const real = await queue(file(), wf, { force: true });
+      expect(await settled(real)).toMatchObject({ state: 'kept_original' });
+      expect(passes()).toHaveLength(1);
+      expect(runCalls).toHaveLength(1);
+      expect(findJobResult(t.db, real)?.sourceDamaged).toBe(true);
+    });
+
+    it('cancel during Check source kills the pass and ends cancelled', async () => {
+      let started = false;
+      execHook = async (_f, args, signal) => {
+        if (!isPass(args)) return null;
+        started = true;
+        await new Promise<void>((resolve) => {
+          if (signal?.aborted) resolve();
+          signal?.addEventListener('abort', () => resolve(), { once: true });
+        });
+        throw Object.assign(new Error('aborted'), { name: 'AbortError' });
+      };
+      const id = await queue(file(), checked());
+      await t.deps.engine.start();
+      await until('the pass runs', () => started);
+      t.deps.engine.scheduler.cancelJob(id);
+      expect(await settled(id)).toMatchObject({ state: 'cancelled' });
+      expect(execSignals.some((sig) => sig?.aborted)).toBe(true);
+      expect(findJobResult(t.db, id)?.sourceDamaged ?? false).toBe(false);
+      expect(runCalls).toEqual([]);
+      expect(calledUrls()).toEqual([]);
+      expect(spawner.calls).toEqual([]);
+    });
+  });
 });

@@ -79,7 +79,8 @@ import {
   normalizeDefaults,
   outputOrder,
 } from './build-model.ts';
-import { sourceDecoderNames } from './decoder-names.ts';
+import { type CheckSourceResult, type CoreTools, checkSource } from './check-source.ts';
+import { classifyErrorLine, sourceDecoderNames } from './decoder-names.ts';
 import type { CurrentNode, EngineEvents } from './events.ts';
 import { ffmpegFailure, looksLikeGpuFailure, softwareFallback } from './fallback.ts';
 import { type Fingerprint, fingerprintKey } from './fingerprint.ts';
@@ -124,11 +125,14 @@ import {
   type DamagedBranch,
   type DecidedPath,
   type GateBranch,
+  type SourceDamagedAt,
   type WalkDeps,
   type WalkInput,
   walkBuild,
   walkDecide,
 } from './walk.ts';
+
+export { classifyErrorLine } from './decoder-names.ts';
 
 /** Job progress is written at most this often. */
 export const PROGRESS_INTERVAL_MS = 1000;
@@ -493,29 +497,6 @@ export async function readTail(path: string, bytes: number): Promise<string> {
   }
 }
 
-/**
- * Which side an ffmpeg error-level line (`[error]`/`[fatal]`/`[panic]`, ffmpeg's `level+` tag) came
- * from; null for any other line. `source`: its first context is the source input (`in#0…`), one
- * of its streams (`…ist#0:…`), or a decoder context (`dec:<name>`, or a bare `[<name> @ 0x…]`:
- * libavcodec's own messages) naming a source decoder that is not also an encoder of the job. Everything
- * else (encoders, the muxer, `out#`, extra inputs such as sidecars, unknown or no context) is the
- * output's: a source error leads to replacing the file, so a doubtful line never counts.
- */
-export function classifyErrorLine(
-  line: string,
-  sourceCodecs: ReadonlySet<string>,
-  encoders: ReadonlySet<string>,
-): 'source' | 'output' | null {
-  if (!/\[(error|fatal|panic)\]/.test(line)) return null;
-  const m = /^\[([^\]@]+?)(?: @ 0x[0-9a-f]+)?\]/i.exec(line.trim());
-  const ctx = m?.[1]?.trim();
-  if (!ctx || /^(error|fatal|panic)$/.test(ctx)) return 'output';
-  if (/^(in#0\/|[a-z]?ist#0:)/.test(ctx)) return 'source';
-  // A decoder may also read an extra input: it counts only when it is one of the source's.
-  const decoder = ctx.startsWith('dec:') ? ctx.slice(4) : ctx;
-  return sourceCodecs.has(decoder) && !encoders.has(decoder) ? 'source' : 'output';
-}
-
 /** A stream's exact frame count (`nb_frames`) and mkvmerge's NUMBER_OF_FRAMES tag (only advisory). */
 function sourceFrameCounts(
   probe: ProbeResult,
@@ -555,6 +536,8 @@ export class Pipeline implements JobExecutor {
   /** The warnings of a job's failed GPU encodes, kept across its requeues to another GPU. */
   private readonly gpuWarnings = new Map<string, string[]>();
   private readonly settleMinutes: number;
+  /** Check source's results by file and setting, oldest first (see coreTools). */
+  private readonly checkResults = new Map<string, CheckSourceResult>();
 
   constructor(private readonly deps: PipelineDeps) {
     this.settleMinutes = deps.settleMinutes ?? SETTLE_MINUTES;
@@ -702,9 +685,14 @@ export class Pipeline implements JobExecutor {
     this.update(job, ctl, { state: 'deciding' });
     const file = fileStatsOf(fp, realPath);
     let lastBuildNode: CurrentNode | null = null;
-    const walkDeps = this.walkDeps(job, ctl, (e) => {
-      lastBuildNode = { workflowPath: [...e.workflowPath], nodeId: e.nodeId };
-    });
+    const walkDeps = this.walkDeps(
+      job,
+      ctl,
+      (e) => {
+        lastBuildNode = { workflowPath: [...e.workflowPath], nodeId: e.nodeId };
+      },
+      this.coreTools(ctl, realPath, probe, fp),
+    );
     const walkInput: WalkInput = {
       graph: loaded.graph,
       probe,
@@ -725,6 +713,14 @@ export class Pipeline implements JobExecutor {
     this.stopIfAborted(ctl);
     if (built.kind === 'failed') return this.walkFailed(job, ctl, built, fp);
     this.update(job, ctl, { walkPath: built.path });
+    if (built.sourceDamagedAt !== null) {
+      return this.sourceDamagedAtCheck(
+        job,
+        ctl,
+        { fp, realPath, probe, model: built.model },
+        built,
+      );
+    }
     const { model, actions, gates, damaged } = built;
     // Default flags as the output will have them (verify compares them strictly); a model that
     // writes nothing is left as it is.
@@ -1703,7 +1699,7 @@ export class Pipeline implements JobExecutor {
   /** Sends the summary; a failure is a warning (with the URL redacted), never a job failure. */
   private async notify(
     job: JobRow,
-    p: Prepared,
+    p: StepFile,
     action: Extract<FinishAction, { kind: 'notify' }>,
     afterBytes: number,
     replacedTo: 'recycle' | 'deleted' | null,
@@ -1853,7 +1849,7 @@ export class Pipeline implements JobExecutor {
   private async runNoWriteSteps(
     job: JobRow,
     ctl: JobControl,
-    p: Prepared,
+    p: StepFile,
     actions: AnyFinishAction[],
     afterBytes: number,
     why: string,
@@ -1900,6 +1896,74 @@ export class Pipeline implements JobExecutor {
     }
     // A required plugin step's failure is a problem on a written job; here it is a warning.
     return [...out, ...kept.problems];
+  }
+
+  /**
+   * The path left a Check source by Damaged (in prepare, nothing encoded): a real job runs the
+   * non-writing steps after it with outcome `damaged`; a dry run runs none. Either ends
+   * `kept_original` with the result marked source-damaged.
+   */
+  private async sourceDamagedAtCheck(
+    job: JobRow,
+    ctl: JobControl,
+    file: Omit<StepFile, 'warnings'>,
+    built: { actions: AnyFinishAction[]; sourceDamagedAt: SourceDamagedAt | null },
+  ): Promise<{ final: true }> {
+    const damage = built.sourceDamagedAt?.damage ?? { reason: 'damaged' };
+    const reason = `source is damaged: ${damage.reason}`;
+    const side: StepFile = { ...file, warnings: [] };
+    const extra = job.dryRun
+      ? []
+      : await this.runNoWriteSteps(job, ctl, side, built.actions, file.fp.sizeBytes, reason, {
+          damage,
+          where: 'Check source\u2019s Damaged',
+        });
+    this.finish(
+      job,
+      ctl,
+      'kept_original',
+      { reason, warnings: [...side.warnings, ...extra] },
+      { fp: file.fp, sourceDamaged: true },
+    );
+    return { final: true };
+  }
+
+  /**
+   * Check source's pass for this job's file, cancelled with the job; a result is kept per file
+   * (path, size, mtime) and setting, so a dry run followed by a real run reads the file once. A
+   * pass that could not tell (`error`) is not kept: a retry reads again.
+   */
+  private coreTools(
+    ctl: JobControl,
+    realPath: string,
+    probe: ProbeResult,
+    fp: Fingerprint,
+  ): CoreTools {
+    return {
+      checkSource: async ({ decodeVideo }) => {
+        const key = `${realPath}\0${fp.sizeBytes}\0${fp.mtimeMs}\0${decodeVideo ? 1 : 0}`;
+        const hit = this.checkResults.get(key);
+        if (hit) return hit;
+        const r = await checkSource({
+          path: realPath,
+          probe,
+          ffmpegPath: this.deps.config.ffmpegPath,
+          decodeVideo,
+          sizeBytes: fp.sizeBytes,
+          exec: this.deps.exec ?? checkExec,
+          signal: ctl.signal,
+        });
+        if (r.kind !== 'error') {
+          this.checkResults.set(key, r);
+          while (this.checkResults.size > CHECK_RESULTS_KEPT) {
+            const oldest = this.checkResults.keys().next().value;
+            if (oldest === undefined) break;
+            this.checkResults.delete(oldest);
+          }
+        }
+        return r;
+      },
+    };
   }
 
   /**
@@ -2157,7 +2221,7 @@ export class Pipeline implements JobExecutor {
   private async pluginStep(
     job: JobRow,
     ctl: JobControl,
-    p: Prepared,
+    p: StepFile,
     action: PluginFinishAction,
     w: Written,
     extra: StepExtra = {},
@@ -2305,8 +2369,10 @@ export class Pipeline implements JobExecutor {
     job: JobRow,
     ctl: JobControl,
     onBuildEntry: (entry: TraceEntry) => void,
+    core?: CoreTools,
   ): WalkDeps {
     return {
+      ...(core ? { core } : {}),
       registry: this.deps.registry,
       resolveChild: (id, version, overrides) =>
         this.deps.workflows.resolvePinnedChild(id, version, overrides),
@@ -2429,6 +2495,9 @@ type ResultInput = {
   /** The original was kept because the source is damaged ("Damaged source"). */
   sourceDamaged: boolean;
 };
+
+/** What a step needs of the job's file (a prepared job, or one that ends in prepare). */
+type StepFile = Pick<Prepared, 'fp' | 'realPath' | 'probe' | 'model' | 'warnings'>;
 
 /** What a plugin step on a side branch learns: a gate's numbers, or what is wrong with the source. */
 type StepExtra = {
@@ -2578,6 +2647,10 @@ function stepOf(n: WalkStep): WalkStep {
 
 /** Cover extraction copies one image; a minute is plenty even on a slow share. */
 const coverExec: Exec = makeExec({ timeout: 60_000, maxBuffer: 1024 * 1024 });
+/** Check source's pass: its own timeout is per call (by size); stderr may list many errors. */
+const checkExec: Exec = makeExec({ timeout: 4 * 3_600_000, maxBuffer: 64 * 1024 * 1024 });
+/** Check source results kept in memory (a dry run, then the real run). */
+const CHECK_RESULTS_KEPT = 200;
 
 /**
  * Copying a cover out reads the whole file (ffmpeg reaches the picture's packet only after the

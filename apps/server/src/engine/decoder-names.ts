@@ -26,3 +26,26 @@ export function sourceDecoderNames(codecs: Iterable<string>): Set<string> {
   }
   return names;
 }
+
+/**
+ * Which side an ffmpeg error-level line (`[error]`/`[fatal]`/`[panic]`, ffmpeg's `level+` tag) came
+ * from; null for any other line. `source`: its first context is the source input (`in#0…`), one
+ * of its streams (`…ist#0:…`), or a decoder context (`dec:<name>`, or a bare `[<name> @ 0x…]`:
+ * libavcodec's own messages) naming a source decoder that is not also an encoder of the job. Everything
+ * else (encoders, the muxer, `out#`, extra inputs such as sidecars, unknown or no context) is the
+ * output's: a source error leads to replacing the file, so a doubtful line never counts.
+ */
+export function classifyErrorLine(
+  line: string,
+  sourceCodecs: ReadonlySet<string>,
+  encoders: ReadonlySet<string>,
+): 'source' | 'output' | null {
+  if (!/\[(error|fatal|panic)\]/.test(line)) return null;
+  const m = /^\[([^\]@]+?)(?: @ 0x[0-9a-f]+)?\]/i.exec(line.trim());
+  const ctx = m?.[1]?.trim();
+  if (!ctx || /^(error|fatal|panic)$/.test(ctx)) return 'output';
+  if (/^(in#0\/|[a-z]?ist#0:)/.test(ctx)) return 'source';
+  // A decoder may also read an extra input: it counts only when it is one of the source's.
+  const decoder = ctx.startsWith('dec:') ? ctx.slice(4) : ctx;
+  return sourceCodecs.has(decoder) && !encoders.has(decoder) ? 'source' : 'output';
+}

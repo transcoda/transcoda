@@ -12,6 +12,7 @@ import type {
 } from '@transcoda/sdk';
 import type { HookName, JsonValue } from '@transcoda/shared';
 import { z } from 'zod';
+import type { CoreTools } from '../engine/check-source.ts';
 import { serverSettingsSchema } from './plugin-settings-schema.ts';
 import type { NodeSource } from './registry.ts';
 
@@ -80,14 +81,23 @@ export type ServerHookContext = (HookContextBase | FinishRunContext) & {
   signal?: AbortSignal | undefined;
   /** The node's stored typeVersion; older than the definition's, the host migrates the settings. */
   nodeVersion?: number | undefined;
+  /** Engine tools for core nodes (Check source's pass); never sent to a plugin. */
+  core?: CoreTools | undefined;
 };
 
 /**
- * Everything but `plugin`, `log` (the host builds its own) and `signal`; `model` stays for
+ * Everything but `plugin`, `log` (the host builds its own), `signal` and `core`; `model` stays for
  * build/finish. The host rebuilds `ctx.plugin` from the top-level `job` and `dryRun` added here.
  */
 export function wireContext(ctx: ServerHookContext): JsonValue {
-  const { plugin, log: _log, signal: _signal, nodeVersion: _nodeVersion, ...rest } = ctx;
+  const {
+    plugin,
+    log: _log,
+    signal: _signal,
+    nodeVersion: _nodeVersion,
+    core: _core,
+    ...rest
+  } = ctx;
   return { ...rest, job: plugin.job, dryRun: plugin.dryRun } as unknown as JsonValue;
 }
 

@@ -6,3 +6,12 @@
 export const RENDER_TYPE = 'core:render';
 export const RENDER_DONE_PORT = 'done';
 export const RENDER_DAMAGED_PORT = 'damaged';
+
+/**
+ * The Check source step (`core:check-source`): a condition that reads the whole file before
+ * anything is encoded. OK continues; a damaged file continues on Damaged, where only non-writing
+ * finish steps may follow (no Render: nothing is encoded there).
+ */
+export const CHECK_SOURCE_TYPE = 'core:check-source';
+export const CHECK_SOURCE_OK_PORT = 'ok';
+export const CHECK_SOURCE_DAMAGED_PORT = 'damaged';
