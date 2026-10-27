@@ -1,4 +1,4 @@
-import { mkdtempSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createORPCClient, isDefinedError, safe } from '@orpc/client';
@@ -301,6 +301,23 @@ describe('app', () => {
     expect(await api.json()).toEqual({ error: 'NOT_FOUND' });
     const rpc = await app.request('/rpc/nope');
     expect(rpc.status).toBe(404);
+  });
+
+  it('revalidates the page on every load and caches hashed assets for good', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'tcd-web-'));
+    writeFileSync(join(dir, 'index.html'), '<html>transcoda-ui</html>');
+    writeFileSync(join(dir, 'favicon.svg'), '<svg/>');
+    mkdirSync(join(dir, 'assets'));
+    writeFileSync(join(dir, 'assets', 'index-abc123.js'), 'x');
+    const app = makeApp({ webDistDir: dir });
+    for (const path of ['/', '/index.html', '/settings/tokens', '/favicon.svg']) {
+      expect((await app.request(path)).headers.get('cache-control'), path).toBe('no-cache');
+    }
+    expect((await app.request('/assets/index-abc123.js')).headers.get('cache-control')).toBe(
+      'public, max-age=31536000, immutable',
+    );
+    expect((await app.request('/assets/missing.js')).headers.get('cache-control')).toBeNull();
+    expect((await app.request('/api/v1/nope')).headers.get('cache-control')).toBeNull();
   });
 
   it('answers a missing asset with 404 instead of the SPA page', async () => {
