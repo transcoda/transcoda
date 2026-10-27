@@ -4860,6 +4860,31 @@ describe('pipeline: damaged sources (Render’s Damaged)', () => {
     expect(calledUrls()).toEqual([]);
   });
 
+  it('a plan-only dry run of a path that never writes still lists the Damaged side', async () => {
+    const id = await queue(file(), rendered({ done: [], damaged: [notify()] }), {
+      dryRun: true,
+      testEncode: false,
+    });
+    await t.deps.engine.start();
+    expect(await settled(id)).toMatchObject({
+      state: 'kept_original',
+      reason: 'path never writes the result',
+    });
+    expect(spawner.calls).toEqual([]);
+    expect(traceOf(id, 'r').at(-1)).toEqual([
+      'finish',
+      null,
+      'Render: decides while encoding; if the source is damaged: Notify webhook',
+    ]);
+    expect(t.deps.engine.jobDetail(id)?.path.map((s) => [s.nodeId, s.port])).toEqual([
+      ['in', 'file'],
+      ['ev', 'file'],
+      ['r', null],
+      ['nw', 'file'],
+    ]);
+    expect(calledUrls()).toEqual([]);
+  });
+
   it('a test-encode dry run that finds damage ends kept_original + sourceDamaged without running any step', async () => {
     sourceSpotsSayLfe();
     const id = await queue(file(), rendered(), { dryRun: true, testEncode: true });
@@ -5058,6 +5083,99 @@ describe('pipeline: damaged sources (Render’s Damaged)', () => {
       expect(runCalls).toEqual([]);
       expect(calledUrls()).toEqual([]);
       expect(spawner.calls).toEqual([]);
+    });
+
+    describe('a path that never writes (find damaged files)', () => {
+      /** in → cs; OK → Render → Notify (ok); Damaged → Replace damaged file, Notify. */
+      const finder = (): string =>
+        workflow(
+          bareGraph(
+            [
+              node('in', 'core:input-manual'),
+              node('cs', 'core:check-source'),
+              node('r', 'core:render'),
+              node('ok', 'core:notify-webhook', { url: `${URL}/ok`, method: 'POST' }),
+              node('rd', 'test:replace-damaged'),
+              notify(),
+            ],
+            [
+              edge('in', 'cs'),
+              edge('cs', 'r', { from: 'ok' }),
+              edge('r', 'ok', { from: 'done' }),
+              edge('cs', 'rd', { from: 'damaged' }),
+              edge('cs', 'nw', { from: 'damaged' }),
+            ],
+          ),
+        );
+      const damagedPath = [
+        ['in', 'file'],
+        ['cs', 'damaged'],
+        ['rd', null],
+        ['nw', 'file'],
+      ];
+
+      it('damaged → Check source runs, the Damaged steps run, the job ends kept_original + sourceDamaged', async () => {
+        passFindsLfe();
+        const id = await queue(file(), finder());
+        await t.deps.engine.start();
+        expect(await settled(id)).toMatchObject({
+          state: 'kept_original',
+          reason: 'source is damaged: audio #1 (DTS): Invalid LFE scale factor index',
+        });
+        expect(passes()).toHaveLength(1);
+        expect(spawner.calls).toEqual([]);
+        expect(findJobResult(t.db, id)?.sourceDamaged).toBe(true);
+        expect(runCalls).toHaveLength(1);
+        expect(runCalls[0]).toMatchObject({ outcome: 'damaged', newPath: file() });
+        expect(calledUrls()).toEqual([URL]);
+        expect(t.deps.engine.jobDetail(id)?.path.map((s) => [s.nodeId, s.port])).toEqual(
+          damagedPath,
+        );
+        expect((await stat(file())).size).toBe(1000);
+      });
+
+      it('OK → Check source runs and the job ends as today, with no step run', async () => {
+        const id = await queue(file(), finder());
+        await t.deps.engine.start();
+        const job = await settled(id);
+        expect(job).toMatchObject({ state: 'nothing_to_do', reason: 'already as planned' });
+        expect(passes()).toHaveLength(1);
+        expect(traceOf(id, 'cs').at(-1)).toEqual(['decide', 'ok', 'source reads clean']);
+        expect(spawner.calls).toEqual([]);
+        expect(findJobResult(t.db, id)?.sourceDamaged ?? false).toBe(false);
+        expect(runCalls).toEqual([]);
+        expect(calledUrls()).toEqual([]);
+      });
+
+      it('a dry run of a damaged file runs the check, shows the Damaged side, and runs no step', async () => {
+        passFindsLfe();
+        const id = await queue(file(), finder(), { dryRun: true, testEncode: false });
+        await t.deps.engine.start();
+        expect(await settled(id)).toMatchObject({
+          state: 'kept_original',
+          reason: 'source is damaged: audio #1 (DTS): Invalid LFE scale factor index',
+        });
+        expect(passes()).toHaveLength(1);
+        expect(findJobResult(t.db, id)?.sourceDamaged).toBe(true);
+        expect(t.deps.engine.jobDetail(id)?.path.map((s) => [s.nodeId, s.port])).toEqual(
+          damagedPath,
+        );
+        expect(spawner.calls).toEqual([]);
+        expect(runCalls).toEqual([]);
+        expect(calledUrls()).toEqual([]);
+      });
+
+      it('a dry run of a good file runs the check and runs no step', async () => {
+        const id = await queue(file(), finder(), { dryRun: true, testEncode: false });
+        await t.deps.engine.start();
+        const job = await settled(id);
+        expect(job).toMatchObject({ state: 'nothing_to_do', reason: 'already as planned' });
+        expect(passes()).toHaveLength(1);
+        expect(traceOf(id, 'cs').at(-1)).toEqual(['decide', 'ok', 'source reads clean']);
+        expect(findJobResult(t.db, id)?.sourceDamaged ?? false).toBe(false);
+        expect(runCalls).toEqual([]);
+        expect(calledUrls()).toEqual([]);
+      });
     });
   });
 });
