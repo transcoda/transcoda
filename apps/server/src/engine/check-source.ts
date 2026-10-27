@@ -7,9 +7,10 @@ import { progressReader } from './progress.ts';
 import type { VerifyFailure } from './verify.ts';
 
 /**
- * What the pass found. `damaged`: ffmpeg reported a source decode error, or the file is cut off
- * (see {@link CUT_OFF_SECONDS}); `stream` names the stream when the error says which. `error`: the
- * pass could not tell (an I/O error, a timeout, ffmpeg failed without a source error): never damage.
+ * What the pass found. `damaged`: a source decoder reported an error the source reproduces, or the
+ * file is cut off (see {@link CUT_OFF_SECONDS}); `stream` names the stream when the error says
+ * which. `error`: the pass could not tell (a read error on a disk or network share, a timeout, a
+ * demuxer error without a decoder error, ffmpeg failed without a source error): never damage.
  */
 export type CheckSourceResult =
   | { kind: 'ok'; warnings: string[] }
@@ -177,17 +178,18 @@ export async function checkSource(input: {
   }
   const lines = seen.map((l) => l.line);
   const errors = seen.filter((l) => classifyErrorLine(l.line, new Set(), NULL_ENCODERS) !== null);
-  // A read that failed may have left decoder errors behind it: the file is not proven damaged.
-  const unreadable = errors.find((l) => READ_FAILURE.test(l.line));
+  // A read that failed (any line, any context) may have left decoder errors behind it: the file
+  // is not proven damaged.
+  const unreadable = seen.find((l) => READ_FAILURE.test(l.line));
   if (unreadable) return { kind: 'error', message: messageOf(unreadable.line) };
   const codecs = sourceDecoderNames(probe.streams.map((s) => s.codec));
-  const sourceSide = errors.filter(
-    (l) => classifyErrorLine(l.line, codecs, NULL_ENCODERS) !== 'output',
-  );
-  const leading = sourceSide.filter((l) => l.at === null || l.at <= 0).length;
+  const side = (l: Seen) => classifyErrorLine(l.line, codecs, NULL_ENCODERS);
+  const afterStart = (l: Seen) => l.at !== null && l.at > 0;
+  const leading = errors.filter((l) => side(l) !== 'output' && !afterStart(l)).length;
   const warnings =
     leading > 0 ? [`ignored ${leading} decoder error(s) before the first output frame`] : [];
-  const first = sourceSide.find((l) => l.at !== null && l.at > 0);
+  // Only a source decoder proves damage: the demuxer also speaks for a disk or a network share.
+  const first = errors.find((l) => side(l) === 'source' && afterStart(l));
   if (first && first.at !== null) {
     const stream = streamOf(first.line, probe);
     const reason = `${stream ?? 'source'}: ${messageOf(first.line)}`;
@@ -202,6 +204,8 @@ export async function checkSource(input: {
     }
     return { kind: 'damaged', reason, ...(stream ? { stream } : {}) };
   }
+  const demuxer = errors.find((l) => side(l) === 'demuxer' && afterStart(l));
+  if (demuxer) return { kind: 'error', message: messageOf(demuxer.line) };
   if (exitFailure !== null) {
     const last = errors.at(-1)?.line ?? lines.at(-1);
     return { kind: 'error', message: last ? messageOf(last) : exitFailure };

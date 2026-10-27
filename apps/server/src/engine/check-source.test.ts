@@ -243,6 +243,53 @@ describe('checkSource', () => {
     });
   });
 
+  it.each([
+    'Transport endpoint is not connected',
+    'Host is down',
+    'Network is unreachable',
+    'Operation timed out',
+    'Broken pipe',
+    'Software caused connection abort',
+  ])('a network share read error (%s) is an error, never damaged', async (why) => {
+    for (const fail of [undefined, { code: 1 }]) {
+      // From the demuxer, with decoder errors after it.
+      expect(
+        await run(
+          fakeExec({
+            errorAt: 1200,
+            stderr: [`[in#0/matroska,webm @ 0x1] [error] Error during demuxing: ${why}`, LFE],
+            ...(fail ? { fail } : {}),
+          }),
+        ),
+      ).toEqual({ kind: 'error', message: `Error during demuxing: ${why}` });
+      // As ffmpeg's own last word, without a context.
+      expect(
+        await run(
+          fakeExec({
+            errorAt: 1200,
+            stderr: [LFE, `[error] /lib/a.mkv: ${why}`],
+            ...(fail ? { fail } : {}),
+          }),
+        ),
+      ).toEqual({ kind: 'error', message: `/lib/a.mkv: ${why}` });
+    }
+  });
+
+  it('a demuxer error without a decoder error is an error, never damaged', async () => {
+    const line = '[in#0/matroska,webm @ 0x1] [error] 0x00 at pos 300606 invalid as first byte';
+    for (const fail of [undefined, { code: 1 }]) {
+      expect(
+        await run(
+          fakeExec({ errorAt: 1200, readTo: 3600, stderr: [line], ...(fail ? { fail } : {}) }),
+        ),
+      ).toEqual({ kind: 'error', message: '0x00 at pos 300606 invalid as first byte' });
+    }
+    // A decoder error the source reproduces still says damaged, the demuxer line beside it.
+    expect(await run(fakeExec({ errorAt: 1200, readTo: 3600, stderr: [line, LFE] }))).toMatchObject(
+      { kind: 'damaged', stream: 'audio #1 (DTS)' },
+    );
+  });
+
   it('passes the signal and a timeout of 600000 + 300000 * ceil(GiB) ms; an abort rethrows', async () => {
     const exec = fakeExec({ readTo: 3600 });
     const ctl = new AbortController();

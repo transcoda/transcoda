@@ -57,5 +57,25 @@ export function classifyErrorLine(
  * A line that says the file could not be read (rather than decoded): a disk, network share or
  * permission problem, which a later read may not have. Never damage.
  */
-export const READ_FAILURE =
-  /input\/output error|i\/o error|\beio\b|permission denied|no such file|connection (reset|refused|timed out)|stale file handle|resource temporarily unavailable|cannot allocate memory/i;
+export const READ_FAILURE = new RegExp(
+  [
+    'input/output error',
+    'i/o error',
+    '\\beio\\b',
+    'permission denied',
+    'no such file',
+    'connection (reset|refused|timed out)',
+    'stale file handle',
+    'resource temporarily unavailable',
+    'cannot allocate memory',
+    // Network shares (SMB/NFS/sshfs) that dropped or stalled.
+    'transport endpoint is not connected',
+    'host is down',
+    'network is (unreachable|down)',
+    'no route to host',
+    'operation timed out',
+    'broken pipe',
+    'software caused connection abort',
+  ].join('|'),
+  'i',
+);
