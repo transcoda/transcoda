@@ -50,6 +50,7 @@ import { createTestApp, type TestApp } from '../test-app.ts';
 import { asSession, createToken, login, send } from '../test-http.ts';
 import { chain, edge, mainGraph, node, testRegistry } from '../workflows/test-helpers.ts';
 import { fitToContainer, modelFromProbe, normalizeDefaults } from './build-model.ts';
+import { sourceDecoderNames } from './decoder-names.ts';
 import type { EngineEvent } from './events.ts';
 import { fingerprintKey, fingerprintOf } from './fingerprint.ts';
 import { tempDir } from './fixtures.ts';
@@ -2020,6 +2021,34 @@ describe('pipeline: controller notes', () => {
     expect((await stat(file())).size).toBe(1000);
   });
 
+  it('a dca decoder error mid-encode on a dts source that the source reproduces → kept_original, no retry', async () => {
+    sourceSpotsDamaged = true;
+    sourceProbe = probeOf(
+      [
+        { type: 'video', codec: 'hevc', default: true },
+        { type: 'audio', codec: 'dts', language: 'eng', default: true },
+      ],
+      { sizeBytes: 1000 },
+    );
+    const wf = workflow(
+      line(node('in', 'core:input-manual'), toH264(), node('ro', 'core:replace-original')),
+    );
+    const id = await queue(file(), wf);
+    await t.deps.engine.start();
+    await until('spawn', () => spawner.calls.length === 1);
+    await spawner.complete({
+      bytes: 600,
+      at: 30,
+      stderr: ['[dca @ 0x55d0] [error] Invalid LFE scale factor index'],
+    });
+    expect(await settled(id)).toMatchObject({
+      state: 'kept_original',
+      reason: 'source has decode errors; nothing was replaced',
+      attempt: 1,
+    });
+    expect(spawner.calls).toHaveLength(1);
+  });
+
   it('a source decoder error mid-encode the source does not reproduce is output-invalid: retried once, then failed', async () => {
     const wf = workflow(
       line(node('in', 'core:input-manual'), toH264(), node('ro', 'core:replace-original')),
@@ -3013,6 +3042,17 @@ describe('pipeline: fix round (review)', () => {
       ]);
     }
     expect(classifyErrorLine('[h264 @ 0x1] [warning] something', codecs, new Set())).toBeNull();
+  });
+
+  it('a dca decoder line is a source error when the source has a dts stream', () => {
+    const codecs = sourceDecoderNames(['dts', 'hevc']);
+    expect(
+      classifyErrorLine(
+        '[dca @ 0x55d0] [error] Invalid LFE scale factor index',
+        codecs,
+        new Set(['libx264']),
+      ),
+    ).toBe('source');
   });
 });
 

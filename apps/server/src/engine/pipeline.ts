@@ -75,6 +75,7 @@ import {
   normalizeDefaults,
   outputOrder,
 } from './build-model.ts';
+import { sourceDecoderNames } from './decoder-names.ts';
 import type { CurrentNode, EngineEvents } from './events.ts';
 import { ffmpegFailure, looksLikeGpuFailure, softwareFallback } from './fallback.ts';
 import { type Fingerprint, fingerprintKey } from './fingerprint.ts';
@@ -483,7 +484,7 @@ export async function readTail(path: string, bytes: number): Promise<string> {
 /**
  * Which side an ffmpeg error-level line (`[error]`/`[fatal]`/`[panic]`, ffmpeg's `level+` tag) came
  * from; null for any other line. `source`: its first context is the input (`in#…`), an input
- * stream (`…ist#…`), a decoder (`dec:…`), or a bare `[<codec> @ 0x…]` naming a source codec that is
+ * stream (`…ist#…`), a decoder (`dec:…`), or a bare `[<codec> @ 0x…]` naming a source decoder that is
  * not also an encoder of the job (libavcodec's own decoder messages). Everything else (encoders,
  * the muxer, `out#`, unknown or no context) is the output's.
  */
@@ -1259,7 +1260,7 @@ export class Pipeline implements JobExecutor {
     const encoders = new Set(
       kept(p.model).flatMap((s) => (s.mode === 'convert' ? [s.encoder ?? s.codec] : [])),
     );
-    const sourceCodecs = new Set(p.probe.streams.map((s) => s.codec));
+    const sourceCodecs = sourceDecoderNames(p.probe.streams.map((s) => s.codec));
     let last: ProgressSample | null = null;
     let lastWrite = Number.NEGATIVE_INFINITY;
     let framesOut = false;
