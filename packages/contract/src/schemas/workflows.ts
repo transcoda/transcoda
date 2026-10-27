@@ -1,6 +1,7 @@
 import {
   IssueSchema,
   JsonValueSchema,
+  WorkflowGraphInputSchema,
   WorkflowGraphSchema,
   WorkflowKindSchema,
 } from '@transcoda/shared';
@@ -69,8 +70,11 @@ export const WorkflowsListOutputSchema = z.object({ workflows: z.array(WorkflowS
 export const WorkflowCreateInputSchema = z.object({
   name: z.string().trim().min(1).max(120),
   kind: WorkflowKindSchema,
-  /** Version 1's graph; default emptyGraph(kind). Must have the same kind (400 KIND_MISMATCH). */
-  graph: WorkflowGraphSchema.optional(),
+  /**
+   * Version 1's graph; default emptyGraph(kind). Must have the same kind (400 KIND_MISMATCH).
+   * A graph of format 1 is accepted and stored at format 2 (with its Render steps).
+   */
+  graph: WorkflowGraphInputSchema.optional(),
   note: z.string().trim().max(120).optional(),
 });
 export const WorkflowDuplicateInputSchema = z.object({
@@ -91,7 +95,8 @@ export const WorkflowGetInputSchema = z.object({
 export const WorkflowSaveInputSchema = z.object({
   id: z.string(),
   baseVersion: z.number().int().min(1),
-  graph: WorkflowGraphSchema,
+  /** Format 1 is accepted and stored at format 2 (with its Render steps). */
+  graph: WorkflowGraphInputSchema,
   /** Shown in the version history ("Layout only", "Restored from v3", the user's message). */
   note: z.string().trim().max(120).optional(),
   /**
@@ -110,7 +115,8 @@ export const WorkflowSaveOutputSchema = z.object({
   changes: z.array(z.string()),
 });
 export const WorkflowValidateInputSchema = z.object({
-  graph: WorkflowGraphSchema,
+  /** Format 1 is checked as format 2 (with its Render steps). */
+  graph: WorkflowGraphInputSchema,
   id: z.string().optional(),
 });
 export const WorkflowValidateOutputSchema = z.object({

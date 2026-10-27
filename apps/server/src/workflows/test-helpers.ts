@@ -171,7 +171,7 @@ export function edge(from: string, to: string, ports: { from?: string; to?: stri
 }
 
 export function mainGraph(nodes: NodeInstance[], edges: Edge[] = []): WorkflowGraph {
-  return { formatVersion: 1, kind: 'workflow', nodes, edges, groups: [] };
+  return { formatVersion: 2, kind: 'workflow', nodes, edges, groups: [] };
 }
 
 export function subGraph(nodes: NodeInstance[], edges: Edge[] = []): WorkflowGraph {

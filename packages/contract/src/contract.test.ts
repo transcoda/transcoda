@@ -43,10 +43,12 @@ import {
   TokenCreateInputSchema,
   WorkflowActivateInputSchema,
   WorkflowCreateInputSchema,
+  WorkflowDetailSchema,
   WorkflowDuplicateInputSchema,
   WorkflowSaveInputSchema,
   WorkflowSaveOutputSchema,
   WorkflowSummarySchema,
+  WorkflowValidateInputSchema,
 } from './index.ts';
 
 describe('schemas', () => {
@@ -276,7 +278,7 @@ describe('contract', () => {
   });
 
   it('workflows.create takes an optional graph and note; duplicate takes id, name, note', () => {
-    const graph = { formatVersion: 1, kind: 'workflow', nodes: [], edges: [], groups: [] };
+    const graph = { formatVersion: 2, kind: 'workflow', nodes: [], edges: [], groups: [] };
     expect(
       WorkflowCreateInputSchema.safeParse({ name: 'a', kind: 'workflow', graph, note: 'n' })
         .success,
@@ -422,7 +424,7 @@ describe('contract', () => {
     const base = {
       id: 'w',
       baseVersion: 3,
-      graph: { formatVersion: 1, kind: 'workflow', nodes: [], edges: [], groups: [] },
+      graph: { formatVersion: 2, kind: 'workflow', nodes: [], edges: [], groups: [] },
     };
     expect(WorkflowSaveInputSchema.parse({ ...base, restoredFrom: 1 }).restoredFrom).toBe(1);
     expect(WorkflowSaveInputSchema.safeParse({ ...base, restoredFrom: 0 }).success).toBe(false);
@@ -654,7 +656,7 @@ describe('contract', () => {
     const base = {
       id: 'w',
       baseVersion: 1,
-      graph: { formatVersion: 1, kind: 'workflow', nodes: [], edges: [], groups: [] },
+      graph: { formatVersion: 2, kind: 'workflow', nodes: [], edges: [], groups: [] },
     };
     expect(WorkflowSaveInputSchema.parse({ ...base, note: ' Layout only ' }).note).toBe(
       'Layout only',
@@ -665,12 +667,24 @@ describe('contract', () => {
     );
   });
 
+  it('graph inputs take format 1 too (the server upgrades it); details carry format 2 only', () => {
+    const v1 = { formatVersion: 1, kind: 'workflow', nodes: [], edges: [], groups: [] };
+    expect(WorkflowSaveInputSchema.safeParse({ id: 'w', baseVersion: 1, graph: v1 }).success).toBe(
+      true,
+    );
+    expect(
+      WorkflowCreateInputSchema.safeParse({ name: 'a', kind: 'workflow', graph: v1 }).success,
+    ).toBe(true);
+    expect(WorkflowValidateInputSchema.safeParse({ graph: v1 }).success).toBe(true);
+    expect(WorkflowDetailSchema.shape.graph.safeParse(v1).success).toBe(false);
+  });
+
   it('save input rejects a structurally broken graph (groups missing)', () => {
     expect(
       WorkflowSaveInputSchema.safeParse({
         id: 'w',
         baseVersion: 1,
-        graph: { formatVersion: 1, kind: 'workflow', nodes: [], edges: [] },
+        graph: { formatVersion: 2, kind: 'workflow', nodes: [], edges: [] },
       }).success,
     ).toBe(false);
   });

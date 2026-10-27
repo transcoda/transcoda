@@ -244,7 +244,7 @@ describe('LibrariesPage', () => {
 
   it('Activate v1… opens the activation dialog for that workflow and version; after activating the list reloads', async () => {
     const libraryGraph = {
-      formatVersion: 1,
+      formatVersion: 2,
       kind: 'workflow',
       nodes: [
         {
@@ -296,7 +296,7 @@ describe('LibrariesPage', () => {
 
   it("Activate v1… keeps the dialog's own errors inline and the list as it was", async () => {
     mocks.workflows.get.mockResolvedValue({
-      graph: { formatVersion: 1, kind: 'workflow', nodes: [], edges: [], groups: [] },
+      graph: { formatVersion: 2, kind: 'workflow', nodes: [], edges: [], groups: [] },
       activeIssues: [],
     });
     mocks.workflows.activate.mockRejectedValueOnce(new TypeError('Failed to fetch'));

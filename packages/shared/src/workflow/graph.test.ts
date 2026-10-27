@@ -7,6 +7,7 @@ import {
   SUBWORKFLOW_END_TYPE,
   SUBWORKFLOW_START_TYPE,
   shortId,
+  WorkflowGraphInputSchema,
   WorkflowGraphSchema,
 } from '../index.ts';
 
@@ -21,7 +22,7 @@ describe('workflow graph format', () => {
       { id: 'start-end', from: { node: 'start', port: 'file' }, to: { node: 'end', port: 'file' } },
     ]);
   });
-  it('rejects duplicate node ids, bad type names and formatVersion 2', () => {
+  it('rejects duplicate node ids, bad type names and formatVersion 1', () => {
     const g = emptyGraph('workflow');
     const n = {
       id: 'a',
@@ -34,7 +35,15 @@ describe('workflow graph format', () => {
     expect(
       WorkflowGraphSchema.safeParse({ ...g, nodes: [{ ...n, type: 'no-namespace' }] }).success,
     ).toBe(false);
-    expect(WorkflowGraphSchema.safeParse({ ...g, formatVersion: 2 }).success).toBe(false);
+    expect(WorkflowGraphSchema.safeParse({ ...g, formatVersion: 1 }).success).toBe(false);
+  });
+  it('emptyGraph is format 2; the input schema accepts format 1 and 2, nothing else', () => {
+    const g = emptyGraph('workflow');
+    expect(g.formatVersion).toBe(2);
+    expect(emptyGraph('subworkflow').formatVersion).toBe(2);
+    expect(WorkflowGraphInputSchema.safeParse(g).success).toBe(true);
+    expect(WorkflowGraphInputSchema.safeParse({ ...g, formatVersion: 1 }).success).toBe(true);
+    expect(WorkflowGraphInputSchema.safeParse({ ...g, formatVersion: 3 }).success).toBe(false);
   });
   it('accepts any JSON as settings (content is validated later)', () => {
     const n = { id: 'a', type: 'core:x', typeVersion: 1, settings: 5, position: { x: 0, y: 0 } };

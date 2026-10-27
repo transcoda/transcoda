@@ -36,7 +36,7 @@ const phased = buildCatalog([
 /** One node of `type` (id `src`), optionally bypassed or renamed. */
 function single(type: string, extra: { bypassed?: boolean; label?: string } = {}): WorkflowGraph {
   return {
-    formatVersion: 1,
+    formatVersion: 2,
     kind: 'workflow',
     nodes: [{ id: 'src', type, typeVersion: 1, settings: {}, position: { x: 0, y: 0 }, ...extra }],
     edges: [],

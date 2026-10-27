@@ -1,6 +1,7 @@
 import {
   LIBRARY_INPUT_TYPE,
   libraryInputOf,
+  upgradeGraphJson,
   type WorkflowGraph,
   WorkflowGraphSchema,
   type WorkflowKind,
@@ -29,7 +30,9 @@ export interface WorkflowRow {
 export interface WorkflowVersionRow {
   workflowId: string;
   version: number;
+  /** At the current format: an older stored graph is brought up by the read's `GraphUpgrade`. */
   graph: WorkflowGraph;
+  /** The format the row was stored in (older than `graph`'s when the read upgraded it). */
   formatVersion: number;
   note: string | null;
   createdBy: string;
@@ -98,7 +101,17 @@ const toWorkflow = (r: DbWorkflow): WorkflowRow => ({
   deletedAt: r.deleted_at,
 });
 
-function toStoredVersion(r: DbVersion): StoredVersion {
+/**
+ * Brings a stored graph's raw JSON to the current format before it is parsed. The workflow service
+ * passes one that knows the registered finish nodes (`upgradeGraphJson`), so a format-1 graph gets
+ * its Render nodes; the default only moves the format on, which is enough for readers that look at
+ * node settings and never run or validate the graph.
+ */
+export type GraphUpgrade = (raw: unknown) => unknown;
+
+const formatOnly: GraphUpgrade = (raw) => upgradeGraphJson(raw, () => false);
+
+function toStoredVersion(r: DbVersion, upgrade: GraphUpgrade): StoredVersion {
   let json: unknown;
   try {
     json = JSON.parse(r.graph);
@@ -111,7 +124,7 @@ function toStoredVersion(r: DbVersion): StoredVersion {
       raw: r.graph,
     };
   }
-  const parsed = WorkflowGraphSchema.safeParse(json);
+  const parsed = WorkflowGraphSchema.safeParse(upgrade(json));
   if (!parsed.success) {
     return {
       ok: false,
@@ -229,11 +242,16 @@ export function listWorkflows(db: Database): WorkflowRow[] {
   return rows.map(toWorkflow);
 }
 
-export function findVersion(db: Database, id: string, version: number): StoredVersion | null {
+export function findVersion(
+  db: Database,
+  id: string,
+  version: number,
+  upgrade: GraphUpgrade = formatOnly,
+): StoredVersion | null {
   const row = db
     .prepare('SELECT * FROM workflow_versions WHERE workflow_id = ? AND version = ?')
     .get(id, version) as DbVersion | undefined;
-  return row ? toStoredVersion(row) : null;
+  return row ? toStoredVersion(row, upgrade) : null;
 }
 
 /**
@@ -243,6 +261,7 @@ export function findVersion(db: Database, id: string, version: number): StoredVe
  */
 export function listCurrentVersions(
   db: Database,
+  upgrade: GraphUpgrade = formatOnly,
 ): Array<{ workflow: WorkflowRow; version: StoredVersion; active: StoredVersion | null }> {
   const rows = db
     .prepare(
@@ -287,20 +306,23 @@ export function listCurrentVersions(
             error: `Stored version ${r.w_current_version} is missing`,
             raw: null,
           }
-        : toStoredVersion(r as DbVersion),
+        : toStoredVersion(r as DbVersion, upgrade),
     // The composite foreign key guarantees the active row exists when the versions differ.
     active:
       r.a_workflow_id == null
         ? null
-        : toStoredVersion({
-            workflow_id: r.a_workflow_id,
-            version: r.a_version,
-            graph: r.a_graph,
-            format_version: r.a_format_version,
-            note: r.a_note,
-            created_by: r.a_created_by,
-            created_at: r.a_created_at,
-          } as DbVersion),
+        : toStoredVersion(
+            {
+              workflow_id: r.a_workflow_id,
+              version: r.a_version,
+              graph: r.a_graph,
+              format_version: r.a_format_version,
+              note: r.a_note,
+              created_by: r.a_created_by,
+              created_at: r.a_created_at,
+            } as DbVersion,
+            upgrade,
+          ),
   }));
 }
 
@@ -459,7 +481,7 @@ export function listInactiveNamers(db: Database): Map<string, LibraryNamer[]> {
   >;
   const byLibrary = new Map<string, LibraryNamer[]>();
   for (const r of rows) {
-    const stored = toStoredVersion(r);
+    const stored = toStoredVersion(r, formatOnly);
     const libraryId = stored.ok ? libraryInputOf(stored.row.graph)?.libraryId : undefined;
     if (!libraryId) continue;
     const namer = { workflowId: r.id, name: r.name, version: r.current_version };

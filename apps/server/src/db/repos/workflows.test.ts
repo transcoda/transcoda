@@ -1,4 +1,4 @@
-import { emptyGraph } from '@transcoda/shared';
+import { emptyGraph, RENDER_TYPE, upgradeGraphJson } from '@transcoda/shared';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { Database } from '../open.ts';
 import { createTestDb } from '../test-db.ts';
@@ -55,7 +55,7 @@ describe('workflow repository', () => {
     });
     expect(findVersion(db, 'w1', 1)).toMatchObject({
       ok: true,
-      row: { graph: emptyGraph('subworkflow'), createdBy: 'u1', formatVersion: 1 },
+      row: { graph: emptyGraph('subworkflow'), createdBy: 'u1', formatVersion: 2 },
     });
     expect(findVersion(db, 'w1', 2)).toBeNull();
   });
@@ -142,6 +142,51 @@ describe('workflow repository', () => {
       'w1',
     );
     expect(findVersion(db, 'w1', 1)).toMatchObject({ ok: false });
+  });
+
+  it('a stored format-1 row reads back as format 2 through the upgrade; the row keeps its stored format', () => {
+    const v1 = {
+      formatVersion: 1,
+      kind: 'workflow',
+      nodes: [
+        {
+          id: 'in',
+          type: 'core:input-manual',
+          typeVersion: 1,
+          settings: {},
+          position: { x: 0, y: 0 },
+        },
+        {
+          id: 'rep',
+          type: 'core:replace-original',
+          typeVersion: 1,
+          settings: {},
+          position: { x: 400, y: 0 },
+        },
+      ],
+      edges: [{ id: 'e', from: { node: 'in', port: 'file' }, to: { node: 'rep', port: 'file' } }],
+      groups: [],
+    };
+    db.prepare(
+      'UPDATE workflow_versions SET graph = ?, format_version = 1 WHERE workflow_id = ? AND version = 1',
+    ).run(JSON.stringify(v1), 'w1');
+    const upgrade = (raw: unknown) => upgradeGraphJson(raw, (t) => t === 'core:replace-original');
+    const stored = findVersion(db, 'w1', 1, upgrade);
+    expect(stored?.ok).toBe(true);
+    if (!stored?.ok) return;
+    expect(stored.row.formatVersion).toBe(1);
+    expect(stored.row.graph.formatVersion).toBe(2);
+    expect(stored.row.graph.nodes.map((n) => n.type)).toEqual([
+      'core:input-manual',
+      'core:replace-original',
+      RENDER_TYPE,
+    ]);
+    const listed = listCurrentVersions(db, upgrade)[0]?.version;
+    expect(listed?.ok && listed.row.graph.nodes.some((n) => n.type === RENDER_TYPE)).toBe(true);
+    // Without an upgrade that knows finish nodes, only the format moves on.
+    const plain = findVersion(db, 'w1', 1);
+    expect(plain?.ok && plain.row.graph.nodes.map((n) => n.id)).toEqual(['in', 'rep']);
+    expect(plain?.ok && plain.row.graph.formatVersion).toBe(2);
   });
 
   it('soft delete hides the workflow from find/list but keeps versions readable; append then fails', () => {

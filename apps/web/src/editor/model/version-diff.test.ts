@@ -11,7 +11,7 @@ const node = (id: string, over: Partial<NodeInstance> = {}): NodeInstance => ({
   ...over,
 });
 const graph = (nodes: NodeInstance[], edges: WorkflowGraph['edges'] = []): WorkflowGraph => ({
-  formatVersion: 1,
+  formatVersion: 2,
   kind: 'workflow',
   nodes,
   edges,

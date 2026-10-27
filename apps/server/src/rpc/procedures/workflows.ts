@@ -31,7 +31,7 @@ export const create = os.workflows.create
   .use(requireScope('workflows:write'))
   .handler(({ context, input, errors }) => {
     // A redacted URL in a brand-new graph matches nothing stored: refused, never kept as a literal.
-    let graph = input.graph;
+    let graph = input.graph && context.deps.workflows.upgradeInput(input.graph);
     if (graph) {
       const restored = restoreRedacted(graph, []);
       if (restored.unresolved.length > 0) {
@@ -79,7 +79,7 @@ export const save = os.workflows.save
     // version, the base version, then every other version newest first.
     const first = [input.restoredFrom, input.baseVersion].filter((v) => v !== undefined);
     const { graph, unresolved } = restoreRedacted(
-      input.graph,
+      context.deps.workflows.upgradeInput(input.graph),
       context.deps.workflows.storedGraphs(input.id, first),
     );
     if (unresolved.length > 0) {

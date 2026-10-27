@@ -327,7 +327,7 @@ describe('size gate pass and else', () => {
   });
   /** in → sg; sg.pass → ro → np (notify); sg.else → ne (notify). */
   const graph = (): WorkflowGraph => ({
-    formatVersion: 1,
+    formatVersion: 2,
     kind: 'workflow',
     nodes: [
       nodeOf('in', 'core:input-manual'),
@@ -467,7 +467,7 @@ describe("a plugin finish step's own answer (C2, #37)", () => {
   });
   /** in → ro → rs (a plugin finish step; a core finish type stands in for its kind). */
   const graph = (): WorkflowGraph => ({
-    formatVersion: 1,
+    formatVersion: 2,
     kind: 'workflow',
     nodes: [
       nodeOf('in', 'core:input-manual'),

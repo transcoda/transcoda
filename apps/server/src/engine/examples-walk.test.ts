@@ -10,6 +10,7 @@ import type { NodeMetadata } from '@transcoda/sdk';
 import {
   type JsonValue,
   type TraceEntry,
+  upgradeGraphJson,
   type WorkflowGraph,
   WorkflowGraphSchema,
 } from '@transcoda/shared';
@@ -118,7 +119,9 @@ async function examples(): Promise<Array<{ name: string; graph: WorkflowGraph }>
   return Promise.all(
     files.map(async (f) => ({
       name: f.replace(/\.json$/, ''),
-      graph: WorkflowGraphSchema.parse(JSON.parse(await readFile(join(DIR, f), 'utf8'))),
+      graph: WorkflowGraphSchema.parse(
+        upgradeGraphJson(JSON.parse(await readFile(join(DIR, f), 'utf8')), () => false),
+      ),
     })),
   );
 }

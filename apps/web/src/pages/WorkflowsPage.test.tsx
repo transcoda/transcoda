@@ -450,7 +450,7 @@ describe('WorkflowsPage', () => {
     const view = renderAt('/', <WorkflowsPage />);
     await screen.findByRole('link', { name: 'Movies' });
     const input = screen.getByLabelText('Workflow file to import') as HTMLInputElement;
-    const graph = { formatVersion: 1, kind: 'workflow', nodes: [], edges: [], groups: [] };
+    const graph = { formatVersion: 2, kind: 'workflow', nodes: [], edges: [], groups: [] };
     fireEvent.change(input, {
       target: { files: [new File([JSON.stringify(graph)], 'my-movie_flow.json')] },
     });

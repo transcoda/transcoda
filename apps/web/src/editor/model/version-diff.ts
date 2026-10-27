@@ -19,7 +19,7 @@ function sameBehaviour(a: NodeInstance, b: NodeInstance): boolean {
     edges: [],
     groups: [],
   });
-  const base = { formatVersion: 1, kind: 'workflow' } as WorkflowGraph;
+  const base = { formatVersion: 2, kind: 'workflow' } as WorkflowGraph;
   return isLayoutOnlyChange(alone(a, base), alone(b, base));
 }
 

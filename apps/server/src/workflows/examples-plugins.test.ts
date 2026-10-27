@@ -5,7 +5,12 @@ import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import type { Capabilities } from '@transcoda/contract';
 import type { NodeMetadata } from '@transcoda/sdk';
-import { type JsonValue, type WorkflowGraph, WorkflowGraphSchema } from '@transcoda/shared';
+import {
+  type JsonValue,
+  upgradeGraphJson,
+  type WorkflowGraph,
+  WorkflowGraphSchema,
+} from '@transcoda/shared';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import { filePort } from '../nodes/core/common.ts';
@@ -83,7 +88,9 @@ function registry(notifyOutputs: Meta['outputs'] = []): NodeRegistry {
 }
 
 async function load(): Promise<WorkflowGraph> {
-  return WorkflowGraphSchema.parse(JSON.parse(await readFile(FILE, 'utf8')));
+  return WorkflowGraphSchema.parse(
+    upgradeGraphJson(JSON.parse(await readFile(FILE, 'utf8')), () => false),
+  );
 }
 
 const ctx = (reg: NodeRegistry = registry()) => ({

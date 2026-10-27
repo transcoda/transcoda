@@ -1229,7 +1229,7 @@ function Editor({
 const NO_SELECTION = { nodes: [], edges: [] };
 
 const EMPTY_GRAPH: WorkflowGraph = {
-  formatVersion: 1,
+  formatVersion: 2,
   kind: 'workflow',
   nodes: [],
   edges: [],

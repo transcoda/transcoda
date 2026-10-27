@@ -20,7 +20,7 @@ const edge = (from: string, to: string, fromPort = 'file'): Edge => ({
 });
 
 const graph = (nodes: NodeInstance[], edges: Edge[]): WorkflowGraph => ({
-  formatVersion: 1,
+  formatVersion: 2,
   kind: 'workflow',
   nodes,
   edges,

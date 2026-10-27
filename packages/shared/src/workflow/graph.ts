@@ -1,7 +1,8 @@
 import { z } from 'zod';
 import type { JsonValue } from '../json.ts';
 
-export const FORMAT_VERSION = 1;
+/** Format 2 renders in a visible Render node (`upgradeGraphJson` brings format 1 up). */
+export const FORMAT_VERSION = 2;
 export const ID_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
 export const IdSchema = z.string().regex(ID_PATTERN);
 export const NodeTypeSchema = z.string().regex(/^[a-z0-9-]+:[a-z0-9-]+$/);
@@ -72,52 +73,65 @@ export const MAX_GRAPH_NODES = 500;
 export const MAX_GRAPH_EDGES = 2000;
 export const MAX_GRAPH_GROUPS = 100;
 
-export const WorkflowGraphSchema = z
-  .object({
-    formatVersion: z.literal(FORMAT_VERSION),
-    kind: WorkflowKindSchema,
-    nodes: z
-      .array(NodeInstanceSchema)
-      .max(MAX_GRAPH_NODES, `A workflow can have at most ${MAX_GRAPH_NODES} nodes`),
-    edges: z
-      .array(EdgeSchema)
-      .max(MAX_GRAPH_EDGES, `A workflow can have at most ${MAX_GRAPH_EDGES} edges`),
-    groups: z
-      .array(GroupSchema)
-      .max(MAX_GRAPH_GROUPS, `A workflow can have at most ${MAX_GRAPH_GROUPS} groups`),
-    values: SharedValuesSchema.optional(),
-  })
-  .superRefine((graph, ctx) => {
-    const check = (label: string, key: 'nodes' | 'edges' | 'groups', items: { id: string }[]) => {
-      const seen = new Set<string>();
-      items.forEach((item, index) => {
-        if (seen.has(item.id)) {
+function graphSchema<V extends z.ZodType<number>>(formatVersion: V) {
+  return z
+    .object({
+      formatVersion,
+      kind: WorkflowKindSchema,
+      nodes: z
+        .array(NodeInstanceSchema)
+        .max(MAX_GRAPH_NODES, `A workflow can have at most ${MAX_GRAPH_NODES} nodes`),
+      edges: z
+        .array(EdgeSchema)
+        .max(MAX_GRAPH_EDGES, `A workflow can have at most ${MAX_GRAPH_EDGES} edges`),
+      groups: z
+        .array(GroupSchema)
+        .max(MAX_GRAPH_GROUPS, `A workflow can have at most ${MAX_GRAPH_GROUPS} groups`),
+      values: SharedValuesSchema.optional(),
+    })
+    .superRefine((graph, ctx) => {
+      const check = (label: string, key: 'nodes' | 'edges' | 'groups', items: { id: string }[]) => {
+        const seen = new Set<string>();
+        items.forEach((item, index) => {
+          if (seen.has(item.id)) {
+            ctx.addIssue({
+              code: 'custom',
+              message: `duplicate ${label} id "${item.id}"`,
+              path: [key, index],
+            });
+          }
+          seen.add(item.id);
+        });
+      };
+      check('node', 'nodes', graph.nodes);
+      check('edge', 'edges', graph.edges);
+      check('group', 'groups', graph.groups);
+      const names = new Set<string>();
+      graph.values?.entries.forEach((v, index) => {
+        if (names.has(v.name)) {
           ctx.addIssue({
             code: 'custom',
-            message: `duplicate ${label} id "${item.id}"`,
-            path: [key, index],
+            message: `duplicate value name "${v.name}"`,
+            path: ['values', 'entries', index],
           });
         }
-        seen.add(item.id);
+        names.add(v.name);
       });
-    };
-    check('node', 'nodes', graph.nodes);
-    check('edge', 'edges', graph.edges);
-    check('group', 'groups', graph.groups);
-    const names = new Set<string>();
-    graph.values?.entries.forEach((v, index) => {
-      if (names.has(v.name)) {
-        ctx.addIssue({
-          code: 'custom',
-          message: `duplicate value name "${v.name}"`,
-          path: ['values', 'entries', index],
-        });
-      }
-      names.add(v.name);
     });
-  });
+}
+
+export const WorkflowGraphSchema = graphSchema(z.literal(FORMAT_VERSION));
+
+/**
+ * A graph as the API and MCP accept it: format 1 too (an older client, an exported file), which
+ * the server brings to format 2 (`upgradeGraphJson`) before anything else reads it.
+ */
+export const WorkflowGraphInputSchema = graphSchema(
+  z.union([z.literal(1), z.literal(FORMAT_VERSION)]),
+);
 
 export type WorkflowGraph = z.infer<typeof WorkflowGraphSchema>;
+export type WorkflowGraphInput = z.infer<typeof WorkflowGraphInputSchema>;
 export type NodeInstance = z.infer<typeof NodeInstanceSchema>;
 export type Edge = z.infer<typeof EdgeSchema>;
 export type Group = z.infer<typeof GroupSchema>;

@@ -8,6 +8,7 @@ import type { Capabilities } from '@transcoda/contract';
 import {
   type JobState,
   syncLinkedSettings,
+  upgradeGraphJson,
   type WorkflowGraph,
   WorkflowGraphSchema,
 } from '@transcoda/shared';
@@ -55,7 +56,10 @@ const GATE_TIMEOUT_MS = 240_000;
 
 async function loadExample(name: Example): Promise<WorkflowGraph> {
   return WorkflowGraphSchema.parse(
-    JSON.parse(await readFile(join(EXAMPLES_DIR, `${name}.json`), 'utf8')),
+    upgradeGraphJson(
+      JSON.parse(await readFile(join(EXAMPLES_DIR, `${name}.json`), 'utf8')),
+      () => false,
+    ),
   );
 }
 
@@ -454,7 +458,7 @@ describe.skipIf(!fixturesAvailable())('examples/workflows: the end-to-end gate',
   /** input → <one action> → replace. */
   function oneAction(type: string, settings: Record<string, unknown>): WorkflowGraph {
     return WorkflowGraphSchema.parse({
-      formatVersion: 1,
+      formatVersion: 2,
       kind: 'workflow',
       groups: [],
       nodes: [

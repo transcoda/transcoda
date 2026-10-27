@@ -45,7 +45,7 @@ import type { Logger } from '../logger.ts';
 import type { NodeRegistry } from '../nodes/registry.ts';
 import type { PluginHooksRunner } from '../plugins/hooks.ts';
 import type { PluginRestartGate } from '../plugins/restart-gate.ts';
-import type { WorkflowService } from '../workflows/service.ts';
+import { graphUpgrade, type WorkflowService } from '../workflows/service.ts';
 import { migratePinned } from '../workflows/validate.ts';
 import { EngineEvents } from './events.ts';
 import { fingerprintKey } from './fingerprint.ts';
@@ -273,7 +273,12 @@ export class EngineService {
     const ownProbe = findJobProbe(db, id) as ProbeResult | null;
     // Stored as a JobProbe; the first builds stored the whole ProbeResult (with `raw`).
     const output = result?.outputProbe as (JobProbe | ProbeResult) | null | undefined;
-    const stored = findVersion(db, row.workflowId, row.workflowVersion);
+    const stored = findVersion(
+      db,
+      row.workflowId,
+      row.workflowVersion,
+      graphUpgrade(this.deps.registry),
+    );
     return {
       job: this.withHold(listed),
       trace: listTrace(db, id),
