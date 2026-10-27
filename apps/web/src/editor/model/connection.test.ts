@@ -183,6 +183,123 @@ describe('connection rules', () => {
     expect(nextNodeRule(single('core:video-is'), 'gone', 'pass', phased)).toEqual({ kind: 'any' });
   });
 
+  describe('Damaged outputs', () => {
+    const replaceDamaged: NodeInfo = {
+      ...pluginFinish('example:replace-damaged', 'Replace damaged file', 'library-manager'),
+      outputs: [],
+      damagedOnly: true,
+    };
+    const damagedCatalog = buildCatalog([...phased.nodes, replaceDamaged]);
+    const at = (id: string, type: string, settings: Record<string, unknown> = {}) => ({
+      id,
+      type,
+      typeVersion: 1,
+      settings: settings as WorkflowGraph['nodes'][number]['settings'],
+      position: { x: 0, y: 0 },
+    });
+    /** in → ev → Render r (Quality check as given) → Done → ro; cs (Check source); nw, rd free. */
+    const graph = (qualityCheck: boolean): WorkflowGraph => ({
+      formatVersion: 2,
+      kind: 'workflow',
+      nodes: [
+        at('in', 'core:input-manual'),
+        at('cs', 'core:check-source'),
+        at('ev', 'core:encode-video'),
+        at('r', 'core:render', { qualityCheck }),
+        at('ro', 'core:replace-original'),
+        at('nw', 'core:notify-webhook'),
+        at('nw2', 'core:notify-webhook'),
+        at('rd', 'example:replace-damaged'),
+      ],
+      edges: [
+        { id: 'e1', from: { node: 'in', port: 'file' }, to: { node: 'cs', port: 'file' } },
+        { id: 'e2', from: { node: 'cs', port: 'ok' }, to: { node: 'ev', port: 'file' } },
+        { id: 'e3', from: { node: 'ev', port: 'file' }, to: { node: 'r', port: 'file' } },
+        { id: 'e4', from: { node: 'r', port: 'done' }, to: { node: 'ro', port: 'file' } },
+      ],
+      groups: [],
+    });
+    const withEdge = (g: WorkflowGraph, from: [string, string], to: string): WorkflowGraph => ({
+      ...g,
+      edges: [
+        ...g.edges,
+        { id: 'x', from: { node: from[0], port: from[1] }, to: { node: to, port: 'file' } },
+      ],
+    });
+    const check = (g: WorkflowGraph, from: [string, string], to: string) =>
+      checkConnection(
+        g,
+        { node: from[0], port: from[1] },
+        { node: to, port: 'file' },
+        damagedCatalog,
+      );
+
+    it('refuses a connection from a hidden Damaged output', () => {
+      expect(check(graph(false), ['r', 'damaged'], 'nw')).toEqual({
+        ok: false,
+        reason: 'That output is only there while Quality check is on',
+      });
+      expect(check(graph(true), ['r', 'damaged'], 'nw')).toEqual({ ok: true });
+      expect(freeOutputs(graph(false), 'r', damagedCatalog).map((p) => p.id)).toEqual([]);
+      expect(freeOutputs(graph(true), 'r', damagedCatalog).map((p) => p.id)).toEqual(['damaged']);
+    });
+
+    it('a damagedOnly node connects only from Render’s or Check source’s Damaged, or after a notify on that side', () => {
+      const refused = {
+        ok: false,
+        reason: 'Replace damaged file can only follow a Damaged output',
+      };
+      expect(check(graph(true), ['r', 'damaged'], 'rd')).toEqual({ ok: true });
+      expect(check(graph(true), ['cs', 'damaged'], 'rd')).toEqual({ ok: true });
+      expect(check(graph(true), ['ro', 'file'], 'rd')).toEqual(refused);
+      expect(check(graph(true), ['cs', 'ok'], 'rd')).toEqual(refused);
+      // After a notify on the Damaged side.
+      const viaNotify = withEdge(graph(true), ['r', 'damaged'], 'nw');
+      expect(check(viaNotify, ['nw', 'file'], 'rd')).toEqual({ ok: true });
+      const sourceNotify = withEdge(graph(true), ['cs', 'damaged'], 'nw2');
+      expect(check(sourceNotify, ['nw2', 'file'], 'rd')).toEqual({ ok: true });
+      // A notify after Done is not on a Damaged side.
+      const afterDone = withEdge(graph(true), ['ro', 'file'], 'nw');
+      expect(check(afterDone, ['nw', 'file'], 'rd')).toEqual(refused);
+    });
+
+    it('nextNodeRule after Damaged allows non-writing phases and damagedOnly nodes; after Done the gate phase and later, no damagedOnly', () => {
+      const listed = (g: WorkflowGraph, id: string, port: string) =>
+        compatibleTargets(
+          damagedCatalog,
+          'file',
+          'workflow',
+          nextNodeRule(g, id, port, damagedCatalog),
+        )
+          .map((n) => n.type)
+          .sort();
+      const damaged = [...NON_WRITING, 'example:replace-damaged'].sort();
+      expect(nextNodeRule(graph(true), 'r', 'damaged', damagedCatalog)).toEqual({
+        kind: 'finish-after',
+        minRank: 3,
+        noWrite: true,
+        afterTitle: 'Render',
+        damaged: true,
+      });
+      expect(listed(graph(true), 'r', 'damaged')).toEqual(damaged);
+      expect(listed(graph(true), 'cs', 'damaged')).toEqual(damaged);
+      const viaNotify = withEdge(graph(true), ['r', 'damaged'], 'nw');
+      expect(listed(viaNotify, 'nw', 'file')).toEqual(['core:notify-webhook']);
+      expect(nextNodeRule(graph(true), 'r', 'done', damagedCatalog)).toEqual({
+        kind: 'finish-after',
+        minRank: 1,
+        noWrite: false,
+        afterTitle: 'Render',
+      });
+      expect(listed(graph(true), 'r', 'done')).toEqual(
+        ['core:size-gate', ...WRITE_AND_LATER].sort(),
+      );
+      // After Check source's OK anything goes, except a damagedOnly node.
+      expect(listed(graph(true), 'cs', 'ok')).not.toContain('example:replace-damaged');
+      expect(listed(graph(true), 'cs', 'ok')).toContain('core:encode-video');
+    });
+  });
+
   it('freeOutputs lists the outputs without an edge', () => {
     const sub = tiggerPoohSub();
     expect(freeOutputs(sub, 'rt', catalog)).toEqual([]);

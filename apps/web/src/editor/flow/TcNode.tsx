@@ -1,5 +1,5 @@
 import type { NodeInfo } from '@transcoda/contract';
-import { RUN_SUBWORKFLOW_TYPE, SUBWORKFLOW_START_TYPE } from '@transcoda/shared';
+import { portShown, RUN_SUBWORKFLOW_TYPE, SUBWORKFLOW_START_TYPE } from '@transcoda/shared';
 import {
   Handle,
   type NodeProps,
@@ -288,7 +288,11 @@ export function TcNode({ id, data, selected }: NodeProps<TcNodeType>) {
   // An unknown node still gets a handle per connected port, so the edges into it draw (red
   // dashed, N6) instead of vanishing; labelled with the raw port id.
   const inputs = def?.inputs ?? portsFrom(connectedIn);
-  const outputs = def?.outputs ?? portsFrom(connectedOut);
+  // An output the settings hide (Render's Damaged while Quality check is off) has no handle; one
+  // that still has an edge keeps it until the save removes that edge, so the edge still draws.
+  const outputs = def
+    ? def.outputs.filter((p) => portShown(p, instance.settings) || connectedOut.has(p.id))
+    : portsFrom(connectedOut);
   const labelOf = def ? portLabel : (port: PortSpec) => port.id;
   // N5: an unknown node's stand-in ports have no type (`portType: null`), so nothing glows there.
   const refOf = (direction: 'in' | 'out', p: PortSpec): HandleRef => ({

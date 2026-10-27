@@ -138,6 +138,11 @@ describe('nodeStateFor', () => {
         { badge: 'needs-connection', word: 'needs a connection', border: 'amber' },
       ],
       [
+        on('RENDER_MISSING'),
+        { badge: 'needs-connection', word: 'needs a Render step', border: 'red' },
+      ],
+      [on('DAMAGED_ONLY'), { badge: 'not-allowed', word: 'not allowed here', border: 'red' }],
+      [
         on('NODE_NOT_ALLOWED_HERE'),
         { badge: 'not-allowed', word: 'not allowed here', border: 'red' },
       ],

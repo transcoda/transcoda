@@ -117,6 +117,15 @@ describe('fieldsFor over the node catalogue', () => {
     expect(field('core:has-stream', 'language').spec).toEqual({ kind: 'language' });
   });
 
+  it('render: Quality check is a switch with its help text', () => {
+    const quality = field('core:render', 'qualityCheck');
+    expect(quality.label).toBe('Quality check');
+    expect(quality.spec).toEqual({
+      kind: 'boolean',
+      help: 'If the source turns out to be damaged while rendering, continue on Damaged instead of failing.',
+    });
+  });
+
   it('encode-video.quality → number 0–63 integer with slider; encode-audio.bitrateKbps → label "Bitrate", unit "kb/s", min 32 max 1024, no slider', () => {
     const quality = field('core:encode-video', 'quality');
     expect(quality.spec).toEqual({ kind: 'number', integer: true, min: 0, max: 63, slider: true });

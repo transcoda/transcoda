@@ -104,6 +104,9 @@ function lookFor(issue: Issue, type: string | undefined): Look {
       return { badge: 'subworkflow-problem', word: 'sub-workflow problem', border: 'red' };
     case 'INPUT_UNCONNECTED':
       return { badge: 'needs-connection', word: 'needs a connection', border: 'amber' };
+    case 'RENDER_MISSING':
+      // A finish step with no Render before it: the path never encodes the file.
+      return { badge: 'needs-connection', word: 'needs a Render step', border: 'red' };
     case 'NODE_NOT_ALLOWED_HERE':
     case 'FINISH_ORDER':
     case 'OUTPUT_MULTIPLE_EDGES':

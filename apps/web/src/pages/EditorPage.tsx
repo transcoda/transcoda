@@ -43,6 +43,7 @@ import {
   setSettings,
   toggleBypass,
 } from '../editor/model/graph-ops.ts';
+import { dropHiddenPortEdges, removedNotice } from '../editor/model/hidden-ports.ts';
 import { libraryShift } from '../editor/model/library-shift.ts';
 import { addNote, addValuesCard } from '../editor/model/notes-values.ts';
 import { freeSpot, type ViewRect } from '../editor/model/placement.ts';
@@ -342,7 +343,19 @@ function Editor({
       const { state: cur, draft, editable: canEdit } = latest.current;
       if (!alive.current || !cur || !draft || !canEdit || savingRef.current) return SKIPPED;
       if (opts.baseVersion === undefined && !cur.dirty) return SKIPPED;
-      const graph = draft;
+      // An edge from an output the settings now hide (Damaged, Quality check turned off) would be
+      // refused: the save removes it first, as an undoable change, and says so.
+      let graph = draft;
+      const cat = latest.current.catalog;
+      if (cat) {
+        const pruned = dropHiddenPortEdges(draft, cat);
+        if (pruned.removed.length > 0) {
+          graph = pruned.graph;
+          latest.current.draft = graph;
+          dispatch({ type: 'apply', result: { ok: true, graph } });
+          toast.info(removedNotice(pruned.removed, draft, cat));
+        }
+      }
       const baseVersion = opts.baseVersion ?? cur.savedVersion;
       // "Save over it" saves on top of someone else's version: "Layout only" against the version
       // this draft was loaded from would describe the wrong change, so only the user's note goes.
