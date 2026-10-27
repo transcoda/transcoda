@@ -29,23 +29,33 @@ export function sourceDecoderNames(codecs: Iterable<string>): Set<string> {
 
 /**
  * Which side an ffmpeg error-level line (`[error]`/`[fatal]`/`[panic]`, ffmpeg's `level+` tag) came
- * from; null for any other line. `source`: its first context is the source input (`in#0…`), one
- * of its streams (`…ist#0:…`), or a decoder context (`dec:<name>`, or a bare `[<name> @ 0x…]`:
- * libavcodec's own messages) naming a source decoder that is not also an encoder of the job. Everything
- * else (encoders, the muxer, `out#`, extra inputs such as sidecars, unknown or no context) is the
- * output's: a source error leads to replacing the file, so a doubtful line never counts.
+ * from; null for any other line. `source`: a decoder of the source said it: its first context is one
+ * of the source's streams (`…ist#0:…`) or a decoder context (`dec:<name>`, or a bare
+ * `[<name> @ 0x…]`: libavcodec's own messages) naming a source decoder that is not also an encoder
+ * of the job. `demuxer`: the source input's demuxer (`in#0/…`): it reports read errors (a disk or
+ * network share) as well as damage, so it alone never proves damage. Everything else (encoders,
+ * the muxer, `out#`, extra inputs such as sidecars, unknown or no context) is the output's: a
+ * source error leads to replacing the file, so a doubtful line never counts.
  */
 export function classifyErrorLine(
   line: string,
   sourceCodecs: ReadonlySet<string>,
   encoders: ReadonlySet<string>,
-): 'source' | 'output' | null {
+): 'source' | 'demuxer' | 'output' | null {
   if (!/\[(error|fatal|panic)\]/.test(line)) return null;
   const m = /^\[([^\]@]+?)(?: @ 0x[0-9a-f]+)?\]/i.exec(line.trim());
   const ctx = m?.[1]?.trim();
   if (!ctx || /^(error|fatal|panic)$/.test(ctx)) return 'output';
-  if (/^(in#0\/|[a-z]?ist#0:)/.test(ctx)) return 'source';
+  if (ctx.startsWith('in#0/')) return 'demuxer';
+  if (/^[a-z]?ist#0:/.test(ctx)) return 'source';
   // A decoder may also read an extra input: it counts only when it is one of the source's.
   const decoder = ctx.startsWith('dec:') ? ctx.slice(4) : ctx;
   return sourceCodecs.has(decoder) && !encoders.has(decoder) ? 'source' : 'output';
 }
+
+/**
+ * A line that says the file could not be read (rather than decoded): a disk, network share or
+ * permission problem, which a later read may not have. Never damage.
+ */
+export const READ_FAILURE =
+  /input\/output error|i\/o error|\beio\b|permission denied|no such file|connection (reset|refused|timed out)|stale file handle|resource temporarily unavailable|cannot allocate memory/i;

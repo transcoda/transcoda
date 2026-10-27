@@ -275,6 +275,7 @@ const fakeExec: Exec = async (file, args, opts) => {
     args.join(' ').includes(` -i ${root}`)
   ) {
     throw Object.assign(new Error('Command failed'), {
+      code: 1,
       stderr: '[h264 @ 0x1] error while decoding MB 15 10\n',
     });
   }
@@ -3048,8 +3049,8 @@ describe('pipeline: fix round (review)', () => {
 
   it('C4: error lines are classified per message family', () => {
     const codecs = new Set(['h264', 'hevc', 'aac']);
-    const cases: [string, 'source' | 'output'][] = [
-      ['[in#0/matroska,webm @ 0x1] [error] 0x00 at pos 300606 invalid as first byte', 'source'],
+    const cases: [string, 'source' | 'demuxer' | 'output'][] = [
+      ['[in#0/matroska,webm @ 0x1] [error] 0x00 at pos 300606 invalid as first byte', 'demuxer'],
       ['[h264 @ 0x1] [error] error while decoding MB 15 10', 'source'],
       ['[hevc @ 0x1] [error] Could not find ref with POC 21', 'source'],
       [
@@ -4581,6 +4582,7 @@ describe('pipeline: damaged sources (Render’s Damaged)', () => {
     execHook = async (f, args) => {
       if (f === 'ffmpeg' && args.includes('-ss') && args.join(' ').includes(` -i ${root}`)) {
         throw Object.assign(new Error('Command failed'), {
+          code: 1,
           stderr: '[dca @ 0x1] Invalid LFE scale factor index\n',
         });
       }
@@ -4689,6 +4691,7 @@ describe('pipeline: damaged sources (Render’s Damaged)', () => {
     execHook = async (f, args) => {
       if (f === 'ffmpeg' && !args.includes('image2')) {
         throw Object.assign(new Error('Command failed'), {
+          code: 1,
           stderr: '[dca @ 0x1] Invalid LFE scale factor index\n',
         });
       }
@@ -4771,6 +4774,72 @@ describe('pipeline: damaged sources (Render’s Damaged)', () => {
     expect(findJobResult(t.db, id)?.sourceDamaged).toBe(false);
     expect(runCalls).toEqual([]);
     expect(calledUrls()).toEqual([]);
+  });
+
+  it('a NAS read error mid-encode never takes Damaged, even when the confirming read fails too', async () => {
+    // The confirming decodes hit the same share: they fail with the read error, not a decode error.
+    execHook = async (f, args) => {
+      if (f === 'ffmpeg' && args.includes('-ss') && args.join(' ').includes(` -i ${root}`)) {
+        throw Object.assign(new Error('Command failed'), {
+          code: 1,
+          stderr: '[in#0/matroska,webm @ 0x1] Error during demuxing: Input/output error\n',
+        });
+      }
+      return null;
+    };
+    const id = await queue(file(), rendered());
+    await t.deps.engine.start();
+    for (const stderr of [
+      ['[in#0/matroska,webm @ 0x1] [error] Error during demuxing: Input/output error'],
+      ['[in#0/matroska,webm @ 0x1] [error] Error during demuxing: Input/output error', LFE],
+    ]) {
+      await until('spawn', () => spawner.calls.length === (stderr.length === 1 ? 1 : 2));
+      await spawner.complete({ bytes: 600, at: 30, stderr });
+    }
+    const job = await settled(id);
+    expect(job).toMatchObject({ state: 'failed', attempt: 2 });
+    expect(job.reason).toMatch(/^encode could not read the source: .*Input\/output error/);
+    expect(findJobResult(t.db, id)?.sourceDamaged).toBe(false);
+    expect(runCalls).toEqual([]);
+    expect(calledUrls()).toEqual([]);
+  });
+
+  it('a demuxer error mid-encode with no decoder error never takes Damaged', async () => {
+    sourceSpotsSayLfe();
+    const id = await queue(file(), rendered());
+    await t.deps.engine.start();
+    const stderr = ['[in#0/matroska,webm @ 0x1] [error] 0x00 at pos 300606 invalid as first byte'];
+    await until('spawn', () => spawner.calls.length === 1);
+    await spawner.complete({ bytes: 600, at: 30, stderr });
+    await until('second spawn', () => spawner.calls.length === 2);
+    await spawner.complete({ bytes: 600, at: 30, stderr });
+    const job = await settled(id);
+    expect(job).toMatchObject({ state: 'failed', attempt: 2 });
+    expect(job.reason).toMatch(/^encode reported source read errors: \[in#0/);
+    expect(findJobResult(t.db, id)?.sourceDamaged).toBe(false);
+    expect(runCalls).toEqual([]);
+  });
+
+  it('a confirming read that times out never takes Damaged', async () => {
+    execHook = async (f, args) => {
+      if (f === 'ffmpeg' && args.includes('-ss') && args.join(' ').includes(` -i ${root}`)) {
+        throw Object.assign(new Error('Command failed: ffmpeg'), {
+          killed: true,
+          signal: 'SIGKILL',
+          code: null,
+        });
+      }
+      return null;
+    };
+    const id = await queue(file(), rendered());
+    await t.deps.engine.start();
+    await until('spawn', () => spawner.calls.length === 1);
+    await spawner.complete({ bytes: 600, at: 30, stderr: [LFE] });
+    await until('second spawn', () => spawner.calls.length === 2);
+    await spawner.complete({ bytes: 600, at: 30, stderr: [LFE] });
+    expect(await settled(id)).toMatchObject({ state: 'failed', attempt: 2 });
+    expect(findJobResult(t.db, id)?.sourceDamaged).toBe(false);
+    expect(runCalls).toEqual([]);
   });
 
   it('a cover copy that times out never takes Damaged: it fails the job', async () => {

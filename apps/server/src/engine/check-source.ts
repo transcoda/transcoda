@@ -2,7 +2,7 @@
 import type { ProbeResult } from '@transcoda/sdk';
 import { isPicture } from '@transcoda/shared';
 import type { Exec } from '../capabilities/ffmpeg.ts';
-import { classifyErrorLine, sourceDecoderNames } from './decoder-names.ts';
+import { classifyErrorLine, READ_FAILURE, sourceDecoderNames } from './decoder-names.ts';
 import { progressReader } from './progress.ts';
 
 /**
@@ -22,13 +22,6 @@ export const CUT_OFF_SHARE = 0.02;
 
 /** The encoders of the pass itself (the null muxer's defaults): their lines are never the source's. */
 const NULL_ENCODERS: ReadonlySet<string> = new Set(['pcm_s16le', 'wrapped_avframe']);
-
-/**
- * A line that says the file could not be read (rather than decoded): a disk, network share or
- * permission problem, which a later read may not have. Never damage.
- */
-const READ_FAILURE =
-  /input\/output error|i\/o error|\beio\b|permission denied|no such file|connection (reset|refused|timed out)|stale file handle|resource temporarily unavailable|cannot allocate memory/i;
 
 /** 10 min plus 5 min per started GiB (a 2 GB file read in about a minute on the test box). */
 export function checkSourceTimeoutMs(sizeBytes: number): number {
@@ -148,7 +141,7 @@ export async function checkSource(input: {
   const unreadable = errors.find((l) => READ_FAILURE.test(l));
   if (unreadable) return { kind: 'error', message: messageOf(unreadable) };
   const codecs = sourceDecoderNames(probe.streams.map((s) => s.codec));
-  const first = errors.find((l) => classifyErrorLine(l, codecs, NULL_ENCODERS) === 'source');
+  const first = errors.find((l) => classifyErrorLine(l, codecs, NULL_ENCODERS) !== 'output');
   if (first) {
     const stream = streamOf(first, probe);
     return {

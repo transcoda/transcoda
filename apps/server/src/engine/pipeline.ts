@@ -80,7 +80,7 @@ import {
   outputOrder,
 } from './build-model.ts';
 import { type CheckSourceResult, type CoreTools, checkSource } from './check-source.ts';
-import { classifyErrorLine, sourceDecoderNames } from './decoder-names.ts';
+import { classifyErrorLine, READ_FAILURE, sourceDecoderNames } from './decoder-names.ts';
 import type { CurrentNode, EngineEvents } from './events.ts';
 import { ffmpegFailure, looksLikeGpuFailure, softwareFallback } from './fallback.ts';
 import { type Fingerprint, fingerprintKey } from './fingerprint.ts';
@@ -1318,6 +1318,7 @@ export class Pipeline implements JobExecutor {
     let framesOut = false;
     let leading = 0;
     const sourceErrors: { line: string; at: number }[] = [];
+    const demuxerErrors: { line: string; at: number }[] = [];
     const outputErrors: string[] = [];
     const proc = this.deps.spawner.spawn(config.ffmpegPath, p.args, {
       logPath: p.logPath,
@@ -1335,9 +1336,10 @@ export class Pipeline implements JobExecutor {
       onStderrLine: (line) => {
         const side = classifyErrorLine(line, sourceCodecs, encoders);
         if (side === 'output') outputErrors.push(line.trim());
-        else if (side === 'source' && !framesOut) leading += 1;
-        else if (side === 'source') {
-          sourceErrors.push({ line: line.trim(), at: last?.outTimeSeconds ?? 0 });
+        else if (side !== null && !framesOut) leading += 1;
+        else if (side !== null) {
+          const at = last?.outTimeSeconds ?? 0;
+          (side === 'source' ? sourceErrors : demuxerErrors).push({ line: line.trim(), at });
         }
       },
     });
@@ -1395,7 +1397,19 @@ export class Pipeline implements JobExecutor {
       const lines = outputErrors.slice(0, MAX_ERROR_LINES);
       return fail(retryable(`encode reported errors: ${lines[0] ?? ''}`, lines));
     }
+    // A read error (a disk or network share) may cause any decoder error after it: never damage.
+    const unreadable = [...demuxerErrors, ...sourceErrors].find((e) => READ_FAILURE.test(e.line));
+    if (unreadable) {
+      return fail(retryable(`encode could not read the source: ${unreadable.line}`));
+    }
+    // The demuxer alone proves nothing; with a decoder error its lines are part of the damage.
+    if (sourceErrors.length === 0 && demuxerErrors.length > 0) {
+      const lines = demuxerErrors.slice(0, MAX_ERROR_LINES).map((e) => e.line);
+      return fail(retryable(`encode reported source read errors: ${lines[0] ?? ''}`, lines));
+    }
     if (sourceErrors.length > 0) {
+      sourceErrors.push(...demuxerErrors);
+      sourceErrors.sort((a, b) => a.at - b.at);
       const lines = sourceErrors.slice(0, MAX_ERROR_LINES).map((e) => e.line);
       const confirmed = await confirmSourceDamage({
         sourcePath: p.realPath,
