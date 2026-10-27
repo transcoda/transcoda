@@ -19,8 +19,16 @@ export type CheckSourceResult =
 
 /** A stream counts as cut off only when it ends more than this short of the declared end… */
 export const CUT_OFF_SECONDS = 30;
-/** …and more than this share of it. */
+/** …and more than this share of it… */
 export const CUT_OFF_SHARE = 0.02;
+/**
+ * …and the demuxer reported truncation (see {@link TRUNCATION}) no more than this before where the
+ * read stopped (progress comes in coarse steps on a fast pass). Without it the header is stale: a
+ * warning, as verify says of a source header longer than its streams.
+ */
+const TAIL_SECONDS = 60;
+/** The demuxer saying the file stops short. */
+const TRUNCATION = /file ended prematurely|truncat|end of file|premature end|unexpected end/i;
 
 /** A confirming read covers the stretch where the error was seen plus this much… */
 const CONFIRM_SECONDS = 7;
@@ -78,7 +86,7 @@ function clock(seconds: number): string {
 function streamOf(line: string, probe: ProbeResult): string | undefined {
   const name = (s: ProbeResult['streams'][number]) =>
     `${s.type} #${s.index} (${s.codec.toUpperCase()})`;
-  const ctx = /^\[([^\]@]+?)(?: @ 0x[0-9a-f]+)?\]/i.exec(line.trim())?.[1]?.trim() ?? '';
+  const ctx = contextOf(line);
   const ist = /^[a-z]?ist#0:(\d+)/.exec(ctx);
   if (ist) {
     const s = probe.streams.find((x) => x.index === Number(ist[1]));
@@ -91,6 +99,11 @@ function streamOf(line: string, probe: ProbeResult): string | undefined {
       sourceDecoderNames([s.codec]).has(decoder),
   );
   return mapped.length === 1 ? name(mapped[0] as (typeof mapped)[number]) : undefined;
+}
+
+/** The first context of a log line (`matroska,webm` of `[matroska,webm @ 0x…] …`); '' when none. */
+function contextOf(line: string): string {
+  return /^\[([^\]@]+?)(?: @ 0x[0-9a-f]+)?\]/i.exec(line.trim())?.[1]?.trim() ?? '';
 }
 
 /** The message of an error line, without its contexts and level tag. */
@@ -204,7 +217,16 @@ export async function checkSource(input: {
     }
     return { kind: 'damaged', reason, ...(stream ? { stream } : {}) };
   }
-  const demuxer = errors.find((l) => side(l) === 'demuxer' && afterStart(l));
+  // The demuxer's own lines: `in#0/…`, or libavformat's under the source's format name.
+  const formats = new Set(probe.formatName.split(','));
+  const fromDemuxer = (l: Seen) =>
+    side(l) === 'demuxer' || formats.has(contextOf(l.line).split(',')[0] ?? '');
+  const end = readTo as number | null;
+  const atTail = (l: Seen) =>
+    end !== null && l.at !== null && l.at >= end - TAIL_SECONDS && TRUNCATION.test(l.line);
+  const tailTruncated = errors.some((l) => fromDemuxer(l) && atTail(l));
+  // Truncation at the tail is the cut-off check's to judge; any other demuxer error: can't tell.
+  const demuxer = errors.find((l) => side(l) === 'demuxer' && afterStart(l) && !atTail(l));
   if (demuxer) return { kind: 'error', message: messageOf(demuxer.line) };
   if (exitFailure !== null) {
     const last = errors.at(-1)?.line ?? lines.at(-1);
@@ -217,7 +239,14 @@ export async function checkSource(input: {
   }
   const gap = declared - read;
   if (gap > CUT_OFF_SECONDS && gap > declared * CUT_OFF_SHARE) {
-    return { kind: 'damaged', reason: `cut off: readable to ${clock(read)} of ${clock(declared)}` };
+    if (tailTruncated) {
+      return {
+        kind: 'damaged',
+        reason: `cut off: readable to ${clock(read)} of ${clock(declared)}`,
+      };
+    }
+    warnings.push(`the header says ${clock(declared)}, but the file reads to ${clock(read)}`);
+    return { kind: 'ok', warnings };
   }
   if (gap >= 1) {
     warnings.push(`ends ${Math.round(gap)} s short of the declared ${clock(declared)}`);

@@ -181,24 +181,56 @@ describe('checkSource', () => {
     expect(exec.calls[0]?.args).not.toContain('copy');
   });
 
-  it('cut-off: 30 s and 2 % of the declared end decide', async () => {
+  /** The demuxer says the file stops at `at` (its own context, as libavformat logs it). */
+  const truncated = (
+    readTo: number,
+    line = '[matroska,webm @ 0x1] [error] File ended prematurely',
+  ) => fakeExec({ errorAt: readTo - 1, stderr: [line], readTo });
+
+  it('cut-off: 30 s and 2 % of the declared end decide, with the demuxer reporting truncation at the tail', async () => {
     expect(await run(fakeExec({ readTo: 3569 }))).toEqual({
       kind: 'ok',
       warnings: ['ends 31 s short of the declared 1:00:00'],
     });
-    expect(await run(fakeExec({ readTo: 3400 }))).toEqual({
+    expect(await run(truncated(3400))).toEqual({
       kind: 'damaged',
       reason: 'cut off: readable to 56:40 of 1:00:00',
     });
+    for (const line of [
+      '[in#0/matroska,webm @ 0x1] [error] Error during demuxing: End of file',
+      '[in#0/matroska,webm @ 0x1] [error] Truncating packet of size 4096 to 1024',
+    ]) {
+      expect(await run(truncated(3400, line))).toMatchObject({ kind: 'damaged' });
+    }
     expect(await run(fakeExec({ readTo: 95 }), dts(100))).toEqual({
       kind: 'ok',
       warnings: ['ends 5 s short of the declared 1:40'],
     });
-    expect(await run(fakeExec({ readTo: 60 }), dts(100))).toEqual({
+    expect(await run(truncated(60), dts(100))).toEqual({
       kind: 'damaged',
       reason: 'cut off: readable to 1:00 of 1:40',
     });
     expect(await run(fakeExec({ readTo: 3600 }))).toEqual({ kind: 'ok', warnings: [] });
+  });
+
+  it('a header longer than what was read, without truncation at the tail, is a warning (a stale header)', async () => {
+    expect(await run(fakeExec({ readTo: 3400 }))).toEqual({
+      kind: 'ok',
+      warnings: ['the header says 1:00:00, but the file reads to 56:40'],
+    });
+    // Truncation reported far from where the read stopped says nothing about the tail.
+    expect(
+      await run(
+        fakeExec({
+          errorAt: 100,
+          stderr: ['[matroska,webm @ 0x1] [error] File ended prematurely'],
+          readTo: 3400,
+        }),
+      ),
+    ).toEqual({
+      kind: 'ok',
+      warnings: ['the header says 1:00:00, but the file reads to 56:40'],
+    });
   });
 
   it('a non-zero exit without a source error, a timeout and a read error are errors (never damaged)', async () => {
