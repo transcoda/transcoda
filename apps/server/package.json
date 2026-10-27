@@ -2,7 +2,7 @@
   "name": "@transcoda/server",
   "private": true,
   "type": "module",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "scripts": {
     "dev": "pnpm build:host && TRANSCODA_CONFIG_DIR=./.local/config TRANSCODA_WEB_DIR=../web/dist TRANSCODA_PLUGIN_HOST=$PWD/.local/plugin-host/plugin-host.js tsx watch src/main.ts",
     "build:host": "tsdown --filter host --out-dir .local/plugin-host",

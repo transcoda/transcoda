@@ -2,6 +2,13 @@
 
 All notable changes to Transcoda, newest first. Generated from the notes in `.changes/` when a release is cut.
 
+## 0.2.1 — 2026-10-29
+
+### Fixed
+
+- After an update, the browser now loads the new version of Transcoda right away instead of sometimes running the previous one from its cache until a hard reload.
+- Security fixes in two libraries the server uses to read requests (body-parser and fast-uri).
+
 ## 0.2.0 — 2026-10-26
 
 ### New
