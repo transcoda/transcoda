@@ -637,16 +637,18 @@ describe('jobs', () => {
     expect(detail).not.toHaveProperty('fileId');
     expect(detail.probe).not.toHaveProperty('raw');
     expect((detail.plan as { streams: unknown[] }).streams).toHaveLength(2);
-    expect(detail.graph.nodes.map((n) => n.id)).toEqual(['in', 'ev', 'ro', 'nw']);
+    expect(detail.graph.nodes.map((n) => n.id)).toEqual(['in', 'ev', 'ro', 'nw', 'render-1']);
     expect((detail.trace as { nodeId: string }[]).map((e) => e.nodeId)).toEqual([
       'in',
       'ev',
+      'render-1',
       'ro',
       'nw',
     ]);
     expect((detail.path as { nodeId: string }[]).map((e) => e.nodeId)).toEqual([
       'in',
       'ev',
+      'render-1',
       'ro',
       'nw',
     ]);

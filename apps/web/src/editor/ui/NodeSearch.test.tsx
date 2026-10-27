@@ -186,11 +186,13 @@ describe('NodeSearch', () => {
     });
     const input = screen.getByRole('combobox', { name: 'Search nodes' });
     fireEvent.change(input, { target: { value: 'encod' } });
-    // "Encode video", "Encode audio", "Remux" (re-encoding) and the unavailable "Generate subtitles".
+    // "Encode video", "Encode audio", "Remux" and "Render" (re-encoding) and the unavailable
+    // "Generate subtitles".
     expect(optionNames()).toEqual([
       'Encode video',
       'Encode audio',
       'Remux',
+      'Render',
       'Generate subtitles, plugin',
     ]);
     const active = () => document.getElementById(input.getAttribute('aria-activedescendant') ?? '');
@@ -198,7 +200,9 @@ describe('NodeSearch', () => {
     fireEvent.keyDown(input, { key: 'ArrowDown' });
     fireEvent.keyDown(input, { key: 'ArrowDown' });
     fireEvent.keyDown(input, { key: 'ArrowDown' });
-    expect(active()?.getAttribute('aria-label')).toBe('Remux');
+    fireEvent.keyDown(input, { key: 'ArrowDown' });
+    expect(active()?.getAttribute('aria-label')).toBe('Render');
+    fireEvent.keyDown(input, { key: 'ArrowUp' });
     fireEvent.keyDown(input, { key: 'ArrowUp' });
     expect(active()?.getAttribute('aria-label')).toBe('Encode audio');
     // Enter that confirms an IME composition is not a pick (final review M15).

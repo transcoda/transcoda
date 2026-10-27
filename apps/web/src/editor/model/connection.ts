@@ -65,8 +65,9 @@ const WRITING_PHASES: ReadonlyArray<FinishPhase> = ['gate', 'write'];
  * What may follow output `port` of node `nodeId`, mirroring validate.ts `checkPaths`
  * (FINISH_ORDER, ELSE_ONLY_NOTIFY): after a finish node only finish nodes of the same or a later
  * phase; after the size gate's Yes the write and later phases, after its No only the non-writing
- * phases. A bypassed node runs no hook, so it counts as not a finish node; a finish node with no
- * declared phase allows finish nodes of any phase. Anything else: `{ kind: 'any' }`.
+ * phases; Render (the render phase) never comes after a finish node. A bypassed node runs no
+ * hook, so it counts as not a finish node; a finish node with no declared phase allows finish
+ * nodes of any other phase. Anything else: `{ kind: 'any' }`.
  */
 export function nextNodeRule(
   g: WorkflowGraph,
@@ -91,6 +92,8 @@ function fitsRule(n: NodeInfo, rule: NextRule): boolean {
   if (rule.kind === 'any') return true;
   if (n.kind !== 'finish') return false;
   const phase = n.finishPhase ?? null;
+  // A path renders once, before its finish steps (RENDER_TWICE): Render never follows one.
+  if (phase === 'render') return false;
   // After the size gate's No only a node that declares a non-writing phase may follow.
   if (
     rule.noWrite &&

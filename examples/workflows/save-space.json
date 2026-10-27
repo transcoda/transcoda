@@ -1,5 +1,5 @@
 {
-  "formatVersion": 1,
+  "formatVersion": 2,
   "kind": "workflow",
   "nodes": [
     {
@@ -55,6 +55,16 @@
       }
     },
     {
+      "id": "render",
+      "type": "core:render",
+      "typeVersion": 1,
+      "settings": {},
+      "position": {
+        "x": 960,
+        "y": 120
+      }
+    },
+    {
       "id": "gate",
       "type": "core:size-gate",
       "typeVersion": 2,
@@ -62,7 +72,7 @@
         "minSavingPercent": 15
       },
       "position": {
-        "x": 960,
+        "x": 1200,
         "y": 120
       }
     },
@@ -72,7 +82,7 @@
       "typeVersion": 1,
       "settings": {},
       "position": {
-        "x": 1200,
+        "x": 1440,
         "y": 120
       }
     }
@@ -112,10 +122,21 @@
       }
     },
     {
-      "id": "audio-gate",
+      "id": "audio-render",
       "from": {
         "node": "audio",
         "port": "file"
+      },
+      "to": {
+        "node": "render",
+        "port": "file"
+      }
+    },
+    {
+      "id": "render-gate",
+      "from": {
+        "node": "render",
+        "port": "done"
       },
       "to": {
         "node": "gate",

@@ -12,11 +12,17 @@ import { filePort, languageInput, passElse } from '../nodes/core/common.ts';
 import { NodeHookError } from '../nodes/core/stream-rules.ts';
 import { runSubworkflow } from '../nodes/core/subworkflow.ts';
 import { type RemoteHooks, remoteNodeDefinition } from '../nodes/remote.ts';
-import { edge, mainGraph, node, subGraph, testRegistry } from '../workflows/test-helpers.ts';
+import { bareGraph, edge, node, subGraph, testRegistry } from '../workflows/test-helpers.ts';
 import { capsOf, fileOf, probeOf, withSidecar } from './test-helpers.ts';
 import { type PathStep, type WalkDeps, walk, walkBuild, walkDecide } from './walk.ts';
 
 const NOW = new Date('2026-10-16T20:00:00.000Z');
+
+/**
+ * The walk does not need a Render (validation asks for one): the graphs here are walked as given,
+ * and the Render tests below put theirs in.
+ */
+const mainGraph = bareGraph;
 const AT = NOW.toISOString();
 
 const languageOf = (v: JsonValue | undefined) => v ?? null;
@@ -1071,6 +1077,110 @@ describe('walk', () => {
       });
       expect(trace.at(-1)).toMatchObject({ nodeId: 'rb', phase: 'finish' });
       expect(trace.at(-1)?.reason).toMatch(/^failed: .*No branch/);
+    });
+  });
+
+  describe('Render', () => {
+    const notify = (id: string) =>
+      node(id, 'core:notify-webhook', { url: 'https://example.test/h' });
+    /** in → kl → r (Render) → ro → after; r.damaged → each of `damaged` (one shared output). */
+    const rendered = (qualityCheck: boolean, damaged: ReturnType<typeof node>[] = []) =>
+      bareGraph(
+        [
+          node('in', 'core:input-manual'),
+          node('kl', 'test:act', { arg: 'x' }),
+          node('r', 'core:render', { qualityCheck }),
+          node('ro', 'core:replace-original'),
+          notify('after'),
+          ...damaged,
+        ],
+        [
+          edge('in', 'kl'),
+          edge('kl', 'r'),
+          edge('r', 'ro', { from: 'done' }),
+          edge('ro', 'after'),
+          ...damaged.map((n) => edge('r', n.id, { from: 'damaged' })),
+        ],
+      );
+
+    it('a Render with Quality check on collects the Damaged finish steps into `damaged` (noWrite) and the main path continues on Done', async () => {
+      const { deps, trace } = setup();
+      // wired in the other order: they run in phase order
+      const graph = rendered(true, [notify('d1'), node('dl', 'test:lib')]);
+      const decided = await walkDecide(deps, input(graph));
+      if (decided.kind !== 'decided') throw new Error(JSON.stringify(decided));
+      expect(ids(decided.nodes)).toEqual(['in', 'kl', 'r', 'ro', 'after']);
+      expect(decided.nodes.find((n) => n.nodeId === 'r')?.port).toBe('done');
+      expect([...decided.damagedNodes].map(([r, refs]) => [r, ids(refs)])).toEqual([
+        ['r', ['dl', 'd1']],
+      ]);
+      const result = await walk(deps, input(graph));
+      if (result.kind !== 'built') throw new Error(JSON.stringify(result));
+      expect(result.damaged).toEqual({
+        nodeId: 'r',
+        actionIndex: 0,
+        actions: [
+          { kind: 'plugin', description: 'test:lib', required: false },
+          { kind: 'notify', url: 'https://example.test/h', method: 'POST' },
+        ],
+        path: [
+          { workflowPath: [], nodeId: 'dl', port: null },
+          { workflowPath: [], nodeId: 'd1', port: 'file' },
+        ],
+      });
+      expect(ids(result.path)).toEqual(['in', 'kl', 'r', 'ro', 'after']);
+      expect(trace.filter((e) => e.nodeId === 'r').map((e) => [e.phase, e.port, e.reason])).toEqual(
+        [['finish', 'done', 'render; a damaged source continues on Damaged']],
+      );
+      // a write on the Damaged side fails the walk (validation forbids it; defence in depth)
+      const bad = await walk(deps, input(rendered(true, [node('rb', 'core:replace-original')])));
+      expect(bad).toMatchObject({
+        kind: 'failed',
+        nodeId: 'rb',
+        reason: 'a step that writes the result cannot follow Render\u2019s Damaged',
+      });
+    });
+
+    it('a Render with Quality check off yields damaged: null and never follows an edge from the hidden port', async () => {
+      const { deps, trace } = setup();
+      const graph = rendered(false, [notify('d1')]);
+      const decided = await walkDecide(deps, input(graph));
+      if (decided.kind !== 'decided') throw new Error(JSON.stringify(decided));
+      expect(decided.damagedNodes.size).toBe(0);
+      const result = await walk(deps, input(graph));
+      if (result.kind !== 'built') throw new Error(JSON.stringify(result));
+      expect(result.damaged).toBeNull();
+      expect(result.actions.map((a) => a.kind)).toEqual(['render', 'replace', 'notify']);
+      expect(trace.some((e) => e.nodeId === 'd1')).toBe(false);
+      // on, but nothing wired to Damaged: no branch either
+      const unwired = await walk(deps, input(rendered(true)));
+      if (unwired.kind !== 'built') throw new Error(JSON.stringify(unwired));
+      expect(unwired.damaged).toBeNull();
+    });
+
+    it('the render action sits in `actions` at damaged.actionIndex', async () => {
+      const { deps } = setup();
+      const graph = rendered(true, [notify('d1')]);
+      // a gate between Render and the write moves nothing: Render's action comes first
+      const sg = node('sg', 'core:size-gate', { minSavingPercent: 5 });
+      graph.nodes.push(sg);
+      graph.edges = graph.edges.map((e) =>
+        e.from.node === 'r' && e.to.node === 'ro' ? edge('r', 'sg', { from: 'done' }) : e,
+      );
+      graph.edges.push(edge('sg', 'ro', { from: 'pass' }));
+      const result = await walk(deps, input(graph));
+      if (result.kind !== 'built') throw new Error(JSON.stringify(result));
+      expect(result.actions.map((a) => a.kind)).toEqual([
+        'render',
+        'size-gate',
+        'replace',
+        'notify',
+      ]);
+      expect(result.damaged?.actionIndex).toBe(0);
+      expect(result.actions[result.damaged?.actionIndex ?? -1]).toEqual({
+        kind: 'render',
+        qualityCheck: true,
+      });
     });
   });
 

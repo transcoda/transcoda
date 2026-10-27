@@ -12,6 +12,7 @@ export const MOVE_COPY_TYPE = 'core:move-copy';
 /** The size gate: `pass` continues, `else` keeps the original and runs the non-writing steps. */
 export const SIZE_GATE_TYPE = 'core:size-gate';
 export const SIZE_GATE_ELSE_PORT = 'else';
+export { RENDER_DAMAGED_PORT, RENDER_DONE_PORT, RENDER_TYPE } from '@transcoda/shared';
 
 /** Callers pass the registry entry: a plugin node can be unavailable because its process is down. */
 export function nodeAvailability(

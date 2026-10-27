@@ -9,6 +9,7 @@ import {
   emptyGraph,
   type JsonValue,
   type NodeInstance,
+  upgradeGraphJson,
   type WorkflowGraph,
   type WorkflowKind,
 } from '@transcoda/shared';
@@ -170,7 +171,25 @@ export function edge(from: string, to: string, ports: { from?: string; to?: stri
   };
 }
 
+const CORE_FINISH = new Set(
+  createCoreRegistry()
+    .list()
+    .filter(({ def }) => def.kind === 'finish')
+    .map(({ def }) => def.type),
+);
+
+/**
+ * A workflow graph as a format-1 graph of `nodes` and `edges` reads today: a Render inserted on
+ * every output that leads from a non-finish node into core finish nodes (`upgradeGraphJson`), so
+ * tests written before Render keep their meaning. `bareGraph` leaves the graph as given.
+ */
 export function mainGraph(nodes: NodeInstance[], edges: Edge[] = []): WorkflowGraph {
+  const v1 = { formatVersion: 1, kind: 'workflow', nodes, edges, groups: [] };
+  return upgradeGraphJson(v1, (t) => CORE_FINISH.has(t)) as WorkflowGraph;
+}
+
+/** A workflow graph exactly as given (no Render inserted). */
+export function bareGraph(nodes: NodeInstance[], edges: Edge[] = []): WorkflowGraph {
   return { formatVersion: 2, kind: 'workflow', nodes, edges, groups: [] };
 }
 

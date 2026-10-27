@@ -542,6 +542,7 @@ describe('pipeline', () => {
     expect(listTrace(t.db, id).map((e) => [e.nodeId, e.phase])).toEqual([
       ['in', 'pass'],
       ['ev', 'build'],
+      ['render-1', 'finish'],
       ['sg', 'finish'],
     ]);
   });
@@ -1097,12 +1098,14 @@ describe('pipeline', () => {
     expect(trace.map((e) => [e.nodeId, e.phase])).toEqual([
       ['in', 'pass'],
       ['ev', 'build'],
+      ['render-1', 'finish'],
       ['ro', 'finish'],
     ]);
-    expect(trace.map((e) => e.seq)).toEqual([1, 2, 3]);
+    expect(trace.map((e) => e.seq)).toEqual([1, 2, 3, 4]);
     expect(job.walkPath).toEqual([
       { workflowPath: [], nodeId: 'in', port: 'file' },
       { workflowPath: [], nodeId: 'ev', port: 'file' },
+      { workflowPath: [], nodeId: 'render-1', port: 'done' },
       { workflowPath: [], nodeId: 'ro', port: 'file' },
     ]);
     // The probe was written to the file row; temp removed.
@@ -1160,9 +1163,11 @@ describe('pipeline', () => {
       [1, 1],
       [1, 2],
       [1, 3],
-      [2, 4],
+      [1, 4],
       [2, 5],
       [2, 6],
+      [2, 7],
+      [2, 8],
     ]);
   });
 
@@ -1343,7 +1348,7 @@ describe('pipeline', () => {
     await t.deps.engine.start();
     expect(await settled(id)).toMatchObject({ state: 'kept_original', workflowVersion: 3 });
     expect(findJobResult(t.db, id)).toMatchObject({ outcome: 'kept_original', workflowVersion: 3 });
-    expect(listTrace(t.db, id).map((e) => e.nodeId)).toEqual(['in', 'ev', 'sg']);
+    expect(listTrace(t.db, id).map((e) => e.nodeId)).toEqual(['in', 'ev', 'render-1', 'sg']);
     // The re-pin was published before the file was probed.
     expect(probingEvents(id)).toBeGreaterThanOrEqual(2);
   });
@@ -1567,6 +1572,7 @@ describe('pipeline: size gate pass and else', () => {
     expect(t.deps.engine.jobDetail(id)?.path).toEqual([
       { workflowPath: [], nodeId: 'in', port: 'file' },
       { workflowPath: [], nodeId: 'ev', port: 'file' },
+      { workflowPath: [], nodeId: 'render-1', port: 'done' },
       { workflowPath: [], nodeId: 'sg', port: 'else' },
       { workflowPath: [], nodeId: 'en', port: 'file' },
     ]);
@@ -1602,6 +1608,7 @@ describe('pipeline: size gate pass and else', () => {
     expect(t.deps.engine.jobDetail(id)?.path.map((s) => s.nodeId)).toEqual([
       'in',
       'ev',
+      'render-1',
       'sg',
       'ro',
       'pn',
@@ -1659,6 +1666,7 @@ describe('pipeline: size gate pass and else', () => {
     expect(g?.edges.map((e) => `${e.from.node}.${e.from.port}`)).toEqual([
       'in.file',
       'ev.file',
+      'render-1.done',
       'sg.pass',
     ]);
     expect(g?.nodes.find((n) => n.id === 'sg')?.typeVersion).toBe(2);
@@ -1684,6 +1692,7 @@ describe('pipeline: size gate pass and else', () => {
     expect(t.deps.engine.jobDetail(id)?.path.map((s) => s.nodeId)).toEqual([
       'in',
       'ev',
+      'render-1',
       'sg',
       'ro',
       'en',
@@ -3114,6 +3123,7 @@ describe('pipeline: test-encode dry runs', () => {
     expect(t.deps.engine.jobDetail(id)?.path.map((s) => s.nodeId)).toEqual([
       'in',
       'ev',
+      'render-1',
       'sg',
       'en',
     ]);
@@ -3681,6 +3691,7 @@ describe('pipeline: plugin finish steps and hooks', () => {
       expect(t.deps.engine.jobDetail(id)?.path.map((s) => s.nodeId)).toEqual([
         'in',
         'ev',
+        'render-1',
         'ro',
         'pl',
         'pm',
@@ -3720,6 +3731,7 @@ describe('pipeline: plugin finish steps and hooks', () => {
       expect(t.deps.engine.jobDetail(id)?.path.map((s) => `${s.nodeId}:${s.port}`)).toEqual([
         'in:file',
         'ev:file',
+        'render-1:done',
         'sg:else',
         'em:null',
         'en:null',

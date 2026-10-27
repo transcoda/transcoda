@@ -4,6 +4,8 @@ import {
   type AnyNodeDefinition,
   isPortRequired,
   type NodeMigration,
+  nodeMetadata,
+  type PortSpec,
   parseSettings,
   type SettingsParseResult,
 } from '@transcoda/sdk';
@@ -17,6 +19,9 @@ import {
   type JsonValue,
   LIBRARY_INPUT_TYPE,
   type NodeInstance,
+  portShown,
+  RENDER_DAMAGED_PORT,
+  RENDER_TYPE,
   RUN_SUBWORKFLOW_TYPE,
   type RunSubworkflowSettings,
   RunSubworkflowSettingsSchema,
@@ -197,10 +202,15 @@ function defOf(state: NodeState | undefined): AnyNodeDefinition | undefined {
   return state && state.status !== 'unknown' ? state.def : undefined;
 }
 
-/** Check 3: edges and inputs. Returns the edges whose endpoints both exist. */
+/**
+ * Check 3: edges and inputs. Returns the edges whose endpoints both exist and that the engine
+ * follows (not from an output the node's settings hide).
+ */
 function checkEdges(graph: WorkflowGraph, states: Map<string, NodeState>, issues: Issue[]): Edge[] {
   const byId = new Map(graph.nodes.map((n) => [n.id, n]));
   const existing: Edge[] = [];
+  /** Edges from an output the node's settings hide (PORT_HIDDEN). */
+  const hidden = new Set<Edge>();
   /** `${nodeId}\0${inputId}` → number of edges */
   const inputEdges = new Map<string, number>();
   for (const e of graph.edges) {
@@ -241,6 +251,12 @@ function checkEdges(graph: WorkflowGraph, states: Map<string, NodeState>, issues
         ),
       );
     }
+    if (!portShown(out, from.settings)) {
+      // Saved by an older client, or while the setting was different: the engine never follows
+      // it, so the nodes behind it are not on any path either.
+      issues.push(error('PORT_HIDDEN', hiddenPortText(from, fromDef, out), { edgeId: e.id }));
+      hidden.add(e);
+    }
   }
   for (const n of graph.nodes) {
     const def = defOf(states.get(n.id));
@@ -266,13 +282,55 @@ function checkEdges(graph: WorkflowGraph, states: Map<string, NodeState>, issues
       }
     }
   }
-  checkSharedOutputs(byId, states, existing, issues);
-  return existing;
+  const followed = existing.filter((e) => !hidden.has(e));
+  checkSharedOutputs(byId, states, followed, issues);
+  return followed;
+}
+
+/** The words for the setting a port's `shownWhen` names: its label, else its key. */
+function settingWords(def: AnyNodeDefinition, key: string): string {
+  try {
+    const schema = nodeMetadata(def).settingsSchema;
+    const props =
+      typeof schema === 'object' && schema !== null && !Array.isArray(schema)
+        ? schema.properties
+        : undefined;
+    const prop =
+      typeof props === 'object' && props !== null && !Array.isArray(props) ? props[key] : undefined;
+    const label =
+      typeof prop === 'object' && prop !== null && !Array.isArray(prop)
+        ? prop.description
+        : undefined;
+    return typeof label === 'string' && label !== '' ? label : key;
+  } catch {
+    return key;
+  }
+}
+
+/** PORT_HIDDEN: `<node>: output "Damaged" is only there while Quality check is on; …`. */
+function hiddenPortText(n: NodeInstance, def: AnyNodeDefinition, out: PortSpec): string {
+  const when = out.shownWhen;
+  if (!when) return `${title(n, def)}: output "${out.label}" is hidden`;
+  const words = settingWords(def, when.setting);
+  const state =
+    when.equals === true
+      ? { is: `${words} is on`, fix: `turn ${words} on` }
+      : when.equals === false
+        ? { is: `${words} is off`, fix: `turn ${words} off` }
+        : {
+            is: `${words} is ${JSON.stringify(when.equals)}`,
+            fix: `set ${words} to ${JSON.stringify(when.equals)}`,
+          };
+  return `${title(n, def)}: output "${out.label}" is only there while ${state.is}; remove the connection or ${state.fix}`;
 }
 
 /** SIZE_GATE_SHARED_OUTPUT: the gate decides for the steps after it, not for its siblings. */
 export const SIZE_GATE_SHARED_TEXT =
   'The size gate must be the only step on this output; put the other steps after the gate\u2019s Yes or No.';
+
+/** RENDER_SHARED_OUTPUT: Render makes the result its siblings would act on. */
+export const RENDER_SHARED_TEXT =
+  'Render must be the only step on this output; put the other steps after Render\u2019s Done or Damaged';
 
 /**
  * A file follows one path, so a file output may feed several nodes only when every one is a
@@ -282,6 +340,8 @@ export const SIZE_GATE_SHARED_TEXT =
  *   finish node;
  * - SIZE_GATE_SHARED_OUTPUT (on the gate): a size gate among them; it would decide only for the
  *   steps wired after it, and the others would run whatever it decides;
+ * - RENDER_SHARED_OUTPUT (on the Render): a Render among them; the others would act on a result
+ *   that is not rendered yet;
  * - OUTPUT_MULTIPLE_WRITES (on each writing step): two or more steps that write the result.
  * Data outputs may feed any number of nodes. Targets of unknown type are left to their own
  * issue; bypassed finish targets run no hook, so they neither gate nor write.
@@ -326,6 +386,10 @@ function checkSharedOutputs(
             `${title(from, def)}: output ${out.label} has ${shared.length} connections, one to ${title(to, toDef)}; only finish steps can share an output (a file follows one path)`,
             { nodeId: fromId, edgeId: e.id },
           ),
+        );
+      } else if (runs && toDef.type === RENDER_TYPE) {
+        issues.push(
+          error('RENDER_SHARED_OUTPUT', RENDER_SHARED_TEXT, { nodeId: to.id, edgeId: e.id }),
         );
       } else if (runs && (toDef.type === SIZE_GATE_TYPE || toDef.finishPhase === 'gate')) {
         issues.push(
@@ -802,6 +866,22 @@ const WRITE_TYPES: ReadonlySet<string> = new Set(['core:replace-original', MOVE_
 const ELSE_ONLY_NOTIFY_TEXT =
   'After the size gate\u2019s \u201cNo\u201d, only notifications and other non-writing finish steps can follow.';
 
+const DAMAGED_ONLY_NOTIFY_TEXT =
+  'After Render\u2019s Damaged, only notifications and other non-writing finish steps can follow.';
+
+/** A finish step that renders, gates or writes: none may run where no result is written. */
+function writesOrGates(def: AnyNodeDefinition): boolean {
+  return (
+    def.kind === 'finish' &&
+    (WRITE_TYPES.has(def.type) ||
+      def.type === SIZE_GATE_TYPE ||
+      def.type === RENDER_TYPE ||
+      def.finishPhase === 'write' ||
+      def.finishPhase === 'gate' ||
+      def.finishPhase === 'render')
+  );
+}
+
 /** `${nodeId}:${port}` → the nodes that output feeds (existing edges only). */
 type PortAdjacency = Map<string, string[]>;
 
@@ -824,11 +904,21 @@ function triggerOf(graph: WorkflowGraph, states: Map<string, NodeState>): NodeIn
 }
 
 /**
- * FINISH_ORDER and NO_WRITE_PATH: every path from the trigger, walked per file output port with
- * two flags ("a write node was passed", "a finish node was passed"). Iterative DFS memoised on
- * `(node, flags)`, so each node is expanded at most four times whatever the number of paths.
+ * The path rules: every path from the trigger, walked per file output port (hidden ports left
+ * out) with its flags: a write node was passed, a finish node was passed, a Render was passed, the
+ * path is below a size gate's `else` or below Render's Damaged. Iterative DFS memoised on
+ * `(node, flags)`, so each node is expanded a bounded number of times whatever the number of paths.
  * Bypassed nodes run no hook (the engine passes the file through on their first file output), so
- * they neither set the flags nor break the order. Returns the number of expansions.
+ * they neither set the flags nor break the order; a bypassed Render is an error of its own.
+ * - FINISH_ORDER: an action after a finish node, or a finish phase after a later one;
+ * - ELSE_ONLY_NOTIFY / DAMAGED_ONLY_NOTIFY: a step that renders, gates or writes below `else` or
+ *   Damaged;
+ * - RENDER_MISSING (on the finish node), RENDER_TWICE, RENDER_BYPASSED: exactly one running Render
+ *   before the finish steps of every path;
+ * - DAMAGED_ONLY: a `damagedOnly` finish node on a path that is not below a Damaged output;
+ * - NO_WRITE_PATH (warning): a path that ends without a write, except below `else` or Damaged
+ *   (an unconnected `else` or Damaged is fine too).
+ * Returns the number of expansions.
  */
 function checkPaths(
   graph: WorkflowGraph,
@@ -853,40 +943,88 @@ function checkPaths(
     issues.push(issue);
   };
   const expanded = new Set<string>();
-  // `rank`: the highest finish phase passed so far (-1: none); `by` names the node that set it.
-  const stack: Array<{
+  type Visit = {
     id: string;
     wrote: boolean;
     finished: boolean;
+    /** The highest finish phase passed so far (-1: none); `by` names the node that set it. */
     rank: number;
     by: string;
+    /** A Render was passed (a bypassed one too: it is reported on its own). */
+    rendered: boolean;
     /** Below a size gate's `else`: nothing may write there, and nothing needs to. */
     afterElse: boolean;
-  }> = [{ id: root.id, wrote: false, finished: false, rank: -1, by: '', afterElse: false }];
+    /** Below Render's Damaged: as below `else`; `damagedOnly` nodes belong here only. */
+    afterDamaged: boolean;
+  };
+  const flag = (b: boolean) => (b ? 1 : 0);
+  const stack: Visit[] = [
+    {
+      id: root.id,
+      wrote: false,
+      finished: false,
+      rank: -1,
+      by: '',
+      rendered: false,
+      afterElse: false,
+      afterDamaged: false,
+    },
+  ];
   let visits = 0;
   for (let top = stack.pop(); top !== undefined; top = stack.pop()) {
     const { id } = top;
-    const key = `${id}:${top.wrote ? 1 : 0}${top.finished ? 1 : 0}${top.afterElse ? 1 : 0}:${top.rank}`;
+    const key = `${id}:${flag(top.wrote)}${flag(top.finished)}${flag(top.rendered)}${flag(top.afterElse)}${flag(top.afterDamaged)}:${top.rank}`;
     const n = byId.get(id);
     if (!n || expanded.has(key)) continue;
     expanded.add(key);
     visits++;
     const def = defOf(states.get(id));
     const name = title(n, def);
-    let { wrote, finished, rank, by } = top;
-    const { afterElse } = top;
+    let { wrote, finished, rank, by, rendered } = top;
+    const { afterElse, afterDamaged } = top;
+    const isRender = def?.type === RENDER_TYPE;
+    if (isRender && n.bypassed === true) {
+      report(
+        `render-bypassed:${id}`,
+        error('RENDER_BYPASSED', 'Render can\u2019t be skipped: the file is rendered here', {
+          nodeId: id,
+        }),
+      );
+      rendered = true;
+    }
     if (def && n.bypassed !== true) {
-      if (
-        afterElse &&
-        def.kind === 'finish' &&
-        (WRITE_TYPES.has(def.type) ||
-          def.type === SIZE_GATE_TYPE ||
-          def.finishPhase === 'write' ||
-          def.finishPhase === 'gate')
-      ) {
+      if (afterDamaged && writesOrGates(def)) {
+        report(
+          `damaged-only-notify:${id}`,
+          error('DAMAGED_ONLY_NOTIFY', DAMAGED_ONLY_NOTIFY_TEXT, { nodeId: id }),
+        );
+      } else if (afterElse && writesOrGates(def)) {
         report(
           `else-only-notify:${id}`,
           error('ELSE_ONLY_NOTIFY', ELSE_ONLY_NOTIFY_TEXT, { nodeId: id }),
+        );
+      } else if (isRender && rendered) {
+        report(
+          `render-twice:${id}`,
+          error('RENDER_TWICE', `${name} comes after another Render; a path renders once`, {
+            nodeId: id,
+          }),
+        );
+      }
+      if (def.kind === 'finish' && !isRender && !rendered && !afterDamaged) {
+        report(
+          `render-missing:${id}`,
+          error(
+            'RENDER_MISSING',
+            `Put a Render step before ${name}: every path that reaches a finish step renders once`,
+            { nodeId: id },
+          ),
+        );
+      }
+      if (def.kind === 'finish' && def.damagedOnly === true && !afterDamaged) {
+        report(
+          `damaged-only:${id}`,
+          error('DAMAGED_ONLY', `${name} can only follow a Damaged output`, { nodeId: id }),
         );
       }
       if (def.kind !== 'finish' && finished) {
@@ -920,16 +1058,21 @@ function checkPaths(
         }
       }
       if (WRITE_TYPES.has(def.type)) wrote = true;
+      if (isRender) rendered = true;
     }
     const fileOutputs = def
-      ? def.outputs.filter((p) => p.type === 'file').map((p) => p.id)
+      ? def.outputs.filter((p) => p.type === 'file' && portShown(p, n.settings)).map((p) => p.id)
       : (fromPorts.get(id) ?? []);
     const ports = n.bypassed === true ? fileOutputs.slice(0, 1) : fileOutputs;
     const connected = ports.filter((p) => (next.get(`${id}:${p}`)?.length ?? 0) > 0);
-    // The gate's unconnected `else` is fine: the original is kept and nothing is written there.
+    // The gate's unconnected `else` and Render's unconnected Damaged are fine: the original is
+    // kept and nothing is written there.
     const isGate = def?.type === SIZE_GATE_TYPE && n.bypassed !== true;
-    const warnPorts = isGate ? ports.filter((p) => p !== SIZE_GATE_ELSE_PORT) : ports;
-    if (!wrote && !afterElse) {
+    const runsRender = isRender && n.bypassed !== true;
+    const warnPorts = ports.filter(
+      (p) => !(isGate && p === SIZE_GATE_ELSE_PORT) && !(runsRender && p === RENDER_DAMAGED_PORT),
+    );
+    if (!wrote && !afterElse && !afterDamaged) {
       if (connected.length === 0) {
         report(
           `write:${id}`,
@@ -954,6 +1097,7 @@ function checkPaths(
     for (const port of [...connected].reverse()) {
       const targets = next.get(`${id}:${port}`) ?? [];
       const branchElse = afterElse || (isGate && port === SIZE_GATE_ELSE_PORT);
+      const branchDamaged = afterDamaged || (runsRender && port === RENDER_DAMAGED_PORT);
       // Finish nodes sharing an output run as one set (the write before the rest), so a write
       // anywhere in the set counts for every path through it.
       const setWrites = targets.length > 1 && sharedSetWrites(targets, byId, states, next);
@@ -964,7 +1108,9 @@ function checkPaths(
           finished,
           rank,
           by,
+          rendered,
           afterElse: branchElse,
+          afterDamaged: branchDamaged,
         });
       }
     }

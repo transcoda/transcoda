@@ -87,7 +87,8 @@ describe('size gate v1 → v2', () => {
       settings: { minSavingPercent: 20 },
     });
     expect(graph.edges.map((e) => [e.from.node, e.from.port, e.to.node, e.to.port])).toEqual([
-      ['in', 'file', 'sg', 'file'],
+      ['in', 'file', 'render-1', 'file'],
+      ['render-1', 'done', 'sg', 'file'],
       ['sg', 'pass', 'ro', 'file'],
     ]);
   });
@@ -102,7 +103,7 @@ describe('size gate v1 → v2', () => {
   it('migratePinned (how a job loads its own version) re-keys the edges too', () => {
     const { graph, held } = migratePinned(v1Gate(), testRegistry());
     expect(held).toEqual([]);
-    expect(graph.edges.map((e) => e.from.port)).toEqual(['file', 'pass']);
+    expect(graph.edges.map((e) => e.from.port)).toEqual(['file', 'done', 'pass']);
   });
 });
 

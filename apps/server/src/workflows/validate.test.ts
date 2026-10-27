@@ -14,6 +14,7 @@ import { z } from 'zod';
 import { filePort } from '../nodes/core/common.ts';
 import { createCoreRegistry, type NodeRegistry } from '../nodes/registry.ts';
 import {
+  bareGraph,
   bumpNoPath,
   bumpThrowing,
   bumpV1,
@@ -140,11 +141,12 @@ describe('validateWorkflow', () => {
   });
 
   it('a 499-node chain validates without throwing; a cycle in it is still found', () => {
-    const middle = Array.from({ length: 497 }, (_, i) => node(`k${i}`, 'core:keep-languages'));
+    // in, 496 actions, Render, Replace original
+    const middle = Array.from({ length: 496 }, (_, i) => node(`k${i}`, 'core:keep-languages'));
     const g = mainWith(...middle);
     expect(g.nodes).toHaveLength(499);
     expect(validateWorkflow(g, ctx())).toEqual([]);
-    const cyclic = { ...g, edges: [...g.edges, edge('k496', 'k0')] };
+    const cyclic = { ...g, edges: [...g.edges, edge('k495', 'k0')] };
     expect(find(validateWorkflow(cyclic, ctx()), 'GRAPH_CYCLE')).toHaveLength(1);
   });
 
@@ -247,10 +249,14 @@ describe('validateWorkflow', () => {
 
   it('edges: dangling, unknown port, wrong direction, type mismatch, double input, required input unconnected', () => {
     const base = mainWith(node('vi', 'core:video-is'), node('kl', 'core:keep-languages'));
-    // base edges: in→vi (file→file, ok), vi→kl (vi has no 'file' output), kl→ro
+    // base edges: in→vi (file→file, ok), vi→kl (vi has no 'file' output), kl→Render→ro
     const fixed: WorkflowGraph = {
       ...base,
-      edges: [edge('in', 'vi'), edge('vi', 'kl', { from: 'pass' }), edge('kl', 'ro')],
+      edges: [
+        edge('in', 'vi'),
+        edge('vi', 'kl', { from: 'pass' }),
+        ...base.edges.filter((e) => [e.from.node, e.to.node].includes('render-1')),
+      ],
     };
     // vi's else output stays unconnected: only the port-aware write-path warning
     expect(validateWorkflow(fixed, ctx()).map((i) => `${i.code}:${i.nodeId}`)).toEqual([
@@ -372,12 +378,13 @@ describe('validateWorkflow', () => {
     // a finish node exists but is not reachable from the trigger
     const cut = mainWith(node('kl', 'core:keep-languages'));
     const disconnected = validateWorkflow(
-      { ...cut, edges: cut.edges.filter((e) => e.to.node !== 'ro') },
+      { ...cut, edges: cut.edges.filter((e) => e.to.node !== 'render-1') },
       ctx(),
     );
     expect(codes(disconnected)).toEqual([
       'error:INPUT_UNCONNECTED',
       'error:NO_FINISH_PATH',
+      'warning:NODE_UNREACHABLE',
       'warning:NODE_UNREACHABLE',
       'warning:NO_WRITE_PATH',
     ]);
@@ -1127,7 +1134,7 @@ describe('validateWorkflow', () => {
             severity: 'error',
             code: 'OUTPUT_MULTIPLE_WRITES',
             message:
-              'Replace original: Manual input\u2019s output File has 2 steps that write the result; only one of them can be on an output',
+              'Replace original: Render\u2019s output Done has 2 steps that write the result; only one of them can be on an output',
             nodeId: 'ro',
             edgeId: 'in-ro',
           },
@@ -1243,7 +1250,7 @@ describe('validateWorkflow', () => {
       it.each(FINISH_PHASES)('else → a plugin finish step in phase %s', (phase) => {
         const g = gate([node('p', `test:else-${phase}`)], [elseTo('p')]);
         const found = find(validateWorkflow(g, phaseCtx()), 'ELSE_ONLY_NOTIFY');
-        if (phase === 'gate' || phase === 'write')
+        if (phase === 'render' || phase === 'gate' || phase === 'write')
           expect(found.map((i) => i.nodeId)).toEqual(['p']);
         else expect(found).toEqual([]);
       });
@@ -1364,7 +1371,8 @@ describe('validateWorkflow', () => {
         },
       ]);
 
-      // in → kl → {a0, a1, a2} → sg → ro: sg and ro are expanded once, not three times
+      // in → kl → {a0, a1, a2} → (a Render each) → sg → ro: sg and ro are expanded once, not
+      // three times
       const wide = ['a0', 'a1', 'a2'];
       const diamond = mainGraph(
         [
@@ -1380,7 +1388,7 @@ describe('validateWorkflow', () => {
           edge('sg', 'ro', { from: 'pass' }),
         ],
       );
-      expect(walkPathRules(diamond, ctx())).toEqual({ issues: [], visits: 7 });
+      expect(walkPathRules(diamond, ctx())).toEqual({ issues: [], visits: 10 });
 
       // 20 stacked 3-wide diamonds: 3^20 paths, but every node is expanded once
       const nodes = [node('in', 'core:input-manual'), node('h0', 'core:keep-languages')];
@@ -1395,10 +1403,206 @@ describe('validateWorkflow', () => {
       }
       nodes.push(node('ro', 'core:replace-original'));
       edges.push(edge('h20', 'ro'));
-      expect(walkPathRules(mainGraph(nodes, edges), ctx())).toEqual({
+      const stacked = mainGraph(nodes, edges);
+      expect(walkPathRules(stacked, ctx())).toEqual({
         issues: [],
-        visits: nodes.length,
+        visits: stacked.nodes.length,
       });
+    });
+  });
+
+  describe('Render', () => {
+    const notifyNode = (id = 'nw') =>
+      node(id, 'core:notify-webhook', { url: 'https://example.test/hook' });
+    const replaceDamaged = defineNode({
+      type: 'test:replace-damaged',
+      version: 1,
+      kind: 'finish',
+      finishPhase: 'library-manager',
+      damagedOnly: true,
+      title: 'Replace damaged file',
+      description: 'd',
+      icon: 'x',
+      inputs: [filePort],
+      outputs: [filePort],
+      settings: z.object({}),
+    });
+    const damagedCtx = () => ctx({ registry: testRegistry(replaceDamaged) });
+    /** in → enc → r (Render) → ro; r.damaged → `after` by `damagedEdges`. */
+    const rendered = (
+      qualityCheck: boolean,
+      after: ReturnType<typeof node>[] = [],
+      damagedEdges: ReturnType<typeof edge>[] = [],
+    ) =>
+      bareGraph(
+        [
+          node('in', 'core:input-manual'),
+          node('kl', 'core:keep-languages'),
+          node('r', 'core:render', { qualityCheck }),
+          node('ro', 'core:replace-original'),
+          ...after,
+        ],
+        [edge('in', 'kl'), edge('kl', 'r'), edge('r', 'ro', { from: 'done' }), ...damagedEdges],
+      );
+    const damagedTo = (id: string) => edge('r', id, { from: 'damaged' });
+
+    it('a path to a finish node without Render → RENDER_MISSING on the finish node; with Render → clean', () => {
+      const bare = bareGraph(
+        [
+          node('in', 'core:input-manual'),
+          node('kl', 'core:keep-languages'),
+          node('ro', 'core:replace-original'),
+        ],
+        [edge('in', 'kl'), edge('kl', 'ro')],
+      );
+      expect(validateWorkflow(bare, ctx())).toEqual([
+        {
+          severity: 'error',
+          code: 'RENDER_MISSING',
+          message:
+            'Put a Render step before Replace original: every path that reaches a finish step renders once',
+          nodeId: 'ro',
+        },
+      ]);
+      expect(validateWorkflow(rendered(false), ctx())).toEqual([]);
+      expect(validateWorkflow(rendered(true), ctx())).toEqual([]);
+    });
+
+    it('two Renders in a row → RENDER_TWICE; Render on an output shared with Replace original → RENDER_SHARED_OUTPUT', () => {
+      const twice = bareGraph(
+        [
+          node('in', 'core:input-manual'),
+          node('r1', 'core:render'),
+          node('r2', 'core:render', {}, { label: 'Second render' }),
+          node('ro', 'core:replace-original'),
+        ],
+        [edge('in', 'r1'), edge('r1', 'r2', { from: 'done' }), edge('r2', 'ro', { from: 'done' })],
+      );
+      expect(validateWorkflow(twice, ctx())).toEqual([
+        {
+          severity: 'error',
+          code: 'RENDER_TWICE',
+          message: 'Second render comes after another Render; a path renders once',
+          nodeId: 'r2',
+        },
+      ]);
+      const shared = bareGraph(
+        [
+          node('in', 'core:input-manual'),
+          node('r', 'core:render'),
+          node('ro', 'core:replace-original'),
+          node('nw', 'core:notify-webhook', { url: 'https://example.test/hook' }),
+        ],
+        [edge('in', 'r'), edge('in', 'ro'), edge('r', 'nw', { from: 'done' })],
+      );
+      expect(find(validateWorkflow(shared, ctx()), 'RENDER_SHARED_OUTPUT')).toEqual([
+        {
+          severity: 'error',
+          code: 'RENDER_SHARED_OUTPUT',
+          message:
+            'Render must be the only step on this output; put the other steps after Render\u2019s Done or Damaged',
+          nodeId: 'r',
+          edgeId: 'in-r',
+        },
+      ]);
+    });
+
+    it('a bypassed Render → RENDER_BYPASSED', () => {
+      const g = rendered(false);
+      const bypassed = {
+        ...g,
+        nodes: g.nodes.map((n) => (n.id === 'r' ? { ...n, bypassed: true } : n)),
+      };
+      expect(validateWorkflow(bypassed, ctx())).toEqual([
+        {
+          severity: 'error',
+          code: 'RENDER_BYPASSED',
+          message: 'Render can\u2019t be skipped: the file is rendered here',
+          nodeId: 'r',
+        },
+      ]);
+    });
+
+    it('an edge from Damaged while Quality check is off → PORT_HIDDEN with the edge id; on → clean', () => {
+      const off = rendered(false, [notifyNode()], [damagedTo('nw')]);
+      const issues = validateWorkflow(off, ctx());
+      expect(find(issues, 'PORT_HIDDEN')).toEqual([
+        {
+          severity: 'error',
+          code: 'PORT_HIDDEN',
+          message:
+            'Render: output "Damaged" is only there while Quality check is on; remove the connection or turn Quality check on',
+          edgeId: 'r-nw',
+        },
+      ]);
+      // never followed: the notify behind it is unreachable, not a path of its own
+      expect(codes(issues)).toEqual(['error:PORT_HIDDEN', 'warning:NODE_UNREACHABLE']);
+      expect(validateWorkflow(rendered(true, [notifyNode()], [damagedTo('nw')]), ctx())).toEqual(
+        [],
+      );
+    });
+
+    it('after Damaged: replace-original → DAMAGED_ONLY_NOTIFY; notify-webhook → clean; NO_WRITE_PATH is not warned below Damaged', () => {
+      const bad = rendered(true, [node('rb', 'core:replace-original')], [damagedTo('rb')]);
+      expect(validateWorkflow(bad, ctx())).toEqual([
+        {
+          severity: 'error',
+          code: 'DAMAGED_ONLY_NOTIFY',
+          message:
+            'After Render\u2019s Damaged, only notifications and other non-writing finish steps can follow.',
+          nodeId: 'rb',
+        },
+      ]);
+      const gate = rendered(true, [node('sg', 'core:size-gate')], [damagedTo('sg')]);
+      expect(
+        find(validateWorkflow(gate, ctx()), 'DAMAGED_ONLY_NOTIFY').map((i) => i.nodeId),
+      ).toEqual(['sg']);
+      // a chain of notifications on Damaged never writes, and needs not
+      const chained = rendered(
+        true,
+        [notifyNode('n1'), notifyNode('n2')],
+        [damagedTo('n1'), edge('n1', 'n2')],
+      );
+      expect(validateWorkflow(chained, ctx())).toEqual([]);
+    });
+
+    it('a damagedOnly finish node (test registry stub "test:replace-damaged", phase library-manager) on Done → DAMAGED_ONLY; on Damaged → clean; chained after a notify on Damaged → clean', () => {
+      const onDone = bareGraph(
+        [
+          node('in', 'core:input-manual'),
+          node('r', 'core:render'),
+          node('ro', 'core:replace-original'),
+          node('rd', 'test:replace-damaged'),
+        ],
+        [edge('in', 'r'), edge('r', 'ro', { from: 'done' }), edge('ro', 'rd')],
+      );
+      expect(validateWorkflow(onDone, damagedCtx())).toEqual([
+        {
+          severity: 'error',
+          code: 'DAMAGED_ONLY',
+          message: 'Replace damaged file can only follow a Damaged output',
+          nodeId: 'rd',
+        },
+      ]);
+      const onDamaged = rendered(true, [node('rd', 'test:replace-damaged')], [damagedTo('rd')]);
+      expect(validateWorkflow(onDamaged, damagedCtx())).toEqual([]);
+      const afterNotify = rendered(
+        true,
+        [
+          node('n0', 'core:notify-webhook', { url: 'https://example.test/hook' }),
+          node('rd', 'test:replace-damaged'),
+        ],
+        [damagedTo('n0'), edge('n0', 'rd')],
+      );
+      // still below Damaged (its order is FINISH_ORDER's business: notify runs after library-manager)
+      expect(find(validateWorkflow(afterNotify, damagedCtx()), 'DAMAGED_ONLY')).toEqual([]);
+    });
+
+    it('Render in a sub-workflow → NODE_NOT_ALLOWED_HERE', () => {
+      const sub = chain('subworkflow', node('r', 'core:render'));
+      expect(
+        find(validateWorkflow(sub, ctx()), 'NODE_NOT_ALLOWED_HERE').map((i) => i.nodeId),
+      ).toEqual(['r']);
     });
   });
 

@@ -676,7 +676,7 @@ describe('WorkflowService', () => {
       activate(w, 2);
       const loaded = svc.loadForRun(w, 2);
       if (loaded.kind !== 'ok') throw new Error(JSON.stringify(loaded));
-      expect(ports(loaded.graph)).toEqual(['in.file', 'sg.pass']);
+      expect(ports(loaded.graph)).toEqual(['in.file', 'render-1.done', 'sg.pass']);
       expect(loaded.graph.nodes.find((n) => n.id === 'sg')).toMatchObject({
         typeVersion: 2,
         settings: { minSavingPercent: 20 },
@@ -690,7 +690,11 @@ describe('WorkflowService', () => {
       expect(svc.upgradeAll()).toMatchObject({ upgraded: 1, behaviour: 0, broken: 0 });
       const detail = svc.get(w);
       expect(detail).toMatchObject({ currentVersion: 3, active: { version: 2, runnable: true } });
-      expect(ports(detail?.graph as WorkflowGraph)).toEqual(['in.file', 'sg.pass']);
+      expect(ports(detail?.graph as WorkflowGraph)).toEqual([
+        'in.file',
+        'render-1.done',
+        'sg.pass',
+      ]);
       expect(svc.versions(w)?.[0]).toMatchObject({
         version: 3,
         note: 'Updated Size gate 1\u21922',
@@ -699,7 +703,7 @@ describe('WorkflowService', () => {
       // v2 (the active one) is stored as v1 wrote it, but shown as the engine runs it: no
       // spurious UNKNOWN_PORT, the edge on pass
       const old = svc.get(w, 2);
-      expect(ports(old?.graph as WorkflowGraph)).toEqual(['in.file', 'sg.pass']);
+      expect(ports(old?.graph as WorkflowGraph)).toEqual(['in.file', 'render-1.done', 'sg.pass']);
       expect(old?.issues.filter((i) => i.severity === 'error')).toEqual([]);
       expect(svc.loadForRun(w, 2)).toMatchObject({ kind: 'ok', activeVersion: 2 });
       // the upgraded version is valid as it stands

@@ -77,6 +77,7 @@ describe('core nodes', () => {
       'core:notify-webhook',
       'core:remove-duplicate-audio',
       'core:remux',
+      'core:render',
       'core:reorder-tracks',
       'core:replace-original',
       'core:run-subworkflow',
@@ -218,6 +219,7 @@ describe('core nodes', () => {
       coreNodes.filter((d) => d.kind === 'finish').map((d) => [d.type, d.finishPhase]),
     );
     expect(phases).toEqual({
+      'core:render': 'render',
       'core:size-gate': 'gate',
       'core:replace-original': 'write',
       'core:move-copy': 'write',

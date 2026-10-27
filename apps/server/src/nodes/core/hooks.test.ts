@@ -10,6 +10,13 @@ import {
   type ProbeResult,
   type StreamPlan,
 } from '@transcoda/sdk';
+import {
+  type JsonValue,
+  portShown,
+  RENDER_DAMAGED_PORT,
+  RENDER_DONE_PORT,
+  RENDER_TYPE,
+} from '@transcoda/shared';
 import { describe, expect, it } from 'vitest';
 import { kept, modelFromProbe, streamsOf } from '../../engine/build-model.ts';
 import { parseProbe } from '../../engine/probe.ts';
@@ -24,7 +31,7 @@ import {
   setDefaultTrack,
 } from './actions.ts';
 import { fileMatches, hasStream, videoIs } from './conditions.ts';
-import { moveCopy, notifyWebhook, replaceOriginal, sizeGate } from './finish.ts';
+import { moveCopy, notifyWebhook, render, replaceOriginal, sizeGate } from './finish.ts';
 import { NodeHookError } from './stream-rules.ts';
 
 const tigger: ProbeResult = parseProbe(
@@ -1026,5 +1033,23 @@ describe('finish nodes', () => {
       actions: [{ kind: 'notify', url: 'https://hooks.example/t?token=abc', method: 'POST' }],
       reason: 'notify webhook (POST)',
     });
+  });
+
+  it('render: Quality check off → one render action, Damaged hidden; on → the action carries qualityCheck true and Damaged is shown', async () => {
+    const probe = probeOf([{}]);
+    const ctx: FinishContext = { ...decideCtx(probe), model: modelFromProbe(probe) };
+    expect(render).toMatchObject({ kind: 'finish', finishPhase: 'render', type: RENDER_TYPE });
+    const shown = (settings: JsonValue) =>
+      render.outputs.filter((p) => portShown(p, settings)).map((p) => p.id);
+    expect(await finish(render, ctx)).toEqual({
+      actions: [{ kind: 'render', qualityCheck: false }],
+      reason: 'render',
+    });
+    expect(shown(render.settings.parse({}) as JsonValue)).toEqual([RENDER_DONE_PORT]);
+    expect(await finish(render, ctx, { qualityCheck: true })).toEqual({
+      actions: [{ kind: 'render', qualityCheck: true }],
+      reason: 'render; a damaged source continues on Damaged',
+    });
+    expect(shown({ qualityCheck: true })).toEqual([RENDER_DONE_PORT, RENDER_DAMAGED_PORT]);
   });
 });

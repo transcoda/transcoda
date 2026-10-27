@@ -1,5 +1,5 @@
 {
-  "formatVersion": 1,
+  "formatVersion": 2,
   "kind": "workflow",
   "nodes": [
     {
@@ -50,12 +50,22 @@
       }
     },
     {
+      "id": "render",
+      "type": "core:render",
+      "typeVersion": 1,
+      "settings": {},
+      "position": {
+        "x": 720,
+        "y": 0
+      }
+    },
+    {
       "id": "replace",
       "type": "core:replace-original",
       "typeVersion": 1,
       "settings": {},
       "position": {
-        "x": 720,
+        "x": 960,
         "y": 0
       }
     }
@@ -84,10 +94,21 @@
       }
     },
     {
-      "id": "audio-replace",
+      "id": "audio-render",
       "from": {
         "node": "audio",
         "port": "file"
+      },
+      "to": {
+        "node": "render",
+        "port": "file"
+      }
+    },
+    {
+      "id": "render-replace",
+      "from": {
+        "node": "render",
+        "port": "done"
       },
       "to": {
         "node": "replace",

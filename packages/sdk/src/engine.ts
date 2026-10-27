@@ -51,6 +51,8 @@ export interface FinishContext extends HookContextBase {
   model: BuildModel;
 }
 export type FinishAction =
+  /** Core's Render step: the encode happens here; `qualityCheck` makes a damaged source take Damaged. */
+  | { kind: 'render'; qualityCheck: boolean }
   | { kind: 'size-gate'; minSavingPercent: number }
   | { kind: 'replace'; recycleFolder: string | null }
   | { kind: 'move-copy'; mode: 'move' | 'copy'; outputRoot: string }

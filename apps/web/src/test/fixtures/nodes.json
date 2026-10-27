@@ -1062,6 +1062,57 @@
       }
     },
     {
+      "type": "core:render",
+      "version": 1,
+      "kind": "finish",
+      "title": "Render",
+      "description": "Encodes the file as the steps before it planned. Done continues; with Quality check on, a damaged source continues on Damaged instead of failing.",
+      "icon": "clapperboard",
+      "inputs": [
+        {
+          "id": "file",
+          "label": "File",
+          "type": "file"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "done",
+          "label": "Done",
+          "type": "file"
+        },
+        {
+          "id": "damaged",
+          "label": "Damaged",
+          "type": "file",
+          "shownWhen": {
+            "setting": "qualityCheck",
+            "equals": true
+          }
+        }
+      ],
+      "settingsSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "qualityCheck": {
+            "default": false,
+            "description": "Quality check",
+            "help": "If the source turns out to be damaged while rendering, continue on Damaged instead of failing.",
+            "type": "boolean"
+          }
+        }
+      },
+      "onNodeSettings": [],
+      "finishPhase": "render",
+      "source": {
+        "kind": "core"
+      },
+      "availability": {
+        "available": true
+      }
+    },
+    {
       "type": "core:size-gate",
       "version": 2,
       "kind": "finish",

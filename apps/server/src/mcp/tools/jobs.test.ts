@@ -367,6 +367,7 @@ describe('job tools', () => {
     expect(report.path.map((p) => p.title)).toEqual([
       'Manual input',
       'Make it small',
+      'Render',
       'Swap in result',
     ]);
     expect(text(res)).toMatch(/^Job \S+: failed — ffmpeg exited 1\n/);
