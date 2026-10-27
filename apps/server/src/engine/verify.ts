@@ -1115,9 +1115,12 @@ export async function confirmSourceDamage(input: {
   ffmpegPath: string;
   ffprobePath: string;
   times: number[];
+  /** How long each decode runs (default CONFIRM_SECONDS). */
+  seconds?: number;
   exec?: Exec;
   signal?: AbortSignal;
 }): Promise<VerifyFailure[]> {
+  const seconds = input.seconds ?? CONFIRM_SECONDS;
   const exec = withSignal(input.exec ?? verifyExec, input.signal);
   const file = await mediaFile(exec, input.ffprobePath, input.sourcePath, input.sourceProbe);
   const streams = [...file.probe.streams].sort((a, b) => a.index - b.index);
@@ -1130,9 +1133,9 @@ export async function confirmSourceDamage(input: {
   ];
   for (const from of spots) {
     let open: string[] | null;
-    let where = `${CONFIRM_SECONDS} s from ${secs(from)}`;
+    let where = `${seconds} s from ${secs(from)}`;
     if (!file.byteSeek) {
-      open = ['-ss', from.toFixed(3), '-t', String(CONFIRM_SECONDS), '-i', file.path];
+      open = ['-ss', from.toFixed(3), '-t', String(seconds), '-i', file.path];
     } else if (anchor) {
       const seek = await endSeek(
         exec,
@@ -1143,8 +1146,8 @@ export async function confirmSourceDamage(input: {
       );
       if (seek) {
         const i = seek.args.indexOf('-i');
-        open = [...seek.args.slice(0, i), '-t', String(CONFIRM_SECONDS), ...seek.args.slice(i)];
-        where = `${CONFIRM_SECONDS} s from ${secs(seek.from)}`;
+        open = [...seek.args.slice(0, i), '-t', String(seconds), ...seek.args.slice(i)];
+        where = `${seconds} s from ${secs(seek.from)}`;
       } else open = null;
     } else open = null;
     if (!open) continue;

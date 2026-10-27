@@ -264,8 +264,23 @@ const execSignals: (AbortSignal | undefined)[] = [];
 const fakeExec: Exec = async (file, args, opts) => {
   execCalls.push([file, ...args]);
   execSignals.push(opts?.signal);
-  const hooked = execHook ? await execHook(file, args, opts?.signal) : null;
-  if (hooked) return hooked;
+  // A hooked answer's stderr arrives as a real run's does: live, after some output.
+  const deliver = (stderr: unknown) => {
+    if (!opts?.onStderr || typeof stderr !== 'string' || stderr === '') return;
+    opts.onStdout?.('out_time_us=30000000\nprogress=continue\n');
+    opts.onStderr(stderr);
+  };
+  let hooked: Awaited<ReturnType<NonNullable<typeof execHook>>> = null;
+  try {
+    hooked = execHook ? await execHook(file, args, opts?.signal) : null;
+  } catch (err) {
+    deliver((err as { stderr?: unknown } | null)?.stderr);
+    throw err;
+  }
+  if (hooked) {
+    deliver(hooked.stderr);
+    return hooked;
+  }
   const path = args.at(-1) as string;
   const isOutput = path.startsWith(transcodeDir);
   if (
@@ -5030,8 +5045,12 @@ describe('pipeline: damaged sources (Render’s Damaged)', () => {
       );
     const isPass = (args: string[]) => args.includes('level+error');
     const passes = () => execCalls.filter((c) => isPass(c.slice(1)));
-    /** The pass answers with the dca error (exit 0, as ffmpeg does for decode errors). */
+    /**
+     * The pass answers with the dca error (exit 0, as ffmpeg does for decode errors), and the
+     * confirming decode at that spot reproduces it.
+     */
     const passFindsLfe = () => {
+      sourceSpotsDamaged = true;
       execHook = async (_f, args) => (isPass(args) ? { stdout: '', stderr: `${LFE}\n` } : null);
     };
 
@@ -5084,6 +5103,18 @@ describe('pipeline: damaged sources (Render’s Damaged)', () => {
       expect(await runOnce(id)).toMatchObject({ state: 'done' });
       expect(passes()).toHaveLength(1);
       expect(traceOf(id, 'cs').at(-1)).toEqual(['decide', 'ok', 'source reads clean']);
+      expect(runCalls).toEqual([]);
+      expect(calledUrls()).toEqual([]);
+    });
+
+    it('a pass error the source does not reproduce at its spot → retried, then failed (never Damaged)', async () => {
+      execHook = async (_f, args) => (isPass(args) ? { stdout: '', stderr: `${LFE}\n` } : null);
+      const id = await queue(file(), checked());
+      await t.deps.engine.start();
+      const job = await settled(id);
+      expect(job).toMatchObject({ state: 'failed', attempt: 2 });
+      expect(job.reason).toMatch(/which the source does not reproduce$/);
+      expect(findJobResult(t.db, id)?.sourceDamaged).toBe(false);
       expect(runCalls).toEqual([]);
       expect(calledUrls()).toEqual([]);
     });

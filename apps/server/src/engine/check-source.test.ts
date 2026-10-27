@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { Exec } from '../capabilities/ffmpeg.ts';
 import { checkSource, checkSourceArgs, checkSourceTimeoutMs } from './check-source.ts';
 import { probeOf } from './test-helpers.ts';
+import type { VerifyFailure } from './verify.ts';
 
 const LFE = '[dca @ 0x55d0] [error] Invalid LFE scale factor index';
 
@@ -15,20 +16,33 @@ const dts = (durationSeconds = 3600): ProbeResult =>
     { sizeBytes: 2 * 2 ** 30, durationSeconds },
   );
 
-/** Progress blocks up to `readTo` seconds through `onStdout`; then resolves or rejects. */
+/**
+ * As ffmpeg runs: `leading` stderr lines before any output, a progress block at `errorAt` seconds
+ * (when given), the `stderr` lines, then a progress block at `readTo`; then resolves or rejects.
+ */
 function fakeExec(o: {
   readTo?: number;
+  errorAt?: number;
+  leading?: string[];
   stderr?: string[];
   fail?: Record<string, unknown>;
 }): Exec & { calls: { args: string[]; opts: Parameters<Exec>[2] }[] } {
   const calls: { args: string[]; opts: Parameters<Exec>[2] }[] = [];
   const exec = (async (_file, args, opts) => {
     calls.push({ args, opts });
+    const progress = (t: number) =>
+      opts?.onStdout?.(`out_time_us=${Math.round(t * 1e6)}\nprogress=continue\n`);
+    const lines = (l: string[] = []) => {
+      if (l.length > 0) opts?.onStderr?.(`${l.join('\n')}\n`);
+    };
+    lines(o.leading);
+    if (o.errorAt !== undefined) progress(o.errorAt);
+    lines(o.stderr);
     if (o.readTo !== undefined) {
-      opts?.onStdout?.(`out_time_us=${Math.round(o.readTo * 1e6)}\nprogress=continue\n`);
+      progress(o.readTo);
       opts?.onStdout?.(`out_time_us=N/A\nprogress=end\n`);
     }
-    const stderr = (o.stderr ?? []).join('\n');
+    const stderr = [...(o.leading ?? []), ...(o.stderr ?? [])].join('\n');
     if (o.fail) throw Object.assign(new Error('Command failed: ffmpeg'), { stderr, ...o.fail });
     return { stdout: '', stderr };
   }) as Exec & { calls: { args: string[]; opts: Parameters<Exec>[2] }[] };
@@ -36,7 +50,18 @@ function fakeExec(o: {
   return exec;
 }
 
-const run = (exec: Exec, probe = dts(), decodeVideo = false, signal?: AbortSignal) =>
+/** A confirmation that finds the error again (the source really is damaged there). */
+const confirms = async (): Promise<VerifyFailure[]> => [
+  { check: 'decode-sample', message: 'source: decoding 7 s from 0:00 failed: [dca] Invalid LFE' },
+];
+
+const run = (
+  exec: Exec,
+  probe = dts(),
+  decodeVideo = false,
+  signal?: AbortSignal,
+  confirm: (spot: { at: number; seconds: number }) => Promise<VerifyFailure[]> = confirms,
+) =>
   checkSource({
     path: '/lib/a.mkv',
     probe,
@@ -44,12 +69,13 @@ const run = (exec: Exec, probe = dts(), decodeVideo = false, signal?: AbortSigna
     decodeVideo,
     sizeBytes: probe.sizeBytes,
     exec,
+    confirm,
     ...(signal ? { signal } : {}),
   });
 
 describe('checkSource', () => {
   it('a dca error line on a dts source → damaged, reason "audio #1 (DTS): Invalid LFE scale factor index"', async () => {
-    expect(await run(fakeExec({ readTo: 3600, stderr: [LFE] }))).toEqual({
+    expect(await run(fakeExec({ errorAt: 1200, readTo: 3600, stderr: [LFE] }))).toEqual({
       kind: 'damaged',
       reason: 'audio #1 (DTS): Invalid LFE scale factor index',
       stream: 'audio #1 (DTS)',
@@ -58,15 +84,72 @@ describe('checkSource', () => {
     expect(
       await run(
         fakeExec({
+          errorAt: 1200,
           readTo: 3600,
           stderr: ['[aist#0:1/dts @ 0x1] [error] Error while decoding stream #0:1'],
         }),
       ),
     ).toMatchObject({ kind: 'damaged', stream: 'audio #1 (DTS)' });
     // Even when ffmpeg exits non-zero after it.
-    expect(await run(fakeExec({ stderr: [LFE], fail: { code: 1 } }))).toMatchObject({
+    expect(await run(fakeExec({ errorAt: 1200, stderr: [LFE], fail: { code: 1 } }))).toMatchObject({
       kind: 'damaged',
     });
+  });
+
+  it('decoder errors before the first output frame (audio starting mid-frame) are ignored', async () => {
+    const mp3 = probeOf(
+      [
+        { type: 'video', codec: 'h264', default: true },
+        { type: 'audio', codec: 'mp3', language: 'eng', default: true },
+      ],
+      { durationSeconds: 3600 },
+    );
+    const spots: unknown[] = [];
+    const confirm = async (spot: unknown) => {
+      spots.push(spot);
+      return confirms();
+    };
+    const exec = fakeExec({
+      readTo: 3600,
+      leading: ['[mp3float @ 0x1] [error] Header missing'],
+    });
+    expect(await run(exec, mp3, false, undefined, confirm)).toEqual({
+      kind: 'ok',
+      warnings: ['ignored 1 decoder error(s) before the first output frame'],
+    });
+    expect(spots).toEqual([]);
+  });
+
+  it('a mid-file error is damaged only when the source reproduces it at that spot', async () => {
+    const spots: { at: number; seconds: number }[] = [];
+    const confirm = (found: VerifyFailure[]) => async (spot: { at: number; seconds: number }) => {
+      spots.push(spot);
+      return found;
+    };
+    const exec = () => fakeExec({ errorAt: 1200, stderr: [LFE], readTo: 3600 });
+    expect(await run(exec(), dts(), false, undefined, confirm(await confirms()))).toEqual({
+      kind: 'damaged',
+      reason: 'audio #1 (DTS): Invalid LFE scale factor index',
+      stream: 'audio #1 (DTS)',
+    });
+    // Read from where the error was seen to the next progress block (capped), plus the window.
+    expect(spots).toEqual([{ at: 1200, seconds: 120 }]);
+    spots.length = 0;
+    expect(await run(exec(), dts(), false, undefined, confirm([]))).toEqual({
+      kind: 'error',
+      message:
+        'audio #1 (DTS): Invalid LFE scale factor index at 20:00, which the source does not reproduce',
+    });
+    expect(
+      await run(
+        fakeExec({ errorAt: 1200, stderr: [LFE], readTo: 1203 }),
+        dts(),
+        false,
+        undefined,
+        confirm([]),
+      ),
+    ).toMatchObject({ kind: 'error' });
+    expect(spots.at(-1)).toEqual({ at: 1200, seconds: 10 });
   });
 
   it('copies video unless decodeVideo; decodes video when the file has no audio', async () => {
@@ -128,7 +211,9 @@ describe('checkSource', () => {
       ),
     ).toEqual({ kind: 'error', message: 'Error opening output file -.' });
     expect(
-      await run(fakeExec({ stderr: [LFE], fail: { killed: true, signal: 'SIGKILL' } })),
+      await run(
+        fakeExec({ errorAt: 60, stderr: [LFE], fail: { killed: true, signal: 'SIGKILL' } }),
+      ),
     ).toEqual({
       kind: 'error',
       message: 'reading the file took longer than 20 min and was stopped',
@@ -138,7 +223,7 @@ describe('checkSource', () => {
       expect(
         await run(
           fakeExec({
-            readTo: 1200,
+            errorAt: 1200,
             stderr: [
               '[in#0/matroska,webm @ 0x1] [error] Error during demuxing: Input/output error',
               LFE,

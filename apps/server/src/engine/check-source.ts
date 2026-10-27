@@ -4,6 +4,7 @@ import { isPicture } from '@transcoda/shared';
 import type { Exec } from '../capabilities/ffmpeg.ts';
 import { classifyErrorLine, READ_FAILURE, sourceDecoderNames } from './decoder-names.ts';
 import { progressReader } from './progress.ts';
+import type { VerifyFailure } from './verify.ts';
 
 /**
  * What the pass found. `damaged`: ffmpeg reported a source decode error, or the file is cut off
@@ -19,6 +20,11 @@ export type CheckSourceResult =
 export const CUT_OFF_SECONDS = 30;
 /** …and more than this share of it. */
 export const CUT_OFF_SHARE = 0.02;
+
+/** A confirming read covers the stretch where the error was seen plus this much… */
+const CONFIRM_SECONDS = 7;
+/** …and never more than this. */
+const CONFIRM_MAX_SECONDS = 120;
 
 /** The encoders of the pass itself (the null muxer's defaults): their lines are never the source's. */
 const NULL_ENCODERS: ReadonlySet<string> = new Set(['pcm_s16le', 'wrapped_avframe']);
@@ -91,10 +97,20 @@ function messageOf(line: string): string {
   return line.replace(/^(\s*\[[^\]]*\]\s*)+/, '').trim() || line.trim();
 }
 
+/** A stderr line and where the pass was when it came: `at` the last out time (null before any). */
+interface Seen {
+  line: string;
+  at: number | null;
+  /** The out time of the next progress block (null: none came after it). */
+  until: number | null;
+}
+
 /**
  * Reads the whole file once (see {@link checkSourceArgs}) and says whether the source is damaged.
- * An abort rethrows (the job was cancelled or the server stops); every other failure of the pass
- * is `error`, never `damaged`.
+ * Decoder errors before the first output frame (a stream cut mid-GOP, audio starting mid-frame)
+ * are ignored, as the encode does; the first later one is damage only when `confirm` (a decode of
+ * the source from `at`, for `seconds`) reproduces it. An abort rethrows (the job was cancelled or
+ * the server stops); every other failure of the pass is `error`, never `damaged`.
  */
 export async function checkSource(input: {
   path: string;
@@ -103,21 +119,38 @@ export async function checkSource(input: {
   decodeVideo: boolean;
   sizeBytes: number;
   exec: Exec;
+  confirm: (spot: { at: number; seconds: number }) => Promise<VerifyFailure[]>;
   signal?: AbortSignal;
 }): Promise<CheckSourceResult> {
   const { probe, signal } = input;
   const timeoutMs = checkSourceTimeoutMs(input.sizeBytes);
   let readTo: number | null = null;
+  const seen: Seen[] = [];
+  let waiting: Seen[] = [];
   const onStdout = progressReader((s) => {
     readTo = s.outTimeSeconds;
+    for (const l of waiting) l.until = s.outTimeSeconds;
+    waiting = [];
   });
+  let rest = '';
+  const take = (line: string) => {
+    if (line.trim() === '') return;
+    const l: Seen = { line, at: readTo, until: null };
+    seen.push(l);
+    waiting.push(l);
+  };
+  const onStderr = (chunk: string) => {
+    const parts = (rest + chunk).split('\n');
+    rest = parts.pop() ?? '';
+    for (const p of parts) take(p.replace(/\r$/, ''));
+  };
   let stderr: string;
   let exitFailure: string | null = null;
   try {
     const r = await input.exec(
       input.ffmpegPath,
       checkSourceArgs(input.path, probe, input.decodeVideo),
-      { onStdout, timeoutMs, ...(signal ? { signal } : {}) },
+      { onStdout, onStderr, timeoutMs, ...(signal ? { signal } : {}) },
     );
     stderr = r.stderr;
   } catch (err) {
@@ -135,41 +168,57 @@ export async function checkSource(input: {
     stderr = e.stderr;
     exitFailure = String(e.message ?? 'ffmpeg failed').split('\n')[0] ?? 'ffmpeg failed';
   }
-  const lines = stderr.split('\n').filter((l) => l.trim() !== '');
-  const errors = lines.filter((l) => classifyErrorLine(l, new Set(), NULL_ENCODERS) !== null);
+  take(rest);
+  // Lines the exec did not hand over as they came have no known time: never after the first frame.
+  if (seen.length === 0) {
+    for (const line of stderr.split('\n')) {
+      if (line.trim() !== '') seen.push({ line, at: null, until: null });
+    }
+  }
+  const lines = seen.map((l) => l.line);
+  const errors = seen.filter((l) => classifyErrorLine(l.line, new Set(), NULL_ENCODERS) !== null);
   // A read that failed may have left decoder errors behind it: the file is not proven damaged.
-  const unreadable = errors.find((l) => READ_FAILURE.test(l));
-  if (unreadable) return { kind: 'error', message: messageOf(unreadable) };
+  const unreadable = errors.find((l) => READ_FAILURE.test(l.line));
+  if (unreadable) return { kind: 'error', message: messageOf(unreadable.line) };
   const codecs = sourceDecoderNames(probe.streams.map((s) => s.codec));
-  const first = errors.find((l) => classifyErrorLine(l, codecs, NULL_ENCODERS) !== 'output');
-  if (first) {
-    const stream = streamOf(first, probe);
-    return {
-      kind: 'damaged',
-      reason: `${stream ?? 'source'}: ${messageOf(first)}`,
-      ...(stream ? { stream } : {}),
-    };
+  const sourceSide = errors.filter(
+    (l) => classifyErrorLine(l.line, codecs, NULL_ENCODERS) !== 'output',
+  );
+  const leading = sourceSide.filter((l) => l.at === null || l.at <= 0).length;
+  const warnings =
+    leading > 0 ? [`ignored ${leading} decoder error(s) before the first output frame`] : [];
+  const first = sourceSide.find((l) => l.at !== null && l.at > 0);
+  if (first && first.at !== null) {
+    const stream = streamOf(first.line, probe);
+    const reason = `${stream ?? 'source'}: ${messageOf(first.line)}`;
+    const until = first.until ?? (readTo as number | null) ?? first.at;
+    const seconds = Math.min(CONFIRM_MAX_SECONDS, Math.max(0, until - first.at) + CONFIRM_SECONDS);
+    const confirmed = await input.confirm({ at: first.at, seconds });
+    if (confirmed.length === 0) {
+      return {
+        kind: 'error',
+        message: `${reason} at ${clock(first.at)}, which the source does not reproduce`,
+      };
+    }
+    return { kind: 'damaged', reason, ...(stream ? { stream } : {}) };
   }
   if (exitFailure !== null) {
-    const last = errors.at(-1) ?? lines.at(-1);
+    const last = errors.at(-1)?.line ?? lines.at(-1);
     return { kind: 'error', message: last ? messageOf(last) : exitFailure };
   }
   const declared = probe.durationSeconds;
   const read = readTo as number | null;
   if (read === null || !Number.isFinite(declared) || declared <= 0) {
-    return { kind: 'ok', warnings: [] };
+    return { kind: 'ok', warnings };
   }
   const gap = declared - read;
   if (gap > CUT_OFF_SECONDS && gap > declared * CUT_OFF_SHARE) {
     return { kind: 'damaged', reason: `cut off: readable to ${clock(read)} of ${clock(declared)}` };
   }
   if (gap >= 1) {
-    return {
-      kind: 'ok',
-      warnings: [`ends ${Math.round(gap)} s short of the declared ${clock(declared)}`],
-    };
+    warnings.push(`ends ${Math.round(gap)} s short of the declared ${clock(declared)}`);
   }
-  return { kind: 'ok', warnings: [] };
+  return { kind: 'ok', warnings };
 }
 
 /**

@@ -10,6 +10,8 @@ export type Exec = (
   opts?: {
     signal?: AbortSignal;
     onStdout?: (chunk: string) => void;
+    /** Sees stderr as it arrives (it is returned in full too). */
+    onStderr?: (chunk: string) => void;
     /** Overrides the exec's own time limit for this call (ms). */
     timeoutMs?: number;
   },
@@ -20,7 +22,8 @@ const execFileAsync = promisify(execFile);
 /**
  * An Exec over `execFile` (no shell) with a timeout and output limit. An abort SIGKILLs the child
  * and rejects with an AbortError (execFile's own `signal` option would send SIGTERM, which a
- * stuck process can ignore). `onStdout` sees stdout as it arrives (it is returned in full too).
+ * stuck process can ignore). `onStdout`/`onStderr` see the output as it arrives (it is returned in
+ * full too).
  */
 export function makeExec(limits: { timeout: number; maxBuffer: number }): Exec {
   return async (file, args, opts) => {
@@ -37,6 +40,8 @@ export function makeExec(limits: { timeout: number; maxBuffer: number }): Exec {
     };
     const onStdout = opts?.onStdout;
     if (onStdout) run.child.stdout?.on('data', (chunk) => onStdout(String(chunk)));
+    const onStderr = opts?.onStderr;
+    if (onStderr) run.child.stderr?.on('data', (chunk) => onStderr(String(chunk)));
     signal?.addEventListener('abort', onAbort, { once: true });
     try {
       const { stdout, stderr } = await run;

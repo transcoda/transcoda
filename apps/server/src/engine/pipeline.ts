@@ -1965,6 +1965,17 @@ export class Pipeline implements JobExecutor {
           decodeVideo,
           sizeBytes: fp.sizeBytes,
           exec: this.deps.exec ?? checkExec,
+          confirm: ({ at, seconds }) =>
+            confirmSourceDamage({
+              sourcePath: realPath,
+              sourceProbe: probe,
+              ffmpegPath: this.deps.config.ffmpegPath,
+              ffprobePath: this.deps.config.ffprobePath,
+              times: [at],
+              seconds,
+              signal: ctl.signal,
+              ...(this.deps.exec ? { exec: this.deps.exec } : {}),
+            }),
           signal: ctl.signal,
         });
         if (r.kind !== 'error') {
