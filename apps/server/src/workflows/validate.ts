@@ -909,7 +909,7 @@ function checkPaths(
               `order-phase:${id}`,
               error(
                 'FINISH_ORDER',
-                `${name} (${phase}) comes after ${by}; finish nodes run gate → write → library manager → media server → notify`,
+                `${name} (${phase}) comes after ${by}; finish nodes run render → gate → write → library manager → media server → notify`,
                 { nodeId: id },
               ),
             );

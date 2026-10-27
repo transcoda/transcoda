@@ -192,6 +192,7 @@ export class WorkflowService {
             settingsSchema: m.settingsSchema,
             onNodeSettings: m.onNodeSettings,
             finishPhase: m.finishPhase,
+            damagedOnly: m.damagedOnly,
             source,
           });
         }),

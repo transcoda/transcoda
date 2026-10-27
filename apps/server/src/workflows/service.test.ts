@@ -1057,6 +1057,7 @@ describe('WorkflowService', () => {
     expect(audio && Object.keys(audio).sort()).toEqual(
       [
         'availability',
+        'damagedOnly',
         'description',
         'finishPhase',
         'icon',

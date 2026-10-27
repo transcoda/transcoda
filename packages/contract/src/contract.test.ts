@@ -69,6 +69,15 @@ describe('schemas', () => {
     expect(NodeInfoSchema.parse({ ...info, finishPhase: 'write' }).finishPhase).toBe('write');
     expect(NodeInfoSchema.parse({ ...info, finishPhase: null }).finishPhase).toBeNull();
     expect(NodeInfoSchema.safeParse({ ...info, finishPhase: 'later' }).success).toBe(false);
+    expect(NodeInfoSchema.parse({ ...info, damagedOnly: true }).damagedOnly).toBe(true);
+    expect(NodeInfoSchema.parse(info)).not.toHaveProperty('damagedOnly');
+  });
+
+  it("PortSpecSchema keeps a port's shownWhen", () => {
+    const shownWhen = { setting: 'qualityCheck', equals: true };
+    const port = { id: 'damaged', label: 'Damaged', type: 'file', shownWhen };
+    expect(PortSpecSchema.parse(port).shownWhen).toEqual(shownWhen);
+    expect(PortSpecSchema.safeParse({ ...port, shownWhen: { equals: true } }).success).toBe(false);
   });
 
   it('rejects short passwords and usernames with spaces', () => {

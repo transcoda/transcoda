@@ -16,6 +16,6 @@ export { isTokenScope, TOKEN_SCOPES, type TokenScope } from './scopes.ts';
 export * from './workflow/graph.ts';
 export * from './workflow/issues.ts';
 export { LIBRARY_INPUT_TYPE, libraryInputOf } from './workflow/library-input.ts';
-export { branchPortLabel, branchWord } from './workflow/ports.ts';
+export { branchPortLabel, branchWord, type PortShownWhen, portShown } from './workflow/ports.ts';
 export { shortId } from './workflow/short-id.ts';
 export { linkedNodes, syncLinkedSettings, valueNamed } from './workflow/values.ts';

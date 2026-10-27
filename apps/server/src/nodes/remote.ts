@@ -104,7 +104,12 @@ export function remoteNodeDefinition(
     throw new Error(`plugin ${source.name}: settings of ${meta.type} are not an object schema`);
   }
   if (meta.kind === 'finish') {
-    if (meta.finishPhase === null || meta.finishPhase === 'gate' || meta.finishPhase === 'write') {
+    if (
+      meta.finishPhase === null ||
+      meta.finishPhase === 'render' ||
+      meta.finishPhase === 'gate' ||
+      meta.finishPhase === 'write'
+    ) {
       throw new Error(
         `plugin ${source.name}: finish node ${meta.type} must declare finishPhase library-manager, media-server or notify (got ${meta.finishPhase ?? 'none'})`,
       );
@@ -157,6 +162,7 @@ export function remoteNodeDefinition(
       },
     })),
     finishPhase: meta.finishPhase ?? undefined,
+    damagedOnly: meta.damagedOnly === true,
     settingsJsonSchema: meta.settingsSchema,
   };
   const has = (h: HookName) => meta.hooks.includes(h);

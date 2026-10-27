@@ -563,8 +563,8 @@ class Walker {
 
   /**
    * The finish nodes reachable from `starts` (the connections of one output), in the order they
-   * run: as if chained in finish-phase order (gate → write → library manager → media server →
-   * notify). A node runs after the finish nodes wired before it; among the nodes free to run, the
+   * run: as if chained in finish-phase order (render → gate → write → library manager → media
+   * server → notify). A node runs after the finish nodes wired before it; among the nodes free to run, the
    * lower phase goes first, then the one further left on the canvas (`position.x`), then the
    * higher one (`position.y`), then the one earlier in `graph.nodes`. A node follows the output
    * a file leaves it by (a gate: `pass`; bypassed: its first). `bad(n, first)` fails the walk at

@@ -128,13 +128,13 @@ describe('connection rules', () => {
   it('nextNodeRule names the node as shown and maps phases to ranks', () => {
     expect(nextNodeRule(single('core:replace-original'), 'src', 'file', phased)).toEqual({
       kind: 'finish-after',
-      minRank: 1,
+      minRank: 2,
       noWrite: false,
       afterTitle: 'Replace original',
     });
     expect(
       nextNodeRule(single('core:size-gate', { label: 'Big files' }), 'src', 'else', phased),
-    ).toEqual({ kind: 'finish-after', minRank: 2, noWrite: true, afterTitle: 'Big files' });
+    ).toEqual({ kind: 'finish-after', minRank: 3, noWrite: true, afterTitle: 'Big files' });
   });
 
   it("after the size gate's No a finish node with no declared phase is not offered", () => {

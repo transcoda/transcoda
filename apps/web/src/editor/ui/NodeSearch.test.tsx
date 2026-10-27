@@ -82,14 +82,14 @@ describe('NodeSearch', () => {
   it('filterHint after a finish node says only later finish steps are listed, and why', () => {
     const after: NextRule = {
       kind: 'finish-after',
-      minRank: 1,
+      minRank: 2,
       noWrite: false,
       afterTitle: 'Replace original',
     };
     expect(filterHint('file', 'File', after)).toBe(
       'After Replace original, only later finish steps are listed',
     );
-    expect(filterHint('file', 'No', { ...after, minRank: 2, noWrite: true })).toBe(
+    expect(filterHint('file', 'No', { ...after, minRank: 3, noWrite: true })).toBe(
       "After the size gate's No, only notifications and other non-writing steps are listed",
     );
     expect(filterHint('file', 'File', { kind: 'any' })).toBe(
@@ -100,7 +100,7 @@ describe('NodeSearch', () => {
   it('with a finish-after rule lists only those finish nodes and says why under the list', () => {
     const rule: NextRule = {
       kind: 'finish-after',
-      minRank: 1,
+      minRank: 2,
       noWrite: false,
       afterTitle: 'Replace original',
     };

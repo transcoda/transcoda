@@ -949,7 +949,7 @@ describe('validateWorkflow', () => {
           severity: 'error',
           code: 'FINISH_ORDER',
           message:
-            'Size gate (gate) comes after Replace original (write); finish nodes run gate → write → library manager → media server → notify',
+            'Size gate (gate) comes after Replace original (write); finish nodes run render → gate → write → library manager → media server → notify',
           nodeId: 'sg',
         },
       ]);
@@ -1299,7 +1299,7 @@ describe('validateWorkflow', () => {
             {
               severity: 'error',
               code: 'FINISH_ORDER',
-              message: `Phase ${second} (${second}) comes after Phase ${first} (${first}); finish nodes run gate → write → library manager → media server → notify`,
+              message: `Phase ${second} (${second}) comes after Phase ${first} (${first}); finish nodes run render → gate → write → library manager → media server → notify`,
               nodeId: 'b',
             },
           ]);

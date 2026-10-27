@@ -1,7 +1,11 @@
 import { z } from 'zod';
 
-/** Finish actions run in this order: the write is `write`; plugin actions slot around it. */
+/**
+ * Finish actions run in this order: `render` (core-only) encodes the result, the write is `write`;
+ * plugin actions slot around it.
+ */
 export const FINISH_PHASES = [
+  'render',
   'gate',
   'write',
   'library-manager',

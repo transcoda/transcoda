@@ -1,6 +1,6 @@
 # Writing a Transcoda plugin
 
-For plugin authors. The SDK is `@transcoda/sdk` (version `1.0.1`; the surface is frozen for 1.0 and the full reference is [`packages/sdk/README.md`](../packages/sdk/README.md)). A plugin is one self-contained JavaScript file, built from TypeScript, that Transcoda installs into `/config/plugins` and runs in its own sandboxed process. Official plugins live in the separate `transcoda-plugins` repository; its `plugins/example` is the smallest working one. Install the SDK from npm with `npm install --save-dev @transcoda/sdk zod` (plugins bundle it, so it is a dev dependency).
+For plugin authors. The SDK is `@transcoda/sdk` (version `1.1.0`; the surface is frozen for 1.x and the full reference is [`packages/sdk/README.md`](../packages/sdk/README.md)). A plugin is one self-contained JavaScript file, built from TypeScript, that Transcoda installs into `/config/plugins` and runs in its own sandboxed process. Official plugins live in the separate `transcoda-plugins` repository; its `plugins/example` is the smallest working one. Install the SDK from npm with `npm install --save-dev @transcoda/sdk zod` (plugins bundle it, so it is a dev dependency).
 
 ## What a plugin is
 
@@ -114,7 +114,7 @@ What this does **not** protect, so write plugins accordingly:
 
 ## Finish steps and phases
 
-Finish nodes run after the write, in phases: `gate`, `write` (core only), `library-manager`, `media-server`, `notify`. Plugins use the last three. The validator enforces the order along every path (`FINISH_ORDER`): a phase may not come after a later one, and only finish nodes may follow a finish node. A plugin finish node has no outputs, so it ends a path; several finish nodes on one output (Replace original's, say) run one after the other in phase order; within a phase, left to right on the canvas, then top to bottom. Only finish nodes may share an output (`OUTPUT_MULTIPLE_EDGES`). In particular a workflow that notifies **before** the write is invalid; an existing workflow that did so has an active version that cannot run until the notify node is moved after `core:replace-original` (the editor shows the issue).
+Finish nodes run in phases: `render` (core only: the encode), `gate`, `write` (core only), `library-manager`, `media-server`, `notify`. Plugins use the last three; a plugin finish node declaring `render`, `gate` or `write` is refused. The validator enforces the order along every path (`FINISH_ORDER`): a phase may not come after a later one, and only finish nodes may follow a finish node. A plugin finish node has no outputs, so it ends a path; several finish nodes on one output (Replace original's, say) run one after the other in phase order; within a phase, left to right on the canvas, then top to bottom. Only finish nodes may share an output (`OUTPUT_MULTIPLE_EDGES`). In particular a workflow that notifies **before** the write is invalid; an existing workflow that did so has an active version that cannot run until the notify node is moved after `core:replace-original` (the editor shows the issue).
 
 `run(ctx, settings)` gets `{ originalPath, newPath, replacedTo, beforeBytes, afterBytes, outcome, containerChanged, problemsSoFar, gate, jobUrl, workflowName, ... }` (`jobUrl` is the job's page, `<TRANSCODA_PUBLIC_URL>/jobs/<id>`, or `null` when that variable is not set; send no link then; `workflowName` is the job's workflow name as the job page shows it) and returns `{ ok: true, message }` or `{ ok: false, message, retryable? }`. The file is already replaced when it runs, so a failure never undoes the write:
 
@@ -126,6 +126,14 @@ Finish nodes run after the write, in phases: `gate`, `write` (core only), `libra
 (`renameOutputs` on a node migration, which re-keys edges, is read for core nodes only; a plugin's migrations cannot rename ports and the field is ignored.)
 
 A step wired to the **No** (`else`) output of `core:size-gate` runs when the gate failed and nothing was written: `outcome` is `'kept'`, `newPath` equals `originalPath`, `replacedTo` is `null`, `afterBytes` is the size of the discarded result, `containerChanged` is `false`, and `gate` is `{ savedPercent, minSavingPercent }`. On every other path `gate` is `null` and `outcome` is `'replaced'`, `'moved'` or `'copied'`. Only the `notify`, `media-server` and `library-manager` phases may follow else; the same failure rules apply, except that a required step's failure is recorded as a warning (the job is `kept_original`, not `done`).
+
+### The Damaged side (SDK 1.1)
+
+Core's Render node (phase `render`) has a **Done** output and, while its Quality check setting is on, a **Damaged** output; core's Check source node has OK and Damaged outputs. A step below a Damaged output runs when the source file is confirmed damaged (decode errors the source reproduces, or a stream cut off): nothing was rendered or written, and Transcoda never deletes or writes media there; a library manager does any swap. Only `notify`, `media-server` and `library-manager` phases may sit below Damaged (never `gate`, `write` or `render`). There `outcome` is `'damaged'`, `newPath` equals `originalPath`, `afterBytes` equals `beforeBytes`, `replacedTo` is `null`, `containerChanged` is `false`, and `damage` is `{ reason, stream? }` (what is wrong, and the stream when known). On every other path `damage` is `null`. The failure rules are those of else; the job ends `kept_original`, marked as a damaged source, and `onJobDone`/`onJobFailed` do not fire for it.
+
+A finish node may declare `damagedOnly: true`: validation then refuses it anywhere but below a Damaged output, and the editor only connects it there. `damagedOnly` on any other kind of node is an error in `nodeMetadata`.
+
+An output port may declare `shownWhen: { setting, equals }`: the port exists only while the node's setting deep-equals `equals` (Render's Damaged port uses `{ setting: 'qualityCheck', equals: true }`). A hidden port takes no edges: validation reports an edge from one and the engine never follows it.
 
 Hook payloads (`HookJob`) carry the same `jobUrl` (`string | null`) and `workflowName` (`string`).
 
