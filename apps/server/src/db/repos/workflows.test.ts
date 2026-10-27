@@ -170,7 +170,11 @@ describe('workflow repository', () => {
     db.prepare(
       'UPDATE workflow_versions SET graph = ?, format_version = 1 WHERE workflow_id = ? AND version = 1',
     ).run(JSON.stringify(v1), 'w1');
-    const upgrade = (raw: unknown) => upgradeGraphJson(raw, (t) => t === 'core:replace-original');
+    const file = [{ id: 'file', type: 'file' }];
+    const upgrade = (raw: unknown) =>
+      upgradeGraphJson(raw, (t) =>
+        t === 'core:replace-original' ? { kind: 'finish', inputs: file, outputs: [] } : undefined,
+      );
     const stored = findVersion(db, 'w1', 1, upgrade);
     expect(stored?.ok).toBe(true);
     if (!stored?.ok) return;

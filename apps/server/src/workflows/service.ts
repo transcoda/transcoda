@@ -173,11 +173,12 @@ function byName(a: WorkflowRef, b: WorkflowRef): number {
 export const FORMAT_2_NOTE = 'Added a Render step before the finish steps (graph format 2)';
 
 /**
- * The read upgrade for stored and incoming graphs: format 1 → 2 with Render inserted before the
- * finish nodes the registry knows (a node of an unknown type is never taken for one).
+ * The read upgrade for stored and incoming graphs: format 1 → 2 with Render inserted on the file
+ * edges into the finish nodes the registry knows (a node of an unknown type is never taken for
+ * one; data edges never get a Render).
  */
 export function graphUpgrade(registry: NodeRegistry): GraphUpgrade {
-  return (raw) => upgradeGraphJson(raw, (type) => registry.get(type)?.def.kind === 'finish');
+  return (raw) => upgradeGraphJson(raw, (type) => registry.get(type)?.def);
 }
 
 export class WorkflowService {

@@ -171,12 +171,7 @@ export function edge(from: string, to: string, ports: { from?: string; to?: stri
   };
 }
 
-const CORE_FINISH = new Set(
-  createCoreRegistry()
-    .list()
-    .filter(({ def }) => def.kind === 'finish')
-    .map(({ def }) => def.type),
-);
+const CORE = createCoreRegistry();
 
 /**
  * A workflow graph as a format-1 graph of `nodes` and `edges` reads today: a Render inserted on
@@ -185,7 +180,7 @@ const CORE_FINISH = new Set(
  */
 export function mainGraph(nodes: NodeInstance[], edges: Edge[] = []): WorkflowGraph {
   const v1 = { formatVersion: 1, kind: 'workflow', nodes, edges, groups: [] };
-  return upgradeGraphJson(v1, (t) => CORE_FINISH.has(t)) as WorkflowGraph;
+  return upgradeGraphJson(v1, (t) => CORE.get(t)?.def) as WorkflowGraph;
 }
 
 /** A workflow graph exactly as given (no Render inserted). */

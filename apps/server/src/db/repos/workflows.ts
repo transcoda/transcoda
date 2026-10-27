@@ -109,7 +109,7 @@ const toWorkflow = (r: DbWorkflow): WorkflowRow => ({
  */
 export type GraphUpgrade = (raw: unknown) => unknown;
 
-const formatOnly: GraphUpgrade = (raw) => upgradeGraphJson(raw, () => false);
+const formatOnly: GraphUpgrade = (raw) => upgradeGraphJson(raw, () => undefined);
 
 function toStoredVersion(r: DbVersion, upgrade: GraphUpgrade): StoredVersion {
   let json: unknown;

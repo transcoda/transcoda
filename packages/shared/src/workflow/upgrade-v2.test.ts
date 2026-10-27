@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { RENDER_TYPE, upgradeGraphJson, WorkflowGraphSchema } from '../index.ts';
+import {
+  RENDER_TYPE,
+  type UpgradeNodeType,
+  upgradeGraphJson,
+  WorkflowGraphSchema,
+} from '../index.ts';
 
+const file = [{ id: 'file', type: 'file' }];
 const FINISH = new Set([
   'core:replace-original',
   'core:move-copy',
@@ -8,7 +14,32 @@ const FINISH = new Set([
   'core:notify-webhook',
   RENDER_TYPE,
 ]);
-const isFinish = (t: string) => FINISH.has(t);
+const TYPES: Record<string, UpgradeNodeType> = {
+  'core:input-manual': { kind: 'trigger', inputs: [], outputs: file },
+  'core:encode-video': { kind: 'action', inputs: file, outputs: file },
+  'core:video-is': {
+    kind: 'condition',
+    inputs: file,
+    outputs: [
+      { id: 'pass', type: 'file' },
+      { id: 'else', type: 'file' },
+    ],
+  },
+  'x:language': { kind: 'data', inputs: [], outputs: [{ id: 'language', type: 'data:language' }] },
+  'x:arr-finish': {
+    kind: 'finish',
+    inputs: [...file, { id: 'language', type: 'data:language' }],
+    outputs: [],
+  },
+  // An action with a data output too.
+  'x:detect': {
+    kind: 'action',
+    inputs: file,
+    outputs: [...file, { id: 'language', type: 'data:language' }],
+  },
+};
+for (const t of FINISH) TYPES[t] = { kind: 'finish', inputs: file, outputs: [] };
+const typeOf = (t: string) => TYPES[t];
 
 type RawNode = {
   id: string;
@@ -34,13 +65,13 @@ type RawGraph = {
 function n(id: string, type: string, x = 0, y = 0, extra: Partial<RawNode> = {}): RawNode {
   return { id, type, typeVersion: 1, settings: {}, position: { x, y }, ...extra };
 }
-function e(id: string, from: string, to: string, fromPort = 'file'): RawEdge {
-  return { id, from: { node: from, port: fromPort }, to: { node: to, port: 'file' } };
+function e(id: string, from: string, to: string, fromPort = 'file', toPort = 'file'): RawEdge {
+  return { id, from: { node: from, port: fromPort }, to: { node: to, port: toPort } };
 }
 function v1(nodes: RawNode[], edges: RawEdge[], kind = 'workflow'): RawGraph {
   return { formatVersion: 1, kind, nodes, edges, groups: [] };
 }
-const up = (g: unknown) => upgradeGraphJson(g, isFinish) as RawGraph;
+const up = (g: unknown) => upgradeGraphJson(g, typeOf) as RawGraph;
 
 describe('upgradeGraphJson (graph format 1 → 2)', () => {
   it('inserts one Render between an action output and the finish nodes it feeds; the fan-out moves to Done', () => {
@@ -142,8 +173,8 @@ describe('upgradeGraphJson (graph format 1 → 2)', () => {
       formatVersion: 2,
     };
     expect(up(v2)).toBe(v2);
-    expect(upgradeGraphJson('nonsense', isFinish)).toBe('nonsense');
-    expect(upgradeGraphJson(null, isFinish)).toBe(null);
+    expect(upgradeGraphJson('nonsense', typeOf)).toBe('nonsense');
+    expect(upgradeGraphJson(null, typeOf)).toBe(null);
   });
 
   it('leaves an edge to an unknown type alone (no Render) and keeps the graph parseable', () => {
@@ -161,6 +192,45 @@ describe('upgradeGraphJson (graph format 1 → 2)', () => {
     expect(g.nodes.some((x) => x.type === RENDER_TYPE)).toBe(false);
     expect(g.edges.map((x) => x.id)).toEqual(['a', 'b', 'c']);
     expect(WorkflowGraphSchema.safeParse(g).success).toBe(true);
+  });
+
+  it('leaves data edges alone: a data node or a data output into a finish node data input gets no Render', () => {
+    const g = up(
+      v1(
+        [
+          n('in', 'core:input-manual'),
+          n('lang', 'x:language'),
+          n('det', 'x:detect'),
+          n('arr', 'x:arr-finish'),
+        ],
+        [
+          e('a', 'in', 'det'),
+          e('b', 'det', 'arr'),
+          e('c', 'lang', 'arr', 'language', 'language'),
+          e('d', 'det', 'arr', 'language', 'language'),
+        ],
+      ),
+    );
+    // Only the file edge gets its Render; a source not installed is taken by the input it feeds.
+    const missing = up(
+      v1(
+        [n('p', 'x:not-installed'), n('arr', 'x:arr-finish')],
+        [e('f', 'p', 'arr'), e('l', 'p', 'arr', 'language', 'language')],
+      ),
+    );
+    expect(missing.edges).toEqual([
+      e('render-1-in', 'p', 'render-1'),
+      e('f', 'render-1', 'arr', 'done'),
+      e('l', 'p', 'arr', 'language', 'language'),
+    ]);
+    expect(g.nodes.filter((x) => x.type === RENDER_TYPE).map((x) => x.id)).toEqual(['render-1']);
+    expect(g.edges).toEqual([
+      e('a', 'in', 'det'),
+      e('render-1-in', 'det', 'render-1'),
+      e('b', 'render-1', 'arr', 'done'),
+      e('c', 'lang', 'arr', 'language', 'language'),
+      e('d', 'det', 'arr', 'language', 'language'),
+    ]);
   });
 
   it('never puts a Render before an existing Render, and picks free ids', () => {

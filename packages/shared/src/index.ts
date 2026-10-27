@@ -26,5 +26,5 @@ export {
   RENDER_TYPE,
 } from './workflow/render.ts';
 export { shortId } from './workflow/short-id.ts';
-export { upgradeGraphJson } from './workflow/upgrade-v2.ts';
+export { type UpgradeNodeType, upgradeGraphJson } from './workflow/upgrade-v2.ts';
 export { linkedNodes, syncLinkedSettings, valueNamed } from './workflow/values.ts';
