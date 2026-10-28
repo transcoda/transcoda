@@ -175,32 +175,52 @@ export const cancel = os.jobs.cancel
   .use(requireScope('jobs:manage'))
   .handler(({ context, input, errors }) => {
     if (!findJob(context.deps.db, input.id)) throw errors.NOT_FOUND();
-    if (context.deps.engine.scheduler.cancelJob(input.id) !== 'ok') throw errors.JOB_NOT_ACTIVE();
+    // `already`: a cancel under way answers ok, as it always has.
+    if (context.deps.engine.scheduler.cancelJob(input.id) === 'not-active') {
+      throw errors.JOB_NOT_ACTIVE();
+    }
     return { ok: true as const };
   });
 
 /**
  * Every job that has not finished (queued, running, paused), optionally of one library, through
  * the same scheduler cancel as `cancel`: a running ffmpeg is killed and its temp output removed.
- * Queued jobs go first, so freeing a lane never starts one of them. A job that finished meanwhile
- * is not counted.
+ * A job replacing its file, or past its first write, is left to finish (`writing`): its cancel
+ * could not undo the write. Queued jobs go first, so freeing a lane never starts one of them. A
+ * job that finished meanwhile, or whose cancel was already under way, is not counted. One cancel
+ * that throws is logged and counted in `failed`; the others still run.
  */
 export const cancelAll = os.jobs.cancelAll
   .use(requireScope('jobs:manage'))
-  .handler(({ context, input }) => {
-    const { scheduler } = context.deps.engine;
-    const jobs = jobsInStates(context.deps.db, [...ACTIVE_JOB_STATES]).filter(
+  .handler(({ context, input, errors }) => {
+    const { db, engine, log } = context.deps;
+    const { scheduler } = engine;
+    if (scheduler.isStopping) {
+      throw errors.JOB_NOT_ACTIVE({ message: 'The server is stopping; nothing was cancelled' });
+    }
+    const jobs = jobsInStates(db, [...ACTIVE_JOB_STATES]).filter(
       (j) => input.libraryId === undefined || j.libraryId === input.libraryId,
     );
     const queuedFirst = [
       ...jobs.filter((j) => j.state === 'queued'),
       ...jobs.filter((j) => j.state !== 'queued'),
     ];
-    let cancelled = 0;
+    const out = { cancelled: 0, writing: 0, failed: 0 };
     for (const job of queuedFirst) {
-      if (scheduler.cancelJob(job.id) === 'ok') cancelled++;
+      try {
+        const r = scheduler.cancelJob(job.id, { beforeWrite: true });
+        if (r === 'ok') out.cancelled++;
+        else if (r === 'writing') out.writing++;
+      } catch (err) {
+        out.failed++;
+        log.error({
+          msg: 'cancel all: a job could not be cancelled',
+          job: job.id,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
     }
-    return { cancelled };
+    return out;
   });
 
 // Session-only: any API token is refused; no MCP tool wraps it. Playing and downloading are the

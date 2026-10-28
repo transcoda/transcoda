@@ -300,11 +300,11 @@ describe('job tools', () => {
     const manage = await client(['read', 'jobs:manage']);
     const res = await manage.callTool({ name: 'cancel_all_jobs', arguments: {} });
     expect(res.isError).toBeFalsy();
-    expect(res.structuredContent).toEqual({ cancelled: 2 });
+    expect(res.structuredContent).toEqual({ cancelled: 2, writing: 0, failed: 0 });
     expect(text(res)).toBe('Cancelled 2 jobs.');
     for (const id of ids) expect(findJob(t.db, id as string)?.state).toBe('cancelled');
     const again = await manage.callTool({ name: 'cancel_all_jobs', arguments: {} });
-    expect(again.structuredContent).toEqual({ cancelled: 0 });
+    expect(again.structuredContent).toEqual({ cancelled: 0, writing: 0, failed: 0 });
   });
   it('get_job_log never starts on half a surrogate pair', async () => {
     const [id] = await queueFiles(['a.mkv']);

@@ -1,3 +1,4 @@
+import { existsSync } from 'node:fs';
 import { chmod, mkdir, rm, symlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { Capabilities } from '@transcoda/contract';
@@ -752,56 +753,111 @@ describe('jobs', () => {
     expect((await send(t, 'POST', '/jobs/nope/cancel', { headers: as })).status).toBe(404);
   });
 
-  it('cancelAll needs jobs:manage, cancels queued, running and paused jobs, leaves done, failed and cancelled ones and returns the count', async () => {
+  it("cancelAll needs jobs:manage and cancels a library's queued, ready, running and user-paused jobs (SIGKILL, temp removed); done, failed, cancelled and other libraries stay; no body means every library", async () => {
     const { id: libraryId } = await fedLibrary();
-    for (const f of ['b', 'c', 'd', 'e', 'f']) {
+    for (const f of ['b', 'c', 'd', 'e', 'f', 'q']) {
       await writeFile(join(root, `${f}.mkv`), Buffer.alloc(1000, 7));
     }
-    const [running] = (await queued({ path: join(root, 'a.mkv') })).jobIds as [string];
-    await until('encoding', () => spawner.calls.length === 1);
-    // Nothing new starts while the queue is paused: the rest stay queued.
-    await send(t, 'POST', '/queue/pause', { headers: asSession(s, true) });
-    const [paused, waiting, done, failed, cancelled] = await Promise.all(
-      ['b', 'c', 'd', 'e', 'f'].map(
-        async (f) => (await queued({ path: join(root, `${f}.mkv`) })).jobIds[0] as string,
-      ),
-    );
+    const films = join(base, 'films');
+    await mkdir(films, { recursive: true });
+    await writeFile(join(films, 'g.mkv'), Buffer.alloc(1000, 7));
+    const filmsRes = await createLibrary({ name: 'Films', path: films });
+    expect(filmsRes.status).toBe(200);
+    const manual = encodeWorkflow();
+    const session = asSession(s, true);
+
+    // Final jobs and another library's queued (user-paused) job, set up while nothing starts.
+    await send(t, 'POST', '/queue/pause', { headers: session });
+    const one = async (path: string, workflowId?: string) =>
+      (await queued({ path, ...(workflowId ? { workflowId } : {}) })).jobIds[0] as string;
+    const done = await one(join(root, 'd.mkv'));
+    const failed = await one(join(root, 'e.mkv'));
+    const cancelled = await one(join(root, 'f.mkv'));
+    const other = await one(join(films, 'g.mkv'), manual);
     const now = t.clock.now();
-    updateJob(t.db, done as string, { state: 'done', finishedAt: now.toISOString() }, now);
-    updateJob(t.db, failed as string, { state: 'failed', reason: 'boom' }, now);
-    updateJob(t.db, cancelled as string, { state: 'cancelled' }, now);
-    expect(
-      (await send(t, 'POST', `/jobs/${paused}/pause`, { headers: asSession(s, true) })).status,
-    ).toBe(200);
-    await send(t, 'POST', '/queue/resume', { headers: asSession(s, true) });
+    updateJob(t.db, done, { state: 'done' }, now);
+    updateJob(t.db, failed, { state: 'failed', reason: 'boom' }, now);
+    updateJob(t.db, cancelled, { state: 'cancelled' }, now);
+    expect((await send(t, 'POST', `/jobs/${other}/pause`, { headers: session })).status).toBe(200);
+    await send(t, 'POST', '/queue/resume', { headers: session });
+
+    // a: running, then user-paused (SIGSTOP, lane freed); b: running in its place; c: ready.
+    const a = await one(join(root, 'a.mkv'));
+    await until('a encoding', () => spawner.calls.length === 1);
+    expect(existsSync(join(transcodeDir, a))).toBe(true);
+    expect((await send(t, 'POST', `/jobs/${a}/pause`, { headers: session })).status).toBe(200);
+    expect(spawner.signals).toEqual(['SIGSTOP']);
+    const b = await one(join(root, 'b.mkv'));
+    await until('b encoding', () => spawner.calls.length === 2);
+    const c = await one(join(root, 'c.mkv'));
+    await until('c ready', () => t.deps.engine.scheduler.status().ready.includes(c));
+    // q: whatever phase it reaches; user-paused.
+    const q = await one(join(root, 'q.mkv'));
+    expect((await send(t, 'POST', `/jobs/${q}/pause`, { headers: session })).status).toBe(200);
 
     const read = await createToken(t, s, { name: 'ro', scopes: ['read', 'jobs:create'] });
     const refused = await send(t, 'POST', '/jobs/cancel-all', { headers: bearer(read.token) });
     expect(refused.status).toBe(403);
-    expect(row(running).state).toBe('encoding');
+    expect(row(b).state).toBe('encoding');
 
     const manage = await createToken(t, s, { name: 'ops', scopes: ['jobs:manage'] });
     const as = bearer(manage.token);
-    const other = await send(t, 'POST', '/jobs/cancel-all', {
+    const none = await send(t, 'POST', '/jobs/cancel-all', {
       body: { libraryId: 'no-such-library' },
       headers: as,
     });
-    expect(await json(other)).toEqual({ cancelled: 0 });
+    expect(await json(none)).toEqual({ cancelled: 0, writing: 0, failed: 0 });
 
     const res = await send(t, 'POST', '/jobs/cancel-all', { body: { libraryId }, headers: as });
     expect(res.status).toBe(200);
-    expect(await json(res)).toEqual({ cancelled: 3 });
-    // The running ffmpeg is killed through the single-cancel path.
-    expect(spawner.signals).toContain('SIGKILL');
-    await until('cancelled', () =>
-      [running, paused, waiting].every((id) => row(id as string).state === 'cancelled'),
-    );
-    expect(row(done as string).state).toBe('done');
-    expect(row(failed as string).state).toBe('failed');
-    expect(row(cancelled as string).state).toBe('cancelled');
+    expect(await json(res)).toEqual({ cancelled: 4, writing: 0, failed: 0 });
+    // Both ffmpeg processes, the user-paused one included, are killed through the single-cancel path.
+    expect(spawner.signals.filter((x) => x === 'SIGKILL')).toHaveLength(2);
+    await until('cancelled', () => [a, b, c, q].every((id) => row(id).state === 'cancelled'));
+    await until('temp removed', () => [a, b, c].every((id) => !existsSync(join(transcodeDir, id))));
+    expect(row(done).state).toBe('done');
+    expect(row(failed).state).toBe('failed');
+    expect(row(cancelled).state).toBe('cancelled');
+    expect(row(other)).toMatchObject({ state: 'queued', paused: true });
 
-    const empty = await send(t, 'POST', '/jobs/cancel-all', { body: {}, headers: as });
-    expect(await json(empty)).toEqual({ cancelled: 0 });
+    // No body at all: every library.
+    const all = await send(t, 'POST', '/jobs/cancel-all', { headers: as });
+    expect(all.status).toBe(200);
+    expect(await json(all)).toEqual({ cancelled: 1, writing: 0, failed: 0 });
+    expect(row(other).state).toBe('cancelled');
+  });
+
+  it('cancelAll counts a cancel already under way as nothing, a writing job as writing and a throwing cancel as failed (the rest still run); while stopping it is 409 JOB_NOT_ACTIVE', async () => {
+    await fedLibrary();
+    for (const f of ['b', 'c', 'd']) await writeFile(join(root, `${f}.mkv`), Buffer.alloc(1000, 7));
+    await send(t, 'POST', '/queue/pause', { headers: asSession(s, true) });
+    const ids: string[] = [];
+    for (const f of ['a', 'b', 'c', 'd']) {
+      ids.push((await queued({ path: join(root, `${f}.mkv`) })).jobIds[0] as string);
+    }
+    const [already, writing, throws, real] = ids as [string, string, string, string];
+    const { scheduler } = t.deps.engine;
+    const original = scheduler.cancelJob.bind(scheduler);
+    const spy = vi.spyOn(scheduler, 'cancelJob').mockImplementation((id, opts) => {
+      if (id === already) return 'already';
+      if (id === writing) return 'writing';
+      if (id === throws) throw new Error('disk I/O error');
+      return original(id, opts);
+    });
+    const as = asSession(s, true);
+    const res = await send(t, 'POST', '/jobs/cancel-all', { headers: as });
+    expect(await json(res)).toEqual({ cancelled: 1, writing: 1, failed: 1 });
+    expect(spy).toHaveBeenCalledWith(real, { beforeWrite: true });
+    expect(row(real).state).toBe('cancelled');
+    expect(row(throws).state).toBe('queued');
+
+    vi.spyOn(scheduler, 'isStopping', 'get').mockReturnValue(true);
+    const stopping = await send(t, 'POST', '/jobs/cancel-all', { headers: as });
+    expect(stopping.status).toBe(409);
+    expect(await json(stopping)).toMatchObject({
+      code: 'JOB_NOT_ACTIVE',
+      message: 'The server is stopping; nothing was cancelled',
+    });
   });
 });
 

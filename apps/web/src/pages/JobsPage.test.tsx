@@ -114,7 +114,7 @@ beforeEach(() => {
   mocks.pause.mockReset().mockResolvedValue({ ok: true });
   mocks.resume.mockReset().mockResolvedValue({ ok: true });
   mocks.cancel.mockReset().mockResolvedValue({ ok: true });
-  mocks.cancelAll.mockReset().mockResolvedValue({ cancelled: 39 });
+  mocks.cancelAll.mockReset().mockResolvedValue({ cancelled: 39, writing: 0, failed: 0 });
   mocks.queueStatus.mockReset().mockResolvedValue(QUEUE);
   mocks.queuePause.mockReset().mockResolvedValue({ ...QUEUE, paused: true });
   mocks.queueResume.mockReset().mockResolvedValue(QUEUE);
@@ -221,7 +221,7 @@ describe('JobsPage', () => {
     ).toBeTruthy();
     expect(
       within(dialog).getByText(
-        'Running encodes stop now and their partial output is deleted. Originals stay untouched.',
+        'Running encodes stop now and their partial output is deleted. Their originals stay untouched. Jobs already replacing their file finish.',
       ),
     ).toBeTruthy();
     fireEvent.click(within(dialog).getByRole('button', { name: 'Keep running' }));
@@ -244,6 +244,56 @@ describe('JobsPage', () => {
     });
     renderAt('/jobs', <JobsPage />);
     await screen.findAllByRole('heading', { name: 'Jobs' });
+    await screen.findByRole('link', { name: fx.replaced.fileName });
+    expect(screen.queryByRole('button', { name: 'Cancel all' })).toBeNull();
+  });
+
+  it('"Cancel all" leaves replacing jobs out of its count and reports jobs left to finish, failed cancels and a refusal honestly', async () => {
+    mocks.list.mockResolvedValue({
+      jobs: ALL_JOBS,
+      counts: { ...COUNTS, replacing: 5 },
+      problemCount: 0,
+    });
+    mocks.cancelAll.mockResolvedValueOnce({ cancelled: 0, writing: 5, failed: 0 });
+    renderAt('/jobs', <JobsPage />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Cancel all' }));
+    let dialog = await screen.findByRole('dialog', { name: 'Cancel 39 jobs?' });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel 39 jobs' }));
+    expect(
+      await screen.findByText(
+        'Nothing was cancelled. 5 jobs already replacing their file will finish',
+      ),
+    ).toBeTruthy();
+
+    mocks.cancelAll.mockResolvedValueOnce({ cancelled: 36, writing: 1, failed: 2 });
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel all' }));
+    dialog = await screen.findByRole('dialog', { name: 'Cancel 39 jobs?' });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel 39 jobs' }));
+    expect(
+      await screen.findByText(
+        'Cancelled 36 jobs. 1 job already replacing their file will finish. 2 jobs could not be cancelled',
+      ),
+    ).toBeTruthy();
+
+    mocks.cancelAll.mockRejectedValueOnce(
+      new Error('The server is stopping; nothing was cancelled'),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel all' }));
+    dialog = await screen.findByRole('dialog', { name: 'Cancel 39 jobs?' });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel 39 jobs' }));
+    expect(
+      await screen.findByText(
+        "Couldn't cancel the jobs: The server is stopping; nothing was cancelled",
+      ),
+    ).toBeTruthy();
+
+    cleanup();
+    mocks.list.mockResolvedValue({
+      jobs: [fx.replaced],
+      counts: counts({ done: 1902, replacing: 2 }),
+      problemCount: 0,
+    });
+    renderAt('/jobs', <JobsPage />);
     await screen.findByRole('link', { name: fx.replaced.fileName });
     expect(screen.queryByRole('button', { name: 'Cancel all' })).toBeNull();
   });

@@ -633,6 +633,34 @@ describe('Scheduler', () => {
     expect(scheduler.cancelJob('nope')).toBe('not-active');
   });
 
+  it('a bulk cancel (beforeWrite) leaves a replacing or written job alone; a cancel under way answers already', async () => {
+    job('a', { queuedAt: 1 });
+    job('b', { queuedAt: 2 });
+    scheduler.start();
+    await flush();
+    executor.ready('a', 'encode');
+    executor.ready('b', 'quick');
+    await flush();
+    const a = executor.exec('a');
+    const b = executor.exec('b');
+
+    a.ctl.changed(updateJob(db, 'a', { state: 'replacing' }, now()) as JobRow);
+    expect(scheduler.cancelJob('a', { beforeWrite: true })).toBe('writing');
+    b.ctl.markWritten?.();
+    expect(scheduler.cancelJob('b', { beforeWrite: true })).toBe('writing');
+    expect(a.ctl.signal.aborted || b.ctl.signal.aborted).toBe(false);
+    expect([...a.proc.signals, ...b.proc.signals]).toEqual([]);
+
+    // A single cancel is unchanged: it still stops them.
+    expect(scheduler.cancelJob('b')).toBe('ok');
+    expect(b.proc.signals).toEqual(['SIGKILL']);
+    expect(scheduler.cancelJob('b')).toBe('already');
+    expect(scheduler.cancelJob('b', { beforeWrite: true })).toBe('already');
+    expect(b.proc.signals).toEqual(['SIGKILL']);
+    await flush();
+    expect(scheduler.cancelJob('b')).toBe('not-active');
+  });
+
   it('queue pause freezes running jobs, blocks ready jobs (even one prepared after the pause), persists in settings, and survives a new Scheduler over the same db', async () => {
     job('a', { queuedAt: 1 });
     job('b', { queuedAt: 2 });

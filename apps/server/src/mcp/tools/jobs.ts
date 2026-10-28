@@ -161,11 +161,13 @@ const cancelJob = defineTool({
   },
 });
 
+const jobsWord = (n: number) => `${n} ${n === 1 ? 'job' : 'jobs'}`;
+
 const cancelAllJobs = defineTool({
   name: 'cancel_all_jobs',
   title: 'Cancel all jobs',
   description:
-    'Cancel every job that has not finished (queued, running or paused), optionally of one library. Running ffmpeg processes are stopped and their partial output removed. This cannot be undone.',
+    'Cancel every job that has not finished (queued, running or paused), optionally of one library. Running ffmpeg processes are stopped and their partial output removed. Jobs already replacing their file finish (counted in writing). This cannot be undone.',
   scopes: ['jobs:manage'],
   annotations: { destructiveHint: true, openWorldHint: false },
   input: {
@@ -174,13 +176,21 @@ const cancelAllJobs = defineTool({
       .optional()
       .describe('Only the jobs of this library; omit for every library'),
   },
-  output: { cancelled: z.number().int().describe('How many jobs were cancelled') },
+  output: {
+    cancelled: z.number().int().describe('How many jobs were cancelled'),
+    writing: z
+      .number()
+      .int()
+      .describe('Jobs left to finish: they were already replacing their file'),
+    failed: z.number().int().describe('Jobs whose cancel failed; they keep running'),
+  },
   async run({ api }, { libraryId }) {
-    const { cancelled } = await api.jobs.cancelAll(libraryId === undefined ? {} : { libraryId });
-    return {
-      text: `Cancelled ${cancelled} ${cancelled === 1 ? 'job' : 'jobs'}.`,
-      data: { cancelled },
-    };
+    const out = await api.jobs.cancelAll(libraryId === undefined ? {} : { libraryId });
+    const parts = [`Cancelled ${jobsWord(out.cancelled)}.`];
+    if (out.writing > 0)
+      parts.push(`${jobsWord(out.writing)} already replacing their file will finish.`);
+    if (out.failed > 0) parts.push(`${jobsWord(out.failed)} could not be cancelled.`);
+    return { text: parts.join(' '), data: out };
   },
 });
 

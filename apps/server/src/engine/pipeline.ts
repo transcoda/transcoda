@@ -1133,6 +1133,7 @@ export class Pipeline implements JobExecutor {
     const { problems } = state;
     const markWritten = () => {
       p.written = state;
+      ctl.markWritten?.();
     };
     const wrote = () => p.written !== null;
     /** The highest finish phase a plugin step already ran in (-1: none). */
