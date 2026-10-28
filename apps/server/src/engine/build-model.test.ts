@@ -612,4 +612,11 @@ describe('conversion notes read back (the job page parses them)', () => {
     // The note as the plan carries it, among other changes.
     expect(parseConversion(`added: ${note(a)}, default`, 'audio')?.kbps).toBe(160);
   });
+
+  it('reads an unclosed note in linear time (CodeQL js/polynomial-redos)', () => {
+    const started = performance.now();
+    expect(parseConversion('convert !→! ((' + 'convert !→! (('.repeat(50_000), 'video')).toBeNull();
+    expect(parseConversion('convert a→b (' + 'x'.repeat(50_000), 'video')).toBeNull();
+    expect(performance.now() - started).toBeLessThan(500);
+  });
 });
