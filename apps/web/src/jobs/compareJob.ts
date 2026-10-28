@@ -1,5 +1,5 @@
 import type { JobDetail, JobProbe } from '@transcoda/contract';
-import { type Conversion, parseConversion } from '@transcoda/shared';
+import { type Conversion, isPicture, parseConversion } from '@transcoda/shared';
 import { fmtBytes } from '../lib/bytes.ts';
 import { fmtKbps } from '../lib/rate.ts';
 import { languageNameOf } from './planText.ts';
@@ -355,9 +355,12 @@ const side = (items: string[], losses: Loss[] = []): Side => ({ items, tag: null
 const tagged = (tag: 'kept' | 'added'): Side => ({ items: [], tag, losses: [] });
 const REMOVED: Loss = { word: 'removed', why: 'the output does not have this track' };
 
-/** The verified output's streams of each kind, in output order (mkv covers left out). */
+/**
+ * The verified output's streams of each kind, in output order (pictures left out: covers, posters
+ * and images stored as video tracks, see isPicture).
+ */
 function outputStreams(probe: JobProbe, kind: Kind): Stream[] {
-  return probe.streams.filter((s) => s.type === kind && !s.attachedPic);
+  return probe.streams.filter((s) => s.type === kind && !isPicture(s, probe.streams));
 }
 
 /**
@@ -365,14 +368,20 @@ function outputStreams(probe: JobProbe, kind: Kind): Stream[] {
  * output order), else (plans stored before it) the n-th kept entry of a kind is the n-th output
  * stream of that kind.
  */
-function pairOutputs(plan: Plan, out: JobProbe): Map<PlanStream, Stream> {
+function pairOutputs(
+  plan: Plan,
+  out: JobProbe,
+  pictureSources: ReadonlySet<number>,
+): Map<PlanStream, Stream> {
   const paired = new Map<PlanStream, Stream>();
-  const kept = plan.streams.filter((s) => s.action !== 'drop');
+  // Pictures are left out on both sides (outputStreams skips them in the output).
+  const kept = plan.streams.filter((s) => s.action !== 'drop' && !pictureSources.has(s.index));
   const tracks = plan.output ?? [];
   if (tracks.length > 0 && tracks.every((t) => t.sourceIndex !== undefined)) {
     const taken = new Set<PlanStream>();
     const ordinal = new Map<string, number>();
     for (const t of tracks) {
+      if (typeof t.sourceIndex === 'number' && pictureSources.has(t.sourceIndex)) continue;
       const n = ordinal.get(t.type) ?? 0;
       ordinal.set(t.type, n + 1);
       if (t.sourceIndex === null || !KINDS.includes(t.type as Kind)) continue;
@@ -428,7 +437,8 @@ export function compareJob(job: BeforeAfterJob): Comparison | null {
   const before = new Map(
     probe.streams.map((s) => [s.index, factsOf(s, srcKbps.get(s.index) ?? null)]),
   );
-  const shown = (s: Stream) => KINDS.includes(s.type as Kind) && !s.attachedPic;
+  // Pictures (covers, posters, images stored as video tracks) are not compared as video.
+  const shown = (s: Stream) => KINDS.includes(s.type as Kind) && !isPicture(s, probe.streams);
   deriveVideo(
     probe.streams.filter(shown).map((s) => before.get(s.index) as Facts),
     fileKbps(probe.sizeBytes, probe.durationSeconds, probe.bitrateKbps),
@@ -446,11 +456,14 @@ export function compareJob(job: BeforeAfterJob): Comparison | null {
   };
   const pending: Pending[] = [];
   if (plan) {
-    const paired = out ? pairOutputs(plan, out) : new Map<PlanStream, Stream>();
+    const pictureSources = new Set(
+      probe.streams.filter((s) => isPicture(s, probe.streams)).map((s) => s.index),
+    );
+    const paired = out ? pairOutputs(plan, out, pictureSources) : new Map<PlanStream, Stream>();
     const outKbps = (s: Stream) => (out ? streamKbps(s, out, false) : null);
     for (const p of plan.streams) {
       const src = probe.streams.find((s) => s.index === p.index) ?? null;
-      if (!KINDS.includes(p.type as Kind) || src?.attachedPic) continue;
+      if (!KINDS.includes(p.type as Kind) || (src && isPicture(src, probe.streams))) continue;
       const added = p.note === 'added' || p.note.startsWith('added: ');
       const drop = p.action === 'drop';
       const o = paired.get(p);

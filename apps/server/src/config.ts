@@ -64,6 +64,11 @@ export interface Config {
   pluginIsolationOff: boolean;
   /** TRANSCODA_HEALTH_STALL_HOURS (default 6): a running job with no progress for this long fails the deep health queue check. */
   healthStallHours: number;
+  /**
+   * TRANSCODA_ENCODE_STALL_MINUTES (default 60; 0 turns it off): an encode whose ffmpeg writes no
+   * more output for this long (paused time excluded) is stopped and the job fails.
+   */
+  encodeStallMinutes: number;
   /** TRANSCODA_HEALTH_MIN_FREE_GIB (default 5): the deep health scratch-space check needs at least max(5, this). */
   healthMinFreeGiB: number;
 }
@@ -80,6 +85,23 @@ function parsePositive(
     throw new ConfigError(`${name} must be a positive number of ${unit}, got "${value}"`);
   }
   return n;
+}
+
+/** Like parsePositive, but 0 is allowed (it turns the setting off). */
+function parseNonNegative(
+  name: string,
+  unit: string,
+  value: string | undefined,
+  fallback: number,
+): number {
+  if (value !== undefined && /^0+(\.0+)?$/.test(value.trim())) return 0;
+  try {
+    return parsePositive(name, unit, value, fallback);
+  } catch {
+    throw new ConfigError(
+      `${name} must be 0 (off) or a positive number of ${unit}, got "${value}"`,
+    );
+  }
 }
 
 function list(value: string | undefined, lower: boolean): string[] {
@@ -365,6 +387,12 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
       'hours',
       env.TRANSCODA_HEALTH_STALL_HOURS,
       6,
+    ),
+    encodeStallMinutes: parseNonNegative(
+      'TRANSCODA_ENCODE_STALL_MINUTES',
+      'minutes',
+      env.TRANSCODA_ENCODE_STALL_MINUTES,
+      60,
     ),
     healthMinFreeGiB: parsePositive(
       'TRANSCODA_HEALTH_MIN_FREE_GIB',

@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import {
   containerCanHold,
   conversion,
+  copyPictures,
   coverFile,
   diffFromProbe,
   extraInputOf,
@@ -330,6 +331,37 @@ describe('covers into mkv', () => {
   });
 });
 
+describe('copyPictures (a picture is never encoded)', () => {
+  const src = probeOf([
+    { type: 'video', codec: 'hevc' },
+    { type: 'video', codec: 'hevc', imageTrack: true },
+    { type: 'video', codec: 'mjpeg' },
+    { type: 'audio', codec: 'aac' },
+  ]);
+  const encode = { mode: 'convert' as const, codec: 'hevc', encoder: 'hevc_nvenc', quality: 24 };
+
+  it('puts pictures a node converts back to copy and notes it; real video stays converted', () => {
+    let model = modelFromProbe(src);
+    for (const i of [0, 1, 2]) model = withStream(model, i, encode);
+    const notes = copyPictures(model, src);
+    expect(model.streams.map((s) => [s.mode, s.codec, s.encoder, s.quality])).toEqual([
+      ['convert', 'hevc', 'hevc_nvenc', 24],
+      ['copy', 'hevc', null, null],
+      ['copy', 'mjpeg', null, null],
+      ['copy', 'aac', null, null],
+    ]);
+    expect([...notes.entries()].map(([s, note]) => [s.sourceIndex, note])).toEqual([
+      [1, 'a picture, copied: pictures are never encoded'],
+      [2, 'a picture, copied: pictures are never encoded'],
+    ]);
+  });
+
+  it('changes nothing when no picture is converted', () => {
+    const model = withStream(modelFromProbe(src), 0, encode);
+    expect(copyPictures(model, src).size).toBe(0);
+  });
+});
+
 describe('normalizeDefaults (final review I1)', () => {
   const src = probeOf([
     { type: 'video', codec: 'hevc', default: true },
@@ -399,6 +431,25 @@ describe('normalizeDefaults (final review I1)', () => {
     const mkv = modelFromProbe(plain);
     expect(normalizeDefaults(mkv).size).toBe(0);
     expect(mkv.streams[1]?.default).toBe(false);
+  });
+
+  it('mp4 with the probe: an image track ahead of the real video never takes the default flag', () => {
+    const src = probeOf([
+      { type: 'video', codec: 'hevc', imageTrack: true },
+      { type: 'video', codec: 'h264' },
+      { type: 'audio', codec: 'aac', language: 'eng', default: true },
+    ]);
+    const mp4 = { ...modelFromProbe(src), container: 'mp4' as const };
+    const notes = normalizeDefaults(mp4, src);
+    expect(streamsOf(mp4, 'video').map((s) => [s.sourceIndex, s.default])).toEqual([
+      [0, false],
+      [1, true],
+    ]);
+    expect([...notes.keys()].map((s) => s.sourceIndex)).toEqual([1]);
+    // Without the probe only flagged covers are known: the image track would be the lead.
+    const blind = { ...modelFromProbe(src), container: 'mp4' as const };
+    normalizeDefaults(blind);
+    expect(blind.streams[0]?.default).toBe(true);
   });
 
   it('mp4: flags the first kept video when none is, clears extra video defaults (the muxer enables a video told 0)', () => {

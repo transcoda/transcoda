@@ -456,6 +456,7 @@ async function setup(
     /** Real plugins: bundles to load as dev plugins (the caller starts the plugin service). */
     plugins?: { devPlugins?: string[] };
     capabilities?: Capabilities;
+    encodeStallMinutes?: number;
   } = {},
 ) {
   spawner = new TestSpawner();
@@ -471,6 +472,9 @@ async function setup(
       outputRoots: [join(base, 'out')],
       ...(opts.puid !== undefined ? { puid: opts.puid, pgid: opts.puid } : {}),
       ...(opts.publicUrl !== undefined ? { publicUrl: opts.publicUrl } : {}),
+      ...(opts.encodeStallMinutes !== undefined
+        ? { encodeStallMinutes: opts.encodeStallMinutes }
+        : {}),
     },
     capabilities: opts.capabilities ?? caps,
     spawner,
@@ -551,6 +555,60 @@ describe('pipeline', () => {
       plan: { rewrite: false },
     });
     expect((await stat(file())).size).toBe(1000);
+  });
+
+  describe('the encode stall guard (60 ms on the test clock)', () => {
+    const wf = () =>
+      workflow(
+        line(node('in', 'core:input-manual'), toH264(), node('ro', 'core:replace-original')),
+      );
+    /** Moves the test clock past the limit with no output growth, and lets the guard tick. */
+    const stall = async () => {
+      t.clock.advance(70);
+      await new Promise((r) => setTimeout(r, 50));
+    };
+
+    it('no output ever: ffmpeg is stopped and the job fails at once with the stuck-stream reason', async () => {
+      await t.deps.engine.stop();
+      await setup({ encodeStallMinutes: 0.001 });
+      const id = await queue(file(), wf());
+      await t.deps.engine.start();
+      await until('spawn', () => spawner.calls.length === 1);
+      await stall();
+      const job = await settled(id);
+      expect(spawner.signals).toEqual(['SIGKILL']);
+      expect(spawner.calls).toHaveLength(1);
+      expect(job).toMatchObject({ state: 'failed', attempt: 1 });
+      expect(job.reason).toMatch(
+        /^ffmpeg wrote no output for 0\.001 minutes and was stopped\. .*could not get started/,
+      );
+      expect((await stat(file())).size).toBe(1000);
+    });
+
+    it('output that grows keeps it running; output that then stops is retried with a neutral reason', async () => {
+      await t.deps.engine.stop();
+      await setup({ encodeStallMinutes: 0.001 });
+      const id = await queue(file(), wf());
+      await t.deps.engine.start();
+      await until('spawn', () => spawner.calls.length === 1);
+      for (let i = 1; i <= 3; i += 1) {
+        t.clock.advance(50);
+        spawner.emitProgress({ outTimeSeconds: i, speed: 1, fps: 25, sizeBytes: 100 * i });
+        await new Promise((r) => setTimeout(r, 30));
+      }
+      expect(spawner.signals).toEqual([]);
+      await stall();
+      await until('second spawn', () => spawner.calls.length === 2);
+      expect(row(id)).toMatchObject({ attempt: 2 });
+      spawner.emitProgress({ outTimeSeconds: 1, speed: 1, fps: 25, sizeBytes: 100 });
+      await stall();
+      const job = await settled(id);
+      expect(job).toMatchObject({ state: 'failed', attempt: 2 });
+      expect(job.reason).toMatch(
+        /^ffmpeg stopped writing output for 0\.001 minutes and was stopped/,
+      );
+      expect((await stat(file())).size).toBe(1000);
+    });
   });
 
   it('a changed model on a path without replace/move ends kept_original "path never writes the result" without spawning ffmpeg', async () => {
@@ -893,6 +951,22 @@ describe('pipeline', () => {
     };
     const fails = (line: string) => spawner.complete({ bytes: 0, code: 1, stderr: [line] });
     const warnings = (id: string) => findJobResult(t.db, id)?.warnings ?? [];
+
+    it('an NVENC encode whose output stops growing is treated as a GPU failure: back to the queue for the Intel GPU', async () => {
+      await setup({ capabilities: mixed(['cuda']), encodeStallMinutes: 0.001 });
+      const id = await started(hevc('auto'));
+      expect(spawner.calls[0]?.args).toContain('hevc_nvenc');
+      spawner.emitProgress({ outTimeSeconds: 1, speed: 1, fps: 25, sizeBytes: 100 });
+      t.clock.advance(70);
+      await until('second spawn', () => spawner.calls.length === 2);
+      expect(row(id)).toMatchObject({ attempt: 1, failedGpus: ['nvidia:0'] });
+      expect(row(id).reason).toMatch(
+        /^GPU 0 · RTX 3060 failed \(ffmpeg stopped writing output for 0\.001 minutes and was stopped.*\); trying another GPU$/,
+      );
+      expect(spawner.calls[1]?.args).toContain('hevc_qsv');
+      await spawner.complete({ bytes: 600 });
+      expect((await settled(id)).state).toBe('done');
+    });
 
     it('an auto job whose NVENC encode fails on gpu:0 goes back to the queue and encodes on the Intel GPU, with a warning', async () => {
       await setup({ capabilities: mixed(['cuda']) });

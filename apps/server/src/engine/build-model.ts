@@ -1,7 +1,7 @@
 // The per-stream build model: the identity model of a probed file, identity checks, a readable
 // diff against the probe, and encoder resolution.
 import type { BuildModel, ExtraInput, ProbeResult, StreamPlan } from '@transcoda/sdk';
-import type { ProbeStream } from '@transcoda/shared';
+import { isPicture, type ProbeStream } from '@transcoda/shared';
 
 /**
  * The model that rewrites nothing: every stream kept in copy mode, in probe order, with its
@@ -99,6 +99,35 @@ export function fitToContainer(model: BuildModel): {
     }
   }
   return { converted, dropped };
+}
+
+/**
+ * Puts every kept picture (isPicture: a cover, a poster, an image stored as a video track) that a
+ * node set to convert back to copy, in place, and returns a plan note per stream it changed. An
+ * encoder holds a picture's single frame until the input ends, and the muxer then keeps every
+ * packet of the other streams in memory and writes nothing (a 12 hour job grew to gigabytes
+ * with an empty output), so a picture is never encoded, whatever a node or plugin asked for.
+ */
+export function copyPictures(model: BuildModel, probe: ProbeResult): Map<StreamPlan, string> {
+  const notes = new Map<StreamPlan, string>();
+  for (const s of kept(model)) {
+    if (s.type !== 'video' || s.mode !== 'convert' || isExtraStream(s)) continue;
+    const src = probe.streams.find((p) => p.index === s.sourceIndex);
+    if (!src || !isPicture(src, probe.streams)) continue;
+    Object.assign(s, {
+      mode: 'copy',
+      codec: src.codec,
+      encoder: null,
+      quality: null,
+      preset: null,
+      bitrateKbps: null,
+      channels: null,
+      profile: null,
+      pixelFormat: null,
+    });
+    notes.set(s, 'a picture, copied: pictures are never encoded');
+  }
+  return notes;
 }
 
 const COVER_FILES: Record<string, { ext: string; mimetype: string }> = {
@@ -323,7 +352,14 @@ function sidecarLines(model: BuildModel): string[] {
  * model that is written: the identity check comes first, so an unchanged file stays as it is.
  * Returns a plan note per changed stream.
  */
-export function normalizeDefaults(model: BuildModel): Map<StreamPlan, string> {
+export function normalizeDefaults(model: BuildModel, probe?: ProbeResult): Map<StreamPlan, string> {
+  // Pictures (isPicture, with the probe; flagged covers without it) never take the default flag.
+  const picture = (s: StreamPlan) => {
+    const src = isExtraStream(s)
+      ? undefined
+      : probe?.streams.find((p) => p.index === s.sourceIndex);
+    return src && probe ? isPicture(src, probe.streams) : s.attachedPic;
+  };
   const notes = new Map<StreamPlan, string>();
   // An mp4 muxer enables a video track that was told "not default", so verify would see a flag the
   // plan did not have: video is normalised like a subtitle there (covers are not video tracks).
@@ -332,7 +368,7 @@ export function normalizeDefaults(model: BuildModel): Map<StreamPlan, string> {
       ? (['video', 'audio', 'subtitle'] as const)
       : (['audio', 'subtitle'] as const);
   for (const type of types) {
-    const streams = streamsOf(model, type).filter((s) => !s.attachedPic);
+    const streams = streamsOf(model, type).filter((s) => !picture(s));
     const first = streams.find((s) => s.default);
     for (const s of streams) {
       if (s.default && s !== first) {

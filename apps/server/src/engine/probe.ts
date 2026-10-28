@@ -122,6 +122,67 @@ function hdrOf(s: Obj): ProbeStream['hdr'] {
   return 'none';
 }
 
+/** File extensions of image formats, for a stream's `FILENAME` tag. */
+const IMAGE_EXTENSIONS = new Set([
+  'jpg',
+  'jpeg',
+  'jpe',
+  'jfif',
+  'png',
+  'gif',
+  'bmp',
+  'webp',
+  'tif',
+  'tiff',
+  'avif',
+  'heic',
+  'heif',
+  'jxl',
+]);
+
+/** The tag `name`, whatever its case (Matroska writes `MIMETYPE`, other muxers `mimetype`). */
+function tagOf(tags: Record<string, string> | undefined, name: string): string | undefined {
+  const key = Object.keys(tags ?? {}).find((k) => k.toLowerCase() === name);
+  return key === undefined ? undefined : tags?.[key];
+}
+
+/**
+ * The video stream's tags say it is an image file: a `MIMETYPE` of `image/…` or a `FILENAME` with
+ * an image extension. An attachment (`cover.jpg`) that an earlier ffmpeg pass mapped as a video
+ * track keeps these tags, whatever codec it was re-encoded to.
+ */
+export function hasImageTags(tags: Record<string, string> | undefined): boolean {
+  const mime = tagOf(tags, 'mimetype')?.trim().toLowerCase();
+  if (mime?.startsWith('image/')) return true;
+  const ext = /\.([A-Za-z0-9]+)$/.exec(tagOf(tags, 'filename')?.trim() ?? '')?.[1];
+  return ext !== undefined && IMAGE_EXTENSIONS.has(ext.toLowerCase());
+}
+
+/**
+ * Marks video tracks that hold one picture (see ProbeStream.imageTrack): image tags (parseStream;
+ * not when `nb_frames` counts more than one frame), or a frame
+ * count of exactly 1 from the container's index (`nb_frames`) while another video stream is not a
+ * picture and has more frames (or an unknown count). Only `nb_frames` counts: durations are not
+ * used, since ffprobe reports a Matroska track's duration as the file's (a 1 ms cover track
+ * reads as the whole film) and `DURATION`/`NUMBER_OF_FRAMES` tags may be copied from an older
+ * file. A file whose only video has one frame keeps it as video.
+ */
+function markImageTracks(streams: ProbeStream[], raw: unknown[]): void {
+  const frames = new Map<number, number | null>();
+  for (const r of raw) {
+    if (isObj(r) && int(r.index) !== null) frames.set(int(r.index) as number, int(r.nb_frames));
+  }
+  const singleFrame = streams.filter(
+    (s) => s.type === 'video' && !s.attachedPic && !s.imageTrack && frames.get(s.index) === 1,
+  );
+  if (singleFrame.length === 0) return;
+  const motion = streams.some(
+    (o) =>
+      o.type === 'video' && !o.attachedPic && !o.imageTrack && (frames.get(o.index) ?? null) !== 1,
+  );
+  if (motion) for (const s of singleFrame) s.imageTrack = true;
+}
+
 function parseStream(s: unknown): ProbeStream {
   if (!isObj(s)) fail();
   const index = int(s.index);
@@ -141,6 +202,11 @@ function parseStream(s: unknown): ProbeStream {
     default: flag('default'),
     forced: flag('forced'),
     attachedPic,
+    // Image tags mark a track, unless the container counts more than one frame (an animated GIF,
+    // WebP or APNG is motion and is encoded like video).
+    ...(type === 'video' && !attachedPic && hasImageTags(tags) && !((int(s.nb_frames) ?? 0) > 1)
+      ? { imageTrack: true }
+      : {}),
     dispositions: Object.keys(disposition).filter(
       (k) => !OWN_FIELD_DISPOSITIONS.has(k) && disposition[k] === 1,
     ),
@@ -167,13 +233,15 @@ export function parseProbe(json: unknown): ProbeResult {
   const format = json.format;
   const formatName = str(format.format_name);
   if (formatName === null) fail();
+  const streams = json.streams.map(parseStream);
+  markImageTracks(streams, json.streams);
   return {
     container: CONTAINERS.get(formatName) ?? formatName.split(',')[0] ?? formatName,
     formatName,
     durationSeconds: num(format.duration) ?? 0,
     sizeBytes: int(format.size) ?? 0,
     bitrateKbps: kbps(format.bit_rate),
-    streams: json.streams.map(parseStream),
+    streams,
     chapters: Array.isArray(json.chapters) ? json.chapters.length : 0,
     raw: json as JsonValue,
   };

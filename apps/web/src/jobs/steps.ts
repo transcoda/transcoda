@@ -14,6 +14,7 @@ import {
   CHECK_SOURCE_TYPE,
   changesFile,
   isFinalState,
+  isPicture,
   RENDER_DAMAGED_PORT,
   RENDER_TYPE,
 } from '@transcoda/shared';
@@ -240,7 +241,8 @@ const bitDepthOf = (pixelFormat: string | null): number | null => {
 };
 
 function videoSource(probe: ProbeSummary | null) {
-  return probe?.streams.find((s) => s.type === 'video' && !s.attachedPic) ?? null;
+  const streams = probe?.streams ?? [];
+  return streams.find((s) => s.type === 'video' && !isPicture(s, streams)) ?? null;
 }
 
 // ---- per node type ----

@@ -38,6 +38,21 @@ describe('compareJob', () => {
     ]);
   });
 
+  it('an image stored as a video track is a picture: not compared as video, even ahead of it in the output', () => {
+    const image = { type: 'video' as const, codec: 'hevc', imageTrack: true, width: 640 };
+    const probe = source();
+    probe.streams.push(stream({ index: 4, ...image }));
+    const outputProbe = output();
+    outputProbe.streams.unshift(stream({ index: 0, ...image }));
+    outputProbe.streams.forEach((s, i) => {
+      s.index = i;
+    });
+    const p = plan();
+    p.streams.push(planStream({ index: 4, type: 'video', codec: 'hevc', language: null }));
+    p.output = [{ type: 'video', codec: 'hevc', sourceIndex: 4 }, ...(p.output ?? [])];
+    expect(rows(testEncode({ probe, outputProbe, plan: p }))).toEqual(rows(testEncode()));
+  });
+
   it('every loss explains itself in words (the screen reader text)', () => {
     const c = compareJob(testEncode());
     const audio = c?.rows.find((r) => r.label === 'Audio 1');

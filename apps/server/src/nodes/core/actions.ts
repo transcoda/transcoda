@@ -390,7 +390,11 @@ export const coverAttachments = defineNode({
     const pieces: string[] = [];
     let fontsKeptForAss = false;
     if (!settings.keepCover) {
-      const covers = streamsOf(model, 'video').filter((s) => s.attachedPic);
+      // Every picture (isPicture): flagged covers, posters, and images stored as video tracks.
+      const covers = streamsOf(model, 'video').filter((s) => {
+        const src = sourceOf(ctx.probe, s);
+        return src ? isPicture(src, ctx.probe.streams) : s.attachedPic;
+      });
       for (const s of covers) s.keep = false;
       if (covers.length > 0) {
         pieces.push(`dropped ${plural(covers.length, 'cover', 'covers')} ${refs(covers, model)}`);

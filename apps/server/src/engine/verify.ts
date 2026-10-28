@@ -1,7 +1,7 @@
 // Output verification: re-probe the encoded file and check it against the build model before any
 // replace. Every check runs and failures accumulate (except an unreadable output: probe only).
 import type { BuildModel, ProbeResult, StreamPlan } from '@transcoda/sdk';
-import { DEVICE_PROFILES, type ProbeStream, sameLanguage } from '@transcoda/shared';
+import { DEVICE_PROFILES, isPicture, type ProbeStream, sameLanguage } from '@transcoda/shared';
 import { type Exec, makeExec } from '../capabilities/ffmpeg.ts';
 import { extraInputOf, isExtraStream, isMkvCover, outputOrder } from './build-model.ts';
 import { READ_FAILURE } from './decoder-names.ts';
@@ -365,7 +365,11 @@ async function measuredEnd(
   return end;
 }
 
-/** Output media streams (video other than covers, audio) with the plan entry they came from. */
+/**
+ * Output media streams (video other than pictures, see isPicture; audio) with the plan entry they
+ * came from. A picture (a cover, a poster, an image stored as a video track) is not compared or
+ * decoded as media.
+ */
 function mediaPairs(
   model: BuildModel,
   probe: ProbeResult,
@@ -375,7 +379,9 @@ function mediaPairs(
     .sort((a, b) => a.index - b.index)
     .flatMap((out, i) => {
       const plan = plans[i];
-      const media = (out.type === 'video' && !out.attachedPic) || out.type === 'audio';
+      const media =
+        (out.type === 'video' && !plan?.attachedPic && !isPicture(out, probe.streams)) ||
+        out.type === 'audio';
       return media && plan ? [{ out, plan }] : [];
     });
 }
@@ -716,7 +722,7 @@ async function decodeInputs(
   const start = { input: ['-t', '1', '-i', file.path], where: 'the first second' };
   const streams = [...file.probe.streams].sort((a, b) => a.index - b.index);
   const anchor =
-    streams.find((s) => s.type === 'video' && !s.attachedPic) ??
+    streams.find((s) => s.type === 'video' && !isPicture(s, streams)) ??
     streams.find((s) => s.type === 'audio');
   if (!anchor) return { 'decode-start': start, 'decode-end': null };
   let end = file.ends.get(anchor.index) ?? null;
@@ -782,7 +788,7 @@ async function sampleSpots(
   const anchorOf = (file: MediaFile) => {
     const streams = [...file.probe.streams].sort((a, b) => a.index - b.index);
     return (
-      streams.find((s) => s.type === 'video' && !s.attachedPic) ??
+      streams.find((s) => s.type === 'video' && !isPicture(s, streams)) ??
       streams.find((s) => s.type === 'audio')
     );
   };
@@ -1002,8 +1008,12 @@ async function decodableStart(
   model: BuildModel,
   file: MediaFile,
 ): Promise<number> {
+  const picture = (s: StreamPlan) => {
+    const src = file.probe.streams.find((p) => p.index === s.sourceIndex);
+    return src && !isExtraStream(s) ? isPicture(src, file.probe.streams) : s.attachedPic;
+  };
   const keptMedia = outputOrder(model).filter(
-    (s) => (s.type === 'video' && !s.attachedPic) || s.type === 'audio',
+    (s) => (s.type === 'video' && !picture(s)) || s.type === 'audio',
   );
   const video = keptMedia[0];
   if (!video || keptMedia.some((s) => s.type === 'audio') || video.type !== 'video') {
@@ -1125,7 +1135,7 @@ export async function confirmSourceDamage(input: {
   const file = await mediaFile(exec, input.ffprobePath, input.sourcePath, input.sourceProbe);
   const streams = [...file.probe.streams].sort((a, b) => a.index - b.index);
   const anchor =
-    streams.find((s) => s.type === 'video' && !s.attachedPic) ??
+    streams.find((s) => s.type === 'video' && !isPicture(s, streams)) ??
     streams.find((s) => s.type === 'audio');
   const failures: VerifyFailure[] = [];
   const spots = [

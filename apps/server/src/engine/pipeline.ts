@@ -68,6 +68,7 @@ import type { PluginRestartGate } from '../plugins/restart-gate.ts';
 import type { WorkflowService } from '../workflows/service.ts';
 import {
   containerCanHold,
+  copyPictures,
   coverFile,
   diffFromProbe,
   encoderUsable,
@@ -118,6 +119,12 @@ import { autoStreams, retarget } from './retarget.ts';
 import type { ExecuteOutcome, JobControl, JobExecutor, SlotFit } from './scheduler.ts';
 import { recycleSidecars } from './sidecar-recycle.ts';
 import type { SpaceWaits } from './space-waits.ts';
+import {
+  noOutputReason,
+  OutputStallGuard,
+  stoppedOutputReason,
+  watchForStall,
+} from './stall-guard.ts';
 import { removeOrigCopy, settleReplaceNow } from './sweep.ts';
 import type { TestOutputStore } from './test-outputs.ts';
 import { confirmSourceDamage, type VerifyFailure, verifyOutput } from './verify.ts';
@@ -722,9 +729,18 @@ export class Pipeline implements JobExecutor {
       );
     }
     const { model, actions, gates, damaged } = built;
+    // A picture a node set to convert is copied (see copyPictures).
+    const pictureNotes = copyPictures(model, probe);
     // Default flags as the output will have them (verify compares them strictly); a model that
     // writes nothing is left as it is.
-    const defaultNotes = isIdentity(model, probe) ? new Map() : normalizeDefaults(model);
+    const defaultNotes = isIdentity(model, probe)
+      ? new Map<StreamPlan, string>()
+      : normalizeDefaults(model, probe);
+    // A stream with both notes keeps both.
+    for (const [s, note] of pictureNotes) {
+      const other = defaultNotes.get(s);
+      defaultNotes.set(s, other === undefined ? note : `${note}; ${other}`);
+    }
     const originalLanguage = originalLanguageOf(decided);
     const plan = planOf(model, probe, originalLanguage, defaultNotes);
     const estimatedBytes = estimateBytes(db, job.workflowId, fp.sizeBytes);
@@ -1321,12 +1337,19 @@ export class Pipeline implements JobExecutor {
     const sourceErrors: { line: string; at: number }[] = [];
     const demuxerErrors: { line: string; at: number }[] = [];
     const outputErrors: string[] = [];
+    // The stall guard (TRANSCODA_ENCODE_STALL_MINUTES, 0 = off): no more output for that long
+    // stops ffmpeg, so a stuck muxer cannot hold the source in memory for hours.
+    const stallMs = config.encodeStallMinutes * 60_000;
+    const guard =
+      stallMs > 0 ? new OutputStallGuard(stallMs, () => this.deps.now().getTime()) : null;
+    let stalled = false;
     const proc = this.deps.spawner.spawn(config.ffmpegPath, p.args, {
       logPath: p.logPath,
       pidFile: join(p.tempDir, 'ffmpeg.pid'),
       log: this.deps.log,
       onProgress: (s) => {
         last = s;
+        guard?.sample(s);
         if ((s.frames ?? 0) > 0 || s.outTimeSeconds > 0) framesOut = true;
         if (ctl.signal.aborted) return;
         const t = this.deps.now().getTime();
@@ -1344,20 +1367,37 @@ export class Pipeline implements JobExecutor {
         }
       },
     });
-    ctl.attach(proc);
+    const watch = guard
+      ? watchForStall(proc, guard, stallMs, () => {
+          stalled = true;
+          this.deps.log.warn({ msg: 'encode wrote no output, stopping ffmpeg', job: job.id });
+        })
+      : null;
+    ctl.attach(watch?.proc ?? proc);
     let result: Awaited<typeof proc.done>;
     try {
       result = await proc.done;
     } catch (err) {
+      watch?.stop();
       ctl.attach(null);
       this.stopIfAborted(ctl);
       return fail(retryable(`ffmpeg could not start: ${message(err)}`));
     }
+    watch?.stop();
     ctl.attach(null);
     this.stopIfAborted(ctl);
-    if (result.code !== 0) {
-      const why =
-        result.code === null
+    // Stopped by the stall guard before any output: a stream that never started holds the output
+    // back, and the same plan would stall again, so it is not retried. A stall after output had
+    // started (a hung share, a stuck GPU) fails like any killed encode below: retryable, and a
+    // hardware encode tries another GPU or software first.
+    const stalledAfterOutput = stalled && (guard?.started() ?? false);
+    if (stalled && !stalledAfterOutput) {
+      return fail(final(noOutputReason(config.encodeStallMinutes)));
+    }
+    if (stalledAfterOutput || result.code !== 0) {
+      const why = stalledAfterOutput
+        ? stoppedOutputReason(config.encodeStallMinutes)
+        : result.code === null
           ? `ffmpeg killed by ${result.signal ?? 'a signal'}`
           : `ffmpeg exited ${result.code}`;
       const tail = await readTail(p.logPath, REASON_TAIL_BYTES);
@@ -1365,7 +1405,8 @@ export class Pipeline implements JobExecutor {
       // The GPU gave up: back to the queue for a GPU it has not failed on, when there is one
       // (never for a software job); else the same plan once more on the software encoder, in
       // this attempt.
-      if (!p.softwareFallback && looksLikeGpuFailure(tail)) {
+      const gpuStalled = stalledAfterOutput && p.fit !== 'software';
+      if (!p.softwareFallback && (looksLikeGpuFailure(tail) || gpuStalled)) {
         const { slot } = p;
         const failed = slot?.gpuId ? [...job.failedGpus, slot.gpuId] : null;
         if (slot && failed && p.fit !== 'software' && this.deps.otherGpuFor?.(p.fit, failed)) {
