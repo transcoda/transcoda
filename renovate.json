@@ -1,8 +1,77 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["config:recommended", ":pinAllExceptPeerDependencies", "group:allNonMajor"],
-  "schedule": ["before 6am on monday"],
-  "enabledManagers": ["npm", "dockerfile", "github-actions"],
+  "extends": ["config:recommended", ":pinAllExceptPeerDependencies", ":semanticCommits"],
+  "enabledManagers": ["npm", "nodenv", "dockerfile", "github-actions", "custom.regex"],
+  "timezone": "America/New_York",
+  "schedule": ["* 17-23 * * 1-5", "* * * * 0,6"],
+  "minimumReleaseAge": "3 days",
+  "minimumReleaseAgeBehaviour": "timestamp-optional",
+  "internalChecksFilter": "strict",
   "rangeStrategy": "pin",
-  "labels": ["deps"]
+  "labels": ["dependencies", "no user-facing change"],
+  "packageRules": [
+    {
+      "description": "SHA-pinned actions in one PR; Renovate rewrites the SHA and the version comment.",
+      "matchManagers": ["github-actions"],
+      "groupName": "GitHub Actions",
+      "semanticCommitType": "chore",
+      "semanticCommitScope": "ci",
+      "addLabels": ["github_actions"]
+    },
+    {
+      "description": "npm minor and patch updates in one PR; majors one by one.",
+      "matchManagers": ["npm"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "npm non-major",
+      "semanticCommitType": "chore",
+      "semanticCommitScope": "deps"
+    },
+    {
+      "matchManagers": ["npm"],
+      "matchUpdateTypes": ["major"],
+      "semanticCommitType": "chore",
+      "semanticCommitScope": "deps"
+    },
+    {
+      "description": "Our own SDK is published from this repo's CI with provenance: no release-age wait (as in pnpm's minimumReleaseAgeExclude).",
+      "matchPackageNames": ["@transcoda/sdk"],
+      "minimumReleaseAge": null
+    },
+    {
+      "description": "Node.js: the base image, .node-version, engines and @types/node move together on the LTS line CI and the image run; majors by hand.",
+      "matchPackageNames": ["node", "@types/node"],
+      "groupName": "Node.js",
+      "semanticCommitType": "chore",
+      "semanticCommitScope": "node"
+    },
+    {
+      "matchPackageNames": ["node", "@types/node"],
+      "matchUpdateTypes": ["major"],
+      "enabled": false
+    },
+    {
+      "description": "The Docker base image, pinned by digest next to its tag.",
+      "matchManagers": ["dockerfile"],
+      "pinDigests": true
+    },
+    {
+      "description": "ffmpeg in the image changes what users run: its PR needs a release note, so it doesn't get the no-change label.",
+      "matchPackageNames": ["jellyfin-ffmpeg8"],
+      "semanticCommitType": "feat",
+      "semanticCommitScope": "ffmpeg",
+      "labels": ["dependencies"]
+    }
+  ],
+  "customManagers": [
+    {
+      "description": "Jellyfin's ffmpeg build, installed from their apt repository in docker/Dockerfile.",
+      "customType": "regex",
+      "managerFilePatterns": ["/^docker/Dockerfile$/"],
+      "matchStrings": ["ARG JELLYFIN_FFMPEG_VERSION=(?<currentValue>\\S+)"],
+      "depNameTemplate": "jellyfin-ffmpeg8",
+      "datasourceTemplate": "deb",
+      "registryUrlTemplate": "https://repo.jellyfin.org/debian?suite=bookworm&components=main&binaryArch=amd64",
+      "versioningTemplate": "deb"
+    }
+  ]
 }
