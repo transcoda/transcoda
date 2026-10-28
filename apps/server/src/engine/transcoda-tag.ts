@@ -1,15 +1,24 @@
 import type { ProbeResult } from '@transcoda/sdk';
 
 /**
- * The container-level tag every encode Transcoda writes carries: which workflows (and versions)
- * produced the file. Its value lists `<workflowId>@<version>` entries separated by commas, oldest
- * first and newest last; a file processed by workflow A and then B lists both. Matroska writes it
- * as a global tag (and upper-cases names), MP4 and MOV as a custom `mdta` key, which needs
- * `-movflags use_metadata_tags` (see renderArgs).
+ * The container-level tag every Matroska encode Transcoda writes carries: which workflows (and
+ * versions) produced the file. Its value lists `<workflowId>@<version>` entries separated by
+ * commas, oldest first and newest last; a file processed by workflow A and then B lists both.
+ * MP4/MOV outputs carry none: a custom key there needs `-movflags use_metadata_tags`, which moves
+ * every global tag (the title too) out of the iTunes atoms players read. Those files are known by
+ * their recorded output fingerprint only. Reading stays container-agnostic.
  */
 export const TRANSCODA_TAG = 'TRANSCODA';
 /** The most entries the tag keeps; older ones fall off the front. */
 export const MAX_TAG_ENTRIES = 16;
+
+/** ffmpeg muxers that keep a custom global tag as it is: Matroska and WebM (never the mov family). */
+const TAG_MUXERS: ReadonlySet<string> = new Set(['matroska', 'webm']);
+
+/** Does an output written by this ffmpeg muxer (`-f`) get the TRANSCODA tag? */
+export function muxerKeepsTranscodaTag(muxer: string): boolean {
+  return TAG_MUXERS.has(muxer);
+}
 
 export interface TagEntry {
   workflowId: string;

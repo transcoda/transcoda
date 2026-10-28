@@ -5,6 +5,7 @@ import { renderArgs } from './render.ts';
 import { probeOf } from './test-helpers.ts';
 import {
   MAX_TAG_ENTRIES,
+  muxerKeepsTranscodaTag,
   nextTranscodaTag,
   parseTranscodaTag,
   TRANSCODA_TAG,
@@ -48,7 +49,15 @@ describe('the TRANSCODA tag', () => {
     expect(next.at(-1)).toEqual({ workflowId: 'new', version: 1 });
   });
 
-  it('renderArgs writes it as a global tag; MP4 also gets use_metadata_tags', () => {
+  it('only Matroska and WebM muxers keep the tag, never the mov family', () => {
+    expect(muxerKeepsTranscodaTag('matroska')).toBe(true);
+    expect(muxerKeepsTranscodaTag('webm')).toBe(true);
+    for (const m of ['mp4', 'mov', 'ipod', 'ismv', '3gp', 'f4v', 'psp', 'mpegts']) {
+      expect(muxerKeepsTranscodaTag(m)).toBe(false);
+    }
+  });
+
+  it('renderArgs writes it as a global tag on mkv; mp4 gets neither the tag nor use_metadata_tags', () => {
     const probe = probeOf([
       { type: 'video', codec: 'h264', default: true },
       { type: 'audio', codec: 'aac', default: true },
@@ -67,18 +76,12 @@ describe('the TRANSCODA tag', () => {
       model: { ...modelFromProbe(probe), container: 'mp4' },
       transcodaTag: 'a@1',
     });
-    expect(mp4.slice(-7)).toEqual([
-      '-metadata',
-      'TRANSCODA=a@1',
-      '-movflags',
-      'use_metadata_tags',
-      '-f',
-      'mp4',
-      '/tc/j1/out',
-    ]);
+    expect(mp4).not.toContain('-movflags');
+    expect(mp4).not.toContain('use_metadata_tags');
+    expect(mp4.some((a) => a.startsWith('TRANSCODA='))).toBe(false);
+    expect(mp4.slice(-3)).toEqual(['-f', 'mp4', '/tc/j1/out']);
     // Without a tag nothing is added (the source's own tag still comes with -map_metadata 0).
-    const none = renderArgs({ ...io, model: { ...modelFromProbe(probe), container: 'mp4' } });
-    expect(none).not.toContain('-movflags');
+    const none = renderArgs({ ...io, model: modelFromProbe(probe) });
     expect(none.some((a) => a.startsWith('TRANSCODA='))).toBe(false);
   });
 });

@@ -1,8 +1,9 @@
-// The TRANSCODA container tag with the real ffmpeg: renderArgs writes it into Matroska and MP4
-// outputs, the probe reads it back (Matroska upper-cases tag names), a second workflow appends to
-// the first one's entry, and verify still passes on the tagged outputs.
+// The TRANSCODA container tag with the real ffmpeg: renderArgs writes it into Matroska outputs,
+// the probe reads it back (Matroska upper-cases tag names), a second workflow appends to the first
+// one's entry, and verify still passes on the tagged outputs. MP4 outputs carry no tag, so their
+// title stays in the iTunes `©nam` atom players read.
 import { execFile, spawnSync } from 'node:child_process';
-import { rm } from 'node:fs/promises';
+import { readFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -63,7 +64,8 @@ describe.skipIf(!toolsAvailable())('the TRANSCODA tag, with real ffmpeg', () => 
     normalizeDefaults(model, probe);
     const output = join(base, `${id.slice(0, 1)}${version}-${container}.${container}`);
     const transcodaTag = nextTranscodaTag(probe, id, version);
-    await execFileAsync(ffmpegPath, renderArgs({ model, input, output, transcodaTag }));
+    const args = renderArgs({ model, input, output, transcodaTag });
+    await execFileAsync(ffmpegPath, args);
     const verified = await verifyOutput({
       outputPath: output,
       sourcePath: input,
@@ -75,7 +77,7 @@ describe.skipIf(!toolsAvailable())('the TRANSCODA tag, with real ffmpeg', () => 
     });
     // Every failure, not just `ok`, so a broken check says which one.
     expect(verified.ok ? [] : verified.failures).toEqual([]);
-    return { output, probe: await probeFile(output, { ffprobePath, exec }) };
+    return { output, args, probe: await probeFile(output, { ffprobePath, exec }) };
   }
 
   it('Matroska keeps the tag (any case) and the other format tags; verify passes', async () => {
@@ -85,16 +87,24 @@ describe.skipIf(!toolsAvailable())('the TRANSCODA tag, with real ffmpeg', () => 
     expect(Object.entries(tags).find(([k]) => k.toLowerCase() === 'title')?.[1]).toBe('Sample');
   }, 60_000);
 
-  it('MP4 keeps the tag as a custom key; verify passes', async () => {
-    const { probe } = await pass(source, 'mp4', A, 1);
-    expect(transcodaTagOf(probe)).toBe(`${A}@1`);
+  it('MP4 gets no tag and no use_metadata_tags: the title stays in the ©nam atom; verify passes', async () => {
+    // From a tagged mkv: the source's tag is not carried into the mp4 either.
+    const tagged = await pass(source, 'mkv', A, 1);
+    const { output, args, probe } = await pass(tagged.output, 'mp4', B, 1);
+    expect(args).not.toContain('use_metadata_tags');
+    expect(args).not.toContain('-movflags');
+    expect(args.some((a) => a.startsWith('TRANSCODA='))).toBe(false);
+    expect(transcodaTagOf(probe)).toBeNull();
     const tags = (probe.raw as { format: { tags: Record<string, string> } }).format.tags;
     expect(Object.entries(tags).find(([k]) => k.toLowerCase() === 'title')?.[1]).toBe('Sample');
+    const bytes = await readFile(output);
+    expect(bytes.includes(Buffer.from([0xa9, 0x6e, 0x61, 0x6d]))).toBe(true); // ©nam
+    expect(bytes.includes(Buffer.from('mdta'))).toBe(false);
   }, 60_000);
 
-  it('a second workflow appends its entry, across containers, newest last', async () => {
+  it('a second workflow appends its entry, newest last', async () => {
     const first = await pass(source, 'mkv', A, 2);
-    const second = await pass(first.output, 'mp4', B, 5);
+    const second = await pass(first.output, 'mkv', B, 5);
     expect(parseTranscodaTag(transcodaTagOf(second.probe))).toEqual([
       { workflowId: A, version: 2 },
       { workflowId: B, version: 5 },
