@@ -119,7 +119,12 @@ import { autoStreams, retarget } from './retarget.ts';
 import type { ExecuteOutcome, JobControl, JobExecutor, SlotFit } from './scheduler.ts';
 import { recycleSidecars } from './sidecar-recycle.ts';
 import type { SpaceWaits } from './space-waits.ts';
-import { OutputStallGuard, stallReason, watchForStall } from './stall-guard.ts';
+import {
+  noOutputReason,
+  OutputStallGuard,
+  stoppedOutputReason,
+  watchForStall,
+} from './stall-guard.ts';
 import { removeOrigCopy, settleReplaceNow } from './sweep.ts';
 import type { TestOutputStore } from './test-outputs.ts';
 import { confirmSourceDamage, type VerifyFailure, verifyOutput } from './verify.ts';
@@ -1376,11 +1381,18 @@ export class Pipeline implements JobExecutor {
     watch?.stop();
     ctl.attach(null);
     this.stopIfAborted(ctl);
-    // Stopped by the stall guard: the same plan would stall again, so it is not retried.
-    if (stalled) return fail(final(stallReason(config.encodeStallMinutes)));
-    if (result.code !== 0) {
-      const why =
-        result.code === null
+    // Stopped by the stall guard before any output: a stream that never started holds the output
+    // back, and the same plan would stall again, so it is not retried. A stall after output had
+    // started (a hung share, a stuck GPU) fails like any killed encode below: retryable, and a
+    // hardware encode tries another GPU or software first.
+    const stalledAfterOutput = stalled && (guard?.started() ?? false);
+    if (stalled && !stalledAfterOutput) {
+      return fail(final(noOutputReason(config.encodeStallMinutes)));
+    }
+    if (stalledAfterOutput || result.code !== 0) {
+      const why = stalledAfterOutput
+        ? stoppedOutputReason(config.encodeStallMinutes)
+        : result.code === null
           ? `ffmpeg killed by ${result.signal ?? 'a signal'}`
           : `ffmpeg exited ${result.code}`;
       const tail = await readTail(p.logPath, REASON_TAIL_BYTES);
@@ -1388,7 +1400,8 @@ export class Pipeline implements JobExecutor {
       // The GPU gave up: back to the queue for a GPU it has not failed on, when there is one
       // (never for a software job); else the same plan once more on the software encoder, in
       // this attempt.
-      if (!p.softwareFallback && looksLikeGpuFailure(tail)) {
+      const gpuStalled = stalledAfterOutput && p.fit !== 'software';
+      if (!p.softwareFallback && (looksLikeGpuFailure(tail) || gpuStalled)) {
         const { slot } = p;
         const failed = slot?.gpuId ? [...job.failedGpus, slot.gpuId] : null;
         if (slot && failed && p.fit !== 'software' && this.deps.otherGpuFor?.(p.fit, failed)) {

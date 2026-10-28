@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import type { RunnerProcess } from './process.ts';
-import { OutputStallGuard, stallReason, watchForStall } from './stall-guard.ts';
+import {
+  noOutputReason,
+  OutputStallGuard,
+  stoppedOutputReason,
+  watchForStall,
+} from './stall-guard.ts';
 
 const MIN = 60_000;
 
@@ -25,6 +30,7 @@ describe('OutputStallGuard', () => {
   it('stalls after the limit with no progress at all (the muxer never started)', () => {
     const c = clock();
     const g = new OutputStallGuard(60 * MIN, c.now);
+    expect(g.started()).toBe(false);
     c.advance(59 * MIN);
     expect(g.stalled()).toBe(false);
     c.advance(MIN);
@@ -36,6 +42,7 @@ describe('OutputStallGuard', () => {
     const g = new OutputStallGuard(10 * MIN, c.now);
     c.advance(9 * MIN);
     g.sample(sample(5, 1000));
+    expect(g.started()).toBe(true);
     c.advance(9 * MIN);
     g.sample(sample(5, 2000)); // size grew
     c.advance(9 * MIN);
@@ -117,11 +124,14 @@ describe('watchForStall', () => {
   });
 });
 
-describe('stallReason', () => {
-  it('says what happened in plain words', () => {
-    expect(stallReason(60)).toMatch(/^ffmpeg wrote no output for 1 hour and was stopped\. /);
-    expect(stallReason(120)).toMatch(/for 2 hours /);
-    expect(stallReason(45)).toMatch(/for 45 minutes /);
-    expect(stallReason(1)).toMatch(/for 1 minute /);
+describe('stall reasons', () => {
+  it('say what happened in plain words', () => {
+    expect(noOutputReason(60)).toMatch(/^ffmpeg wrote no output for 1 hour and was stopped\. /);
+    expect(noOutputReason(120)).toMatch(/for 2 hours /);
+    expect(noOutputReason(45)).toMatch(/for 45 minutes /);
+    expect(noOutputReason(1)).toMatch(/for 1 minute /);
+    expect(stoppedOutputReason(60)).toBe(
+      'ffmpeg stopped writing output for 1 hour and was stopped',
+    );
   });
 });

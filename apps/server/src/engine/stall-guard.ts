@@ -6,16 +6,25 @@ import type { ProgressSample } from './progress.ts';
 export const STALL_CHECK_MS = 30_000;
 
 /**
- * The reason a job fails with when its encode stalled: ffmpeg was stopped after `minutes` of
- * running without writing more output.
+ * The reason when ffmpeg was stopped before it wrote any output (no progress sample at all) for
+ * `minutes`: a stream that never started holds the whole output back. Final: the same plan would
+ * stall again.
  */
-export function stallReason(minutes: number): string {
+export function noOutputReason(minutes: number): string {
   return (
     `ffmpeg wrote no output for ${formatMinutes(minutes)} and was stopped. ` +
     'It was still reading the source but holding everything back in memory, which usually means ' +
     'one stream could not get started (for example a cover image stored as a video track). ' +
     'Check the plan for a stream that should not be encoded.'
   );
+}
+
+/**
+ * The reason when ffmpeg had written output and then wrote no more for `minutes` (a hung network
+ * share, a stuck GPU): worth another try.
+ */
+export function stoppedOutputReason(minutes: number): string {
+  return `ffmpeg stopped writing output for ${formatMinutes(minutes)} and was stopped`;
 }
 
 function formatMinutes(minutes: number): string {
@@ -36,6 +45,7 @@ export class OutputStallGuard {
   private bestTime = 0;
   private bestSize = 0;
   private pausedAt: number | null = null;
+  private sampled = false;
 
   constructor(
     private readonly limitMs: number,
@@ -44,7 +54,13 @@ export class OutputStallGuard {
     this.lastAdvance = now();
   }
 
+  /** True once any progress sample arrived: ffmpeg's output has started. */
+  started(): boolean {
+    return this.sampled;
+  }
+
   sample(s: ProgressSample): void {
+    this.sampled = true;
     const size = s.sizeBytes ?? 0;
     if (s.outTimeSeconds > this.bestTime || size > this.bestSize) {
       this.bestTime = Math.max(this.bestTime, s.outTimeSeconds);

@@ -1,8 +1,8 @@
 // An image stored as a one-frame video track, with the real ffmpeg: the probe marks it, the plan
 // copies it instead of encoding it, and the job writes its output. Encoded, the lone frame never
 // reaches the muxer until the input ends (the decoder and encoder hold it), so the muxer keeps
-// every other packet in memory: no progress is reported and the output stays empty for the whole
-// encode. The stall guard stops such an encode.
+// every other packet in memory: no progress is reported and nothing is written (the test watches
+// the first seconds of a real-time encode). The stall guard stops such an encode.
 import { execFile, spawnSync } from 'node:child_process';
 import { mkdir, rm, stat, utimes } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -167,7 +167,7 @@ describe.skipIf(!toolsAvailable())('an image stored as a video track, with real 
     expect(out.durationSeconds).toBeGreaterThan(3.5);
   }, 120_000);
 
-  it('encoding the image track stalls the output (no progress, empty file); the stall guard stops it', async () => {
+  it('encoding the image track: no progress and an empty file for the first 1.5 s, then the stall guard stops it', async () => {
     const dir = join(base, 'stall');
     await mkdir(dir, { recursive: true });
     const file = await sample(dir);
