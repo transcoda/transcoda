@@ -26,7 +26,7 @@ Transcoda gives you a visual editor to build the fix once, shows you exactly wha
 
 ## Features
 
-- **Workflows you can see.** Drag nodes onto a canvas and wire them up: conditions ("is it HEVC?", "has a German audio track?"), actions (encode, keep languages, set default tracks, reorder, remux) and finish steps. Notes on the canvas explain what a workflow does, and shared values let one list of languages feed every node that needs it.
+- **Workflows you can see.** Drag nodes onto a canvas and wire them up: conditions ("is it HEVC?", "has a German audio track?", "already been through this workflow?"), actions (encode, keep languages, set default tracks, reorder, remux) and finish steps. Notes on the canvas explain what a workflow does, and shared values let one list of languages feed every node that needs it.
 - **Try before anything changes.** A dry run on one file encodes it for real, verifies it and measures the saving, but writes nothing to your library. Play or download the result from the job page. When it looks right, activate that version of the workflow; saving never changes what runs.
 - **Safe by default.** Every file is rewritten at most once. The result is checked (duration, streams, a decode test) before it replaces the original, the original goes to a recycle folder, and a crash halfway through never leaves a broken file behind.
 - **Uses your GPU.** NVIDIA (NVENC), Intel (Quick Sync, VA-API) and AMD encoders are detected and used automatically, with a software fallback if a hardware encode fails.
