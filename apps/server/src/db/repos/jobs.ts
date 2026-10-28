@@ -137,6 +137,12 @@ export interface JobResultRow {
   outputProbe: JsonValue | null;
   /** The original was kept because the source is damaged (decode errors it reproduces). */
   sourceDamaged: boolean;
+  /**
+   * `fingerprintKey` of the file the job wrote, read at its final path once it was written (the
+   * replaced original, a move-copy destination); null when nothing was written or it could not
+   * be read. Absent reads as null.
+   */
+  outputFingerprint?: string | null;
   createdAt: string;
 }
 
@@ -265,6 +271,7 @@ interface DbResult {
   problems_json: string;
   output_probe: string | null;
   source_damaged: number;
+  output_fingerprint: string | null;
   created_at: string;
 }
 
@@ -349,6 +356,7 @@ const toResult = (r: DbResult): JobResultRow => ({
   problems: JSON.parse(r.problems_json) as string[],
   outputProbe: parseJson<JsonValue>(r.output_probe),
   sourceDamaged: r.source_damaged === 1,
+  outputFingerprint: r.output_fingerprint,
   createdAt: r.created_at,
 });
 
@@ -851,12 +859,62 @@ export function findFinalRealResult(
   return r ?? null;
 }
 
+/** Outcomes that count as "already processed" for the Already processed node (not `failed`). */
+const PROCESSED_SQL = ['done', 'nothing_to_do', 'kept_original'].map((s) => `'${s}'`).join(',');
+
+/** A real job's result that the Already processed node counts as evidence. */
+export interface ProcessedResult {
+  jobId: string;
+  workflowId: string;
+  workflowVersion: number;
+  outcome: 'done' | 'nothing_to_do' | 'kept_original';
+  createdAt: string;
+  /** How the file matched: it was the job's source, or it is the file the job wrote. */
+  matched: 'source' | 'output';
+}
+
+/**
+ * The newest result of a real (not dry-run) job of `workflowId` (at `workflowVersion`, or any
+ * version when null) that ended `done`, `nothing_to_do` or `kept_original` and whose source or
+ * written output has this fingerprint. `excludeJobId` leaves out the asking job itself.
+ */
+export function findProcessedResult(
+  db: Database,
+  q: {
+    fingerprint: string;
+    workflowId: string;
+    workflowVersion: number | null;
+    excludeJobId?: string;
+  },
+): ProcessedResult | null {
+  const version = q.workflowVersion === null ? '' : 'AND r.workflow_version = @version';
+  const select = (column: 'fingerprint' | 'output_fingerprint', matched: string) =>
+    `SELECT r.job_id AS jobId, r.workflow_id AS workflowId, r.workflow_version AS workflowVersion,
+       r.outcome AS outcome, r.created_at AS createdAt, '${matched}' AS matched, r.rowid AS rid
+     FROM job_results r JOIN jobs j ON j.id = r.job_id
+     WHERE r.${column} = @fp AND r.workflow_id = @workflowId ${version}
+       AND r.outcome IN (${PROCESSED_SQL}) AND j.dry_run = 0 AND r.job_id <> @exclude`;
+  const r = db
+    .prepare(
+      `SELECT jobId, workflowId, workflowVersion, outcome, createdAt, matched FROM (
+         ${select('fingerprint', 'source')} UNION ALL ${select('output_fingerprint', 'output')}
+       ) ORDER BY createdAt DESC, rid DESC LIMIT 1`,
+    )
+    .get({
+      fp: q.fingerprint,
+      workflowId: q.workflowId,
+      exclude: q.excludeJobId ?? '',
+      ...(q.workflowVersion === null ? {} : { version: q.workflowVersion }),
+    }) as ProcessedResult | undefined;
+  return r ?? null;
+}
+
 export function insertJobResult(db: Database, r: JobResultRow): void {
   db.prepare(
     `INSERT INTO job_results (job_id, fingerprint, workflow_id, workflow_version, outcome, before_bytes,
        after_bytes, estimated_bytes, command, plan, replaced_to, log_path, warnings, problems_json, output_probe,
-       source_damaged, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       source_damaged, output_fingerprint, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     r.jobId,
     r.fingerprint,
@@ -874,6 +932,7 @@ export function insertJobResult(db: Database, r: JobResultRow): void {
     JSON.stringify(r.problems),
     toJson(r.outputProbe),
     r.sourceDamaged ? 1 : 0,
+    r.outputFingerprint ?? null,
     r.createdAt,
   );
 }

@@ -13,6 +13,7 @@ import { runHours } from './0011_run_hours.ts';
 import { pluginStartAttempts } from './0012_plugin_start_attempts.ts';
 import { gpuFields } from './0013_gpu_fields.ts';
 import { sourceDamaged } from './0014_source_damaged.ts';
+import { outputFingerprint } from './0015_output_fingerprint.ts';
 
 export const migrations: Migration[] = [
   initial,
@@ -29,4 +30,5 @@ export const migrations: Migration[] = [
   pluginStartAttempts,
   gpuFields,
   sourceDamaged,
+  outputFingerprint,
 ];

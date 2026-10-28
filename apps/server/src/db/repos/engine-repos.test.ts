@@ -13,6 +13,7 @@ import {
   findJob,
   findJobListRow,
   findJobResult,
+  findProcessedResult,
   insertJob,
   insertJobResult,
   insertRecycled,
@@ -86,6 +87,7 @@ function result(jobId: string, extra: Partial<JobResultRow> = {}): JobResultRow 
     problems: [],
     outputProbe: null,
     sourceDamaged: false,
+    outputFingerprint: null,
     createdAt: now.toISOString(),
     ...extra,
   };
@@ -736,6 +738,42 @@ describe('run notes and job re-pinning', () => {
     });
     expect(findFinalRealResult(db, 'k1', 'w1', 2)).toBeNull();
     expect(findFinalRealResult(db, 'other', 'w1', 1)).toBeNull();
+  });
+
+  it('findProcessedResult matches the source or the written file, real jobs and counted outcomes only', () => {
+    const real = (id: string, r: Partial<JobResultRow>, when: Date) => {
+      job(id, { workflowVersion: r.workflowVersion ?? 1 });
+      updateJob(db, id, { state: r.outcome ?? 'done' }, when);
+      insertJobResult(db, result(id, { ...r, createdAt: when.toISOString() }));
+    };
+    real('src', { fingerprint: 'k1', outcome: 'nothing_to_do', workflowVersion: 1 }, at(1));
+    real('out', { fingerprint: 'k0', outputFingerprint: 'k2', workflowVersion: 3 }, at(2));
+    real('bad', { fingerprint: 'k3', outcome: 'failed' }, at(3));
+    job('dry', { dryRun: true });
+    updateJob(db, 'dry', { state: 'kept_original' }, at(4));
+    insertJobResult(db, result('dry', { fingerprint: 'k4', outcome: 'kept_original' }));
+
+    const q = (fingerprint: string, workflowVersion: number | null, extra = {}) =>
+      findProcessedResult(db, { fingerprint, workflowId: 'w1', workflowVersion, ...extra });
+    expect(q('k1', null)).toEqual({
+      jobId: 'src',
+      workflowId: 'w1',
+      workflowVersion: 1,
+      outcome: 'nothing_to_do',
+      createdAt: at(1).toISOString(),
+      matched: 'source',
+    });
+    expect(q('k2', null)).toMatchObject({ jobId: 'out', matched: 'output', workflowVersion: 3 });
+    expect(q('k2', 3)).toMatchObject({ jobId: 'out' });
+    expect(q('k2', 2)).toBeNull();
+    expect(q('k1', 1)).toMatchObject({ jobId: 'src' });
+    // failed and dry runs never count; another workflow and the asking job neither.
+    expect(q('k3', null)).toBeNull();
+    expect(q('k4', null)).toBeNull();
+    expect(
+      findProcessedResult(db, { fingerprint: 'k1', workflowId: 'w2', workflowVersion: null }),
+    ).toBeNull();
+    expect(q('k1', null, { excludeJobId: 'src' })).toBeNull();
   });
 });
 
