@@ -751,6 +751,58 @@ describe('jobs', () => {
     expect(await json(final)).toMatchObject({ code: 'JOB_NOT_ACTIVE' });
     expect((await send(t, 'POST', '/jobs/nope/cancel', { headers: as })).status).toBe(404);
   });
+
+  it('cancelAll needs jobs:manage, cancels queued, running and paused jobs, leaves done, failed and cancelled ones and returns the count', async () => {
+    const { id: libraryId } = await fedLibrary();
+    for (const f of ['b', 'c', 'd', 'e', 'f']) {
+      await writeFile(join(root, `${f}.mkv`), Buffer.alloc(1000, 7));
+    }
+    const [running] = (await queued({ path: join(root, 'a.mkv') })).jobIds as [string];
+    await until('encoding', () => spawner.calls.length === 1);
+    // Nothing new starts while the queue is paused: the rest stay queued.
+    await send(t, 'POST', '/queue/pause', { headers: asSession(s, true) });
+    const [paused, waiting, done, failed, cancelled] = await Promise.all(
+      ['b', 'c', 'd', 'e', 'f'].map(
+        async (f) => (await queued({ path: join(root, `${f}.mkv`) })).jobIds[0] as string,
+      ),
+    );
+    const now = t.clock.now();
+    updateJob(t.db, done as string, { state: 'done', finishedAt: now.toISOString() }, now);
+    updateJob(t.db, failed as string, { state: 'failed', reason: 'boom' }, now);
+    updateJob(t.db, cancelled as string, { state: 'cancelled' }, now);
+    expect(
+      (await send(t, 'POST', `/jobs/${paused}/pause`, { headers: asSession(s, true) })).status,
+    ).toBe(200);
+    await send(t, 'POST', '/queue/resume', { headers: asSession(s, true) });
+
+    const read = await createToken(t, s, { name: 'ro', scopes: ['read', 'jobs:create'] });
+    const refused = await send(t, 'POST', '/jobs/cancel-all', { headers: bearer(read.token) });
+    expect(refused.status).toBe(403);
+    expect(row(running).state).toBe('encoding');
+
+    const manage = await createToken(t, s, { name: 'ops', scopes: ['jobs:manage'] });
+    const as = bearer(manage.token);
+    const other = await send(t, 'POST', '/jobs/cancel-all', {
+      body: { libraryId: 'no-such-library' },
+      headers: as,
+    });
+    expect(await json(other)).toEqual({ cancelled: 0 });
+
+    const res = await send(t, 'POST', '/jobs/cancel-all', { body: { libraryId }, headers: as });
+    expect(res.status).toBe(200);
+    expect(await json(res)).toEqual({ cancelled: 3 });
+    // The running ffmpeg is killed through the single-cancel path.
+    expect(spawner.signals).toContain('SIGKILL');
+    await until('cancelled', () =>
+      [running, paused, waiting].every((id) => row(id as string).state === 'cancelled'),
+    );
+    expect(row(done as string).state).toBe('done');
+    expect(row(failed as string).state).toBe('failed');
+    expect(row(cancelled as string).state).toBe('cancelled');
+
+    const empty = await send(t, 'POST', '/jobs/cancel-all', { body: {}, headers: as });
+    expect(await json(empty)).toEqual({ cancelled: 0 });
+  });
 });
 
 /** Reads server-sent events from a response until `enough` says stop (or 200 events). */

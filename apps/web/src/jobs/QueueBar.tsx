@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { type ReactNode, useState } from 'react';
 import { api } from '../api/client.ts';
 import { useToast } from '../components/Toast.tsx';
 import type { Queue } from './useQueue.ts';
@@ -8,14 +8,17 @@ export const QUEUE_PAUSED_TEXT = 'Queue paused — running jobs are frozen, noth
 /**
  * The whole-queue control: "Pause queue" / "Resume queue" (persisted on the server), the paused
  * banner and who holds the lanes (each GPU's slot on a multi-GPU server), from the page's `useQueue()`. `fileNameOf` names a lane's
- * job from the page's list ("busy" when it is not on the page).
+ * job from the page's list ("busy" when it is not on the page). `children` (the Jobs page's
+ * "Cancel all") follow the queue button.
  */
 export function QueueBar({
   queue,
   fileNameOf,
+  children,
 }: {
   queue: Queue;
   fileNameOf(jobId: string): string | null;
+  children?: ReactNode;
 }) {
   const toast = useToast();
   const [busy, setBusy] = useState(false);
@@ -59,6 +62,7 @@ export function QueueBar({
         >
           {paused ? 'Resume queue' : 'Pause queue'}
         </button>
+        {children}
       </div>
       <div role="status" className="queue-status">
         {paused ? <p className="alert alert-warning queue-paused">{QUEUE_PAUSED_TEXT}</p> : null}

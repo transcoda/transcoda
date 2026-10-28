@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   resume: vi.fn(),
   cancel: vi.fn(),
   retryFailed: vi.fn(),
+  cancelAll: vi.fn(),
   queueStatus: vi.fn(),
   queuePause: vi.fn(),
   queueResume: vi.fn(),
@@ -30,6 +31,7 @@ vi.mock('../api/client.ts', () => ({
       resume: mocks.resume,
       cancel: mocks.cancel,
       retryFailed: mocks.retryFailed,
+      cancelAll: mocks.cancelAll,
     },
     queue: { status: mocks.queueStatus, pause: mocks.queuePause, resume: mocks.queueResume },
     libraries: { list: mocks.libraries },
@@ -112,6 +114,7 @@ beforeEach(() => {
   mocks.pause.mockReset().mockResolvedValue({ ok: true });
   mocks.resume.mockReset().mockResolvedValue({ ok: true });
   mocks.cancel.mockReset().mockResolvedValue({ ok: true });
+  mocks.cancelAll.mockReset().mockResolvedValue({ cancelled: 39 });
   mocks.queueStatus.mockReset().mockResolvedValue(QUEUE);
   mocks.queuePause.mockReset().mockResolvedValue({ ...QUEUE, paused: true });
   mocks.queueResume.mockReset().mockResolvedValue(QUEUE);
@@ -204,6 +207,67 @@ describe('JobsPage', () => {
     renderAt('/jobs', <JobsPage />);
     await screen.findAllByRole('heading', { name: 'Jobs' });
     expect(screen.queryByRole('button', { name: 'Retry failed' })).toBeNull();
+  });
+
+  it('"Cancel all" asks with the count of unfinished jobs, cancels every library and says how many; hidden with none unfinished', async () => {
+    renderAt('/jobs', <JobsPage />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Cancel all' }));
+    // 1 encoding + 1 verifying + 37 queued.
+    const dialog = await screen.findByRole('dialog', { name: 'Cancel 39 jobs?' });
+    expect(
+      within(dialog).getByText(
+        'Every queued, running and paused job in every library is cancelled.',
+      ),
+    ).toBeTruthy();
+    expect(
+      within(dialog).getByText(
+        'Running encodes stop now and their partial output is deleted. Originals stay untouched.',
+      ),
+    ).toBeTruthy();
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Keep running' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(mocks.cancelAll).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel all' }));
+    const again = await screen.findByRole('dialog', { name: 'Cancel 39 jobs?' });
+    const confirm = within(again).getByRole('button', { name: 'Cancel 39 jobs' });
+    expect(confirm.className).toContain('btn-danger');
+    fireEvent.click(confirm);
+    await waitFor(() => expect(mocks.cancelAll).toHaveBeenCalledWith({}));
+    expect(await screen.findByText('Cancelled 39 jobs')).toBeTruthy();
+
+    cleanup();
+    mocks.list.mockResolvedValue({
+      jobs: [fx.replaced, fx.failed],
+      counts: counts({ done: 1902, failed: 4, cancelled: 3 }),
+      problemCount: 0,
+    });
+    renderAt('/jobs', <JobsPage />);
+    await screen.findAllByRole('heading', { name: 'Jobs' });
+    await screen.findByRole('link', { name: fx.replaced.fileName });
+    expect(screen.queryByRole('button', { name: 'Cancel all' })).toBeNull();
+  });
+
+  it('"Cancel all" keeps to the library filter and says the status filter does not limit it', async () => {
+    renderAt('/jobs', <JobsPage />);
+    await screen.findByRole('button', { name: 'Cancel all' });
+    fireEvent.click(screen.getByRole('button', { name: 'Library All libraries' }));
+    fireEvent.click(screen.getByRole('option', { name: 'Movies' }));
+    await waitFor(() =>
+      expect(mocks.list).toHaveBeenLastCalledWith(
+        expect.objectContaining({ libraryId: 'lib-movies' }),
+      ),
+    );
+    fireEvent.click(screen.getByRole('button', { name: /^Queued/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel all' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Cancel 39 jobs?' });
+    expect(
+      within(dialog).getByText(
+        'Every queued, running and paused job in Movies is cancelled. The status filter does not limit this.',
+      ),
+    ).toBeTruthy();
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel 39 jobs' }));
+    await waitFor(() => expect(mocks.cancelAll).toHaveBeenCalledWith({ libraryId: 'lib-movies' }));
   });
 
   it('a queued real job\'s version is described as "runs on the version active when it starts"; a dry-run or running job has no such description', async () => {

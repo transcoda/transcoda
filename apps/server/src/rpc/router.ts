@@ -76,6 +76,7 @@ export function createRouter() {
       pause: jobs.pause,
       resume: jobs.resume,
       cancel: jobs.cancel,
+      cancelAll: jobs.cancelAll,
       retryFailed: jobs.retryFailed,
       deleteTestOutput: jobs.deleteTestOutput,
     },

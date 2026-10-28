@@ -161,4 +161,35 @@ const cancelJob = defineTool({
   },
 });
 
-export const jobTools: AnyToolDef[] = [listJobs, getJob, getJobLog, pauseJob, resumeJob, cancelJob];
+const cancelAllJobs = defineTool({
+  name: 'cancel_all_jobs',
+  title: 'Cancel all jobs',
+  description:
+    'Cancel every job that has not finished (queued, running or paused), optionally of one library. Running ffmpeg processes are stopped and their partial output removed. This cannot be undone.',
+  scopes: ['jobs:manage'],
+  annotations: { destructiveHint: true, openWorldHint: false },
+  input: {
+    libraryId: z
+      .string()
+      .optional()
+      .describe('Only the jobs of this library; omit for every library'),
+  },
+  output: { cancelled: z.number().int().describe('How many jobs were cancelled') },
+  async run({ api }, { libraryId }) {
+    const { cancelled } = await api.jobs.cancelAll(libraryId === undefined ? {} : { libraryId });
+    return {
+      text: `Cancelled ${cancelled} ${cancelled === 1 ? 'job' : 'jobs'}.`,
+      data: { cancelled },
+    };
+  },
+});
+
+export const jobTools: AnyToolDef[] = [
+  listJobs,
+  getJob,
+  getJobLog,
+  pauseJob,
+  resumeJob,
+  cancelJob,
+  cancelAllJobs,
+];

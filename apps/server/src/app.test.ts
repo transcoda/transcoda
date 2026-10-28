@@ -264,6 +264,7 @@ describe('app', () => {
       ['/jobs/{id}/pause', 'post'],
       ['/jobs/{id}/resume', 'post'],
       ['/jobs/{id}/cancel', 'post'],
+      ['/jobs/cancel-all', 'post'],
       ['/queue', 'get'],
       ['/queue/pause', 'post'],
       ['/queue/resume', 'post'],

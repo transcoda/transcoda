@@ -1,12 +1,13 @@
 import type { Job, JobDetail } from '@transcoda/contract';
+import { ACTIVE_JOB_STATES } from '@transcoda/shared';
 import { hasScope } from '../../auth/tokens.ts';
-import { findJob, type JobListRow } from '../../db/repos/jobs.ts';
+import { findJob, type JobListRow, jobsInStates } from '../../db/repos/jobs.ts';
 import type { RunHoursHold } from '../../engine/run-hours.ts';
 import { os, requireAnyScope, requireHumanSessionWith, requireScope } from '../middleware.ts';
 import { redactGraph } from '../redact.ts';
 
 // Reads need `read`; queueing needs `jobs:create` (or `plan` for a dry run); pause, resume and
-// cancel need `jobs:manage`.
+// cancel (one or all) need `jobs:manage`.
 
 /** The list row as the API shows it (no replace journal, file id, walk path or requeue count). */
 function toJob(r: JobListRow & { heldByRunHours: RunHoursHold | null }): Job {
@@ -176,6 +177,30 @@ export const cancel = os.jobs.cancel
     if (!findJob(context.deps.db, input.id)) throw errors.NOT_FOUND();
     if (context.deps.engine.scheduler.cancelJob(input.id) !== 'ok') throw errors.JOB_NOT_ACTIVE();
     return { ok: true as const };
+  });
+
+/**
+ * Every job that has not finished (queued, running, paused), optionally of one library, through
+ * the same scheduler cancel as `cancel`: a running ffmpeg is killed and its temp output removed.
+ * Queued jobs go first, so freeing a lane never starts one of them. A job that finished meanwhile
+ * is not counted.
+ */
+export const cancelAll = os.jobs.cancelAll
+  .use(requireScope('jobs:manage'))
+  .handler(({ context, input }) => {
+    const { scheduler } = context.deps.engine;
+    const jobs = jobsInStates(context.deps.db, [...ACTIVE_JOB_STATES]).filter(
+      (j) => input.libraryId === undefined || j.libraryId === input.libraryId,
+    );
+    const queuedFirst = [
+      ...jobs.filter((j) => j.state === 'queued'),
+      ...jobs.filter((j) => j.state !== 'queued'),
+    ];
+    let cancelled = 0;
+    for (const job of queuedFirst) {
+      if (scheduler.cancelJob(job.id) === 'ok') cancelled++;
+    }
+    return { cancelled };
   });
 
 // Session-only: any API token is refused; no MCP tool wraps it. Playing and downloading are the

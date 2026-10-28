@@ -5943,6 +5943,10 @@ a.nav-item.is-active .nav-count {
 .queue-bar .btn {
   margin-left: auto;
 }
+/* "Cancel all" sits right next to the queue button. */
+.queue-bar .btn + .btn {
+  margin-left: 0;
+}
 .queue-status:empty {
   display: none;
 }
