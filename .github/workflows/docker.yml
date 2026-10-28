@@ -10,13 +10,16 @@ concurrency:
   group: docker-${{ github.ref }}
   cancel-in-progress: false
 
+# Write access only where the image is pushed (Scorecard: no top-level write permissions).
 permissions:
   contents: read
-  packages: write
 
 jobs:
   image:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     timeout-minutes: 45
     outputs:
       tags: ${{ steps.meta.outputs.tags }}
@@ -58,6 +61,8 @@ jobs:
   # the build time. Each arch runs natively (the sandbox's /proc behaviour differs from emulation).
   sandbox:
     needs: image
+    permissions:
+      packages: read
     strategy:
       fail-fast: false
       matrix:
@@ -102,6 +107,9 @@ jobs:
   # capabilities, plugin hosts and server children none, /config is unreadable for the plugin user.
   hardening:
     needs: image
+    permissions:
+      contents: read
+      packages: read
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
