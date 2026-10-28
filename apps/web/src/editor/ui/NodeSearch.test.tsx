@@ -82,14 +82,14 @@ describe('NodeSearch', () => {
   it('filterHint after a finish node says only later finish steps are listed, and why', () => {
     const after: NextRule = {
       kind: 'finish-after',
-      minRank: 1,
+      minRank: 2,
       noWrite: false,
       afterTitle: 'Replace original',
     };
     expect(filterHint('file', 'File', after)).toBe(
       'After Replace original, only later finish steps are listed',
     );
-    expect(filterHint('file', 'No', { ...after, minRank: 2, noWrite: true })).toBe(
+    expect(filterHint('file', 'No', { ...after, minRank: 3, noWrite: true })).toBe(
       "After the size gate's No, only notifications and other non-writing steps are listed",
     );
     expect(filterHint('file', 'File', { kind: 'any' })).toBe(
@@ -100,7 +100,7 @@ describe('NodeSearch', () => {
   it('with a finish-after rule lists only those finish nodes and says why under the list', () => {
     const rule: NextRule = {
       kind: 'finish-after',
-      minRank: 1,
+      minRank: 2,
       noWrite: false,
       afterTitle: 'Replace original',
     };
@@ -186,19 +186,26 @@ describe('NodeSearch', () => {
     });
     const input = screen.getByRole('combobox', { name: 'Search nodes' });
     fireEvent.change(input, { target: { value: 'encod' } });
-    // "Encode video", "Encode audio", "Remux" (re-encoding) and the unavailable "Generate subtitles".
+    // "Check source" (before anything is encoded), "Encode video", "Encode audio", "Remux" and
+    // "Render" (re-encoding) and the unavailable "Generate subtitles".
     expect(optionNames()).toEqual([
+      'Check source',
       'Encode video',
       'Encode audio',
       'Remux',
+      'Render',
       'Generate subtitles, plugin',
     ]);
     const active = () => document.getElementById(input.getAttribute('aria-activedescendant') ?? '');
+    expect(active()?.getAttribute('aria-label')).toBe('Check source');
+    fireEvent.keyDown(input, { key: 'ArrowDown' });
     expect(active()?.getAttribute('aria-label')).toBe('Encode video');
     fireEvent.keyDown(input, { key: 'ArrowDown' });
     fireEvent.keyDown(input, { key: 'ArrowDown' });
     fireEvent.keyDown(input, { key: 'ArrowDown' });
-    expect(active()?.getAttribute('aria-label')).toBe('Remux');
+    fireEvent.keyDown(input, { key: 'ArrowDown' });
+    expect(active()?.getAttribute('aria-label')).toBe('Render');
+    fireEvent.keyDown(input, { key: 'ArrowUp' });
     fireEvent.keyDown(input, { key: 'ArrowUp' });
     expect(active()?.getAttribute('aria-label')).toBe('Encode audio');
     // Enter that confirms an IME composition is not a pick (final review M15).

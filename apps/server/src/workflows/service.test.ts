@@ -11,7 +11,7 @@ import { createTestDb } from '../db/test-db.ts';
 import type { Logger } from '../logger.ts';
 import { filePort } from '../nodes/core/common.ts';
 import type { NodeRegistry, RegisteredNode } from '../nodes/registry.ts';
-import { CorruptGraphError, KindMismatchError, WorkflowService } from './service.ts';
+import { CorruptGraphError, FORMAT_2_NOTE, KindMismatchError, WorkflowService } from './service.ts';
 import {
   bumpNoPath,
   bumpThrowing,
@@ -154,7 +154,7 @@ describe('WorkflowService', () => {
     const main = svc.create({ name: 'Main', kind: 'workflow' }, USER);
     expect(main).toMatchObject({ active: null, version: 1, currentVersion: 1, valid: false });
     expect(main.graph).toEqual({
-      formatVersion: 1,
+      formatVersion: 2,
       kind: 'workflow',
       nodes: [],
       edges: [],
@@ -676,7 +676,7 @@ describe('WorkflowService', () => {
       activate(w, 2);
       const loaded = svc.loadForRun(w, 2);
       if (loaded.kind !== 'ok') throw new Error(JSON.stringify(loaded));
-      expect(ports(loaded.graph)).toEqual(['in.file', 'sg.pass']);
+      expect(ports(loaded.graph)).toEqual(['in.file', 'render-1.done', 'sg.pass']);
       expect(loaded.graph.nodes.find((n) => n.id === 'sg')).toMatchObject({
         typeVersion: 2,
         settings: { minSavingPercent: 20 },
@@ -690,7 +690,11 @@ describe('WorkflowService', () => {
       expect(svc.upgradeAll()).toMatchObject({ upgraded: 1, behaviour: 0, broken: 0 });
       const detail = svc.get(w);
       expect(detail).toMatchObject({ currentVersion: 3, active: { version: 2, runnable: true } });
-      expect(ports(detail?.graph as WorkflowGraph)).toEqual(['in.file', 'sg.pass']);
+      expect(ports(detail?.graph as WorkflowGraph)).toEqual([
+        'in.file',
+        'render-1.done',
+        'sg.pass',
+      ]);
       expect(svc.versions(w)?.[0]).toMatchObject({
         version: 3,
         note: 'Updated Size gate 1\u21922',
@@ -699,7 +703,7 @@ describe('WorkflowService', () => {
       // v2 (the active one) is stored as v1 wrote it, but shown as the engine runs it: no
       // spurious UNKNOWN_PORT, the edge on pass
       const old = svc.get(w, 2);
-      expect(ports(old?.graph as WorkflowGraph)).toEqual(['in.file', 'sg.pass']);
+      expect(ports(old?.graph as WorkflowGraph)).toEqual(['in.file', 'render-1.done', 'sg.pass']);
       expect(old?.issues.filter((i) => i.severity === 'error')).toEqual([]);
       expect(svc.loadForRun(w, 2)).toMatchObject({ kind: 'ok', activeVersion: 2 });
       // the upgraded version is valid as it stands
@@ -1057,6 +1061,7 @@ describe('WorkflowService', () => {
     expect(audio && Object.keys(audio).sort()).toEqual(
       [
         'availability',
+        'damagedOnly',
         'description',
         'finishPhase',
         'icon',
@@ -1075,6 +1080,101 @@ describe('WorkflowService', () => {
       available: true,
     });
     expect(nodes.find((n) => n.type === 'test:bump')?.version).toBe(1);
+  });
+});
+
+describe('graph format 2', () => {
+  /** in → encode → replace-original, as format 1 stored it (no Render). */
+  const v1Graph = () => ({
+    formatVersion: 1 as const,
+    kind: 'workflow' as const,
+    nodes: [
+      node('in', 'core:input-manual'),
+      node('enc', 'core:encode-video', { codec: 'hevc' }, { position: { x: 200, y: 0 } }),
+      node('ro', 'core:replace-original', {}, { position: { x: 600, y: 0 } }),
+    ],
+    edges: [
+      { id: 'in-enc', from: { node: 'in', port: 'file' }, to: { node: 'enc', port: 'file' } },
+      { id: 'enc-ro', from: { node: 'enc', port: 'file' }, to: { node: 'ro', port: 'file' } },
+    ],
+    groups: [],
+  });
+  const storeV1 = (id: string, version: number, graph: unknown = v1Graph()) =>
+    db
+      .prepare(
+        'UPDATE workflow_versions SET graph = ?, format_version = 1 WHERE workflow_id = ? AND version = ?',
+      )
+      .run(JSON.stringify(graph), id, version);
+  const types = (g: WorkflowGraph | undefined) => g?.nodes.map((n) => n.type);
+
+  it('create with a format-1 graph stores format 2 with a Render; get returns it', () => {
+    const created = svc.create({ name: 'Old', kind: 'workflow', graph: v1Graph() }, USER);
+    expect(created.graph.formatVersion).toBe(2);
+    expect(types(created.graph)).toContain('core:render');
+    expect(created.graph.edges).toContainEqual({
+      id: 'render-1-in',
+      from: { node: 'enc', port: 'file' },
+      to: { node: 'render-1', port: 'file' },
+    });
+    const row = db
+      .prepare('SELECT format_version, graph FROM workflow_versions WHERE workflow_id = ?')
+      .get(created.id) as { format_version: number; graph: string };
+    expect(row.format_version).toBe(2);
+    expect(row.graph).toContain('core:render');
+    expect(svc.get(created.id)?.graph.formatVersion).toBe(2);
+  });
+
+  it('save and validate take a format-1 graph as format 2', () => {
+    const id = make('W', 'workflow');
+    const saved = svc.save({ id, baseVersion: 1, graph: v1Graph() }, USER);
+    expect(types(svc.get(id, saved.version)?.graph)).toContain('core:render');
+    const checked = svc.validate(v1Graph());
+    expect(checked.issues.some((i) => i.code === 'UNKNOWN_PORT')).toBe(false);
+  });
+
+  it('a stored format-1 version reads as format 2; upgradeAll writes it once, then leaves it unchanged', () => {
+    const id = make('Stored', 'workflow', mainWith());
+    storeV1(id, 2);
+    expect(svc.get(id)?.graph.formatVersion).toBe(2);
+    expect(types(svc.get(id)?.graph)).toContain('core:render');
+
+    expect(svc.upgradeAll()).toEqual({ upgraded: 1, behaviour: 0, broken: 0, unchanged: 0 });
+    expect(current(id)).toBe(3);
+    expect(svc.versions(id)?.[0]).toMatchObject({
+      version: 3,
+      note: FORMAT_2_NOTE,
+      createdBy: 'system:upgrade',
+    });
+    const row = db
+      .prepare('SELECT format_version FROM workflow_versions WHERE workflow_id = ? AND version = 3')
+      .get(id) as { format_version: number };
+    expect(row.format_version).toBe(2);
+    expect(svc.upgradeAll()).toEqual({ upgraded: 0, behaviour: 0, broken: 0, unchanged: 1 });
+  });
+
+  it('upgradeAll leaves a format-1 version with an unknown node type at format 1 (upgraded on read)', () => {
+    const id = make('Plugin', 'workflow', mainWith());
+    const g = v1Graph();
+    g.nodes.push(node('x', 'x:not-installed', {}, { position: { x: 800, y: 0 } }));
+    g.edges.push({
+      id: 'ro-x',
+      from: { node: 'ro', port: 'file' },
+      to: { node: 'x', port: 'file' },
+    });
+    storeV1(id, 2, g);
+    expect(svc.upgradeAll()).toMatchObject({ upgraded: 0, unchanged: 1 });
+    expect(current(id)).toBe(2);
+    expect(types(svc.get(id)?.graph)).toContain('core:render');
+  });
+
+  it('upgradeAll writes the format with node upgrades in one version, notes joined', () => {
+    const id = make('Both', 'workflow', mainWith(node('b', 'test:bump', { level: 1 })));
+    const stored = svc.get(id)?.graph as WorkflowGraph;
+    storeV1(id, 2, { ...stored, formatVersion: 1 });
+    const after = svcWith(bumpV2());
+    expect(after.upgradeAll()).toMatchObject({ upgraded: 1 });
+    expect(after.versions(id)?.[0]?.note).toBe(`${FORMAT_2_NOTE}; Updated Bump 1→2`);
+    expect(types(after.get(id)?.graph)).toContain('core:render');
   });
 });
 

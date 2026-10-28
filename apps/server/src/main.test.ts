@@ -83,7 +83,7 @@ describe('createDeps', () => {
       const row = deps.db.prepare('SELECT COUNT(*) AS n FROM schema_migrations').get() as {
         n: number;
       };
-      expect(row.n).toBe(13);
+      expect(row.n).toBe(14);
       expect(deps.setupRequired()).toBe(true);
       expect(log.info).toHaveBeenCalledWith(
         expect.stringMatching(

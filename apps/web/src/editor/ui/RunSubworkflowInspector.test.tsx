@@ -118,7 +118,7 @@ function renderRun(
 ) {
   const dispatch = vi.fn((_op: GraphOp, _opts?: ApplyOptions) => true);
   const graph: WorkflowGraph = {
-    formatVersion: 1,
+    formatVersion: 2,
     kind: 'workflow',
     nodes: [instance],
     edges: [],

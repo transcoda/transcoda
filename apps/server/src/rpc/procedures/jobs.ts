@@ -124,6 +124,7 @@ export const get = os.jobs.get
         replacedTo: result.replacedTo,
         warnings: result.warnings,
         problems: result.problems,
+        sourceDamaged: result.sourceDamaged,
       },
       probe: detail.probe,
       outputProbe: detail.outputProbe,

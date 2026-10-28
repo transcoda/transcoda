@@ -29,8 +29,8 @@ const manifest = {
 };
 
 describe('plugin vocabulary', () => {
-  it('FINISH_PHASES order is gate < write < library-manager < media-server < notify', () => {
-    expect(FINISH_PHASES.map(finishPhaseRank)).toEqual([0, 1, 2, 3, 4]);
+  it('FINISH_PHASES order is render < gate < write < library-manager < media-server < notify', () => {
+    expect(FINISH_PHASES.map(finishPhaseRank)).toEqual([0, 1, 2, 3, 4, 5]);
   });
 
   it('PluginManifestSchema rejects a name with a colon or an upper-case letter and accepts "sonarr"', () => {

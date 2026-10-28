@@ -196,6 +196,7 @@ export function blueyResult(over: Partial<JobResult> = {}): JobResult {
     command:
       'ffmpeg -i "Bluey S01E03.mp4" -map 0:v:0 -map 0:a:2 -map 0:a:5 -map 0:a:11 -c copy "Bluey S01E03.mkv.tmp"',
     replacedTo: null,
+    sourceDamaged: false,
     warnings: [],
     problems: [],
     ...over,

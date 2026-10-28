@@ -14,6 +14,7 @@ export const VERDICT_ICON: Record<Verdict, IconName> = {
   cancelled: 'x-circle',
   already: 'check-circle',
   attention: 'alert',
+  damaged: 'alert',
 };
 
 /** "Dry run": the one mark every dry-run job and run carries, so none can pass for a real one. */

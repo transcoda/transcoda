@@ -193,6 +193,7 @@ describe('job tools', () => {
       warnings: [],
       problems: [],
       outputProbe: null,
+      sourceDamaged: false,
       createdAt: '2026-10-18T10:00:00.000Z',
     });
     const c = await client(['read']);
@@ -367,6 +368,7 @@ describe('job tools', () => {
     expect(report.path.map((p) => p.title)).toEqual([
       'Manual input',
       'Make it small',
+      'Render',
       'Swap in result',
     ]);
     expect(text(res)).toMatch(/^Job \S+: failed — ffmpeg exited 1\n/);

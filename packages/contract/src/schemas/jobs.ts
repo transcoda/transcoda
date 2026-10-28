@@ -90,6 +90,8 @@ export const JobSchema = z.object({
       beforeBytes: z.number().int().nullable(),
       afterBytes: z.number().int().nullable(),
       replacedTo: ReplacedToSchema.nullable(),
+      /** The original was kept because the source is damaged: the UI says "Damaged source". */
+      sourceDamaged: z.boolean().default(false),
     })
     .nullable(),
   /**
@@ -132,6 +134,11 @@ export const JobResultSchema = z.object({
   warnings: z.array(z.string()),
   /** Problems after the write, separate from `warnings`. */
   problems: z.array(z.string()),
+  /**
+   * The original was kept because the source is damaged (decode errors the source reproduces);
+   * the job state is `kept_original`. Steps behind Render's Damaged have run (real jobs only).
+   */
+  sourceDamaged: z.boolean().default(false),
 });
 
 /**

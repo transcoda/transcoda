@@ -13,15 +13,19 @@ import type {
 import { nodeMetadata } from '@transcoda/sdk';
 import {
   emptyGraph,
+  FORMAT_VERSION,
   hasErrors,
   type Issue,
   type JsonValue,
   libraryInputOf,
+  RENDER_TYPE,
   RUN_SUBWORKFLOW_TYPE,
   type RunSubworkflowSettings,
   RunSubworkflowSettingsSchema,
   syncLinkedSettings,
+  upgradeGraphJson,
   type WorkflowGraph,
+  type WorkflowGraphInput,
   WorkflowGraphSchema,
   type WorkflowKind,
 } from '@transcoda/shared';
@@ -34,6 +38,7 @@ import {
   findFeeder,
   findVersion,
   findWorkflow,
+  type GraphUpgrade,
   insertWorkflow,
   listCurrentVersions,
   listVersions,
@@ -164,9 +169,34 @@ function byName(a: WorkflowRef, b: WorkflowRef): number {
   return a.name.localeCompare(b.name) || a.id.localeCompare(b.id);
 }
 
+/** The version note of a version `upgradeAll` writes to bring a stored graph to format 2. */
+export const FORMAT_2_NOTE = 'Added a Render step before the finish steps (graph format 2)';
+
+/**
+ * The read upgrade for stored and incoming graphs: format 1 → 2 with Render inserted on the file
+ * edges into the finish nodes the registry knows (a node of an unknown type is never taken for
+ * one; data edges never get a Render).
+ */
+export function graphUpgrade(registry: NodeRegistry): GraphUpgrade {
+  return (raw) => upgradeGraphJson(raw, (type) => registry.get(type)?.def);
+}
+
 export class WorkflowService {
   private readonly warnedNoPath = new Set<string>();
-  constructor(private readonly deps: WorkflowServiceDeps) {}
+  private readonly upgradeJson: GraphUpgrade;
+  constructor(private readonly deps: WorkflowServiceDeps) {
+    this.upgradeJson = graphUpgrade(deps.registry);
+  }
+
+  /**
+   * A graph the API or MCP accepted (format 1 or 2) at the current format: a format-1 graph gets
+   * its Render nodes as a stored one would. Throws when the result is not a valid graph (a format-1
+   * graph at the node or edge limit).
+   */
+  upgradeInput(graph: WorkflowGraphInput): WorkflowGraph {
+    if (graph.formatVersion === FORMAT_VERSION) return graph as WorkflowGraph;
+    return WorkflowGraphSchema.parse(this.upgradeJson(graph));
+  }
 
   /** Node metadata, rebuilt only when the registry's generation changes (a plugin added or removed). */
   private metadata?: { generation: number; nodes: Omit<NodeInfo, 'availability'>[] };
@@ -192,6 +222,7 @@ export class WorkflowService {
             settingsSchema: m.settingsSchema,
             onNodeSettings: m.onNodeSettings,
             finishPhase: m.finishPhase,
+            damagedOnly: m.damagedOnly,
             source,
           });
         }),
@@ -339,7 +370,7 @@ export class WorkflowService {
     const workflow = findWorkflow(this.deps.db, id);
     if (!workflow) return null;
     const v = version ?? workflow.currentVersion;
-    const stored = findVersion(this.deps.db, id, v);
+    const stored = findVersion(this.deps.db, id, v, this.upgradeJson);
     if (!stored && version === undefined) {
       throw new CorruptGraphError(id, v, `Stored version ${v} is missing`);
     }
@@ -369,12 +400,12 @@ export class WorkflowService {
     input: {
       name: string;
       kind: WorkflowKind;
-      graph?: WorkflowGraph | undefined;
+      graph?: WorkflowGraphInput | undefined;
       note?: string | undefined;
     },
     createdBy: string,
   ): WorkflowDetail {
-    const graph = input.graph ?? emptyGraph(input.kind);
+    const graph = input.graph ? this.upgradeInput(input.graph) : emptyGraph(input.kind);
     if (graph.kind !== input.kind) throw new KindMismatchError(input.kind, graph.kind);
     const row = insertWorkflow(
       this.deps.db,
@@ -420,7 +451,7 @@ export class WorkflowService {
     input: {
       id: string;
       baseVersion: number;
-      graph: WorkflowGraph;
+      graph: WorkflowGraphInput;
       note?: string | undefined;
       restoredFrom?: number | undefined;
     },
@@ -438,7 +469,7 @@ export class WorkflowService {
 
     const changes: string[] = [];
     // The settings hold what runs: a linked setting takes its shared value's current copy.
-    let sent = syncLinkedSettings(input.graph);
+    let sent = syncLinkedSettings(this.upgradeInput(input.graph));
     let note = input.note || null;
     if (input.restoredFrom !== undefined) {
       const upgraded = this.upgradeRestored(sent);
@@ -454,7 +485,7 @@ export class WorkflowService {
     const resolveGraph = (id: string, v: number) => this.resolveSubworkflow(id, v)?.graph ?? null;
     const { graph, dropped } = dropStaleOverrides(sent, resolveGraph, registry);
 
-    const base = findVersion(db, input.id, input.baseVersion);
+    const base = findVersion(db, input.id, input.baseVersion, this.upgradeJson);
     if (!base?.ok) changes.push(`Previous version ${input.baseVersion} could not be read`);
     const baseNodes = base?.ok ? base.row.graph.nodes : [];
     const baseRuns = new Map(
@@ -493,8 +524,8 @@ export class WorkflowService {
     };
   }
 
-  validate(graph: WorkflowGraph, selfId?: string): { issues: Issue[]; valid: boolean } {
-    const issues = this.issuesFor(graph, selfId);
+  validate(graph: WorkflowGraphInput, selfId?: string): { issues: Issue[]; valid: boolean } {
+    const issues = this.issuesFor(this.upgradeInput(graph), selfId);
     return { issues, valid: !hasErrors(issues) };
   }
 
@@ -531,7 +562,8 @@ export class WorkflowService {
     const workflow = findWorkflow(db, id);
     if (!workflow) return { kind: 'not-found', what: 'workflow' };
     if (workflow.kind === 'subworkflow') return { kind: 'kind-mismatch' };
-    if (!findVersion(db, id, version)) return { kind: 'not-found', what: 'version' };
+    if (!findVersion(db, id, version, this.upgradeJson))
+      return { kind: 'not-found', what: 'version' };
     // The same check a real run makes when it loads the version.
     const loaded = this.loadForRun(id, version);
     if (loaded.kind === 'invalid') return { kind: 'invalid', issues: loaded.issues };
@@ -627,7 +659,7 @@ export class WorkflowService {
     const read = (v: number): WorkflowGraph | null => {
       if (seen.has(v)) return null;
       seen.add(v);
-      const stored = findVersion(db, id, v);
+      const stored = findVersion(db, id, v, this.upgradeJson);
       return stored?.ok ? stored.row.graph : null;
     };
     for (const v of first) {
@@ -651,7 +683,8 @@ export class WorkflowService {
   }
 
   /**
-   * Migrates every live workflow's current version to the registered node versions. Never
+   * Migrates every live workflow's current version to the registered node versions and the
+   * current graph format (a format-1 version gets its Render nodes, `FORMAT_2_NOTE`). Never
    * throws for a single workflow: a corrupt graph, a node without a migration path or a
    * failing migration (or one whose output is not a valid graph) leaves that workflow unchanged
    * and counts it as broken. If the workflows cannot be listed at all, one error is logged and
@@ -662,7 +695,7 @@ export class WorkflowService {
     const summary: UpgradeSummary = { upgraded: 0, behaviour: 0, broken: 0, unchanged: 0 };
     let current: ReturnType<typeof listCurrentVersions>;
     try {
-      current = listCurrentVersions(db);
+      current = listCurrentVersions(db, this.upgradeJson);
     } catch (err) {
       log.error({
         msg: 'workflow upgrades failed: could not list workflows',
@@ -683,8 +716,17 @@ export class WorkflowService {
           });
           continue;
         }
+        // A format-1 row was upgraded on read; the format upgrade is written with the node
+        // upgrades. Not while a node type is unknown (a plugin that is not installed): the read
+        // could not tell whether it is a finish node, so the row stays at format 1 and is
+        // upgraded again on every read until the plugin is back.
+        const format =
+          version.row.formatVersion < FORMAT_VERSION &&
+          version.row.graph.nodes.every(
+            (n) => n.type === RENDER_TYPE || registry.get(n.type) !== undefined,
+          );
         const plan = planNodeUpgrades(version.row.graph, registry);
-        if (plan.kind === 'current') {
+        if (plan.kind === 'current' && !format) {
           summary.unchanged++;
           continue;
         }
@@ -698,14 +740,17 @@ export class WorkflowService {
           continue;
         }
         // A migration may return anything: only a valid graph is written.
-        const parsed = WorkflowGraphSchema.safeParse(plan.graph);
+        const parsed = WorkflowGraphSchema.safeParse(
+          plan.kind === 'current' ? version.row.graph : plan.graph,
+        );
         if (!parsed.success) {
           summary.broken++;
           log.warn({ msg: 'workflow upgrade failed', workflowId, error: parsed.error.message });
           continue;
         }
-        const note = plan.notes.join('; ');
-        const behaviour = plan.risk === 'behaviour';
+        const notes = plan.kind === 'current' ? [] : plan.notes;
+        const note = [...(format ? [FORMAT_2_NOTE] : []), ...notes].join('; ');
+        const behaviour = plan.kind === 'upgraded' && plan.risk === 'behaviour';
         // Only the newest version is upgraded; the active pointer is never touched.
         appendVersion(
           db,
@@ -746,7 +791,7 @@ export class WorkflowService {
     const summary: UpgradeSummary = { upgraded: 0, behaviour: 0, broken: 0, unchanged: 0 };
     let current: ReturnType<typeof listCurrentVersions>;
     try {
-      current = listCurrentVersions(db);
+      current = listCurrentVersions(db, this.upgradeJson);
     } catch (err) {
       log.error({
         msg: 'plugin node upgrades failed: could not list workflows',
@@ -824,7 +869,7 @@ export class WorkflowService {
     const { db, registry } = this.deps;
     const workflow = findWorkflow(db, id);
     if (workflow?.kind !== 'workflow') return { kind: 'missing' };
-    const stored = findVersion(db, id, version);
+    const stored = findVersion(db, id, version, this.upgradeJson);
     if (!stored) return { kind: 'missing' };
     if (!stored.ok) return { kind: 'invalid', issues: [corruptIssue(id, version)] };
     const { graph, held } = migratePinned(stored.row.graph, registry);
@@ -892,7 +937,7 @@ export class WorkflowService {
   private resolveSubworkflow(id: string, version: number): SubworkflowRef | null {
     const workflow = findWorkflow(this.deps.db, id);
     if (workflow?.kind !== 'subworkflow') return null;
-    const stored = findVersion(this.deps.db, id, version);
+    const stored = findVersion(this.deps.db, id, version, this.upgradeJson);
     if (!stored?.ok) return null;
     return { graph: stored.row.graph, currentVersion: workflow.currentVersion };
   }
@@ -953,7 +998,7 @@ export class WorkflowService {
   private index(): CurrentIndex {
     const byId = new Map<string, CurrentEntry>();
     const usedBy = new Map<string, WorkflowRef[]>();
-    for (const entry of listCurrentVersions(this.deps.db)) {
+    for (const entry of listCurrentVersions(this.deps.db, this.upgradeJson)) {
       byId.set(entry.workflow.id, entry);
     }
     for (const { workflow, version, active } of byId.values()) {

@@ -77,4 +77,28 @@ describe('node definition', () => {
     expect(PORT_TYPE_PATTERN.test('data:language')).toBe(true);
     expect(PORT_TYPE_PATTERN.test('audio')).toBe(false);
   });
+
+  it("nodeMetadata carries damagedOnly and a port's shownWhen", () => {
+    const shownWhen = { setting: 'qualityCheck', equals: true };
+    const replace = defineNode({
+      type: 'test:replace-damaged',
+      version: 1,
+      kind: 'finish',
+      title: 'Replace damaged',
+      description: 'd',
+      icon: 'i',
+      inputs: [{ id: 'file', label: 'File', type: 'file' }],
+      outputs: [{ id: 'damaged', label: 'Damaged', type: 'file', shownWhen }],
+      settings: z.object({}),
+      finishPhase: 'library-manager',
+      damagedOnly: true,
+    });
+    const meta = nodeMetadata(replace);
+    expect(meta.damagedOnly).toBe(true);
+    expect(meta.outputs[0]?.shownWhen).toEqual(shownWhen);
+    expect(nodeMetadata(keep).damagedOnly).toBe(false);
+    expect(() => nodeMetadata({ ...keep, damagedOnly: true })).toThrow(
+      'node test:keep: damagedOnly is for finish nodes',
+    );
+  });
 });

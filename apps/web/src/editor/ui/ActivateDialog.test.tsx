@@ -77,7 +77,7 @@ const onShows: NodeInstance = {
   position: { x: 0, y: 0 },
 };
 const graph = (...nodes: NodeInstance[]): WorkflowGraph => ({
-  formatVersion: 1,
+  formatVersion: 2,
   kind: 'workflow',
   nodes: [onShows, ...nodes],
   edges: [],

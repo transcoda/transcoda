@@ -1,5 +1,5 @@
 {
-  "formatVersion": 1,
+  "formatVersion": 2,
   "kind": "workflow",
   "nodes": [
     {
@@ -95,12 +95,22 @@
       }
     },
     {
+      "id": "render",
+      "type": "core:render",
+      "typeVersion": 1,
+      "settings": {},
+      "position": {
+        "x": 1440,
+        "y": 0
+      }
+    },
+    {
       "id": "replace",
       "type": "core:replace-original",
       "typeVersion": 1,
       "settings": {},
       "position": {
-        "x": 1440,
+        "x": 1680,
         "y": 0
       }
     },
@@ -112,7 +122,7 @@
         "timeoutSeconds": 240
       },
       "position": {
-        "x": 1680,
+        "x": 1920,
         "y": -160
       }
     },
@@ -124,7 +134,7 @@
         "scope": "file"
       },
       "position": {
-        "x": 1680,
+        "x": 1920,
         "y": 0
       }
     },
@@ -137,7 +147,7 @@
         "events": "done"
       },
       "position": {
-        "x": 1680,
+        "x": 1920,
         "y": 160
       }
     }
@@ -199,10 +209,21 @@
       }
     },
     {
-      "id": "extras-replace",
+      "id": "extras-render",
       "from": {
         "node": "extras",
         "port": "file"
+      },
+      "to": {
+        "node": "render",
+        "port": "file"
+      }
+    },
+    {
+      "id": "render-replace",
+      "from": {
+        "node": "render",
+        "port": "done"
       },
       "to": {
         "node": "replace",

@@ -48,7 +48,7 @@ import {
   wouldText,
 } from '../jobs/jobText.ts';
 import { ProcessAgain } from '../jobs/ProcessAgain.tsx';
-import type { StepContext } from '../jobs/steps.ts';
+import { damagedSideOf, type StepContext } from '../jobs/steps.ts';
 import { TestEncodeFile } from '../jobs/TestEncodeFile.tsx';
 import { TestOutputPanel } from '../jobs/TestOutputPanel.tsx';
 import { useQueue } from '../jobs/useQueue.ts';
@@ -243,6 +243,8 @@ function JobView({ id }: { id: string }) {
             workflowId: job.workflowId,
             dependsOnSize: job.state === 'dry_run' && job.dependsOnSize != null,
             replacedTo: job.result?.replacedTo ?? null,
+            sourceDamaged: job.result?.sourceDamaged === true,
+            damagedSide: job.graph ? damagedSideOf(job.graph) : new Set(),
           }
         : null,
     [job],

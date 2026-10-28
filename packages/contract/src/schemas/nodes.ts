@@ -12,6 +12,7 @@ export const PortSpecSchema = z.object({
   label: z.string(),
   type: PortTypeSchema,
   required: z.boolean().exactOptional(),
+  shownWhen: z.object({ setting: z.string(), equals: JsonValueSchema }).exactOptional(),
 }) satisfies z.ZodType<PortSpec>;
 export const NodeSourceSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('core') }),
@@ -35,10 +36,13 @@ export const NodeInfoSchema = z.object({
   source: NodeSourceSchema,
   availability: NodeAvailabilitySchema,
   /**
-   * A finish node's phase (gate → write → library manager → media server → notify); null for the
-   * other kinds. The server always sends it; optional so hand-made definitions in tests still parse.
+   * A finish node's phase (render → gate → write → library manager → media server → notify); null
+   * for the other kinds. The server always sends it; optional so hand-made definitions in tests
+   * still parse.
    */
   finishPhase: FinishPhaseSchema.nullable().optional(),
+  /** A finish node that may run only on a Damaged side. The server always sends it. */
+  damagedOnly: z.boolean().optional(),
 });
 export const NodesListOutputSchema = z.object({ nodes: z.array(NodeInfoSchema) });
 

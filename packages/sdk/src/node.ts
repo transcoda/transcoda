@@ -1,4 +1,10 @@
-import { type FinishPhase, HOOK_NAMES, type HookName, type JsonValue } from '@transcoda/shared';
+import {
+  type FinishPhase,
+  HOOK_NAMES,
+  type HookName,
+  type JsonValue,
+  type PortShownWhen,
+} from '@transcoda/shared';
 import { z } from 'zod';
 import type {
   BuildContext,
@@ -16,12 +22,17 @@ import type {
 export const PORT_TYPE_PATTERN = /^(file|data:[a-z0-9-]+)$/;
 export type PortType = 'file' | `data:${string}`;
 
-/** `required` applies to inputs only; it defaults to true. */
+/**
+ * `required` applies to inputs only; it defaults to true. `shownWhen` applies to outputs only: the
+ * port exists only while the node's setting deep-equals the value (`portShown`); hidden, it takes
+ * no edges.
+ */
 export interface PortSpec {
   id: string;
   label: string;
   type: PortType;
   required?: boolean;
+  shownWhen?: PortShownWhen;
 }
 
 export const NODE_KINDS = [
@@ -72,6 +83,11 @@ export interface NodeDefinition<Shape extends z.ZodRawShape = z.ZodRawShape> {
   migrations?: NodeMigration[];
   /** Required for `kind: 'finish'`: where the node's action sits in the finish order. */
   finishPhase?: FinishPhase | undefined;
+  /**
+   * Finish nodes only: the node may run only on a Damaged side (below a Damaged output), where
+   * its run context has `outcome: 'damaged'`.
+   */
+  damagedOnly?: boolean | undefined;
   decide?(ctx: DecideContext, settings: z.infer<z.ZodObject<Shape>>): Promise<DecideResult>;
   build?(ctx: BuildContext, settings: z.infer<z.ZodObject<Shape>>): Promise<BuildResult>;
   finish?(ctx: FinishContext, settings: z.infer<z.ZodObject<Shape>>): Promise<FinishResult>;
@@ -106,6 +122,8 @@ export interface NodeMetadata {
   requires: NodeRequirements;
   migrations: Array<{ from: number; to: number; risk: MigrationRisk; note: string }>;
   finishPhase: FinishPhase | null;
+  /** Always sent by `nodeMetadata`; absent in the metadata of a plugin built with SDK 1.0. */
+  damagedOnly?: boolean;
   /** Which hooks the definition has. */
   hooks: HookName[];
 }
@@ -127,6 +145,9 @@ function hasSecretSetting(schema: JsonValue): boolean {
 export function nodeMetadata(def: AnyNodeDefinition): NodeMetadata {
   if (def.kind === 'finish' && def.finishPhase === undefined) {
     throw new Error(`finish node ${def.type} declares no finishPhase`);
+  }
+  if (def.damagedOnly === true && def.kind !== 'finish') {
+    throw new Error(`node ${def.type}: damagedOnly is for finish nodes`);
   }
   // A remote (plugin) definition carries the plugin's own schema; re-deriving it from the loose
   // z.fromJSONSchema() object would add `additionalProperties: {}` and drop formats.
@@ -159,6 +180,7 @@ export function nodeMetadata(def: AnyNodeDefinition): NodeMetadata {
       note,
     })),
     finishPhase: def.finishPhase ?? null,
+    damagedOnly: def.damagedOnly === true,
     hooks: HOOK_NAMES.filter((h) => typeof def[h] === 'function'),
   };
 }

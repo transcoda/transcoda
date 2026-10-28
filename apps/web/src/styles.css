@@ -34,6 +34,7 @@
   --live-halo: rgb(198 243 90 / 0.2);
   /* Jobs (screens 07, 08): detail text on the kept and skipped rows. */
   --st-kept-text: #9cc3ff;
+  --st-damaged-text: #ffc08f;
   --st-skipped-text: #cdb8ff;
   /* Job steps (screen 06b): the finish badges' text. */
   --finish-text: #7fe8cf;
@@ -70,6 +71,7 @@
     --ok-bg: #eef4dc;
     --live-halo: rgb(67 111 9 / 0.2);
     --st-kept-text: #1d4f9f;
+    --st-damaged-text: #8a3d00;
     --st-skipped-text: #5a35b3;
     --finish-text: #0b6e57;
     --plan-drop-row: #f1eee6;
@@ -102,6 +104,7 @@
   --ok-bg: #eef4dc;
   --live-halo: rgb(67 111 9 / 0.2);
   --st-kept-text: #1d4f9f;
+  --st-damaged-text: #8a3d00;
   --st-skipped-text: #5a35b3;
   --finish-text: #0b6e57;
   --plan-drop-row: #f1eee6;
@@ -9552,6 +9555,25 @@ button.job-step-more:hover {
     gap: 4px;
     padding-bottom: 10px;
   }
+}
+
+/* Jobs: a damaged source (kept the original; never a failure): solid orange */
+.job-chip.is-damaged {
+  background: var(--st-damaged);
+  border-color: var(--st-damaged);
+  color: var(--st-damaged-ink);
+}
+.job-detail-text.is-damaged {
+  color: var(--st-damaged-text);
+}
+.phone-finished-icon.is-damaged {
+  background: var(--st-damaged);
+  color: var(--st-damaged-ink);
+}
+.job-result.v-damaged {
+  background: var(--st-damaged);
+  color: var(--st-damaged-ink);
+  border-color: var(--st-damaged);
 }
 
 /* Jobs: done with problems (needs attention) */

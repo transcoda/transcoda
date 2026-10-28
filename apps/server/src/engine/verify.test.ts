@@ -17,6 +17,7 @@ import { probeFile } from './probe.ts';
 import { coverExtractArgs, renderArgs } from './render.ts';
 import { probeOf, withSidecar, withStream } from './test-helpers.ts';
 import {
+  confirmSourceDamage,
   referenceDuration,
   streamFailures,
   type VerifyFailure,
@@ -29,6 +30,17 @@ const execFileAsync = promisify(execFile);
 function checks(failures: VerifyFailure[]): string[] {
   return [...new Set(failures.map((f) => f.check))];
 }
+
+/** How a source decode can fail without saying anything about the file's content. */
+const UNSURE: [string, object][] = [
+  ['killed (the verify timeout)', { killed: true, signal: 'SIGKILL', code: null }],
+  ['over the output limit', { code: 'ERR_CHILD_PROCESS_STDIO_MAXBUFFER' }],
+  ['not started', { code: 'ENOENT' }],
+  [
+    'a read error',
+    { code: 1, stderr: '[in#0/matroska,webm @ 0x1] Error during demuxing: Input/output error\n' },
+  ],
+];
 
 describe('verifyOutput without ffmpeg', () => {
   it('an output ffprobe cannot read fails the probe check only', async () => {
@@ -292,6 +304,104 @@ describe('verifyOutput without ffmpeg', () => {
       onProgress: (p) => reports.push(p),
     });
     expect(reports.at(-1)).toEqual({ stage: 'source' });
+  });
+
+  it.each(UNSURE)('a source decode that fails %s never says source-damaged', async (_, err) => {
+    const { exec: tools } = fakeTools(() => '7199.960000,0.040000\n');
+    const exec: Exec = async (file, args, opts) => {
+      if (file === 'ffmpeg' && args.includes('/tmp/job/out.mkv') && args.includes('-ss')) {
+        return { stdout: '', stderr: '[hevc @ 0x1] error while decoding\n' };
+      }
+      if (file === 'ffmpeg' && args.includes('/lib/in.mkv')) {
+        throw Object.assign(new Error('Command failed: ffmpeg'), err);
+      }
+      return tools(file, args, opts);
+    };
+    const source = longSource();
+    const result = await verifyOutput({
+      outputPath: '/tmp/job/out.mkv',
+      sourcePath: '/lib/in.mkv',
+      model: modelFromProbe(source),
+      sourceProbe: source,
+      ffmpegPath: 'ffmpeg',
+      ffprobePath: 'ffprobe',
+      exec,
+    });
+    expect(result).toMatchObject({ ok: false, kind: 'output-invalid', sourceFailures: [] });
+  });
+
+  it('a source decode that exits with a decoder error is source-damaged', async () => {
+    const { exec: tools } = fakeTools(() => '7199.960000,0.040000\n');
+    const exec: Exec = async (file, args, opts) => {
+      if (file === 'ffmpeg' && args.includes('/tmp/job/out.mkv') && args.includes('-ss')) {
+        return { stdout: '', stderr: '[hevc @ 0x1] error while decoding\n' };
+      }
+      if (file === 'ffmpeg' && args.includes('/lib/in.mkv')) {
+        throw Object.assign(new Error('Command failed: ffmpeg'), {
+          code: 1,
+          stderr: '[hevc @ 0x1] error while decoding\n',
+        });
+      }
+      return tools(file, args, opts);
+    };
+    const source = longSource();
+    const result = await verifyOutput({
+      outputPath: '/tmp/job/out.mkv',
+      sourcePath: '/lib/in.mkv',
+      model: modelFromProbe(source),
+      sourceProbe: source,
+      ffmpegPath: 'ffmpeg',
+      ffprobePath: 'ffprobe',
+      exec,
+    });
+    expect(result).toMatchObject({ ok: false, kind: 'source-damaged' });
+  });
+});
+
+describe('confirmSourceDamage without ffmpeg', () => {
+  const source = probeOf([{ type: 'video', default: true }], {
+    durationSeconds: 7200,
+    raw: { format: { duration: '7200.000000', start_time: '0.000000' }, streams: [] },
+  });
+  const confirm = (exec: Exec) =>
+    confirmSourceDamage({
+      sourcePath: '/lib/in.mkv',
+      sourceProbe: source,
+      ffmpegPath: 'ffmpeg',
+      ffprobePath: 'ffprobe',
+      times: [30],
+      exec,
+    });
+
+  it.each(UNSURE)('a run that fails %s confirms nothing', async (_, err) => {
+    const exec: Exec = async () => {
+      throw Object.assign(new Error('Command failed: ffmpeg'), err);
+    };
+    expect(await confirm(exec)).toEqual([]);
+  });
+
+  it('a run that exits 0 but logged a read error confirms nothing', async () => {
+    const exec: Exec = async () => ({
+      stdout: '',
+      stderr: '[in#0/matroska,webm @ 0x1] Error during demuxing: Input/output error\n',
+    });
+    expect(await confirm(exec)).toEqual([]);
+  });
+
+  it('a decoder error the source reproduces confirms it', async () => {
+    const exec: Exec = async () => {
+      throw Object.assign(new Error('Command failed: ffmpeg'), {
+        code: 1,
+        stderr: '[dca @ 0x1] Invalid LFE scale factor index\n',
+      });
+    };
+    expect(await confirm(exec)).toEqual([
+      {
+        check: 'decode-sample',
+        message:
+          'source: decoding 7 s from 29.00s failed: [dca @ 0x1] Invalid LFE scale factor index',
+      },
+    ]);
   });
 });
 

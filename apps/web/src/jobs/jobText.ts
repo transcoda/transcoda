@@ -26,7 +26,8 @@ export type Verdict =
   | 'dry'
   | 'cancelled'
   | 'already'
-  | 'attention';
+  | 'attention'
+  | 'damaged';
 
 const VERDICT_OF: Record<JobState, Verdict> = {
   queued: 'queued',
@@ -49,10 +50,16 @@ const VERDICT_OF: Record<JobState, Verdict> = {
 /**
  * A job that finished `done` but left problems behind (a required plugin finish step failed, the
  * server stopped before the remaining steps) needs attention: the file was replaced, something
- * after it was not.
+ * after it was not. A kept original whose source turned out damaged is "Damaged source", not a
+ * plain kept original and never a failure.
  */
-export function verdictOf(job: { state: JobState; problems?: readonly string[] }): Verdict {
+export function verdictOf(job: {
+  state: JobState;
+  problems?: readonly string[];
+  result?: { sourceDamaged?: boolean } | null;
+}): Verdict {
   if (job.state === 'done' && (job.problems?.length ?? 0) > 0) return 'attention';
+  if (job.state === 'kept_original' && job.result?.sourceDamaged === true) return 'damaged';
   return VERDICT_OF[job.state];
 }
 
@@ -68,6 +75,7 @@ export const VERDICT_WORD: Record<Verdict, string> = {
   cancelled: 'Cancelled',
   already: 'Already processed',
   attention: 'Needs attention',
+  damaged: 'Damaged source',
 };
 
 export const PHASE_WORD: Record<RunningState, string> = {
@@ -100,6 +108,8 @@ export function isWaitingForLane(job: Pick<Job, 'state' | 'lane'>): boolean {
 const WOULD_WORD: Partial<Record<Verdict, string>> = {
   dry: 'Would replace',
   kept: 'Would keep original',
+  // A dry run that found the damage says the same: the check ran for real.
+  damaged: 'Damaged source',
 };
 
 /**
@@ -120,6 +130,7 @@ export function stateWord(
   job: Pick<Job, 'state'> & {
     lane?: Job['lane'];
     problems?: readonly string[];
+    result?: { sourceDamaged?: boolean } | null;
     dryRun?: boolean;
     dependsOnSize?: Job['dependsOnSize'];
   },

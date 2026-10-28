@@ -85,6 +85,7 @@ function result(jobId: string, extra: Partial<JobResultRow> = {}): JobResultRow 
     warnings: [],
     problems: [],
     outputProbe: null,
+    sourceDamaged: false,
     createdAt: now.toISOString(),
     ...extra,
   };
@@ -144,6 +145,31 @@ describe('newest migration', () => {
     expect(row).toEqual({ v: migrations.length, n: migrations.length });
     const cols = db.prepare('PRAGMA table_info(jobs)').all() as { name: string }[];
     expect(cols.map((c) => c.name)).toContain('probe');
+  });
+});
+
+describe('source damaged results', () => {
+  it('a result stores and reads back sourceDamaged, on the result and the list row', () => {
+    job('dmg');
+    updateJob(db, 'dmg', { state: 'kept_original', finishedAt: at(1).toISOString() }, at(1));
+    insertJobResult(
+      db,
+      result('dmg', {
+        outcome: 'kept_original',
+        afterBytes: null,
+        replacedTo: null,
+        sourceDamaged: true,
+      }),
+    );
+    job('ok');
+    insertJobResult(db, result('ok'));
+    expect(findJobResult(db, 'dmg')?.sourceDamaged).toBe(true);
+    expect(findJobResult(db, 'ok')?.sourceDamaged).toBe(false);
+    expect(findJobListRow(db, 'dmg')?.result).toMatchObject({
+      outcome: 'kept_original',
+      sourceDamaged: true,
+    });
+    expect(findJobListRow(db, 'ok')?.result?.sourceDamaged).toBe(false);
   });
 });
 

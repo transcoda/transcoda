@@ -170,6 +170,7 @@ export function jobDetail(over: Partial<JobDetail> = {}): JobDetail {
       estimatedBytes: null,
       command: COMMAND,
       replacedTo: 'recycle',
+      sourceDamaged: false,
       warnings: [],
       problems: [],
     },

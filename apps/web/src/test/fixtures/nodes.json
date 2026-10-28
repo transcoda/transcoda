@@ -301,6 +301,53 @@
       }
     },
     {
+      "type": "core:check-source",
+      "version": 1,
+      "kind": "condition",
+      "title": "Check source",
+      "description": "Reads the whole file before anything is encoded. OK continues; a damaged file continues on Damaged.",
+      "icon": "shield",
+      "inputs": [
+        {
+          "id": "file",
+          "label": "File",
+          "type": "file"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "ok",
+          "label": "OK",
+          "type": "file"
+        },
+        {
+          "id": "damaged",
+          "label": "Damaged",
+          "type": "file"
+        }
+      ],
+      "settingsSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "decodeVideo": {
+            "default": false,
+            "description": "Decode video too",
+            "help": "Also decodes the video, not only the audio. Slower; finds damaged video frames too.",
+            "type": "boolean"
+          }
+        }
+      },
+      "onNodeSettings": [],
+      "finishPhase": null,
+      "source": {
+        "kind": "core"
+      },
+      "availability": {
+        "available": true
+      }
+    },
+    {
       "type": "core:subworkflow-start",
       "version": 1,
       "kind": "subworkflow-io",
@@ -1054,6 +1101,57 @@
         "languages"
       ],
       "finishPhase": null,
+      "source": {
+        "kind": "core"
+      },
+      "availability": {
+        "available": true
+      }
+    },
+    {
+      "type": "core:render",
+      "version": 1,
+      "kind": "finish",
+      "title": "Render",
+      "description": "Encodes the file as the steps before it planned. Done continues; with Quality check on, a damaged source continues on Damaged instead of failing.",
+      "icon": "clapperboard",
+      "inputs": [
+        {
+          "id": "file",
+          "label": "File",
+          "type": "file"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "done",
+          "label": "Done",
+          "type": "file"
+        },
+        {
+          "id": "damaged",
+          "label": "Damaged",
+          "type": "file",
+          "shownWhen": {
+            "setting": "qualityCheck",
+            "equals": true
+          }
+        }
+      ],
+      "settingsSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "qualityCheck": {
+            "default": false,
+            "description": "Quality check",
+            "help": "If the source turns out to be damaged while rendering, continue on Damaged instead of failing.",
+            "type": "boolean"
+          }
+        }
+      },
+      "onNodeSettings": [],
+      "finishPhase": "render",
       "source": {
         "kind": "core"
       },

@@ -12,6 +12,7 @@ import type {
 } from '@transcoda/sdk';
 import type { HookName, JsonValue } from '@transcoda/shared';
 import { z } from 'zod';
+import type { CoreTools } from '../engine/check-source.ts';
 import { serverSettingsSchema } from './plugin-settings-schema.ts';
 import type { NodeSource } from './registry.ts';
 
@@ -80,14 +81,23 @@ export type ServerHookContext = (HookContextBase | FinishRunContext) & {
   signal?: AbortSignal | undefined;
   /** The node's stored typeVersion; older than the definition's, the host migrates the settings. */
   nodeVersion?: number | undefined;
+  /** Engine tools for core nodes (Check source's pass); never sent to a plugin. */
+  core?: CoreTools | undefined;
 };
 
 /**
- * Everything but `plugin`, `log` (the host builds its own) and `signal`; `model` stays for
+ * Everything but `plugin`, `log` (the host builds its own), `signal` and `core`; `model` stays for
  * build/finish. The host rebuilds `ctx.plugin` from the top-level `job` and `dryRun` added here.
  */
 export function wireContext(ctx: ServerHookContext): JsonValue {
-  const { plugin, log: _log, signal: _signal, nodeVersion: _nodeVersion, ...rest } = ctx;
+  const {
+    plugin,
+    log: _log,
+    signal: _signal,
+    nodeVersion: _nodeVersion,
+    core: _core,
+    ...rest
+  } = ctx;
   return { ...rest, job: plugin.job, dryRun: plugin.dryRun } as unknown as JsonValue;
 }
 
@@ -104,7 +114,12 @@ export function remoteNodeDefinition(
     throw new Error(`plugin ${source.name}: settings of ${meta.type} are not an object schema`);
   }
   if (meta.kind === 'finish') {
-    if (meta.finishPhase === null || meta.finishPhase === 'gate' || meta.finishPhase === 'write') {
+    if (
+      meta.finishPhase === null ||
+      meta.finishPhase === 'render' ||
+      meta.finishPhase === 'gate' ||
+      meta.finishPhase === 'write'
+    ) {
       throw new Error(
         `plugin ${source.name}: finish node ${meta.type} must declare finishPhase library-manager, media-server or notify (got ${meta.finishPhase ?? 'none'})`,
       );
@@ -157,6 +172,7 @@ export function remoteNodeDefinition(
       },
     })),
     finishPhase: meta.finishPhase ?? undefined,
+    damagedOnly: meta.damagedOnly === true,
     settingsJsonSchema: meta.settingsSchema,
   };
   const has = (h: HookName) => meta.hooks.includes(h);

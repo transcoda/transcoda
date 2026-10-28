@@ -1,7 +1,7 @@
-import type { ProbeStream, ProbeSummary, TraceChanges } from '@transcoda/shared';
+import type { ProbeStream, ProbeSummary, TraceChanges, WorkflowGraph } from '@transcoda/shared';
 import { describe, expect, it } from 'vitest';
 import type { Decision } from '../editor/trace/traceOverlay.ts';
-import { type StepContext, steps, stepsHeading, stepsSummary } from './steps.ts';
+import { damagedSideOf, type StepContext, steps, stepsHeading, stepsSummary } from './steps.ts';
 
 const d = (over: Partial<Decision> & Pick<Decision, 'key' | 'nodeId' | 'title'>): Decision => ({
   attempt: 1,
@@ -679,6 +679,110 @@ describe('steps: one sentence and a badge per node', () => {
     );
     expect(s.sentence).toBe('Cover kept');
     expect(s.badge).toBeNull();
+  });
+});
+
+describe('steps: the Damaged side', () => {
+  const graph: WorkflowGraph = {
+    formatVersion: 2,
+    kind: 'workflow',
+    nodes: ['in', 'r', 'ro', 'nw', 'rd', 'cs', 'nw2'].map((id) => ({
+      id,
+      type: id === 'r' ? 'core:render' : id === 'cs' ? 'core:check-source' : `core:${id}`,
+      typeVersion: 1,
+      settings: {},
+      position: { x: 0, y: 0 },
+    })),
+    edges: [
+      { id: 'e1', from: { node: 'in', port: 'file' }, to: { node: 'r', port: 'file' } },
+      { id: 'e2', from: { node: 'r', port: 'done' }, to: { node: 'ro', port: 'file' } },
+      { id: 'e3', from: { node: 'r', port: 'damaged' }, to: { node: 'nw', port: 'file' } },
+      { id: 'e4', from: { node: 'nw', port: 'file' }, to: { node: 'rd', port: 'file' } },
+      { id: 'e5', from: { node: 'cs', port: 'damaged' }, to: { node: 'nw2', port: 'file' } },
+    ],
+    groups: [],
+  };
+  const side = damagedSideOf(graph);
+  const render = (reason: string, port: string | null) =>
+    d({
+      key: 'r',
+      nodeId: 'r',
+      title: 'Render',
+      kind: 'finish',
+      type: 'core:render',
+      phase: 'finish',
+      reason,
+      port,
+    });
+  const notify = d({
+    key: 'nw',
+    nodeId: 'nw',
+    title: 'Notify webhook',
+    kind: 'finish',
+    type: 'core:notify-webhook',
+    phase: 'finish',
+    reason: 'notify https://hooks.example.com',
+    settings: { method: 'POST' },
+  });
+  const plugin = d({
+    key: 'rd',
+    nodeId: 'rd',
+    title: 'Replace damaged file',
+    kind: 'finish',
+    type: 'example:replace-damaged',
+    phase: 'finish',
+    plugin: true,
+    reason: 'Radarr: blocklisted the release and started a search',
+  });
+
+  it('damagedSideOf lists the nodes below a Damaged output', () => {
+    expect([...side].sort()).toEqual(['nw', 'nw2', 'rd']);
+  });
+
+  it('a plan shows "if the source is damaged: …" on Render and on the Damaged steps', () => {
+    const ctx = { ...DRY, damagedSide: side };
+    expect(
+      one(
+        render('Render: decides while encoding; if the source is damaged: Notify webhook', null),
+        ctx,
+      ).sentence,
+    ).toBe('Decides while encoding; if the source is damaged: Notify webhook');
+    expect(one(notify, ctx).sentence).toBe(
+      'If the source is damaged: Sends a POST request to the webhook',
+    );
+  });
+
+  it('a damaged real run: Render says why, the Damaged steps ran with their answers', () => {
+    const ctx: StepContext = {
+      ...DONE,
+      state: 'kept_original',
+      replacedTo: null,
+      sourceDamaged: true,
+      damagedSide: side,
+    };
+    expect(
+      one(
+        render('Render: source is damaged (Invalid LFE scale factor index) → Damaged', 'damaged'),
+        ctx,
+      ).sentence,
+    ).toBe('Source is damaged (Invalid LFE scale factor index)');
+    expect(one(notify, ctx)).toMatchObject({
+      badge: 'finish',
+      sentence: 'Sent a POST request to the webhook',
+    });
+    expect(one(plugin, ctx).sentence).toBe('Radarr: blocklisted the release and started a search');
+  });
+
+  it('a real run whose source was fine: the Damaged steps did not run', () => {
+    const ctx = { ...DONE, damagedSide: side };
+    expect(one(render('Render: encoded and verified → Done', 'done'), ctx).sentence).toBe(
+      'Encoded and verified',
+    );
+    expect(one(notify, ctx)).toMatchObject({
+      badge: 'not-run',
+      sentence: "Didn't run: the source was not damaged",
+    });
+    expect(one(plugin, ctx).sentence).toBe("Didn't run: the source was not damaged");
   });
 });
 

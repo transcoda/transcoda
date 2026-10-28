@@ -75,6 +75,7 @@ export const fx = {
       beforeBytes: 2_410_000_000,
       afterBytes: 1_620_000_000,
       replacedTo: 'recycle',
+      sourceDamaged: false,
     },
   }),
   kept: job({

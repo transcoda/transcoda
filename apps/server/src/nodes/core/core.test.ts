@@ -1,4 +1,5 @@
 import { nodeMetadata, parseSettings } from '@transcoda/sdk';
+import { CHECK_SOURCE_TYPE } from '@transcoda/shared';
 import { describe, expect, it } from 'vitest';
 import type { z } from 'zod';
 import { coreNodes } from './index.ts';
@@ -19,7 +20,13 @@ describe('core nodes', () => {
     };
     expect(def.version).toBe(versions[def.type] ?? 1);
     if (def.kind === 'trigger') expect(def.inputs).toEqual([]);
-    if (def.kind === 'condition') {
+    if (def.type === CHECK_SOURCE_TYPE) {
+      // Not a yes/no question: the file reads OK or is damaged (Damaged as on Render).
+      expect(def.outputs.map((p) => [p.id, p.label])).toEqual([
+        ['ok', 'OK'],
+        ['damaged', 'Damaged'],
+      ]);
+    } else if (def.kind === 'condition') {
       // The stored ids never change; people read Yes and No.
       expect(def.outputs.map((p) => p.id)).toEqual(['pass', 'else']);
       expect(def.outputs.map((p) => p.label)).toEqual(['Yes', 'No']);
@@ -63,6 +70,7 @@ describe('core nodes', () => {
 
   it('registers the full catalogue', () => {
     expect(coreNodes.map((d) => d.type).sort()).toEqual([
+      'core:check-source',
       'core:cover-attachments',
       'core:embed-sidecar-subtitles',
       'core:encode-audio',
@@ -77,6 +85,7 @@ describe('core nodes', () => {
       'core:notify-webhook',
       'core:remove-duplicate-audio',
       'core:remux',
+      'core:render',
       'core:reorder-tracks',
       'core:replace-original',
       'core:run-subworkflow',
@@ -218,6 +227,7 @@ describe('core nodes', () => {
       coreNodes.filter((d) => d.kind === 'finish').map((d) => [d.type, d.finishPhase]),
     );
     expect(phases).toEqual({
+      'core:render': 'render',
       'core:size-gate': 'gate',
       'core:replace-original': 'write',
       'core:move-copy': 'write',

@@ -265,6 +265,63 @@ describe('EditorPage', () => {
     );
   });
 
+  it('saving after Quality check was turned off removes the Damaged edge, says so, and undo restores it', async () => {
+    const base = chainMainReplace();
+    const graph: WorkflowGraph = {
+      ...base,
+      nodes: [
+        ...base.nodes,
+        {
+          id: 'r',
+          type: 'core:render',
+          typeVersion: 1,
+          settings: { qualityCheck: true },
+          position: { x: 420, y: 0 },
+        },
+        {
+          id: 'nw',
+          type: 'core:notify-webhook',
+          typeVersion: 1,
+          settings: { url: 'https://hooks.example.com/damaged', method: 'POST' },
+          position: { x: 560, y: 200 },
+        },
+      ],
+      edges: [
+        base.edges[0] as WorkflowGraph['edges'][number],
+        { id: 'keep-r', from: { node: 'keep', port: 'file' }, to: { node: 'r', port: 'file' } },
+        { id: 'r-ro', from: { node: 'r', port: 'done' }, to: { node: 'ro', port: 'file' } },
+        { id: 'r-nw', from: { node: 'r', port: 'damaged' }, to: { node: 'nw', port: 'file' } },
+      ],
+    };
+    mocks.get.mockResolvedValue(detail(graph));
+    const { container } = await loadedEditor();
+    const edge = () => container.querySelector('.react-flow__edge[data-id="r-nw"]');
+    await waitFor(() => expect(edge()).not.toBeNull());
+    fireEvent.click(flowNode(container, 'r'));
+    const inspector = screen.getByRole('complementary', { name: 'Inspector' });
+    const sw = await within(inspector).findByRole('switch', { name: 'Quality check' });
+    expect(sw.getAttribute('aria-checked')).toBe('true');
+    fireEvent.click(sw);
+    await waitFor(() => expect(sw.getAttribute('aria-checked')).toBe('false'));
+    // Until the save, the connection stays drawn.
+    expect(edge()).not.toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save v4' }));
+    expect(await screen.findByText('Removed the connection from Damaged')).toBeTruthy();
+    expect(await screen.findByText('Saved v4')).toBeTruthy();
+    const [arg] = mocks.save.mock.calls[0] ?? [];
+    expect((arg.graph as WorkflowGraph).edges.map((e) => e.id)).toEqual([
+      'in-keep',
+      'keep-r',
+      'r-ro',
+    ]);
+    await waitFor(() => expect(edge()).toBeNull());
+
+    fireEvent.keyDown(document.body, { key: 'z', metaKey: true });
+    await waitFor(() => expect(edge()).not.toBeNull());
+    expect(pill().textContent).toBe('v4 · unsaved changes');
+  });
+
   it('VERSION_CONFLICT opens the conflict dialog; "Save over it" re-saves with baseVersion = currentVersion', async () => {
     mocks.save
       .mockRejectedValueOnce(

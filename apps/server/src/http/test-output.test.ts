@@ -389,6 +389,7 @@ describe('GET /jobs/{id}/test-output', () => {
       warnings: [],
       problems: [],
       outputProbe: null,
+      sourceDamaged: false,
       createdAt: t.clock.now().toISOString(),
     });
     fakeBuild();

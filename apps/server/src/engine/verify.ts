@@ -4,6 +4,7 @@ import type { BuildModel, ProbeResult, StreamPlan } from '@transcoda/sdk';
 import { DEVICE_PROFILES, type ProbeStream, sameLanguage } from '@transcoda/shared';
 import { type Exec, makeExec } from '../capabilities/ffmpeg.ts';
 import { extraInputOf, isExtraStream, isMkvCover, outputOrder } from './build-model.ts';
+import { READ_FAILURE } from './decoder-names.ts';
 import { probeFile } from './probe.ts';
 import { type ProgressSample, progressReader, type VerifyProgress } from './progress.ts';
 import { containerPlaysOn, streamPlaysOn, type TargetIssue } from './targets.ts';
@@ -108,16 +109,29 @@ function withSignal(exec: Exec, signal: AbortSignal | undefined): Exec {
 /** Default number of sampled one-second spots (Jan's verify-depth decision). */
 export const SAMPLE_SPOTS = 10;
 
-type RunResult = { ok: true; stdout: string; stderr: string } | { ok: false; detail: string };
+type RunResult =
+  | { ok: true; stdout: string; stderr: string }
+  | { ok: false; detail: string; exited: boolean; stderr: string };
 
-/** Runs a tool; a non-zero exit, a timeout or a spawn error is `ok: false` with its first line. */
+/**
+ * Runs a tool; a non-zero exit, a timeout or a spawn error is `ok: false` with its first line.
+ * `exited`: the tool ran and exited with a code of its own (not killed by the time or output
+ * limit, a signal, or never started).
+ */
 async function run(exec: Exec, file: string, args: string[]): Promise<RunResult> {
   try {
     return { ok: true, ...(await exec(file, args)) };
   } catch (err) {
-    const e = err as { stderr?: unknown; message?: unknown };
-    const detail = firstLine(String(e.stderr ?? '')) ?? firstLine(String(e.message ?? err));
-    return { ok: false, detail: detail ?? 'failed' };
+    const e = (err ?? {}) as {
+      stderr?: unknown;
+      message?: unknown;
+      code?: unknown;
+      killed?: unknown;
+    };
+    const stderr = typeof e.stderr === 'string' ? e.stderr : '';
+    const detail = firstLine(stderr) ?? firstLine(String(e.message ?? err));
+    const exited = typeof e.code === 'number' && e.killed !== true;
+    return { ok: false, detail: detail ?? 'failed', exited, stderr };
   }
 }
 
@@ -644,6 +658,14 @@ interface DecodeRun {
 }
 
 /**
+ * A failed decode. `decodeError`: ffmpeg ran to its own exit and reported what it read; false when
+ * the run says nothing about the file's content (ffmpeg could not start, was killed by the time or
+ * output limit, or could not read the file: a disk or network share problem). Only a decode error
+ * can confirm source damage.
+ */
+type Decoded = { failure: VerifyFailure; decodeError: boolean };
+
+/**
  * Decodes the run and reports a failure for a non-zero exit or any error-level message: ffmpeg
  * exits 0 on a truncated file and only reports `File ended prematurely`. `-copyts` keeps the null
  * muxer quiet about timestamps after a seek.
@@ -654,7 +676,7 @@ async function decode(
   check: DecodeCheck,
   r: DecodeRun,
   prefix: string,
-): Promise<VerifyFailure | null> {
+): Promise<Decoded | null> {
   const res = await run(exec, ffmpegPath, [
     '-nostdin',
     '-hide_banner',
@@ -669,11 +691,19 @@ async function decode(
     'null',
     '-',
   ]);
-  if (!res.ok) return { check, message: `${prefix}decoding ${r.where} failed: ${res.detail}` };
+  if (!res.ok) {
+    return {
+      failure: { check, message: `${prefix}decoding ${r.where} failed: ${res.detail}` },
+      decodeError: res.exited && !READ_FAILURE.test(res.stderr),
+    };
+  }
   const error = firstLine(res.stderr);
   return error === null
     ? null
-    : { check, message: `${prefix}decoding ${r.where} reported: ${error}` };
+    : {
+        failure: { check, message: `${prefix}decoding ${r.where} reported: ${error}` },
+        decodeError: !READ_FAILURE.test(res.stderr),
+      };
 }
 
 /** How decode-start and decode-end open `file` (stream maps are added per run). */
@@ -862,8 +892,9 @@ async function decodeChecks(
         )
       : null;
     if (spot.check !== 'decode-full') tick();
+    // Any failure fails the output, a decode error or not (the safe direction).
     if (f) {
-      failures.push(f);
+      failures.push(f.failure);
       failed.push(spot);
     }
   }
@@ -896,6 +927,11 @@ async function decodeChecks(
         );
         if (!own) continue;
         broken++;
+        // A run that says nothing about the content cannot be matched on the source.
+        if (!own.decodeError) {
+          explained = false;
+          continue;
+        }
         // mpegts streams are addressed by their id (PID): stream order is the demuxer's own.
         const id = rawStreams.find((s) => num(s.index) === plan.sourceIndex)?.id;
         const map =
@@ -909,7 +945,7 @@ async function decodeChecks(
               `source: stream #${plan.sourceIndex}: `,
             )
           : null;
-        if (theirs) sourceFailures.push(theirs);
+        if (theirs?.decodeError) sourceFailures.push(theirs.failure);
         else explained = false;
       }
       if (broken === 0) explained = false;
@@ -1067,7 +1103,9 @@ const CONFIRM_SECONDS = 7;
 
 /**
  * Decodes the source around each spot (output seconds where the encode reported a source-side
- * decoder error) and returns the failures: an error the source reproduces there confirms damage.
+ * decoder error) and returns the failures: an error the source reproduces there confirms damage;
+ * a run that could not start, was killed (the time or output limit) or could not read the file
+ * confirms nothing.
  * mkv/mp4 sources are opened with input `-ss` (keyframe before the spot); byte-seek formats at the
  * anchor stream's last keyframe at or before it (`subfile`); a spot without one is not confirmed.
  */
@@ -1077,9 +1115,12 @@ export async function confirmSourceDamage(input: {
   ffmpegPath: string;
   ffprobePath: string;
   times: number[];
+  /** How long each decode runs (default CONFIRM_SECONDS). */
+  seconds?: number;
   exec?: Exec;
   signal?: AbortSignal;
 }): Promise<VerifyFailure[]> {
+  const seconds = input.seconds ?? CONFIRM_SECONDS;
   const exec = withSignal(input.exec ?? verifyExec, input.signal);
   const file = await mediaFile(exec, input.ffprobePath, input.sourcePath, input.sourceProbe);
   const streams = [...file.probe.streams].sort((a, b) => a.index - b.index);
@@ -1092,9 +1133,9 @@ export async function confirmSourceDamage(input: {
   ];
   for (const from of spots) {
     let open: string[] | null;
-    let where = `${CONFIRM_SECONDS} s from ${secs(from)}`;
+    let where = `${seconds} s from ${secs(from)}`;
     if (!file.byteSeek) {
-      open = ['-ss', from.toFixed(3), '-t', String(CONFIRM_SECONDS), '-i', file.path];
+      open = ['-ss', from.toFixed(3), '-t', String(seconds), '-i', file.path];
     } else if (anchor) {
       const seek = await endSeek(
         exec,
@@ -1105,8 +1146,8 @@ export async function confirmSourceDamage(input: {
       );
       if (seek) {
         const i = seek.args.indexOf('-i');
-        open = [...seek.args.slice(0, i), '-t', String(CONFIRM_SECONDS), ...seek.args.slice(i)];
-        where = `${CONFIRM_SECONDS} s from ${secs(seek.from)}`;
+        open = [...seek.args.slice(0, i), '-t', String(seconds), ...seek.args.slice(i)];
+        where = `${seconds} s from ${secs(seek.from)}`;
       } else open = null;
     } else open = null;
     if (!open) continue;
@@ -1117,7 +1158,8 @@ export async function confirmSourceDamage(input: {
       { input: open, maps: ['0:V?', '0:a?'], where },
       'source: ',
     );
-    if (f) failures.push(f);
+    // Only a decode error confirms: a timeout or a read error says nothing about the file.
+    if (f?.decodeError) failures.push(f.failure);
   }
   return failures;
 }

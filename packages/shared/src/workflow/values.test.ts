@@ -6,7 +6,7 @@ const LANGS = { type: 'array', items: { type: 'string' } };
 
 function graph(over: Partial<WorkflowGraph> = {}): WorkflowGraph {
   return {
-    formatVersion: 1,
+    formatVersion: 2,
     kind: 'workflow',
     nodes: [
       {

@@ -104,11 +104,19 @@ function lookFor(issue: Issue, type: string | undefined): Look {
       return { badge: 'subworkflow-problem', word: 'sub-workflow problem', border: 'red' };
     case 'INPUT_UNCONNECTED':
       return { badge: 'needs-connection', word: 'needs a connection', border: 'amber' };
+    case 'RENDER_MISSING':
+      // A finish step with no Render before it: the path never encodes the file.
+      return { badge: 'needs-connection', word: 'needs a Render step', border: 'red' };
     case 'NODE_NOT_ALLOWED_HERE':
     case 'FINISH_ORDER':
     case 'OUTPUT_MULTIPLE_EDGES':
     case 'OUTPUT_MULTIPLE_WRITES':
     case 'SIZE_GATE_SHARED_OUTPUT':
+    case 'RENDER_TWICE':
+    case 'RENDER_SHARED_OUTPUT':
+    case 'RENDER_BYPASSED':
+    case 'DAMAGED_ONLY':
+    case 'DAMAGED_ONLY_NOTIFY':
       return { badge: 'not-allowed', word: 'not allowed here', border: 'red' };
     case 'NODE_OUTDATED':
       // An inspector note; the server reports it as an error today, which blocks enabling.
@@ -185,6 +193,8 @@ const EDGE_CODES: ReadonlySet<string> = new Set([
   'OUTPUT_MULTIPLE_EDGES',
   'OUTPUT_MULTIPLE_WRITES',
   'SIZE_GATE_SHARED_OUTPUT',
+  'PORT_HIDDEN',
+  'RENDER_SHARED_OUTPUT',
 ]);
 
 /** `intoBroken` is `edgesIntoBroken(graph, states)`: edges drawn broken because their target is. */

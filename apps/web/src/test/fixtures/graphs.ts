@@ -9,7 +9,7 @@ import type { WorkflowGraph } from '@transcoda/shared';
 /** Shared sub-workflow: keep English and German, English default audio, English then German first. */
 export function tiggerPoohSub(): WorkflowGraph {
   return {
-    formatVersion: 1,
+    formatVersion: 2,
     kind: 'subworkflow',
     nodes: [
       {
@@ -70,7 +70,7 @@ export function tiggerPoohMain(subId: string, subVersion: number): WorkflowGraph
     overrides: { 'keep.languages': ['en', 'de', 'tr'] },
   });
   return {
-    formatVersion: 1,
+    formatVersion: 2,
     kind: 'workflow',
     nodes: [
       {
@@ -168,7 +168,7 @@ export function tiggerPoohMain(subId: string, subVersion: number): WorkflowGraph
 /** A main workflow with only a manual trigger. */
 export function oneTrigger(): WorkflowGraph {
   return {
-    formatVersion: 1,
+    formatVersion: 2,
     kind: 'workflow',
     nodes: [
       {
@@ -187,7 +187,7 @@ export function oneTrigger(): WorkflowGraph {
 /** Manual trigger → keep languages → replace original. */
 export function chainMainReplace(): WorkflowGraph {
   return {
-    formatVersion: 1,
+    formatVersion: 2,
     kind: 'workflow',
     nodes: [
       {

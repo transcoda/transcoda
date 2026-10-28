@@ -52,7 +52,10 @@ function node(type: string, extra: Record<string, unknown> = {}) {
   });
 }
 
-const finishNode = (type: string, phase: 'gate' | 'write' | 'notify' | 'library-manager') =>
+const finishNode = (
+  type: string,
+  phase: 'render' | 'gate' | 'write' | 'notify' | 'library-manager',
+) =>
   node(type, {
     kind: 'finish',
     finishPhase: phase,
@@ -181,6 +184,15 @@ describe('plugin definition', () => {
       settings: z.object({ key: z.string().meta({ format: 'password' }) }),
     });
     expect(() => nodeMetadata(asFormat)).toThrow(/secret/);
+  });
+
+  it('definePlugin refuses the render phase', () => {
+    expect(() => definePlugin(plugin({ nodes: [finishNode('example:f', 'render')] }))).toThrow(
+      TypeError,
+    );
+    expect(() => definePlugin(plugin({ nodes: [finishNode('example:f', 'render')] }))).toThrow(
+      /library-manager, media-server or notify/,
+    );
   });
 
   it('definePlugin refuses a plugin finish node with phase gate or write; defineIntegration refuses a nullable secret', () => {

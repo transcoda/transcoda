@@ -228,6 +228,7 @@ describe('EngineService', () => {
       warnings: ['earlier'],
       problems: [],
       outputProbe: null,
+      sourceDamaged: false,
       createdAt: t.clock.now().toISOString(),
     });
     const sweep = await t.deps.engine.start();
@@ -324,9 +325,9 @@ describe('EngineService', () => {
     // The job keeps its own probe: a later probe of the (replaced) file does not change it.
     t.db.prepare('UPDATE files SET last_probe = ?').run(JSON.stringify({ container: 'mp4' }));
     expect(t.deps.engine.jobDetail(id)?.probe).toMatchObject({ container: 'mkv' });
-    expect(detail?.graph?.nodes.map((n) => n.id)).toEqual(['in', 'ev', 'ro']);
-    expect(detail?.trace.map((e) => e.nodeId)).toEqual(['in', 'ev', 'ro']);
-    expect(detail?.path.map((s) => s.nodeId)).toEqual(['in', 'ev', 'ro']);
+    expect(detail?.graph?.nodes.map((n) => n.id)).toEqual(['in', 'ev', 'ro', 'render-1']);
+    expect(detail?.trace.map((e) => e.nodeId)).toEqual(['in', 'ev', 'render-1', 'ro', 'render-1']);
+    expect(detail?.path.map((s) => s.nodeId)).toEqual(['in', 'ev', 'render-1', 'ro']);
     expect(t.deps.engine.jobDetail('nope')).toBeNull();
 
     const list = t.deps.engine.listJobs({});

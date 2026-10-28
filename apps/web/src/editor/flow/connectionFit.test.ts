@@ -34,7 +34,7 @@ const node = (id: string, type: string) => ({
 
 /** `in` → `keep.file` is wired; `keep.language`, `gate.file` and every output are free. */
 const graph: WorkflowGraph = {
-  formatVersion: 1,
+  formatVersion: 2,
   kind: 'workflow',
   nodes: [
     node('in', 'core:input-manual'),

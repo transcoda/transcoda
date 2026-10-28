@@ -48,7 +48,7 @@ const edge = (from: string, to: string, fromPort = 'file'): Edge => ({
 /** The shared sub-workflow: keep English and German, English default audio, English then German. */
 export function tvCleanupSub(): WorkflowGraph {
   return {
-    formatVersion: 1,
+    formatVersion: 2,
     kind: 'subworkflow',
     nodes: [
       node('start', 'core:subworkflow-start', 0, 0),
@@ -104,7 +104,7 @@ export function tvCleanupMain(subId: string, subVersion: number): WorkflowGraph 
     },
   };
   return {
-    formatVersion: 1,
+    formatVersion: 2,
     kind: 'workflow',
     nodes: [
       node('in', 'core:input-manual', 0, 0),

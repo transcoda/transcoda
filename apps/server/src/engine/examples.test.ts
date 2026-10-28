@@ -451,26 +451,28 @@ describe.skipIf(!fixturesAvailable())('examples/workflows: the end-to-end gate',
 
   const at = (i: number) => ({ x: i * 240, y: 0 });
 
-  /** input → <one action> → replace. */
+  /** input → <one action> → Render → replace. */
   function oneAction(type: string, settings: Record<string, unknown>): WorkflowGraph {
     return WorkflowGraphSchema.parse({
-      formatVersion: 1,
+      formatVersion: 2,
       kind: 'workflow',
       groups: [],
       nodes: [
         { id: 'input', type: 'core:input-manual', typeVersion: 1, settings: {}, position: at(0) },
         { id: 'act', type, typeVersion: 1, settings, position: at(1) },
+        { id: 'render', type: 'core:render', typeVersion: 1, settings: {}, position: at(2) },
         {
           id: 'replace',
           type: 'core:replace-original',
           typeVersion: 1,
           settings: {},
-          position: at(2),
+          position: at(3),
         },
       ],
       edges: [
         { id: 'e1', from: { node: 'input', port: 'file' }, to: { node: 'act', port: 'file' } },
-        { id: 'e2', from: { node: 'act', port: 'file' }, to: { node: 'replace', port: 'file' } },
+        { id: 'e2', from: { node: 'act', port: 'file' }, to: { node: 'render', port: 'file' } },
+        { id: 'e3', from: { node: 'render', port: 'done' }, to: { node: 'replace', port: 'file' } },
       ],
     });
   }

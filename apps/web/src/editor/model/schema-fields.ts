@@ -215,7 +215,10 @@ export function specFor(property: JsonValue): FieldSpec {
   if (!isObject(property) || hasComposition(property)) return RAW;
   switch (property.type) {
     case 'boolean':
-      return { kind: 'boolean' };
+      // A core node's switch may say what it does (`.meta({ help })`: Render's Quality check).
+      return typeof property.help === 'string'
+        ? { kind: 'boolean', help: property.help }
+        : { kind: 'boolean' };
     case 'number':
     case 'integer':
       return numberSpec(property);

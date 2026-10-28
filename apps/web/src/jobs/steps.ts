@@ -2,8 +2,21 @@
 // it does and a badge. Pure over the trace's decisions (traceOverlay `decisions`), worded from the
 // structured parts of each entry (`changes`, findings, the node's settings, the probe), never from
 // the engine's reason text, except where a node only has that (conditions, data, plugins).
-import type { JobState, JsonValue, ProbeSummary, TraceChanges } from '@transcoda/shared';
-import { changesFile, isFinalState } from '@transcoda/shared';
+import type {
+  JobState,
+  JsonValue,
+  ProbeSummary,
+  TraceChanges,
+  WorkflowGraph,
+} from '@transcoda/shared';
+import {
+  CHECK_SOURCE_DAMAGED_PORT,
+  CHECK_SOURCE_TYPE,
+  changesFile,
+  isFinalState,
+  RENDER_DAMAGED_PORT,
+  RENDER_TYPE,
+} from '@transcoda/shared';
 import type { Decision } from '../editor/trace/traceOverlay.ts';
 import { languageNameOf } from './planText.ts';
 
@@ -52,6 +65,34 @@ export interface StepContext {
   /** A plan-only dry run whose size gate decides after encoding (#41). */
   dependsOnSize: boolean;
   replacedTo: 'recycle' | 'deleted' | null;
+  /** The source turned out damaged (`result.sourceDamaged`): the Damaged side's steps ran. */
+  sourceDamaged?: boolean;
+  /** The workflow's nodes on a Damaged side (`damagedSideOf`), top level only. */
+  damagedSide?: ReadonlySet<string>;
+}
+
+/**
+ * The nodes below a Damaged output (Render's or Check source's) of the top-level graph: they run
+ * only when the source turns out damaged.
+ */
+export function damagedSideOf(graph: WorkflowGraph): Set<string> {
+  const byId = new Map(graph.nodes.map((n) => [n.id, n]));
+  const queue = graph.edges
+    .filter((e) => {
+      const type = byId.get(e.from.node)?.type;
+      return (
+        (type === RENDER_TYPE && e.from.port === RENDER_DAMAGED_PORT) ||
+        (type === CHECK_SOURCE_TYPE && e.from.port === CHECK_SOURCE_DAMAGED_PORT)
+      );
+    })
+    .map((e) => e.to.node);
+  const out = new Set<string>();
+  for (let id = queue.pop(); id !== undefined; id = queue.pop()) {
+    if (out.has(id)) continue;
+    out.add(id);
+    for (const e of graph.edges) if (e.from.node === id) queue.push(e.to.node);
+  }
+  return out;
 }
 
 type Changed = TraceChanges['dropped'][number];
@@ -579,9 +620,12 @@ export function withoutTitle(reason: string, title: string): string {
   return rest.replace(/^[:\s]+/, '');
 }
 
-/** A reason without the "→ yes" / "→ no" tail the engine appends (older traces: pass / else). */
+/**
+ * A reason without the "→ yes" / "→ no" tail the engine appends (older traces: pass / else;
+ * Render's "→ Done" / "→ Damaged").
+ */
 export function withoutVerdict(reason: string): string {
-  return reason.replace(/\s*(?:→|->)\s*(?:pass|else|yes|no)(?=\)?$)/i, '');
+  return reason.replace(/\s*(?:→|->)\s*(?:pass|else|yes|no|done|damaged)(?=\)?$)/i, '');
 }
 
 /** The engine's own words for a node it has no structure for: a sentence, title and verdict off. */
@@ -591,9 +635,17 @@ const reasonSentence = (d: Decision) =>
 const FAILED = 'failed:';
 const WRITES = new Set(['core:replace-original', 'core:move-copy']);
 
+/** A finish step below a Damaged output (it runs only for a damaged source). */
+const onDamagedSide = (d: Decision, ctx: StepContext) =>
+  d.workflowPath.length === 0 && (ctx.damagedSide?.has(d.nodeId) ?? false);
+
 /** Why a finish step did not run in a settled job; null when it ran (or will). */
 function notRun(d: Decision, ctx: StepContext, around: Around): string | null {
   if (d.untaken) return "the file took the size gate's other branch";
+  // The Damaged side of a real run whose source was fine never ran.
+  if (onDamagedSide(d, ctx) && !ctx.sourceDamaged && !ctx.dryRun && isFinalState(ctx.state)) {
+    return 'the source was not damaged';
+  }
   if (!isFinalState(ctx.state) || d.plugin) return null;
   // A step before the failing one ran (a write, then a later step failed); a failure that is not
   // on the trace (ffmpeg, verify, the server) came after the build, before any finish step ran.
@@ -727,6 +779,20 @@ function step(d: Decision, ctx: StepContext, around: Around): Step {
       return { ...base, badge: 'not-run', quiet: true, sentence: `Didn't run: ${why}` };
     // A real run that failed after this step: it ran.
     if (!ctx.dryRun && ctx.state === 'failed') past = true;
+    // Render renders: its entries say how it went ("encoded and verified", "source is damaged …";
+    // a plan: "decides while encoding; if the source is damaged: Notify webhook").
+    if (d.type === RENDER_TYPE) {
+      return { ...base, badge: null, quiet: false, sentence: reasonSentence(d) };
+    }
+    if (onDamagedSide(d, ctx)) {
+      // A real run's damaged source ran the Damaged side; otherwise it only would if damaged.
+      if (ctx.sourceDamaged && !ctx.dryRun && isFinalState(ctx.state)) {
+        return { ...base, badge: 'finish', quiet: false, sentence: finishStep(d, ctx, true) };
+      }
+      const what = finishStep(d, ctx, false);
+      const sentence = ctx.sourceDamaged ? what : `If the source is damaged: ${what}`;
+      return { ...base, badge: 'finish', quiet: false, sentence };
+    }
     if (d.type === 'core:size-gate') {
       // A real run's measurement is over once it settled, whether it wrote or kept the original.
       const measured = !ctx.dryRun && isFinalState(ctx.state);

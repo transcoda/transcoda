@@ -1,5 +1,6 @@
 import { cleanup, render } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
+import { Icon } from '../components/Icon.tsx';
 import { fx, job } from '../test/fixtures/jobs.ts';
 import { JobStateChip } from './JobStateChip.tsx';
 
@@ -24,6 +25,29 @@ describe('JobStateChip', () => {
       expect(chip.querySelector('svg')).not.toBeNull();
       cleanup();
     }
+  });
+
+  it('a damaged job gets the is-damaged chip with the alert icon', () => {
+    const damaged = job({
+      ...fx.kept,
+      reason: 'source has decode errors; nothing was replaced',
+      result: {
+        outcome: 'kept_original',
+        beforeBytes: 1000,
+        afterBytes: 1000,
+        replacedTo: null,
+        sourceDamaged: true,
+      },
+    });
+    const { container } = render(<JobStateChip job={damaged} />);
+    const chip = container.querySelector('.job-chip') as HTMLElement;
+    expect(chip.textContent).toBe('Damaged source');
+    expect(chip.classList.contains('is-damaged')).toBe(true);
+    expect(chip.classList.contains('is-failed')).toBe(false);
+    const alert = render(<Icon name="alert" size={13} strokeWidth={2.6} />);
+    expect(chip.querySelector('svg')?.innerHTML).toBe(
+      alert.container.querySelector('svg')?.innerHTML,
+    );
   });
 
   it('adds a secondary "Paused" chip for a paused job', () => {
@@ -59,7 +83,13 @@ describe('JobStateChip estimate', () => {
   const withSize = (extra: Partial<Parameters<typeof job>[0]>) =>
     job({
       ...fx.dry,
-      result: { outcome: 'dry_run', beforeBytes: 1000, afterBytes: null, replacedTo: null },
+      result: {
+        outcome: 'dry_run',
+        beforeBytes: 1000,
+        afterBytes: null,
+        replacedTo: null,
+        sourceDamaged: false,
+      },
       ...extra,
     });
 

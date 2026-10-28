@@ -629,7 +629,13 @@ describe('jobs', () => {
       workflowVersion: 2,
       workflowName: 'Encode',
       reason: null,
-      result: { outcome: 'done', beforeBytes: 1000, afterBytes: 600, replacedTo: 'recycle' },
+      result: {
+        outcome: 'done',
+        beforeBytes: 1000,
+        afterBytes: 600,
+        replacedTo: 'recycle',
+        sourceDamaged: false,
+      },
       probe: { container: 'mkv', durationSeconds: 60 },
       plan: { rewrite: true, container: { from: 'mkv', to: 'mkv' } },
     });
@@ -637,16 +643,19 @@ describe('jobs', () => {
     expect(detail).not.toHaveProperty('fileId');
     expect(detail.probe).not.toHaveProperty('raw');
     expect((detail.plan as { streams: unknown[] }).streams).toHaveLength(2);
-    expect(detail.graph.nodes.map((n) => n.id)).toEqual(['in', 'ev', 'ro', 'nw']);
+    expect(detail.graph.nodes.map((n) => n.id)).toEqual(['in', 'ev', 'ro', 'nw', 'render-1']);
     expect((detail.trace as { nodeId: string }[]).map((e) => e.nodeId)).toEqual([
       'in',
       'ev',
+      'render-1',
       'ro',
       'nw',
+      'render-1',
     ]);
     expect((detail.path as { nodeId: string }[]).map((e) => e.nodeId)).toEqual([
       'in',
       'ev',
+      'render-1',
       'ro',
       'nw',
     ]);
@@ -663,7 +672,13 @@ describe('jobs', () => {
       libraryName: 'TV',
       workflowName: 'Encode',
       reason: null,
-      result: { outcome: 'done', beforeBytes: 1000, afterBytes: 600, replacedTo: 'recycle' },
+      result: {
+        outcome: 'done',
+        beforeBytes: 1000,
+        afterBytes: 600,
+        replacedTo: 'recycle',
+        sourceDamaged: false,
+      },
     });
     expect(list.jobs[0]).not.toHaveProperty('trace');
     expect(list.counts).toMatchObject({ done: 1, queued: 0, failed: 0 });

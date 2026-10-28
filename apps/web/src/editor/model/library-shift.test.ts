@@ -31,7 +31,7 @@ const workflow: WorkflowSummary = {
 };
 
 const onLibrary = (libraryId: string): WorkflowGraph => ({
-  formatVersion: 1,
+  formatVersion: 2,
   kind: 'workflow',
   nodes: [
     {

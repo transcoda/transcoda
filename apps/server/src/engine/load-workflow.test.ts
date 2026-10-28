@@ -63,7 +63,7 @@ describe('loadWorkflowForJob', () => {
     const real = loadWorkflowForJob(svc, { workflowId: id, workflowVersion: 4, dryRun: false });
     expect(real).toMatchObject({ kind: 'ok', version: 2 });
     if (real.kind !== 'ok') throw new Error('expected ok');
-    expect(real.graph.nodes.map((n) => n.id)).toEqual(['in', 'b', 'ro']);
+    expect(real.graph.nodes.map((n) => n.id)).toEqual(['in', 'b', 'ro', 'render-1']);
     expect(
       loadWorkflowForJob(svc, { workflowId: id, workflowVersion: 4, dryRun: true }),
     ).toMatchObject({

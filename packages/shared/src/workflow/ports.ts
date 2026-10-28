@@ -1,3 +1,5 @@
+import type { JsonValue } from '../json.ts';
+
 /**
  * What people read on a two-way branch. The port ids `pass` and `else` are stored in saved
  * graphs, examples and plugin manifests and never change; the words shown for them are "Yes"
@@ -22,4 +24,36 @@ export function branchPortLabel(port: { id: string; label: string }): string {
   const word = branchWord(port.id);
   if (word === null) return port.label;
   return /^(pass|else|yes|no)$/i.test(port.label.trim()) ? word : port.label;
+}
+
+/** When an output port is shown: only while the node's `setting` deep-equals `equals`. */
+export interface PortShownWhen {
+  setting: string;
+  equals: JsonValue;
+}
+
+function jsonEqual(a: JsonValue | undefined, b: JsonValue | undefined): boolean {
+  if (a === b) return true;
+  if (typeof a !== 'object' || typeof b !== 'object' || a === null || b === null) return false;
+  if (Array.isArray(a) || Array.isArray(b)) {
+    if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) return false;
+    return a.every((v, i) => jsonEqual(v, b[i]));
+  }
+  const keys = Object.keys(a);
+  if (keys.length !== Object.keys(b).length) return false;
+  return keys.every((k) => Object.hasOwn(b, k) && jsonEqual(a[k], b[k]));
+}
+
+/**
+ * Whether an output port is shown for a node's settings: always without `shownWhen`; otherwise
+ * only when the settings are an object whose `shownWhen.setting` deep-equals `shownWhen.equals`.
+ */
+export function portShown(
+  port: { id: string; shownWhen?: PortShownWhen | undefined },
+  settings: JsonValue,
+): boolean {
+  const when = port.shownWhen;
+  if (when === undefined) return true;
+  if (typeof settings !== 'object' || settings === null || Array.isArray(settings)) return false;
+  return Object.hasOwn(settings, when.setting) && jsonEqual(settings[when.setting], when.equals);
 }

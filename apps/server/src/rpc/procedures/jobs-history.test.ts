@@ -80,6 +80,7 @@ function replaced(id: string, createdAt: string, saved: number): void {
     warnings: [],
     problems: [],
     outputProbe: null,
+    sourceDamaged: false,
     createdAt,
   };
   insertJobResult(t.db, row);

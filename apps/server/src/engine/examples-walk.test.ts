@@ -170,6 +170,17 @@ describe('every example in examples/workflows walks through the engine', () => {
     }
   });
 
+  it('each is at graph format 2 with exactly one Render before each Replace original', async () => {
+    for (const { name, graph } of await examples()) {
+      expect(graph.formatVersion, name).toBe(2);
+      const renders = graph.nodes.filter((n) => n.type === 'core:render');
+      const replaces = graph.nodes.filter((n) => n.type === 'core:replace-original');
+      expect(renders.length, name).toBe(replaces.length);
+      expect(renders.length, name).toBeGreaterThan(0);
+      for (const r of renders) expect(r.settings, name).toEqual({});
+    }
+  });
+
   it('same-phase finish nodes on one output never tie on the canvas (their place sets the order)', async () => {
     const reg = registry();
     for (const { name, graph } of await examples()) {
@@ -213,6 +224,7 @@ describe('every example in examples/workflows walks through the engine', () => {
       'notify',
     ]);
     expect(result.actions.map((a) => ('phase' in a ? `${a.kind}:${a.phase}` : a.kind))).toEqual([
+      'render',
       'replace',
       'plugin:library-manager',
       'plugin:media-server',

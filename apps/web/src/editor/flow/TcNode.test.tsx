@@ -215,6 +215,23 @@ describe('TcNode', () => {
     expect(within(card('sg')).getByRole('button', { name: 'Connect from No' })).toBeTruthy();
   });
 
+  it('a Render card shows Done only until Quality check is on, then Done and Damaged', async () => {
+    const actions = { ...DEFAULT_EDITOR_ACTIONS, readOnly: false, startConnectFrom: vi.fn() };
+    const ports = () =>
+      within(card('r'))
+        .queryAllByRole('button', { name: /^Connect from / })
+        .map((b) => b.getAttribute('aria-label'));
+    await show([tcNode(instance('r', 'core:render'))], [], actions);
+    expect(ports()).toEqual(['Connect from Done']);
+    cleanup();
+    await show(
+      [tcNode(instance('r', 'core:render', { settings: { qualityCheck: true } }))],
+      [],
+      actions,
+    );
+    expect(ports()).toEqual(['Connect from Done', 'Connect from Damaged']);
+  });
+
   it('shows badge icon + word for each NodeState and the bypass eyebrow', async () => {
     await show([
       tcNode(instance('a', 'core:notify-webhook'), {

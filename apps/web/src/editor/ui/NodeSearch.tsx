@@ -82,6 +82,9 @@ export function filterHint(
   rule?: NextRule | undefined,
 ): string {
   if (rule?.kind === 'finish-after') {
+    if (rule.damaged === true) {
+      return 'On the Damaged side, only notifications and other non-writing steps are listed';
+    }
     return rule.noWrite
       ? "After the size gate's No, only notifications and other non-writing steps are listed"
       : `After ${rule.afterTitle}, only later finish steps are listed`;

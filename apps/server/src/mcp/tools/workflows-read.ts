@@ -8,7 +8,7 @@ import {
   WorkflowValidateOutputSchema,
   WorkflowVersionsOutputSchema,
 } from '@transcoda/contract';
-import { type Issue, WorkflowGraphSchema, WorkflowKindSchema } from '@transcoda/shared';
+import { type Issue, WorkflowGraphInputSchema, WorkflowKindSchema } from '@transcoda/shared';
 import { z } from 'zod';
 import { type AnyToolDef, defineTool, ToolFailure } from '../tool.ts';
 
@@ -221,7 +221,9 @@ const validateWorkflow = defineTool({
   scopes: ['read'],
   annotations: { readOnlyHint: true, openWorldHint: false },
   input: {
-    graph: WorkflowGraphSchema.describe('The workflow graph to check'),
+    graph: WorkflowGraphInputSchema.describe(
+      'The workflow graph to check (format 1 is checked as format 2)',
+    ),
     workflowId: z.string().optional().describe('The workflow this graph is meant for'),
   },
   output: WorkflowValidateOutputSchema.shape,

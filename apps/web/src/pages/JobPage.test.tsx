@@ -359,6 +359,7 @@ describe('JobPage', () => {
           estimatedBytes: null,
           command: COMMAND,
           replacedTo: null,
+          sourceDamaged: false,
           warnings: [],
           problems: [],
         },

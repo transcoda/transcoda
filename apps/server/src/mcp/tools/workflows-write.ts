@@ -1,5 +1,5 @@
 import { OkOutputSchema, WorkflowSaveOutputSchema } from '@transcoda/contract';
-import { IssueSchema, WorkflowGraphSchema, WorkflowKindSchema } from '@transcoda/shared';
+import { IssueSchema, WorkflowGraphInputSchema, WorkflowKindSchema } from '@transcoda/shared';
 import { z } from 'zod';
 import { type AnyToolDef, defineTool, mcpNote, NoteInput } from '../tool.ts';
 import {
@@ -58,7 +58,9 @@ const createWorkflow = defineTool({
     kind: WorkflowKindSchema.describe(
       '"workflow" runs on files; "subworkflow" is called by others',
     ),
-    graph: WorkflowGraphSchema.optional().describe('Version 1 graph; its kind must match `kind`'),
+    graph: WorkflowGraphInputSchema.optional().describe(
+      'Version 1 graph (format 2; format 1 is upgraded); its kind must match `kind`',
+    ),
     note: NoteInput.optional(),
   },
   output: WorkflowWriteBriefShape,
@@ -88,7 +90,9 @@ const saveWorkflow = defineTool({
   input: {
     id: z.string().describe('Workflow id'),
     baseVersion: z.number().int().min(1).describe('The current version this graph is based on'),
-    graph: WorkflowGraphSchema.describe('The full graph; its kind must match the workflow'),
+    graph: WorkflowGraphInputSchema.describe(
+      'The full graph (format 2; format 1 is upgraded); its kind must match the workflow',
+    ),
     note: NoteInput.optional(),
   },
   output: WorkflowSaveOutputSchema.shape,

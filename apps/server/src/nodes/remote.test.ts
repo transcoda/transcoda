@@ -296,6 +296,12 @@ describe('remoteNodeDefinition', () => {
       }
     });
 
+    it('refuses the render phase', () => {
+      expect(build({ ...meta('finish', ['finish']), finishPhase: 'render' } as never)).toThrow(
+        /must declare finishPhase library-manager, media-server or notify \(got render\)/,
+      );
+    });
+
     it('run on a non-finish node', () => {
       expect(build(meta('condition', ['decide', 'run']))).toThrow(/declares run/);
     });

@@ -1,8 +1,8 @@
 # Example workflows
 
 Three ready-made workflows for a new library, plus one that adds plugins (`WorkflowGraph`, format
-version 1). Each starts at `core:input-manual`, ends at `core:replace-original` and opens with a
-**Start here** note that says what it does and what to change. Video encoders are `auto`, which
+version 2). Each starts at `core:input-manual`, encodes once in a **Render** step (`core:render`,
+Quality check off), ends at `core:replace-original` and opens with a **Start here** note that says what it does and what to change. Video encoders are `auto`, which
 picks a hardware encoder when the server has one (`hevc_nvenc` or `h264_nvenc` on an NVIDIA box)
 and `libx265` or `libx264` otherwise. Create a workflow from one in the Workflows page's
 **Examples** menu (or save the file as a workflow's graph), try it with a dry run, then activate

@@ -10,7 +10,7 @@ import { type AnyIntegration, checkIntegration } from './integration.ts';
 import type { AnyNodeDefinition } from './node.ts';
 import type { AnyTrigger } from './trigger.ts';
 
-export const SDK_VERSION = '1.0.1';
+export const SDK_VERSION = '1.1.0';
 
 export interface HookJob {
   id: string;
@@ -54,7 +54,7 @@ export interface TranscodaPlugin {
   setup?(ctx: PluginContext): Promise<void>;
 }
 
-const REFUSED_PHASES: readonly FinishPhase[] = ['gate', 'write'];
+const REFUSED_PHASES: readonly FinishPhase[] = ['render', 'gate', 'write'];
 
 /** Identity function that refuses a plugin the host could never run. */
 export function definePlugin(p: TranscodaPlugin): TranscodaPlugin {

@@ -51,6 +51,8 @@ export interface FinishContext extends HookContextBase {
   model: BuildModel;
 }
 export type FinishAction =
+  /** Core's Render step: the encode happens here; `qualityCheck` makes a damaged source take Damaged. */
+  | { kind: 'render'; qualityCheck: boolean }
   | { kind: 'size-gate'; minSavingPercent: number }
   | { kind: 'replace'; recycleFolder: string | null }
   | { kind: 'move-copy'; mode: 'move' | 'copy'; outputRoot: string }
@@ -87,8 +89,10 @@ export interface FinishRunContext extends HookContextBase {
   /**
    * `kept`: the step sits behind a size gate's `else`. The original was kept, `newPath` is
    * `originalPath`, `replacedTo` is null and `afterBytes` is the size of the discarded result.
+   * `damaged`: the step sits on a Damaged side (the source has decode errors or is cut off);
+   * nothing was rendered or written. See `damage`.
    */
-  outcome: 'replaced' | 'moved' | 'copied' | 'kept';
+  outcome: 'replaced' | 'moved' | 'copied' | 'kept' | 'damaged';
   containerChanged: boolean;
   problemsSoFar: string[];
   /**
@@ -96,6 +100,12 @@ export interface FinishRunContext extends HookContextBase {
    * (both %). Core always sends `null` elsewhere; optional so existing test contexts still compile.
    */
   gate?: { savedPercent: number; minSavingPercent: number } | null | undefined;
+  /**
+   * Set (only) on a Damaged side: what is wrong with the source and, when known, the stream (e.g.
+   * `audio 1 (dts)`). There `newPath` is `originalPath`, `afterBytes` is `beforeBytes`,
+   * `replacedTo` is null and `containerChanged` is false. Core always sends `null` elsewhere.
+   */
+  damage?: { reason: string; stream?: string } | null | undefined;
   /** The job's page in the UI (`TRANSCODA_PUBLIC_URL` + `/jobs/<id>`); null when no public URL is configured. */
   jobUrl: string | null;
   /** The job's workflow name, as the job page shows it. */
