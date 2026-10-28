@@ -19,10 +19,12 @@ concurrency:
   cancel-in-progress: false
 
 permissions:
-  packages: write
+  contents: read
 
 jobs:
   cleanup:
+    permissions:
+      packages: write
     # After a Docker run, only when it succeeded.
     if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
