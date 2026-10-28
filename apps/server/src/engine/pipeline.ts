@@ -127,6 +127,7 @@ import {
 } from './stall-guard.ts';
 import { removeOrigCopy, settleReplaceNow } from './sweep.ts';
 import type { TestOutputStore } from './test-outputs.ts';
+import { nextTranscodaTag } from './transcoda-tag.ts';
 import { confirmSourceDamage, type VerifyFailure, verifyOutput } from './verify.ts';
 import {
   type DamagedBranch,
@@ -237,6 +238,8 @@ interface Prepared {
   coverFiles: Map<number, string>;
   /** Extra input number → its private copy in the temp dir (what ffmpeg reads). */
   extraInputFiles: Map<number, string>;
+  /** The output's `TRANSCODA` tag (see transcoda-tag.ts). */
+  transcodaTag: string;
   /** The last action node of the build: the job's node while it encodes and verifies. */
   lastBuildNode: CurrentNode | null;
   args: string[];
@@ -774,6 +777,8 @@ export class Pipeline implements JobExecutor {
       const ext = /^\.[A-Za-z0-9]{1,8}$/.test(extname(e.path)) ? extname(e.path) : '';
       extraInputFiles.set(n + 1, join(tempDir, `sidecar-${n + 1}${ext}`));
     }
+    // The output says which workflow made it, after the workflows the source already names.
+    const transcodaTag = nextTranscodaTag(probe, job.workflowId, job.workflowVersion);
     let args: string[];
     try {
       args = [
@@ -784,6 +789,7 @@ export class Pipeline implements JobExecutor {
           output: outputPath,
           coverFiles,
           extraInputFiles,
+          transcodaTag,
           ...this.renderDevice(),
         }),
       ];
@@ -886,6 +892,7 @@ export class Pipeline implements JobExecutor {
       logPath: logPathFor(config, job),
       coverFiles,
       extraInputFiles,
+      transcodaTag,
       lastBuildNode,
       args,
       command,
@@ -1301,6 +1308,7 @@ export class Pipeline implements JobExecutor {
   ): Promise<void> {
     // Temp goes before the final state is written: a retry or the next job may reuse the dir.
     await this.removeTemp(job.id);
+    const outputFingerprint = await this.outputFingerprintOf(job, w);
     const reason =
       w.problems.length > 0
         ? `finished with a problem: ${w.problems.join('; ')}`
@@ -1317,8 +1325,29 @@ export class Pipeline implements JobExecutor {
         afterBytes: w.afterBytes,
         replacedTo: w.replacedTo,
         problems: [...w.problems],
+        outputFingerprint,
       },
     );
+  }
+
+  /**
+   * The fingerprint of the file the job left at its final path (the replaced original, or the
+   * last move-copy destination), read after every finish step ran; null when it is gone or
+   * unreadable (a plugin step may have moved it). Already processed recognises it by this.
+   */
+  private async outputFingerprintOf(job: JobRow, w: Written): Promise<string | null> {
+    if (w.dest === null) return null;
+    try {
+      return fingerprintKey(fingerprintFromStats(await this.deps.fs.stat(w.dest)));
+    } catch (err) {
+      this.deps.log.warn({
+        msg: 'could not read the written file',
+        job: job.id,
+        path: w.dest,
+        error: message(err),
+      });
+      return null;
+    }
   }
 
   /**
@@ -2425,6 +2454,7 @@ export class Pipeline implements JobExecutor {
         // cancelled job threw that output away.
         outputProbe: OUTPUT_OUTCOMES.has(r.outcome) ? (r.outputProbe ?? null) : null,
         sourceDamaged: r.sourceDamaged ?? false,
+        outputFingerprint: r.outcome === 'done' ? (r.outputFingerprint ?? null) : null,
         createdAt: this.deps.now().toISOString(),
       });
     })();
@@ -2561,6 +2591,8 @@ type ResultInput = {
   outputProbe: JsonValue | null;
   /** The original was kept because the source is damaged ("Damaged source"). */
   sourceDamaged: boolean;
+  /** `fingerprintKey` of the written file at its final path (done jobs only). */
+  outputFingerprint: string | null;
 };
 
 /** What a step needs of the job's file (a prepared job, or one that ends in prepare). */
@@ -2650,6 +2682,7 @@ function renderInputOf(p: Prepared): RenderInput {
     output: p.outputPath,
     coverFiles: p.coverFiles,
     extraInputFiles: p.extraInputFiles,
+    transcodaTag: p.transcodaTag,
   };
 }
 

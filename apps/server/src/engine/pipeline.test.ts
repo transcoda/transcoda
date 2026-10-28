@@ -1199,6 +1199,17 @@ describe('pipeline', () => {
     });
     expect((await stat(file())).size).toBe(600);
     expect((await stat(join(root, '.transcoda-recycle', 'Show', 'a.mkv'))).size).toBe(1000);
+    // The replaced file is known by its own fingerprint; the output names the workflow that made it.
+    const result = findJobResult(t.db, id);
+    expect(result?.outputFingerprint).toBe(fingerprintKey(await fingerprintOf(file())));
+    expect(result?.outputFingerprint).not.toBe(result?.fingerprint);
+    expect(spawner.calls[0]?.args).toEqual(
+      expect.arrayContaining([
+        '-metadata',
+        `TRANSCODA=${row(id).workflowId}@${row(id).workflowVersion}`,
+      ]),
+    );
+    expect(spawner.calls[0]?.args).not.toContain('-movflags');
     const trace = listTrace(t.db, id);
     expect(trace.map((e) => [e.nodeId, e.phase])).toEqual([
       ['in', 'pass'],
@@ -2560,6 +2571,10 @@ describe('pipeline: fix round (review)', () => {
     expect((await stat(join(base, 'out', 'Show', 'a.mkv'))).size).toBe(600);
     expect((await stat(file())).size).toBe(1000);
     expect(await listAll(join(base, 'out'))).toEqual(['/Show', '/Show/a.mkv']);
+    // The copy is the written file: its fingerprint, not the untouched original's.
+    expect(findJobResult(t.db, id)?.outputFingerprint).toBe(
+      fingerprintKey(await fingerprintOf(join(base, 'out', 'Show', 'a.mkv'))),
+    );
 
     await t.deps.engine.stop();
     await setup({ fs: faultOnce(fsOps, 'unlink', (p) => p.endsWith('/out.mkv'), 'EACCES') });

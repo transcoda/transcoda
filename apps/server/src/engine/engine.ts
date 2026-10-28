@@ -56,7 +56,7 @@ import { type JobProbe, jobProbeOf } from './probe.ts';
 import type { ProcessSpawner } from './process.ts';
 import { QueueService } from './queue-service.ts';
 import { pruneRecycle } from './recycle.ts';
-import type { ReplaceDeps } from './replace.ts';
+import { fingerprintFromStats, type ReplaceDeps } from './replace.ts';
 import { closedLibraries, type RunHoursHold, runHoursHold, serverTimeZone } from './run-hours.ts';
 import { pickSlot, Scheduler } from './scheduler.ts';
 import { SpaceWaits } from './space-waits.ts';
@@ -369,6 +369,13 @@ export class EngineService {
     const { db, fs, log } = this.deps;
     // Keep the journal when the .orig cannot be removed; the next start tries again.
     if (!(await removeOrigCopy({ fs, log }, job.id, j))) return;
+    // The replacement is installed at the original's path: Already processed knows it by this.
+    let outputFingerprint: string | null = null;
+    try {
+      outputFingerprint = fingerprintKey(fingerprintFromStats(await fs.stat(j.originalPath)));
+    } catch {
+      // Gone or unreadable since: the result just has no output fingerprint.
+    }
     const now = this.deps.now();
     db.transaction(() => {
       updateJob(
@@ -397,6 +404,7 @@ export class EngineService {
         problems: previous?.problems ?? [],
         outputProbe: previous?.outputProbe ?? null,
         sourceDamaged: false,
+        outputFingerprint,
         createdAt: now.toISOString(),
       });
     })();

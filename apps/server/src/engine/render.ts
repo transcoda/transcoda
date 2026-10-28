@@ -2,6 +2,7 @@
 import { isAbsolute } from 'node:path';
 import type { BuildModel, StreamPlan } from '@transcoda/sdk';
 import { containerCanHold, coverFile, isExtraStream, isMkvCover, kept } from './build-model.ts';
+import { TRANSCODA_TAG } from './transcoda-tag.ts';
 
 /** A model that cannot be rendered safely; the pipeline fails the job with `render: <message>`. */
 export class RenderError extends Error {
@@ -287,6 +288,11 @@ export interface RenderInput {
   extraInputFiles?: ReadonlyMap<number, string>;
   /** Absent: ffmpeg's default device (the only GPU, or CUDA device 0). */
   device?: RenderDevice;
+  /**
+   * The `TRANSCODA` container tag the output carries (see transcoda-tag.ts); absent writes none
+   * (the source's own tag is still copied by `-map_metadata 0`).
+   */
+  transcodaTag?: string;
 }
 
 /** ffmpeg demuxer for a sidecar subtitle codec (`ssa` is read by the ass demuxer). */
@@ -531,6 +537,11 @@ export function renderArgs(r: RenderInput): string[] {
       ...metadataArgs(s, i),
     ]),
     ...coverArgs(covers, streams.length, r.coverFiles),
+    ...(r.transcodaTag === undefined ? [] : ['-metadata', `${TRANSCODA_TAG}=${r.transcodaTag}`]),
+    // MP4 and MOV keep a custom tag only as an `mdta` key; without the flag ffmpeg drops it.
+    ...(r.transcodaTag !== undefined && model.container === 'mp4'
+      ? ['-movflags', 'use_metadata_tags']
+      : []),
     '-f',
     model.container === 'mp4' ? 'mp4' : 'matroska',
     r.output,
