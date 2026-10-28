@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { isPicture } from '@transcoda/shared';
 import { describe, expect, it } from 'vitest';
 import { fixturePath, fixturesAvailable, toolPaths } from './fixtures.ts';
 import { jobProbeOf, languageOf, parseProbe, probeFailure, probeFile } from './probe.ts';
@@ -409,6 +410,24 @@ describe('parseProbe marks images stored as video tracks (imageTrack)', () => {
         audio,
       ]),
     ).toEqual([false, true, true, true, false]);
+  });
+
+  it('image tags with a known frame count above 1 (an animated GIF) are not marked', () => {
+    expect(
+      marks([
+        video(0),
+        video(1, { codec_name: 'gif', nb_frames: '48', tags: { FILENAME: 'anim.gif' } }),
+        video(2, { codec_name: 'apng', nb_frames: '1', tags: { FILENAME: 'still.png' } }),
+      ]),
+    ).toEqual([false, false, true]);
+    // A file whose only video is the animation: it stays video and is encoded.
+    const lone = parseProbe(
+      doc([
+        video(0, { codec_name: 'gif', nb_frames: '48', tags: { FILENAME: 'anim.gif' } }),
+        audio,
+      ]),
+    );
+    expect(lone.streams.map((s) => isPicture(s, lone.streams))).toEqual([false, false]);
   });
 
   it('other tags, other types and flagged covers are not marked', () => {

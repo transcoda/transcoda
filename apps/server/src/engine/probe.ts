@@ -159,7 +159,8 @@ export function hasImageTags(tags: Record<string, string> | undefined): boolean 
 }
 
 /**
- * Marks video tracks that hold one picture (see ProbeStream.imageTrack): image tags, or a frame
+ * Marks video tracks that hold one picture (see ProbeStream.imageTrack): image tags (parseStream;
+ * not when `nb_frames` counts more than one frame), or a frame
  * count of exactly 1 from the container's index (`nb_frames`) while another video stream is not a
  * picture and has more frames (or an unknown count). Only `nb_frames` counts: durations are not
  * used, since ffprobe reports a Matroska track's duration as the file's (a 1 ms cover track
@@ -201,7 +202,11 @@ function parseStream(s: unknown): ProbeStream {
     default: flag('default'),
     forced: flag('forced'),
     attachedPic,
-    ...(type === 'video' && !attachedPic && hasImageTags(tags) ? { imageTrack: true } : {}),
+    // Image tags mark a track, unless the container counts more than one frame (an animated GIF,
+    // WebP or APNG is motion and is encoded like video).
+    ...(type === 'video' && !attachedPic && hasImageTags(tags) && !((int(s.nb_frames) ?? 0) > 1)
+      ? { imageTrack: true }
+      : {}),
     dispositions: Object.keys(disposition).filter(
       (k) => !OWN_FIELD_DISPOSITIONS.has(k) && disposition[k] === 1,
     ),
