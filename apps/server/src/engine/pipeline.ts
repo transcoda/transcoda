@@ -66,6 +66,7 @@ import type { NodeRegistry } from '../nodes/registry.ts';
 import { type HookName, hookJobOf, type PluginHooksRunner } from '../plugins/hooks.ts';
 import type { PluginRestartGate } from '../plugins/restart-gate.ts';
 import type { WorkflowService } from '../workflows/service.ts';
+import { alreadyProcessed } from './already-processed.ts';
 import {
   containerCanHold,
   copyPictures,
@@ -701,7 +702,7 @@ export class Pipeline implements JobExecutor {
       (e) => {
         lastBuildNode = { workflowPath: [...e.workflowPath], nodeId: e.nodeId };
       },
-      this.coreTools(ctl, realPath, probe, fp),
+      this.coreTools(job, ctl, realPath, probe, fp),
     );
     const walkInput: WalkInput = {
       graph: loaded.graph,
@@ -2019,12 +2020,24 @@ export class Pipeline implements JobExecutor {
    * pass that could not tell (`error`) is not kept: a retry reads again.
    */
   private coreTools(
+    job: JobRow,
     ctl: JobControl,
     realPath: string,
     probe: ProbeResult,
     fp: Fingerprint,
   ): CoreTools {
     return {
+      alreadyProcessed: (q) =>
+        alreadyProcessed(
+          {
+            db: this.deps.db,
+            jobId: job.id,
+            jobWorkflowId: job.workflowId,
+            fingerprint: fingerprintKey(fp),
+            probe,
+          },
+          q,
+        ),
       checkSource: async ({ decodeVideo }) => {
         const key = `${realPath}\0${fp.sizeBytes}\0${fp.mtimeMs}\0${decodeVideo ? 1 : 0}`;
         const hit = this.checkResults.get(key);

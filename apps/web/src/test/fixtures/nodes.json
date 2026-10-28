@@ -348,6 +348,58 @@
       }
     },
     {
+      "type": "core:already-processed",
+      "version": 1,
+      "kind": "condition",
+      "title": "Already processed",
+      "description": "Checks whether the file has already been through a workflow.",
+      "icon": "history",
+      "inputs": [
+        {
+          "id": "file",
+          "label": "File",
+          "type": "file"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "pass",
+          "label": "Yes",
+          "type": "file"
+        },
+        {
+          "id": "else",
+          "label": "No",
+          "type": "file"
+        }
+      ],
+      "settingsSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "workflowId": {
+            "description": "Workflow; the id of the workflow to look for. Leave it out for this workflow (the one the job runs, also inside a sub-workflow)",
+            "type": "string",
+            "minLength": 1
+          },
+          "version": {
+            "description": "Version; only this version of that workflow counts. Leave it out for any version",
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          }
+        }
+      },
+      "onNodeSettings": [],
+      "finishPhase": null,
+      "source": {
+        "kind": "core"
+      },
+      "availability": {
+        "available": true
+      }
+    },
+    {
       "type": "core:subworkflow-start",
       "version": 1,
       "kind": "subworkflow-io",

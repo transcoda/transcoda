@@ -44,6 +44,7 @@ import {
 } from '../db/repos/jobs.ts';
 import type { LibraryRow } from '../db/repos/libraries.ts';
 import { setSetting } from '../db/repos/settings.ts';
+import { findWorkflow } from '../db/repos/workflows.ts';
 import type { Logger } from '../logger.ts';
 import { mcpClient } from '../mcp/test-client.ts';
 import { filePort } from '../nodes/core/common.ts';
@@ -5373,5 +5374,74 @@ describe('pipeline: damaged sources (Render’s Damaged)', () => {
         expect(calledUrls()).toEqual([]);
       });
     });
+  });
+});
+
+describe('pipeline: Already processed', () => {
+  const traceOf = (id: string, nodeId: string) =>
+    listTrace(t.db, id)
+      .filter((e) => e.nodeId === nodeId)
+      .map((e) => [e.phase, e.port, e.reason]);
+  /** in → Already processed; No → encode → replace; Yes leads nowhere (nothing to write). */
+  const gate = (settings: Record<string, string | number>) =>
+    workflow(
+      mainGraph(
+        [
+          node('in', 'core:input-manual'),
+          node('ap', 'core:already-processed', settings),
+          toH264(),
+          node('ro', 'core:replace-original'),
+        ],
+        [edge('in', 'ap'), edge('ap', 'ev', { from: 'else' }), edge('ev', 'ro')],
+      ),
+    );
+  const day = (iso: string) => {
+    const d = new Date(iso);
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  };
+  /** A dry run of `workflowId` on the file: the port Already processed took. */
+  const portFor = async (workflowId: string) => {
+    const id = await queue(file(), workflowId, { dryRun: true });
+    await settled(id);
+    return traceOf(id, 'ap')[0]?.[1];
+  };
+
+  it('recognises another workflow’s output and its own, by version; its own output is tagged', async () => {
+    await t.deps.engine.start();
+    const save = encodeAnd(replaceNode());
+    const first = await queue(file(), save);
+    await until('spawn', () => spawner.calls.length === 1);
+    await spawner.complete({ bytes: 600 });
+    expect(await settled(first)).toMatchObject({ state: 'done' });
+    const at = findJobResult(t.db, first)?.createdAt ?? '';
+
+    // The replaced file is Save's output.
+    const check = gate({ workflowId: save });
+    const dry = await queue(file(), check, { dryRun: true });
+    expect(await settled(dry)).toMatchObject({ state: 'nothing_to_do' });
+    expect(traceOf(dry, 'ap')).toEqual([
+      [
+        'decide',
+        'pass',
+        `done by ${findWorkflow(t.db, save)?.name} v2 on ${day(at)} (this file is its output)`,
+      ],
+    ]);
+
+    // "This workflow" of the checking workflow has no history for this file: No, and it encodes.
+    const own = gate({});
+    const second = await queue(file(), own);
+    await until('spawn', () => spawner.calls.length === 2);
+    expect(spawner.calls[1]?.args).toContain(`TRANSCODA=${own}@2`);
+    await spawner.complete({ bytes: 500 });
+    expect(await settled(second)).toMatchObject({ state: 'done' });
+    expect(traceOf(second, 'ap')).toEqual([
+      ['decide', 'else', `not processed by ${findWorkflow(t.db, own)?.name}`],
+    ]);
+
+    // Its own output now: Yes for "This workflow" of that workflow, by version.
+    expect(await portFor(own)).toBe('pass');
+    expect(await portFor(gate({ workflowId: own, version: 2 }))).toBe('pass');
+    expect(await portFor(gate({ workflowId: own, version: 1 }))).toBe('else');
   });
 });

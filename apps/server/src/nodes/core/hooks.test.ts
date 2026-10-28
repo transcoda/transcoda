@@ -1087,6 +1087,9 @@ describe('finish nodes', () => {
           asked.push(decodeVideo);
           return r;
         },
+        alreadyProcessed: () => {
+          throw new Error('not asked');
+        },
       };
       return { ...decideCtx(probe), core } as DecideContext;
     };

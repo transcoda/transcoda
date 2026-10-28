@@ -1,3 +1,4 @@
+import type { JsonValue } from '@transcoda/shared';
 import { describe, expect, it } from 'vitest';
 import { modelFromProbe } from './build-model.ts';
 import { renderArgs } from './render.ts';
@@ -10,7 +11,7 @@ import {
   transcodaTagOf,
 } from './transcoda-tag.ts';
 
-const tagged = (tags: Record<string, unknown> | null) => ({
+const tagged = (tags: Record<string, JsonValue> | null) => ({
   raw: { format: tags === null ? {} : { tags } },
 });
 
