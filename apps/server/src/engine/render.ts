@@ -2,7 +2,6 @@
 import { isAbsolute } from 'node:path';
 import type { BuildModel, StreamPlan } from '@transcoda/sdk';
 import { containerCanHold, coverFile, isExtraStream, isMkvCover, kept } from './build-model.ts';
-import { muxerKeepsTranscodaTag, TRANSCODA_TAG } from './transcoda-tag.ts';
 
 /** A model that cannot be rendered safely; the pipeline fails the job with `render: <message>`. */
 export class RenderError extends Error {
@@ -288,11 +287,6 @@ export interface RenderInput {
   extraInputFiles?: ReadonlyMap<number, string>;
   /** Absent: ffmpeg's default device (the only GPU, or CUDA device 0). */
   device?: RenderDevice;
-  /**
-   * The `TRANSCODA` container tag the output carries (see transcoda-tag.ts), written for Matroska
-   * outputs only; absent writes none (the source's own tag is still copied by `-map_metadata 0`).
-   */
-  transcodaTag?: string;
 }
 
 /** ffmpeg demuxer for a sidecar subtitle codec (`ssa` is read by the ass demuxer). */
@@ -506,7 +500,6 @@ export function renderArgs(r: RenderInput): string[] {
   const streams = all.filter((s) => !isMkvCover(model, s));
   const covers = all.filter((s) => isMkvCover(model, s));
   const frames = qsvFrames(model, streams, r.device);
-  const muxer = model.container === 'mp4' ? 'mp4' : 'matroska';
   const args = [
     '-nostdin',
     '-hide_banner',
@@ -538,13 +531,8 @@ export function renderArgs(r: RenderInput): string[] {
       ...metadataArgs(s, i),
     ]),
     ...coverArgs(covers, streams.length, r.coverFiles),
-    // Matroska only: MP4/MOV would need `-movflags use_metadata_tags`, which moves every global
-    // tag (the title too) out of the iTunes atoms players read. Those outputs have no tag.
-    ...(r.transcodaTag !== undefined && muxerKeepsTranscodaTag(muxer)
-      ? ['-metadata', `${TRANSCODA_TAG}=${r.transcodaTag}`]
-      : []),
     '-f',
-    muxer,
+    model.container === 'mp4' ? 'mp4' : 'matroska',
     r.output,
   ];
   // An argv string cannot carry NUL; spawn would fail late with an unclear error.

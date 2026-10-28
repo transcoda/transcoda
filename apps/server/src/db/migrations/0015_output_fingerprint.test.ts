@@ -44,13 +44,32 @@ describe('migration 0015', () => {
     fs.rmSync(dir, { recursive: true, force: true });
   });
 
-  it('adds output_fingerprint (null) to an existing result, with its lookup index', () => {
+  it('adds output_fingerprint, source_hash and output_hash (null) to an existing result, with their lookup indexes', () => {
     expect(migrate(db, migrations.slice(0, 15), { backupDir }).applied).toEqual([
       '0015_output_fingerprint',
     ]);
-    expect(db.prepare('SELECT output_fingerprint FROM job_results').all()).toEqual([
-      { output_fingerprint: null },
-    ]);
+    expect(
+      db.prepare('SELECT output_fingerprint, source_hash, output_hash FROM job_results').all(),
+    ).toEqual([{ output_fingerprint: null, source_hash: null, output_hash: null }]);
+    for (const [name, column] of [
+      ['job_results_source_hash_lookup', 'source_hash'],
+      ['job_results_output_hash_lookup', 'output_hash'],
+    ]) {
+      const sql = (
+        db.prepare("SELECT sql FROM sqlite_master WHERE type = 'index' AND name = ?").get(name) as
+          | { sql: string }
+          | undefined
+      )?.sql;
+      expect(sql).toContain(`${column}, workflow_id, workflow_version`);
+    }
+    db.prepare("UPDATE job_results SET output_hash = 'v1:1:x' WHERE job_id = 'j1'").run();
+    const hashPlan = db
+      .prepare(
+        `EXPLAIN QUERY PLAN SELECT job_id FROM job_results
+         WHERE output_hash = 'v1:1:x' AND workflow_id = 'w1'`,
+      )
+      .all() as { detail: string }[];
+    expect(hashPlan.map((p) => p.detail).join('\n')).toContain('job_results_output_hash_lookup');
     const index = db
       .prepare(
         "SELECT sql FROM sqlite_master WHERE type = 'index' AND name = 'job_results_output_lookup'",

@@ -422,6 +422,6 @@ export async function checkSource(input: {
  */
 export interface CoreTools {
   checkSource(opts: { decodeVideo: boolean }): Promise<CheckSourceResult>;
-  /** Already processed: the job's history and the file's TRANSCODA tag (see already-processed.ts). */
-  alreadyProcessed(q: AlreadyProcessedQuery): AlreadyProcessedAnswer;
+  /** Already processed: the job's history by fingerprint, then by content hash (already-processed.ts). */
+  alreadyProcessed(q: AlreadyProcessedQuery): Promise<AlreadyProcessedAnswer>;
 }

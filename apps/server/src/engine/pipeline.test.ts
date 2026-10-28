@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import {
   appendFile,
+  copyFile,
   mkdir,
   readdir,
   readFile,
@@ -64,6 +65,7 @@ import {
   testRegistry,
 } from '../workflows/test-helpers.ts';
 import { fitToContainer, modelFromProbe, normalizeDefaults } from './build-model.ts';
+import { contentHash } from './content-hash.ts';
 import { sourceDecoderNames } from './decoder-names.ts';
 import type { EngineEvent } from './events.ts';
 import { fingerprintKey, fingerprintOf } from './fingerprint.ts';
@@ -1200,17 +1202,18 @@ describe('pipeline', () => {
     });
     expect((await stat(file())).size).toBe(600);
     expect((await stat(join(root, '.transcoda-recycle', 'Show', 'a.mkv'))).size).toBe(1000);
-    // The replaced file is known by its own fingerprint; the output names the workflow that made it.
+    // The replaced file is known by its own fingerprint and content hash; the source by its hash.
     const result = findJobResult(t.db, id);
     expect(result?.outputFingerprint).toBe(fingerprintKey(await fingerprintOf(file())));
     expect(result?.outputFingerprint).not.toBe(result?.fingerprint);
-    expect(spawner.calls[0]?.args).toEqual(
-      expect.arrayContaining([
-        '-metadata',
-        `TRANSCODA=${row(id).workflowId}@${row(id).workflowVersion}`,
-      ]),
+    expect(result?.outputHash).toBe(await contentHash(file()));
+    expect(result?.sourceHash).toBe(
+      await contentHash(join(root, '.transcoda-recycle', 'Show', 'a.mkv')),
     );
-    expect(spawner.calls[0]?.args).not.toContain('-movflags');
+    expect(result?.sourceHash).toMatch(/^v1:1000:/);
+    expect(result?.outputHash).toMatch(/^v1:600:/);
+    // Outputs are written as before: no metadata of Transcoda's own.
+    expect(spawner.calls[0]?.args.some((a) => a.startsWith('TRANSCODA'))).toBe(false);
     const trace = listTrace(t.db, id);
     expect(trace.map((e) => [e.nodeId, e.phase])).toEqual([
       ['in', 'pass'],
@@ -2576,6 +2579,10 @@ describe('pipeline: fix round (review)', () => {
     expect(findJobResult(t.db, id)?.outputFingerprint).toBe(
       fingerprintKey(await fingerprintOf(join(base, 'out', 'Show', 'a.mkv'))),
     );
+    expect(findJobResult(t.db, id)).toMatchObject({
+      sourceHash: await contentHash(file()),
+      outputHash: await contentHash(join(base, 'out', 'Show', 'a.mkv')),
+    });
 
     await t.deps.engine.stop();
     await setup({ fs: faultOnce(fsOps, 'unlink', (p) => p.endsWith('/out.mkv'), 'EACCES') });
@@ -5401,8 +5408,8 @@ describe('pipeline: Already processed', () => {
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
   };
   /** A dry run of `workflowId` on the file: the port Already processed took. */
-  const portFor = async (workflowId: string) => {
-    const id = await queue(file(), workflowId, { dryRun: true });
+  const portFor = async (workflowId: string, path = file()) => {
+    const id = await queue(path, workflowId, { dryRun: true });
     await settled(id);
     return traceOf(id, 'ap')[0]?.[1];
   };
@@ -5432,7 +5439,6 @@ describe('pipeline: Already processed', () => {
     const own = gate({});
     const second = await queue(file(), own);
     await until('spawn', () => spawner.calls.length === 2);
-    expect(spawner.calls[1]?.args).toContain(`TRANSCODA=${own}@2`);
     await spawner.complete({ bytes: 500 });
     expect(await settled(second)).toMatchObject({ state: 'done' });
     expect(traceOf(second, 'ap')).toEqual([
@@ -5443,5 +5449,37 @@ describe('pipeline: Already processed', () => {
     expect(await portFor(own)).toBe('pass');
     expect(await portFor(gate({ workflowId: own, version: 2 }))).toBe('pass');
     expect(await portFor(gate({ workflowId: own, version: 1 }))).toBe('else');
+  });
+
+  it('a copy of an output at another path (new inode) is known by its content hash', async () => {
+    await t.deps.engine.start();
+    const save = encodeAnd(replaceNode());
+    const first = await queue(file(), save);
+    await until('spawn', () => spawner.calls.length === 1);
+    await spawner.complete({ bytes: 600 });
+    expect(await settled(first)).toMatchObject({ state: 'done' });
+    const at = findJobResult(t.db, first)?.createdAt ?? '';
+
+    const copy = join(root, 'Show', 'copy.mkv');
+    await copyFile(file(), copy);
+    const past = new Date(Date.now() - 60 * 60 * 1000);
+    await utimes(copy, past, past);
+    const [a, b] = [await fingerprintOf(file()), await fingerprintOf(copy)];
+    expect(b.ino).not.toBe(a.ino);
+
+    const check = gate({ workflowId: save });
+    const dry = await queue(copy, check, { dryRun: true });
+    await settled(dry);
+    expect(traceOf(dry, 'ap')).toEqual([
+      [
+        'decide',
+        'pass',
+        `done by ${findWorkflow(t.db, save)?.name} v2 on ${day(at)} (same content as its output)`,
+      ],
+    ]);
+    // A different file of the same size is not (the encodes here write bytes of 1).
+    await writeFile(copy, Buffer.alloc(600, 9));
+    await utimes(copy, past, past);
+    expect(await portFor(check, copy)).toBe('else');
   });
 });

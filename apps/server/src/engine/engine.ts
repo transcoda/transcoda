@@ -47,6 +47,7 @@ import type { PluginHooksRunner } from '../plugins/hooks.ts';
 import type { PluginRestartGate } from '../plugins/restart-gate.ts';
 import { graphUpgrade, type WorkflowService } from '../workflows/service.ts';
 import { migratePinned } from '../workflows/validate.ts';
+import { contentHash } from './content-hash.ts';
 import { EngineEvents } from './events.ts';
 import { fingerprintKey } from './fingerprint.ts';
 import type { FsOps } from './fs-ops.ts';
@@ -371,10 +372,12 @@ export class EngineService {
     if (!(await removeOrigCopy({ fs, log }, job.id, j))) return;
     // The replacement is installed at the original's path: Already processed knows it by this.
     let outputFingerprint: string | null = null;
+    let outputHash: string | null = null;
     try {
       outputFingerprint = fingerprintKey(fingerprintFromStats(await fs.stat(j.originalPath)));
+      outputHash = await contentHash(j.originalPath);
     } catch {
-      // Gone or unreadable since: the result just has no output fingerprint.
+      // Gone or unreadable since: the result just has no output fingerprint or hash.
     }
     const now = this.deps.now();
     db.transaction(() => {
@@ -405,6 +408,8 @@ export class EngineService {
         outputProbe: previous?.outputProbe ?? null,
         sourceDamaged: false,
         outputFingerprint,
+        sourceHash: previous?.sourceHash ?? null,
+        outputHash,
         createdAt: now.toISOString(),
       });
     })();

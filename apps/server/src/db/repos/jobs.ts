@@ -143,6 +143,10 @@ export interface JobResultRow {
    * be read. Absent reads as null.
    */
   outputFingerprint?: string | null;
+  /** Sampled content hash (engine/content-hash.ts) of the source when a real job started. */
+  sourceHash?: string | null;
+  /** Sampled content hash of the written file at its final path (done results). */
+  outputHash?: string | null;
   createdAt: string;
 }
 
@@ -272,6 +276,8 @@ interface DbResult {
   output_probe: string | null;
   source_damaged: number;
   output_fingerprint: string | null;
+  source_hash: string | null;
+  output_hash: string | null;
   created_at: string;
 }
 
@@ -357,6 +363,8 @@ const toResult = (r: DbResult): JobResultRow => ({
   outputProbe: parseJson<JsonValue>(r.output_probe),
   sourceDamaged: r.source_damaged === 1,
   outputFingerprint: r.output_fingerprint,
+  sourceHash: r.source_hash,
+  outputHash: r.output_hash,
   createdAt: r.created_at,
 });
 
@@ -871,37 +879,45 @@ export interface ProcessedResult {
   createdAt: string;
   /** How the file matched: it was the job's source, or it is the file the job wrote. */
   matched: 'source' | 'output';
+  /** By what: the same file (fingerprint), or the same content (sampled hash). */
+  by: 'fingerprint' | 'hash';
 }
 
 /**
  * The newest result of a real (not dry-run) job of `workflowId` (at `workflowVersion`, or any
  * version when null) that ended `done`, `nothing_to_do` or `kept_original` and whose source or
- * written output has this fingerprint. `excludeJobId` leaves out the asking job itself.
+ * written output has this fingerprint (`by: 'fingerprint'`) or this sampled content hash
+ * (`by: 'hash'`). `excludeJobId` leaves out the asking job itself.
  */
 export function findProcessedResult(
   db: Database,
   q: {
-    fingerprint: string;
+    by: 'fingerprint' | 'hash';
+    /** The `fingerprintKey`, or the content hash. */
+    key: string;
     workflowId: string;
     workflowVersion: number | null;
     excludeJobId?: string;
   },
 ): ProcessedResult | null {
   const version = q.workflowVersion === null ? '' : 'AND r.workflow_version = @version';
-  const select = (column: 'fingerprint' | 'output_fingerprint', matched: string) =>
+  const [source, output] =
+    q.by === 'fingerprint' ? ['fingerprint', 'output_fingerprint'] : ['source_hash', 'output_hash'];
+  const select = (column: string, matched: string) =>
     `SELECT r.job_id AS jobId, r.workflow_id AS workflowId, r.workflow_version AS workflowVersion,
-       r.outcome AS outcome, r.created_at AS createdAt, '${matched}' AS matched, r.rowid AS rid
+       r.outcome AS outcome, r.created_at AS createdAt, '${matched}' AS matched,
+       '${q.by}' AS by, r.rowid AS rid
      FROM job_results r JOIN jobs j ON j.id = r.job_id
      WHERE r.${column} = @fp AND r.workflow_id = @workflowId ${version}
        AND r.outcome IN (${PROCESSED_SQL}) AND j.dry_run = 0 AND r.job_id <> @exclude`;
   const r = db
     .prepare(
-      `SELECT jobId, workflowId, workflowVersion, outcome, createdAt, matched FROM (
-         ${select('fingerprint', 'source')} UNION ALL ${select('output_fingerprint', 'output')}
+      `SELECT jobId, workflowId, workflowVersion, outcome, createdAt, matched, by FROM (
+         ${select(source, 'source')} UNION ALL ${select(output, 'output')}
        ) ORDER BY createdAt DESC, rid DESC LIMIT 1`,
     )
     .get({
-      fp: q.fingerprint,
+      fp: q.key,
       workflowId: q.workflowId,
       exclude: q.excludeJobId ?? '',
       ...(q.workflowVersion === null ? {} : { version: q.workflowVersion }),
@@ -913,8 +929,8 @@ export function insertJobResult(db: Database, r: JobResultRow): void {
   db.prepare(
     `INSERT INTO job_results (job_id, fingerprint, workflow_id, workflow_version, outcome, before_bytes,
        after_bytes, estimated_bytes, command, plan, replaced_to, log_path, warnings, problems_json, output_probe,
-       source_damaged, output_fingerprint, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       source_damaged, output_fingerprint, source_hash, output_hash, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     r.jobId,
     r.fingerprint,
@@ -933,6 +949,8 @@ export function insertJobResult(db: Database, r: JobResultRow): void {
     toJson(r.outputProbe),
     r.sourceDamaged ? 1 : 0,
     r.outputFingerprint ?? null,
+    r.sourceHash ?? null,
+    r.outputHash ?? null,
     r.createdAt,
   );
 }

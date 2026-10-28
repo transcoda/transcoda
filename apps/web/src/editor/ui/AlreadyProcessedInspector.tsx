@@ -127,7 +127,7 @@ export function AlreadyProcessedInspector({
         <span id={`${workflowFieldId}-hint`} className="tc-field-hint">
           {workflowId === undefined
             ? 'The workflow this file is running through (also from inside a sub-workflow)'
-            : 'Yes when that workflow already did, kept or left this file, or this file is its output'}
+            : 'Yes when that workflow already processed this file or an identical copy of it, or wrote it'}
         </span>
         {workflowIssue && (
           <p className="tc-field-issue">

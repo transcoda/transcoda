@@ -1087,7 +1087,7 @@ describe('finish nodes', () => {
           asked.push(decodeVideo);
           return r;
         },
-        alreadyProcessed: () => {
+        alreadyProcessed: async () => {
           throw new Error('not asked');
         },
       };

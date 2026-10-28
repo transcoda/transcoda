@@ -12,17 +12,22 @@ const now = new Date('2026-10-28T15:00:00.000Z');
 const SAVE = 'w-save';
 const CLEAN = 'w-clean';
 const FILE = '3:9:600:1';
+const HASH = 'v1:600:abc';
 
 let db: Database;
 let n = 0;
+/** How often the subject's content hash was asked for. */
+let hashed = 0;
 
-/** A finished job of `workflowId@version` whose source was `fingerprint` (and wrote `output`). */
+/** A finished job of `workflowId@version` with the given source and output identities. */
 function result(o: {
   workflowId?: string;
   version?: number;
   outcome?: JobState;
   fingerprint?: string;
   output?: string | null;
+  sourceHash?: string | null;
+  outputHash?: string | null;
   dryRun?: boolean;
 }): string {
   n += 1;
@@ -64,17 +69,22 @@ function result(o: {
     outputProbe: null,
     sourceDamaged: false,
     outputFingerprint: o.output ?? null,
+    sourceHash: o.sourceHash ?? null,
+    outputHash: o.outputHash ?? null,
     createdAt: now.toISOString(),
   });
   return id;
 }
 
-const subject = (tag?: string, jobWorkflowId = SAVE): AlreadyProcessedSubject => ({
+const subject = (jobWorkflowId = SAVE, hash: string | null = HASH): AlreadyProcessedSubject => ({
   db,
   jobId: 'asking',
   jobWorkflowId,
   fingerprint: FILE,
-  probe: { raw: { format: tag === undefined ? {} : { tags: { TRANSCODA: tag } } } },
+  contentHash: async () => {
+    hashed += 1;
+    return hash;
+  },
 });
 const ask = (
   s: AlreadyProcessedSubject,
@@ -83,6 +93,7 @@ const ask = (
 ) => alreadyProcessed(s, { workflowId, version });
 
 beforeEach(() => {
+  hashed = 0;
   db = createTestDb();
   for (const [id, name] of [
     [SAVE, 'Save space'],
@@ -120,27 +131,33 @@ afterEach(() => {
 });
 
 /** The server's calendar day of `now`, as the reasons write it. */
-const day = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+const pad = (x: number) => String(x).padStart(2, '0');
+const day = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
 
 describe('already processed', () => {
-  it('no: nothing recorded and no tag', () => {
-    expect(ask(subject())).toEqual({
+  it('no: nothing recorded (the hash was looked up too)', async () => {
+    expect(await ask(subject())).toEqual({
       processed: false,
       reason: 'not processed by Save space',
-      findings: { workflowId: SAVE, version: null, evidence: null },
+      findings: { workflowId: SAVE, version: null, hashed: true },
     });
-    expect(ask(subject(), CLEAN, 2).reason).toBe('not processed by Clean audio v2');
+    expect((await ask(subject(), CLEAN, 2)).reason).toBe('not processed by Clean audio v2');
+    // A file that cannot be hashed is a No too.
+    expect(await ask(subject(SAVE, null))).toMatchObject({
+      processed: false,
+      findings: { hashed: false },
+    });
   });
 
-  it('yes by output fingerprint: this file is what the job wrote', () => {
-    const id = result({ output: FILE });
-    expect(ask(subject())).toEqual({
+  it('yes by output fingerprint, without hashing the file', async () => {
+    const id = result({ output: FILE, outputHash: HASH });
+    expect(await ask(subject())).toEqual({
       processed: true,
       reason: `done by Save space v3 on ${day} (this file is its output)`,
       findings: {
         workflowId: SAVE,
         version: null,
-        evidence: 'result',
+        evidence: 'fingerprint',
         matched: 'output',
         jobId: id,
         outcome: 'done',
@@ -148,69 +165,73 @@ describe('already processed', () => {
         at: now.toISOString(),
       },
     });
+    expect(hashed).toBe(0);
   });
 
-  it('yes by source fingerprint: nothing to do, kept original, or a done original that is back', () => {
+  it('yes by source fingerprint: nothing to do, kept original, or a done original that is back', async () => {
     result({ fingerprint: FILE, outcome: 'nothing_to_do', version: 1 });
-    expect(ask(subject()).reason).toBe(`nothing to do for Save space v1 on ${day}`);
+    expect((await ask(subject())).reason).toBe(`nothing to do for Save space v1 on ${day}`);
     result({ fingerprint: FILE, outcome: 'kept_original', version: 2 });
-    expect(ask(subject(), null, 2).reason).toBe(`original kept by Save space v2 on ${day}`);
+    expect((await ask(subject(), null, 2)).reason).toBe(`original kept by Save space v2 on ${day}`);
     result({ fingerprint: FILE, outcome: 'done', version: 4 });
-    expect(ask(subject(), null, 4)).toMatchObject({
+    expect(await ask(subject(), null, 4)).toMatchObject({
       processed: true,
       reason: `done by Save space v4 on ${day} (this file is its original)`,
-      findings: { matched: 'source' },
+      findings: { matched: 'source', evidence: 'fingerprint' },
     });
+    expect(hashed).toBe(0);
   });
 
-  it('yes by tag, at that version if one is set; any case of the key', () => {
-    expect(ask(subject(`${CLEAN}@1,${SAVE}@2`))).toMatchObject({
+  it('yes by content hash when no fingerprint matched: a copy of the output, or of a source', async () => {
+    result({ output: 'elsewhere', outputHash: HASH, version: 2 });
+    expect(await ask(subject())).toMatchObject({
       processed: true,
-      reason: 'tagged by Save space v2',
-      findings: { evidence: 'tag', processedVersion: 2 },
+      reason: `done by Save space v2 on ${day} (same content as its output)`,
+      findings: { evidence: 'hash', matched: 'output', processedVersion: 2 },
     });
-    expect(ask(subject(`${SAVE}@2`), null, 2).processed).toBe(true);
-    expect(ask(subject(`${SAVE}@2`), null, 3).processed).toBe(false);
-    const lower = {
-      ...subject(),
-      probe: { raw: { format: { tags: { transcoda: `${SAVE}@5` } } } },
-    };
-    expect(ask(lower).reason).toBe('tagged by Save space v5');
+    expect(hashed).toBe(1);
+    result({ workflowId: CLEAN, sourceHash: HASH, outcome: 'nothing_to_do', version: 1 });
+    expect((await ask(subject(), CLEAN)).reason).toBe(
+      `nothing to do for Clean audio v1 on ${day} (same content as the file it checked)`,
+    );
+    result({ workflowId: CLEAN, sourceHash: HASH, version: 2 });
+    expect((await ask(subject(), CLEAN, 2)).reason).toBe(
+      `done by Clean audio v2 on ${day} (same content as its original)`,
+    );
   });
 
-  it('any version vs a specific version', () => {
+  it('any version vs a specific version, by fingerprint and by hash', async () => {
     result({ output: FILE, version: 3 });
-    expect(ask(subject(), null, null).processed).toBe(true);
-    expect(ask(subject(), null, 3).processed).toBe(true);
-    expect(ask(subject(), null, 2)).toMatchObject({
+    result({ outputHash: HASH, version: 5 });
+    expect((await ask(subject(), null, null)).processed).toBe(true);
+    expect((await ask(subject(), null, 3)).findings).toMatchObject({ evidence: 'fingerprint' });
+    expect((await ask(subject(), null, 5)).findings).toMatchObject({ evidence: 'hash' });
+    expect(await ask(subject(), null, 2)).toMatchObject({
       processed: false,
       reason: 'not processed by Save space v2',
     });
   });
 
-  it('another workflow vs this one: "This workflow" is the workflow the job runs', () => {
+  it('another workflow vs this one: "This workflow" is the workflow the job runs', async () => {
     result({ workflowId: CLEAN, version: 1, output: FILE });
     // The job runs Save space: its own history has nothing.
-    expect(ask(subject()).processed).toBe(false);
-    expect(ask(subject(), CLEAN).reason).toBe(
+    expect((await ask(subject())).processed).toBe(false);
+    expect((await ask(subject(), CLEAN)).reason).toBe(
       `done by Clean audio v1 on ${day} (this file is its output)`,
     );
     // A job of Clean audio asking about "This workflow".
-    expect(ask(subject(undefined, CLEAN)).processed).toBe(true);
-    expect(ask(subject(`${CLEAN}@1`)).processed).toBe(false);
-    // A recorded result says more than the tag: it wins.
-    expect(ask(subject(`${CLEAN}@1`), CLEAN).findings).toMatchObject({ evidence: 'result' });
+    expect((await ask(subject(CLEAN))).processed).toBe(true);
   });
 
-  it('failed jobs and dry runs never count', () => {
-    result({ fingerprint: FILE, outcome: 'failed' });
-    result({ output: FILE, outcome: 'failed' });
-    result({ fingerprint: FILE, outcome: 'kept_original', dryRun: true });
-    result({ fingerprint: FILE, outcome: 'dry_run', dryRun: true });
-    expect(ask(subject())).toMatchObject({ processed: false });
+  it('failed jobs and dry runs never count, by fingerprint or by hash', async () => {
+    result({ fingerprint: FILE, sourceHash: HASH, outcome: 'failed' });
+    result({ output: FILE, outputHash: HASH, outcome: 'failed' });
+    result({ fingerprint: FILE, sourceHash: HASH, outcome: 'kept_original', dryRun: true });
+    result({ fingerprint: FILE, sourceHash: HASH, outcome: 'dry_run', dryRun: true });
+    expect(await ask(subject())).toMatchObject({ processed: false });
   });
 
-  it('a deleted or unknown workflow is named by its id and answers no', () => {
-    expect(ask(subject(), 'gone', 1).reason).toBe('not processed by gone v1');
+  it('a deleted or unknown workflow is named by its id and answers no', async () => {
+    expect((await ask(subject(), 'gone', 1)).reason).toBe('not processed by gone v1');
   });
 });

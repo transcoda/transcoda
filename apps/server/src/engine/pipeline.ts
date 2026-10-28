@@ -82,6 +82,7 @@ import {
   outputOrder,
 } from './build-model.ts';
 import { type CheckSourceResult, type CoreTools, checkSource } from './check-source.ts';
+import { contentHash } from './content-hash.ts';
 import { classifyErrorLine, READ_FAILURE, sourceDecoderNames } from './decoder-names.ts';
 import type { CurrentNode, EngineEvents } from './events.ts';
 import { ffmpegFailure, looksLikeGpuFailure, softwareFallback } from './fallback.ts';
@@ -128,7 +129,6 @@ import {
 } from './stall-guard.ts';
 import { removeOrigCopy, settleReplaceNow } from './sweep.ts';
 import type { TestOutputStore } from './test-outputs.ts';
-import { nextTranscodaTag } from './transcoda-tag.ts';
 import { confirmSourceDamage, type VerifyFailure, verifyOutput } from './verify.ts';
 import {
   type DamagedBranch,
@@ -239,8 +239,6 @@ interface Prepared {
   coverFiles: Map<number, string>;
   /** Extra input number → its private copy in the temp dir (what ffmpeg reads). */
   extraInputFiles: Map<number, string>;
-  /** The output's `TRANSCODA` tag (see transcoda-tag.ts). */
-  transcodaTag: string;
   /** The last action node of the build: the job's node while it encodes and verifies. */
   lastBuildNode: CurrentNode | null;
   args: string[];
@@ -549,6 +547,8 @@ export class Pipeline implements JobExecutor {
   private readonly settleMinutes: number;
   /** Check source's results by file and setting, oldest first (see coreTools). */
   private readonly checkResults = new Map<string, CheckSourceResult>();
+  /** The content hash of each running real job's source, until its result is recorded. */
+  private readonly sourceHashes = new Map<string, string>();
 
   constructor(private readonly deps: PipelineDeps) {
     this.settleMinutes = deps.settleMinutes ?? SETTLE_MINUTES;
@@ -638,6 +638,10 @@ export class Pipeline implements JobExecutor {
     const skip = skipReasonFor(fp, stat, library, this.deps.now(), this.settleMinutes);
     // `still growing` too: skipped, never requeued at once (it would be taken again right away).
     if (skip !== null) return this.skip(job, ctl, skip, fp);
+    // A real job records what the source's content was (Already processed matches copies by it).
+    const sourceHash = job.dryRun ? null : await this.hashOf(job, ctl, realPath);
+    if (sourceHash !== null) this.sourceHashes.set(job.id, sourceHash);
+    else this.sourceHashes.delete(job.id);
 
     // The version it now runs may have finished this file already (a forced run ignores that).
     if (repinned && !findRun(db, job.runId)?.force) {
@@ -702,7 +706,7 @@ export class Pipeline implements JobExecutor {
       (e) => {
         lastBuildNode = { workflowPath: [...e.workflowPath], nodeId: e.nodeId };
       },
-      this.coreTools(job, ctl, realPath, probe, fp),
+      this.coreTools(job, ctl, realPath, probe, fp, sourceHash),
     );
     const walkInput: WalkInput = {
       graph: loaded.graph,
@@ -778,8 +782,6 @@ export class Pipeline implements JobExecutor {
       const ext = /^\.[A-Za-z0-9]{1,8}$/.test(extname(e.path)) ? extname(e.path) : '';
       extraInputFiles.set(n + 1, join(tempDir, `sidecar-${n + 1}${ext}`));
     }
-    // The output says which workflow made it, after the workflows the source already names.
-    const transcodaTag = nextTranscodaTag(probe, job.workflowId, job.workflowVersion);
     let args: string[];
     try {
       args = [
@@ -790,7 +792,6 @@ export class Pipeline implements JobExecutor {
           output: outputPath,
           coverFiles,
           extraInputFiles,
-          transcodaTag,
           ...this.renderDevice(),
         }),
       ];
@@ -893,7 +894,6 @@ export class Pipeline implements JobExecutor {
       logPath: logPathFor(config, job),
       coverFiles,
       extraInputFiles,
-      transcodaTag,
       lastBuildNode,
       args,
       command,
@@ -987,6 +987,7 @@ export class Pipeline implements JobExecutor {
     this.gpuWarnings.delete(job.id);
     await this.removeTemp(job.id);
     if (p) this.recordResult(job, p.fp, { ...resultOf(p), outcome: 'cancelled', logPath: null });
+    this.sourceHashes.delete(job.id);
   }
 
   /** Turns how execute ended into the job's outcome; temp goes first (a retry reuses the dir). */
@@ -1309,7 +1310,7 @@ export class Pipeline implements JobExecutor {
   ): Promise<void> {
     // Temp goes before the final state is written: a retry or the next job may reuse the dir.
     await this.removeTemp(job.id);
-    const outputFingerprint = await this.outputFingerprintOf(job, w);
+    const { outputFingerprint, outputHash } = await this.outputIdentityOf(job, w);
     const reason =
       w.problems.length > 0
         ? `finished with a problem: ${w.problems.join('; ')}`
@@ -1327,24 +1328,51 @@ export class Pipeline implements JobExecutor {
         replacedTo: w.replacedTo,
         problems: [...w.problems],
         outputFingerprint,
+        outputHash,
       },
     );
   }
 
   /**
-   * The fingerprint of the file the job left at its final path (the replaced original, or the
-   * last move-copy destination), read after every finish step ran; null when it is gone or
-   * unreadable (a plugin step may have moved it). Already processed recognises it by this.
+   * The fingerprint and content hash of the file the job left at its final path (the replaced
+   * original, or the last move-copy destination), read after every finish step ran; null when it
+   * is gone or unreadable (a plugin step may have moved it). Already processed recognises the file
+   * by these. The hash is not cancelled with the job: the write is done, and it reads 12 MiB.
    */
-  private async outputFingerprintOf(job: JobRow, w: Written): Promise<string | null> {
-    if (w.dest === null) return null;
+  private async outputIdentityOf(
+    job: JobRow,
+    w: Written,
+  ): Promise<{ outputFingerprint: string | null; outputHash: string | null }> {
+    if (w.dest === null) return { outputFingerprint: null, outputHash: null };
     try {
-      return fingerprintKey(fingerprintFromStats(await this.deps.fs.stat(w.dest)));
+      return {
+        outputFingerprint: fingerprintKey(fingerprintFromStats(await this.deps.fs.stat(w.dest))),
+        outputHash: await contentHash(w.dest),
+      };
     } catch (err) {
       this.deps.log.warn({
         msg: 'could not read the written file',
         job: job.id,
         path: w.dest,
+        error: message(err),
+      });
+      return { outputFingerprint: null, outputHash: null };
+    }
+  }
+
+  /**
+   * The sampled content hash of `path`, cancelled with the job (a stop throws Stop); null when the
+   * file is gone or cannot be read (logged: the job goes on without it).
+   */
+  private async hashOf(job: JobRow, ctl: JobControl, path: string): Promise<string | null> {
+    try {
+      return await contentHash(path, { signal: ctl.signal });
+    } catch (err) {
+      this.stopIfAborted(ctl);
+      this.deps.log.warn({
+        msg: 'could not hash the file',
+        job: job.id,
+        path,
         error: message(err),
       });
       return null;
@@ -2025,7 +2053,15 @@ export class Pipeline implements JobExecutor {
     realPath: string,
     probe: ProbeResult,
     fp: Fingerprint,
+    sourceHash: string | null,
   ): CoreTools {
+    // A real job hashed its source already; a dry run hashes it once, when a node first asks.
+    let hashed: Promise<string | null> | null =
+      sourceHash === null ? null : Promise.resolve(sourceHash);
+    const contentHashOnce = () => {
+      hashed ??= this.hashOf(job, ctl, realPath);
+      return hashed;
+    };
     return {
       alreadyProcessed: (q) =>
         alreadyProcessed(
@@ -2034,7 +2070,7 @@ export class Pipeline implements JobExecutor {
             jobId: job.id,
             jobWorkflowId: job.workflowId,
             fingerprint: fingerprintKey(fp),
-            probe,
+            contentHash: contentHashOnce,
           },
           q,
         ),
@@ -2236,6 +2272,7 @@ export class Pipeline implements JobExecutor {
         this.recordResult(updated, r.fp, { ...r, outcome: state, warnings: o.warnings ?? [] });
       return updated;
     })();
+    this.sourceHashes.delete(job.id);
     ctl.changed(row);
     this.events().publish({ type: 'run.changed', runId: job.runId });
     // Hooks after the row is written; never for a dry run, a cancel or a skip.
@@ -2468,6 +2505,8 @@ export class Pipeline implements JobExecutor {
         outputProbe: OUTPUT_OUTCOMES.has(r.outcome) ? (r.outputProbe ?? null) : null,
         sourceDamaged: r.sourceDamaged ?? false,
         outputFingerprint: r.outcome === 'done' ? (r.outputFingerprint ?? null) : null,
+        sourceHash: this.sourceHashes.get(job.id) ?? null,
+        outputHash: r.outcome === 'done' ? (r.outputHash ?? null) : null,
         createdAt: this.deps.now().toISOString(),
       });
     })();
@@ -2606,6 +2645,8 @@ type ResultInput = {
   sourceDamaged: boolean;
   /** `fingerprintKey` of the written file at its final path (done jobs only). */
   outputFingerprint: string | null;
+  /** Content hash of the written file at its final path (done jobs only). */
+  outputHash: string | null;
 };
 
 /** What a step needs of the job's file (a prepared job, or one that ends in prepare). */
@@ -2695,7 +2736,6 @@ function renderInputOf(p: Prepared): RenderInput {
     output: p.outputPath,
     coverFiles: p.coverFiles,
     extraInputFiles: p.extraInputFiles,
-    transcodaTag: p.transcodaTag,
   };
 }
 
