@@ -244,6 +244,35 @@ describe('NodeSearch', () => {
     );
   });
 
+  it('shows each node’s description under its title, named by the title and described by the text', () => {
+    renderSearch({ title: 'Add a node' });
+    const keep = screen.getByRole('option', { name: 'Keep languages' });
+    const text = 'Removes audio and subtitle tracks that are not in the chosen languages.';
+    const desc = keep.querySelector('.node-search-desc');
+    expect(desc?.textContent).toBe(text);
+    // Cut to one line on screen; the full text stays in the title and the option's description.
+    expect(desc?.getAttribute('title')).toBe(text);
+    expect(screen.getByRole('option', { name: 'Keep languages', description: text })).toBe(keep);
+  });
+
+  it('marks the typed text in titles and descriptions, as often as it occurs', () => {
+    renderSearch({ title: 'Add a node', subworkflows: [sub('s1', 'Language cleanup')] });
+    const input = screen.getByRole('combobox', { name: 'Search nodes' });
+    expect(document.querySelector('.search-hit')).toBeNull();
+    fireEvent.change(input, { target: { value: 'LANGUAGE' } });
+    const keep = screen.getByRole('option', { name: 'Keep languages' });
+    const hits = (el: Element | null | undefined) =>
+      [...(el?.querySelectorAll('mark.search-hit') ?? [])].map((m) => m.textContent);
+    expect(hits(keep.querySelector('.node-search-title'))).toEqual(['language']);
+    expect(hits(keep.querySelector('.node-search-desc'))).toEqual(['language']);
+    // The marks change only the look: the title reads as before.
+    expect(keep.querySelector('.node-search-title')?.textContent).toBe('Keep languages');
+    const named = screen.getByRole('option', { name: 'Language cleanup, sub-workflow' });
+    expect(hits(named)).toEqual(['Language']);
+    // A named sub-workflow has no description line (the Run node's would not describe it).
+    expect(named.querySelector('.node-search-desc')).toBeNull();
+  });
+
   it('renders nothing while closed', () => {
     render(
       <NodeSearch
