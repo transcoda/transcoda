@@ -4659,6 +4659,13 @@ a.btn-secondary:hover {
   color: var(--on-accent);
 }
 
+/* On a row that can't be picked the match stays visible but doesn't outshine the greyed text. */
+.node-search-option[aria-disabled="true"] .search-hit {
+  background: var(--raised);
+  color: inherit;
+  text-decoration: underline;
+}
+
 .node-search-reason {
   grid-column: 2 / -1;
   font-size: 12px;
