@@ -21,7 +21,7 @@ export function parseConversion(
   note: string,
   type: (typeof STREAM_TYPES)[number],
 ): Conversion | null {
-  const m = /convert \S+?→\S+ \(([^)]*)\)/.exec(note);
+  const m = /convert [^\s→]+→\S+ \(([^)]*)\)/.exec(note);
   if (!m?.[1]) return null;
   const tokens = m[1].split(' ').filter((t) => t !== '');
   const [encoder, ...rest] = tokens;

@@ -71,8 +71,11 @@ export interface PluginPaths {
   toLocal(remotePath: string): string;
 }
 
+/** Drops trailing slashes but keeps a lone '/'. A loop, because /\/+$/ is quadratic on many inner slashes. */
 function trimSlash(p: string): string {
-  return p.length > 1 ? p.replace(/\/+$/, '') || '/' : p;
+  let end = p.length;
+  while (end > 1 && p[end - 1] === '/') end--;
+  return p.slice(0, end);
 }
 
 function mapPrefix(original: string, pairs: Array<[from: string, to: string]>): string {

@@ -157,7 +157,7 @@ describe('FilePicker', () => {
     expect(dialog.classList.contains('dialog-wide')).toBe(true);
     fireEvent.click(await within(dialog).findByRole('button', { name: 'Bluey' }));
     const pick = await within(dialog).findByRole('button', {
-      name: new RegExp(long.replace(/\./g, '\\.')),
+      name: new RegExp(long.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')),
     });
     const name = pick.querySelector('.picker-name') as HTMLElement;
     // Same text, with break opportunities after the dots and dashes.
