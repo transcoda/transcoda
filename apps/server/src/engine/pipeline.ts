@@ -733,10 +733,14 @@ export class Pipeline implements JobExecutor {
     const pictureNotes = copyPictures(model, probe);
     // Default flags as the output will have them (verify compares them strictly); a model that
     // writes nothing is left as it is.
-    const defaultNotes = new Map([
-      ...pictureNotes,
-      ...(isIdentity(model, probe) ? new Map() : normalizeDefaults(model)),
-    ]);
+    const defaultNotes = isIdentity(model, probe)
+      ? new Map<StreamPlan, string>()
+      : normalizeDefaults(model, probe);
+    // A stream with both notes keeps both.
+    for (const [s, note] of pictureNotes) {
+      const other = defaultNotes.get(s);
+      defaultNotes.set(s, other === undefined ? note : `${note}; ${other}`);
+    }
     const originalLanguage = originalLanguageOf(decided);
     const plan = planOf(model, probe, originalLanguage, defaultNotes);
     const estimatedBytes = estimateBytes(db, job.workflowId, fp.sizeBytes);

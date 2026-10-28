@@ -352,7 +352,14 @@ function sidecarLines(model: BuildModel): string[] {
  * model that is written: the identity check comes first, so an unchanged file stays as it is.
  * Returns a plan note per changed stream.
  */
-export function normalizeDefaults(model: BuildModel): Map<StreamPlan, string> {
+export function normalizeDefaults(model: BuildModel, probe?: ProbeResult): Map<StreamPlan, string> {
+  // Pictures (isPicture, with the probe; flagged covers without it) never take the default flag.
+  const picture = (s: StreamPlan) => {
+    const src = isExtraStream(s)
+      ? undefined
+      : probe?.streams.find((p) => p.index === s.sourceIndex);
+    return src && probe ? isPicture(src, probe.streams) : s.attachedPic;
+  };
   const notes = new Map<StreamPlan, string>();
   // An mp4 muxer enables a video track that was told "not default", so verify would see a flag the
   // plan did not have: video is normalised like a subtitle there (covers are not video tracks).
@@ -361,7 +368,7 @@ export function normalizeDefaults(model: BuildModel): Map<StreamPlan, string> {
       ? (['video', 'audio', 'subtitle'] as const)
       : (['audio', 'subtitle'] as const);
   for (const type of types) {
-    const streams = streamsOf(model, type).filter((s) => !s.attachedPic);
+    const streams = streamsOf(model, type).filter((s) => !picture(s));
     const first = streams.find((s) => s.default);
     for (const s of streams) {
       if (s.default && s !== first) {

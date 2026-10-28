@@ -433,6 +433,25 @@ describe('normalizeDefaults (final review I1)', () => {
     expect(mkv.streams[1]?.default).toBe(false);
   });
 
+  it('mp4 with the probe: an image track ahead of the real video never takes the default flag', () => {
+    const src = probeOf([
+      { type: 'video', codec: 'hevc', imageTrack: true },
+      { type: 'video', codec: 'h264' },
+      { type: 'audio', codec: 'aac', language: 'eng', default: true },
+    ]);
+    const mp4 = { ...modelFromProbe(src), container: 'mp4' as const };
+    const notes = normalizeDefaults(mp4, src);
+    expect(streamsOf(mp4, 'video').map((s) => [s.sourceIndex, s.default])).toEqual([
+      [0, false],
+      [1, true],
+    ]);
+    expect([...notes.keys()].map((s) => s.sourceIndex)).toEqual([1]);
+    // Without the probe only flagged covers are known: the image track would be the lead.
+    const blind = { ...modelFromProbe(src), container: 'mp4' as const };
+    normalizeDefaults(blind);
+    expect(blind.streams[0]?.default).toBe(true);
+  });
+
   it('mp4: flags the first kept video when none is, clears extra video defaults (the muxer enables a video told 0)', () => {
     const two = probeOf([
       { type: 'video', codec: 'hevc' },
