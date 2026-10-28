@@ -331,3 +331,16 @@ export type JobStatsOutput = z.infer<typeof JobStatsOutputSchema>;
 
 /** `jobs.retryFailed`: how many failed jobs went back to the queue. */
 export const JobsRetryFailedOutputSchema = z.object({ retried: z.number().int() });
+
+/** Omitted `libraryId` (or no body): every library. */
+export const JobsCancelAllInputSchema = z.object({ libraryId: z.string().optional() }).default({});
+/**
+ * `cancelled`: jobs cancelled by this call (a running job's cancel settles shortly after the
+ * answer). `writing`: jobs left to finish because they were already replacing their file or had
+ * written it. `failed`: jobs whose cancel raised an error (logged); they keep running.
+ */
+export const JobsCancelAllOutputSchema = z.object({
+  cancelled: z.number().int(),
+  writing: z.number().int(),
+  failed: z.number().int(),
+});

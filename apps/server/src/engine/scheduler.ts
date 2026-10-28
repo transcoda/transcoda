@@ -104,7 +104,19 @@ export interface JobControl {
    * queued again and waits for a slot. No effect for a quick job.
    */
   releaseEncoder?(): void;
+  /**
+   * Something was written outside the temp dir (the original replaced, or a move or copy made):
+   * a cancel from here on cannot undo it, so a bulk cancel leaves the job to finish.
+   */
+  markWritten?(): void;
 }
+
+/**
+ * `already`: a cancel is already under way (the job was not running anything new to stop).
+ * `writing`: asked with `beforeWrite` of a job replacing its file or past its first write; nothing
+ * was done. `not-active`: finished, unknown, or the server is stopping.
+ */
+export type CancelResult = 'ok' | 'already' | 'writing' | 'not-active';
 
 export interface SchedulerOptions {
   db: Database;
@@ -166,6 +178,8 @@ class ActiveJob implements JobControl {
   automatic = false;
   /** Gave its encode slot up after encoding (it never takes one back). */
   encoderReleased = false;
+  /** Wrote outside the temp dir ({@link JobControl.markWritten}). */
+  written = false;
 
   constructor(
     private readonly scheduler: Scheduler,
@@ -191,6 +205,9 @@ class ActiveJob implements JobControl {
   }
   releaseEncoder(): void {
     this.scheduler.onEncoderReleased(this);
+  }
+  markWritten(): void {
+    this.written = true;
   }
 }
 
@@ -335,11 +352,21 @@ export class Scheduler {
     return 'ok';
   }
 
-  cancelJob(id: string): 'ok' | 'not-active' {
+  /** True from `stop()` on: no pause, resume or cancel is taken any more. */
+  get isStopping(): boolean {
+    return this.stopping;
+  }
+
+  /**
+   * `beforeWrite` (a bulk cancel): a job replacing its file, or past its first write, is left to
+   * finish (`writing`), since its cancel would end it `done` anyway.
+   */
+  cancelJob(id: string, opts: { beforeWrite?: boolean } = {}): CancelResult {
     if (this.stopping) return 'not-active';
     const a = this.active.get(id);
     if (a) {
-      if (a.signal.aborted) return 'ok';
+      if (a.signal.aborted) return 'already';
+      if (opts.beforeWrite && (a.written || a.job.state === 'replacing')) return 'writing';
       a.controller.abort('cancel' satisfies StopReason);
       if (a.phase === 'ready') {
         // Not running anything: cancelled right here; the executor cleans up its temp.

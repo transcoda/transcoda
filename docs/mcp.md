@@ -18,7 +18,7 @@ An agent can, depending on the scopes of its token:
 - see which plugins are installed and whether they run;
 - create, change, duplicate, rename and delete workflows;
 - start dry runs (plans) on a file or folder in a library, optionally test-encoding (`testEncode`: encode, verify and measure for real, still writing nothing to the library);
-- with `jobs:manage`, pause, resume and cancel jobs and pause or resume the queue.
+- with `jobs:manage`, pause, resume and cancel jobs (one or all) and pause or resume the queue.
 
 An agent can never, whatever its scopes:
 
@@ -84,7 +84,7 @@ The same rules as for the API apply: set `TRANSCODA_TRUSTED_PROXIES` for your pr
 
 ## Tools
 
-25 tools. A token sees only the tools its scopes allow.
+26 tools. A token sees only the tools its scopes allow.
 
 | Tool | Scope | What it does |
 | --- | --- | --- |
@@ -97,6 +97,7 @@ The same rules as for the API apply: set `TRANSCODA_TRUSTED_PROXIES` for your pr
 | `pause_job` | `jobs:manage` | Pause a queued or running job; a running ffmpeg is stopped and its lane freed. |
 | `resume_job` | `jobs:manage` | Resume a paused job. |
 | `cancel_job` | `jobs:manage` | Cancel a job that has not finished. |
+| `cancel_all_jobs` | `jobs:manage` | Cancel every job that has not finished (queued, running or paused), optionally of one library (`libraryId`). Running ffmpeg processes are stopped and their partial output removed. A job already replacing its file finishes. Returns `cancelled`, `writing` (left to finish) and `failed` (could not be cancelled, still running). |
 | `list_workflows` | `read` | List workflows with their kind, active and current version, and `feedsLibrary`: the library the active version's Library input takes files from, or null. |
 | `get_workflow` | `read` | One workflow with its graph (webhook URLs redacted), optionally at a version. |
 | `list_workflow_versions` | `read` | A workflow's version history with notes. |

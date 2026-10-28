@@ -8,6 +8,8 @@ import {
   JobLogOutputSchema,
   JobStatsInputSchema,
   JobStatsOutputSchema,
+  JobsCancelAllInputSchema,
+  JobsCancelAllOutputSchema,
   JobsListInputSchema,
   JobsListOutputSchema,
   JobsQueueInputSchema,
@@ -91,6 +93,18 @@ export const jobs = {
     .errors(controlErrors)
     .input(JobIdInputSchema)
     .output(OkOutputSchema),
+  cancelAll: oc
+    .route({
+      method: 'POST',
+      path: '/jobs/cancel-all',
+      tags,
+      summary: 'Cancel every job that has not finished (queued, running or paused)',
+      description:
+        'Needs jobs:manage. With libraryId, only the jobs of that library. Jobs already replacing their file finish and are counted in writing. JOB_NOT_ACTIVE while the server is stopping.',
+    })
+    .errors({ ...mutationErrors, ...pickErrors('JOB_NOT_ACTIVE') })
+    .input(JobsCancelAllInputSchema)
+    .output(JobsCancelAllOutputSchema),
   deleteTestOutput: oc
     .route({
       method: 'DELETE',

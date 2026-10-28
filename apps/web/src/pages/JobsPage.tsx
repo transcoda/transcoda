@@ -1,6 +1,6 @@
 // Jobs (screens 07, 08): the live job list with filters, per-job pause/resume/cancel and the
-// whole-queue control; below 640 px the phone layout of screen 08.
-import { isFinalState, type JobState } from '@transcoda/shared';
+// whole-queue controls (pause, cancel all); below 640 px the phone layout of screen 08.
+import { CANCELLABLE_JOB_STATES, isFinalState, type JobState } from '@transcoda/shared';
 import { useState } from 'react';
 import { Link } from 'wouter';
 import { api, isDefinedError, safe } from '../api/client.ts';
@@ -179,6 +179,112 @@ function RetryFailed({ failed, onDone }: { failed: number; onDone(): void }) {
       <Icon name="refresh" size={14} />
       Retry failed
     </button>
+  );
+}
+
+const jobsWord = (n: number) => `${num.format(n)} ${n === 1 ? 'job' : 'jobs'}`;
+
+/** The toast after "Cancel all", and its tone: an error when any cancel failed. */
+function cancelAllResult(out: { cancelled: number; writing: number; failed: number }): {
+  tone: 'success' | 'info' | 'error';
+  text: string;
+} {
+  const parts: string[] = [];
+  if (out.cancelled > 0) parts.push(`Cancelled ${jobsWord(out.cancelled)}`);
+  else if (out.writing > 0 || out.failed > 0) parts.push('Nothing was cancelled');
+  if (out.writing > 0) {
+    parts.push(`${jobsWord(out.writing)} already replacing their file will finish`);
+  }
+  if (out.failed > 0) parts.push(`${jobsWord(out.failed)} could not be cancelled`);
+  if (parts.length === 0)
+    return { tone: 'info', text: 'Nothing to cancel: those jobs already finished' };
+  const tone = out.failed > 0 ? 'error' : out.cancelled > 0 ? 'success' : 'info';
+  return { tone, text: parts.join('. ') };
+}
+
+/**
+ * "Cancel all": every queued, running and paused job of the library filter, or of every library,
+ * after a confirmation. A job already replacing its file is left to finish (the server's rule; the
+ * count leaves `replacing` out too). The status chips do not narrow it; the dialog says so when
+ * one is on. Shown while any job in that scope can be cancelled (`counts` covers the library
+ * scope only).
+ */
+function CancelAll({
+  counts,
+  libraryId,
+  libraryName,
+  statusFiltered,
+  onDone,
+}: {
+  counts: Record<JobState, number> | null;
+  libraryId: string | null;
+  libraryName: string | null;
+  statusFiltered: boolean;
+  onDone(): void;
+}) {
+  const toast = useToast();
+  const [asking, setAsking] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const count = counts ? CANCELLABLE_JOB_STATES.reduce((sum, st) => sum + (counts[st] ?? 0), 0) : 0;
+  if (count === 0 && !asking) return null;
+
+  async function cancelAll() {
+    setAsking(false);
+    setBusy(true);
+    const [err, out] = await safe(api.jobs.cancelAll(libraryId ? { libraryId } : {}));
+    setBusy(false);
+    if (err || !out) {
+      toast.error(`Couldn't cancel the jobs: ${describeError(err).message}`);
+      return;
+    }
+    const { tone, text } = cancelAllResult(out);
+    toast[tone](text);
+    // The event stream brings the change; a reload also covers a stream that is reconnecting.
+    onDone();
+  }
+
+  return (
+    <>
+      <button
+        type="button"
+        className="btn btn-ghost btn-sm"
+        aria-busy={busy}
+        disabled={busy}
+        onClick={() => setAsking(true)}
+      >
+        Cancel all
+      </button>
+      <Dialog
+        open={asking}
+        title={`Cancel ${jobsWord(count)}?`}
+        tone="danger"
+        onClose={() => setAsking(false)}
+        footer={
+          <>
+            <button
+              type="button"
+              className="btn btn-ghost"
+              data-autofocus
+              onClick={() => setAsking(false)}
+            >
+              Keep running
+            </button>
+            <button type="button" className="btn btn-danger" onClick={() => void cancelAll()}>
+              {`Cancel ${jobsWord(count)}`}
+            </button>
+          </>
+        }
+      >
+        <p>
+          {`Every queued, running and paused job ${libraryId ? `in ${libraryName ?? 'this library'}` : 'in every library'} is cancelled.`}
+          {statusFiltered ? ' The status filter does not limit this.' : null}
+        </p>
+        <p>
+          Running encodes stop now and their partial output is deleted. Their originals stay
+          untouched. Jobs already replacing their file finish.
+        </p>
+      </Dialog>
+    </>
   );
 }
 
@@ -414,6 +520,15 @@ export function JobsPage() {
   const queuePaused = queue.status?.paused ?? false;
 
   const jobs = filter?.paused ? list.jobs.filter((j) => j.paused) : list.jobs;
+  const cancelAll = (
+    <CancelAll
+      counts={list.counts}
+      libraryId={libraryId}
+      libraryName={(libraries.data ?? []).find((l) => l.id === libraryId)?.name ?? null}
+      statusFiltered={filterIndex !== 0}
+      onDone={list.reload}
+    />
+  );
   const fileNameOf = (id: string) => list.jobs.find((j) => j.id === id)?.fileName ?? null;
   const countOf = (f: (typeof FILTERS)[number]): number | null => {
     if (f.paused) return list.pausedCount;
@@ -482,7 +597,9 @@ export function JobsPage() {
         </div>
         {history ? <JobsHistory history={history} /> : null}
         <EncoderStrip />
-        <QueueBar queue={queue} fileNameOf={fileNameOf} />
+        <QueueBar queue={queue} fileNameOf={fileNameOf}>
+          {cancelAll}
+        </QueueBar>
         {filterChips}
         {listState}
         {running.length > 0 ? (
@@ -561,7 +678,9 @@ export function JobsPage() {
         <LiveDot />
         <RetryFailed failed={list.counts?.failed ?? 0} onDone={list.reload} />
       </div>
-      <QueueBar queue={queue} fileNameOf={fileNameOf} />
+      <QueueBar queue={queue} fileNameOf={fileNameOf}>
+        {cancelAll}
+      </QueueBar>
       <div className="stat-row">
         <StatTiles
           stats={stats}

@@ -315,8 +315,13 @@ describe('contract', () => {
       'resume',
       'retryFailed',
       'cancel',
+      'cancelAll',
       'deleteTestOutput',
     ]);
+    expect(contract.jobs.cancelAll['~orpc'].route).toMatchObject({
+      method: 'POST',
+      path: '/jobs/cancel-all',
+    });
     expect(contract.jobs.deleteTestOutput['~orpc'].route).toMatchObject({
       method: 'DELETE',
       path: '/jobs/{id}/test-output',

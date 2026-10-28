@@ -30,6 +30,7 @@ const EXPECTED_TOOLS = [
   'pause_job',
   'resume_job',
   'cancel_job',
+  'cancel_all_jobs',
   'list_workflows',
   'get_workflow',
   'list_workflow_versions',
@@ -190,7 +191,7 @@ const unchanged = (before: Map<string, unknown>): void => {
 };
 
 describe('never tests', () => {
-  it('a token with every scope sees exactly the 25 tools, every one annotated openWorldHint false; initialize carries the instructions', async () => {
+  it('a token with every scope sees exactly the 26 tools, every one annotated openWorldHint false; initialize carries the instructions', async () => {
     const client = await mcpClient(t, token);
     const { tools } = await client.listTools();
     expect(tools.map((x) => x.name).sort()).toEqual([...EXPECTED_TOOLS].sort());
@@ -198,7 +199,7 @@ describe('never tests', () => {
     expect(client.getInstructions()).toContain('You can never activate a workflow version');
     expect(client.getInstructions()).toContain('never install, change or configure them');
     expect(ALL_TOOLS.map((d) => d.name)).toHaveLength(new Set(ALL_TOOLS.map((d) => d.name)).size);
-    expect(ALL_TOOLS).toHaveLength(25);
+    expect(ALL_TOOLS).toHaveLength(26);
   });
 
   it('no tool can activate, deactivate or change a mode; no real run is ever queued', async () => {
@@ -601,6 +602,7 @@ describe('never tests', () => {
         'pause_job',
         'resume_job',
         'cancel_job',
+        'cancel_all_jobs',
         'create_workflow',
         'save_workflow',
         'duplicate_workflow',
