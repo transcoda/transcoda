@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import {
   containerCanHold,
   conversion,
+  copyPictures,
   coverFile,
   diffFromProbe,
   extraInputOf,
@@ -327,6 +328,37 @@ describe('covers into mkv', () => {
     const model = modelFromProbe(mkv);
     expect(isIdentity(model, mkv)).toBe(true);
     expect(diffFromProbe(model, mkv)).toEqual([]);
+  });
+});
+
+describe('copyPictures (a picture is never encoded)', () => {
+  const src = probeOf([
+    { type: 'video', codec: 'hevc' },
+    { type: 'video', codec: 'hevc', imageTrack: true },
+    { type: 'video', codec: 'mjpeg' },
+    { type: 'audio', codec: 'aac' },
+  ]);
+  const encode = { mode: 'convert' as const, codec: 'hevc', encoder: 'hevc_nvenc', quality: 24 };
+
+  it('puts pictures a node converts back to copy and notes it; real video stays converted', () => {
+    let model = modelFromProbe(src);
+    for (const i of [0, 1, 2]) model = withStream(model, i, encode);
+    const notes = copyPictures(model, src);
+    expect(model.streams.map((s) => [s.mode, s.codec, s.encoder, s.quality])).toEqual([
+      ['convert', 'hevc', 'hevc_nvenc', 24],
+      ['copy', 'hevc', null, null],
+      ['copy', 'mjpeg', null, null],
+      ['copy', 'aac', null, null],
+    ]);
+    expect([...notes.entries()].map(([s, note]) => [s.sourceIndex, note])).toEqual([
+      [1, 'a picture, copied: pictures are never encoded'],
+      [2, 'a picture, copied: pictures are never encoded'],
+    ]);
+  });
+
+  it('changes nothing when no picture is converted', () => {
+    const model = withStream(modelFromProbe(src), 0, encode);
+    expect(copyPictures(model, src).size).toBe(0);
   });
 });
 

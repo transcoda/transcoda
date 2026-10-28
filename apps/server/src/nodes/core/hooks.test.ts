@@ -492,6 +492,17 @@ describe('core:cover-attachments', () => {
     expect(result.reason).toBe('dropped cover #6');
   });
 
+  it('drops images stored as video tracks with the covers, never the real video', async () => {
+    const withImage = probeOf([
+      { codec: 'hevc' },
+      { codec: 'hevc', imageTrack: true },
+      { type: 'audio' },
+    ]);
+    const result = await build(coverAttachments, buildCtx(withImage), { keepCover: false });
+    expect(indices(kept(result.model))).toEqual([0, 2]);
+    expect(result.reason).toBe('dropped cover #1');
+  });
+
   it('keeps ttf while an ass subtitle is kept', async () => {
     const result = await build(coverAttachments, buildCtx(probe));
     expect(indices(kept(result.model))).toEqual([0, 1, 2, 3, 4, 6]);
@@ -536,6 +547,17 @@ describe('core:encode-video', () => {
     const tenBit = probeOf([{ codec: 'h264', bitDepth: 10 }]);
     const converted = await build(encodeVideo, buildCtx(tenBit), { skipIf: 'never' });
     expect(byIndex(converted.model, 0).pixelFormat).toBe('yuv420p10le');
+  });
+
+  it('never encodes an image stored as a video track (skipIf never)', async () => {
+    const withImage = probeOf([
+      { codec: 'hevc', bitDepth: 8 },
+      { codec: 'hevc', bitDepth: 8, imageTrack: true },
+      { type: 'audio' },
+    ]);
+    const result = await build(encodeVideo, buildCtx(withImage), { skipIf: 'never' });
+    expect(byIndex(result.model, 0).mode).toBe('convert');
+    expect(byIndex(result.model, 1)).toMatchObject({ mode: 'copy', encoder: null });
   });
 
   it('plays-on-all-targets with hevc + [android-tv] → copy', async () => {

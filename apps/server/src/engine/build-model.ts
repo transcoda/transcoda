@@ -1,7 +1,7 @@
 // The per-stream build model: the identity model of a probed file, identity checks, a readable
 // diff against the probe, and encoder resolution.
 import type { BuildModel, ExtraInput, ProbeResult, StreamPlan } from '@transcoda/sdk';
-import type { ProbeStream } from '@transcoda/shared';
+import { isPicture, type ProbeStream } from '@transcoda/shared';
 
 /**
  * The model that rewrites nothing: every stream kept in copy mode, in probe order, with its
@@ -99,6 +99,35 @@ export function fitToContainer(model: BuildModel): {
     }
   }
   return { converted, dropped };
+}
+
+/**
+ * Puts every kept picture (isPicture: a cover, a poster, an image stored as a video track) that a
+ * node set to convert back to copy, in place, and returns a plan note per stream it changed. An
+ * encoder holds a picture's single frame until the input ends, and the muxer then keeps every
+ * packet of the other streams in memory and writes nothing (a 12 hour job grew to gigabytes
+ * with an empty output), so a picture is never encoded, whatever a node or plugin asked for.
+ */
+export function copyPictures(model: BuildModel, probe: ProbeResult): Map<StreamPlan, string> {
+  const notes = new Map<StreamPlan, string>();
+  for (const s of kept(model)) {
+    if (s.type !== 'video' || s.mode !== 'convert' || isExtraStream(s)) continue;
+    const src = probe.streams.find((p) => p.index === s.sourceIndex);
+    if (!src || !isPicture(src, probe.streams)) continue;
+    Object.assign(s, {
+      mode: 'copy',
+      codec: src.codec,
+      encoder: null,
+      quality: null,
+      preset: null,
+      bitrateKbps: null,
+      channels: null,
+      profile: null,
+      pixelFormat: null,
+    });
+    notes.set(s, 'a picture, copied: pictures are never encoded');
+  }
+  return notes;
 }
 
 const COVER_FILES: Record<string, { ext: string; mimetype: string }> = {

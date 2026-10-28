@@ -68,6 +68,7 @@ import type { PluginRestartGate } from '../plugins/restart-gate.ts';
 import type { WorkflowService } from '../workflows/service.ts';
 import {
   containerCanHold,
+  copyPictures,
   coverFile,
   diffFromProbe,
   encoderUsable,
@@ -722,9 +723,14 @@ export class Pipeline implements JobExecutor {
       );
     }
     const { model, actions, gates, damaged } = built;
+    // A picture a node set to convert is copied (see copyPictures).
+    const pictureNotes = copyPictures(model, probe);
     // Default flags as the output will have them (verify compares them strictly); a model that
     // writes nothing is left as it is.
-    const defaultNotes = isIdentity(model, probe) ? new Map() : normalizeDefaults(model);
+    const defaultNotes = new Map([
+      ...pictureNotes,
+      ...(isIdentity(model, probe) ? new Map() : normalizeDefaults(model)),
+    ]);
     const originalLanguage = originalLanguageOf(decided);
     const plan = planOf(model, probe, originalLanguage, defaultNotes);
     const estimatedBytes = estimateBytes(db, job.workflowId, fp.sizeBytes);

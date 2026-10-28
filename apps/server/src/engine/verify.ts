@@ -1,7 +1,7 @@
 // Output verification: re-probe the encoded file and check it against the build model before any
 // replace. Every check runs and failures accumulate (except an unreadable output: probe only).
 import type { BuildModel, ProbeResult, StreamPlan } from '@transcoda/sdk';
-import { DEVICE_PROFILES, type ProbeStream, sameLanguage } from '@transcoda/shared';
+import { DEVICE_PROFILES, isPicture, type ProbeStream, sameLanguage } from '@transcoda/shared';
 import { type Exec, makeExec } from '../capabilities/ffmpeg.ts';
 import { extraInputOf, isExtraStream, isMkvCover, outputOrder } from './build-model.ts';
 import { READ_FAILURE } from './decoder-names.ts';
@@ -716,7 +716,7 @@ async function decodeInputs(
   const start = { input: ['-t', '1', '-i', file.path], where: 'the first second' };
   const streams = [...file.probe.streams].sort((a, b) => a.index - b.index);
   const anchor =
-    streams.find((s) => s.type === 'video' && !s.attachedPic) ??
+    streams.find((s) => s.type === 'video' && !isPicture(s, streams)) ??
     streams.find((s) => s.type === 'audio');
   if (!anchor) return { 'decode-start': start, 'decode-end': null };
   let end = file.ends.get(anchor.index) ?? null;
@@ -782,7 +782,7 @@ async function sampleSpots(
   const anchorOf = (file: MediaFile) => {
     const streams = [...file.probe.streams].sort((a, b) => a.index - b.index);
     return (
-      streams.find((s) => s.type === 'video' && !s.attachedPic) ??
+      streams.find((s) => s.type === 'video' && !isPicture(s, streams)) ??
       streams.find((s) => s.type === 'audio')
     );
   };
@@ -1125,7 +1125,7 @@ export async function confirmSourceDamage(input: {
   const file = await mediaFile(exec, input.ffprobePath, input.sourcePath, input.sourceProbe);
   const streams = [...file.probe.streams].sort((a, b) => a.index - b.index);
   const anchor =
-    streams.find((s) => s.type === 'video' && !s.attachedPic) ??
+    streams.find((s) => s.type === 'video' && !isPicture(s, streams)) ??
     streams.find((s) => s.type === 'audio');
   const failures: VerifyFailure[] = [];
   const spots = [

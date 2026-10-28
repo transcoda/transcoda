@@ -386,3 +386,71 @@ describe('jobProbeOf', () => {
     ]);
   });
 });
+
+describe('parseProbe marks images stored as video tracks (imageTrack)', () => {
+  const video = (index: number, extra: Record<string, unknown> = {}) => ({
+    index,
+    codec_type: 'video',
+    codec_name: 'hevc',
+    disposition: { default: 0, attached_pic: 0 },
+    ...extra,
+  });
+  const audio = { index: 9, codec_type: 'audio', codec_name: 'aac' };
+  const marks = (streams: Record<string, unknown>[]) =>
+    parseProbe(doc(streams)).streams.map((s) => s.imageTrack === true);
+
+  it('an image MIMETYPE or FILENAME tag marks a video track, in any case, whatever its codec', () => {
+    expect(
+      marks([
+        video(0),
+        video(1, { tags: { FILENAME: 'cover.jpg', MIMETYPE: 'image/jpeg' } }),
+        video(2, { tags: { mimetype: 'image/png' } }),
+        video(3, { tags: { filename: 'Poster.WEBP' } }),
+        audio,
+      ]),
+    ).toEqual([false, true, true, true, false]);
+  });
+
+  it('other tags, other types and flagged covers are not marked', () => {
+    expect(
+      marks([
+        video(0, { tags: { FILENAME: 'feature.mkv', MIMETYPE: 'video/x-matroska' } }),
+        video(1, { tags: { FILENAME: 'jpg' } }),
+        {
+          index: 2,
+          codec_type: 'attachment',
+          codec_name: 'mjpeg',
+          tags: { MIMETYPE: 'image/jpeg' },
+        },
+        video(3, {
+          codec_name: 'png',
+          disposition: { attached_pic: 1 },
+          tags: { MIMETYPE: 'image/png' },
+        }),
+      ]),
+    ).toEqual([false, false, false, false]);
+  });
+
+  it('nb_frames 1 next to a video with more (or unknown) frames marks the one-frame track', () => {
+    expect(marks([video(0, { nb_frames: '156279' }), video(1, { nb_frames: '1' })])).toEqual([
+      false,
+      true,
+    ]);
+    expect(marks([video(0), video(1, { nb_frames: '1' })])).toEqual([false, true]);
+  });
+
+  it('a lone one-frame video, two one-frame videos, and a short duration are not marked', () => {
+    expect(marks([video(0, { nb_frames: '1' }), audio])).toEqual([false, false]);
+    expect(marks([video(0, { nb_frames: '1' }), video(1, { nb_frames: '1' })])).toEqual([
+      false,
+      false,
+    ]);
+    // ffprobe's mkv stream durations are not trusted (a 1 ms track reads as the whole file).
+    expect(
+      marks([
+        video(0),
+        video(1, { duration: '0.001000', tags: { DURATION: '00:00:00.001000000' } }),
+      ]),
+    ).toEqual([false, false]);
+  });
+});
