@@ -9,6 +9,12 @@
   "internalChecksFilter": "strict",
   "rangeStrategy": "pin",
   "labels": ["dependencies", "no user-facing change"],
+  "osvVulnerabilityAlerts": true,
+  "lockFileMaintenance": {
+    "enabled": true,
+    "description": "Weekly refresh of transitive dependencies, which no other rule updates (Scorecard found fixed CVEs sitting in the lockfile).",
+    "schedule": ["* * * * 6"]
+  },
   "packageRules": [
     {
       "description": "SHA-pinned actions in one PR; Renovate rewrites the SHA and the version comment.",
