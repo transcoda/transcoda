@@ -119,6 +119,7 @@ import { autoStreams, retarget } from './retarget.ts';
 import type { ExecuteOutcome, JobControl, JobExecutor, SlotFit } from './scheduler.ts';
 import { recycleSidecars } from './sidecar-recycle.ts';
 import type { SpaceWaits } from './space-waits.ts';
+import { OutputStallGuard, stallReason, watchForStall } from './stall-guard.ts';
 import { removeOrigCopy, settleReplaceNow } from './sweep.ts';
 import type { TestOutputStore } from './test-outputs.ts';
 import { confirmSourceDamage, type VerifyFailure, verifyOutput } from './verify.ts';
@@ -1326,12 +1327,19 @@ export class Pipeline implements JobExecutor {
     const sourceErrors: { line: string; at: number }[] = [];
     const demuxerErrors: { line: string; at: number }[] = [];
     const outputErrors: string[] = [];
+    // The stall guard (TRANSCODA_ENCODE_STALL_MINUTES, 0 = off): no more output for that long
+    // stops ffmpeg, so a stuck muxer cannot hold the source in memory for hours.
+    const stallMs = config.encodeStallMinutes * 60_000;
+    const guard =
+      stallMs > 0 ? new OutputStallGuard(stallMs, () => this.deps.now().getTime()) : null;
+    let stalled = false;
     const proc = this.deps.spawner.spawn(config.ffmpegPath, p.args, {
       logPath: p.logPath,
       pidFile: join(p.tempDir, 'ffmpeg.pid'),
       log: this.deps.log,
       onProgress: (s) => {
         last = s;
+        guard?.sample(s);
         if ((s.frames ?? 0) > 0 || s.outTimeSeconds > 0) framesOut = true;
         if (ctl.signal.aborted) return;
         const t = this.deps.now().getTime();
@@ -1349,17 +1357,27 @@ export class Pipeline implements JobExecutor {
         }
       },
     });
-    ctl.attach(proc);
+    const watch = guard
+      ? watchForStall(proc, guard, stallMs, () => {
+          stalled = true;
+          this.deps.log.warn({ msg: 'encode wrote no output, stopping ffmpeg', job: job.id });
+        })
+      : null;
+    ctl.attach(watch?.proc ?? proc);
     let result: Awaited<typeof proc.done>;
     try {
       result = await proc.done;
     } catch (err) {
+      watch?.stop();
       ctl.attach(null);
       this.stopIfAborted(ctl);
       return fail(retryable(`ffmpeg could not start: ${message(err)}`));
     }
+    watch?.stop();
     ctl.attach(null);
     this.stopIfAborted(ctl);
+    // Stopped by the stall guard: the same plan would stall again, so it is not retried.
+    if (stalled) return fail(final(stallReason(config.encodeStallMinutes)));
     if (result.code !== 0) {
       const why =
         result.code === null

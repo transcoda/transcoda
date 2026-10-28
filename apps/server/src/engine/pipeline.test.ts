@@ -456,6 +456,7 @@ async function setup(
     /** Real plugins: bundles to load as dev plugins (the caller starts the plugin service). */
     plugins?: { devPlugins?: string[] };
     capabilities?: Capabilities;
+    encodeStallMinutes?: number;
   } = {},
 ) {
   spawner = new TestSpawner();
@@ -471,6 +472,9 @@ async function setup(
       outputRoots: [join(base, 'out')],
       ...(opts.puid !== undefined ? { puid: opts.puid, pgid: opts.puid } : {}),
       ...(opts.publicUrl !== undefined ? { publicUrl: opts.publicUrl } : {}),
+      ...(opts.encodeStallMinutes !== undefined
+        ? { encodeStallMinutes: opts.encodeStallMinutes }
+        : {}),
     },
     capabilities: opts.capabilities ?? caps,
     spawner,
@@ -550,6 +554,30 @@ describe('pipeline', () => {
       outcome: 'nothing_to_do',
       plan: { rewrite: false },
     });
+    expect((await stat(file())).size).toBe(1000);
+  });
+
+  it('an encode that writes no output for the stall limit is stopped and fails, not retried', async () => {
+    await t.deps.engine.stop();
+    await setup({ encodeStallMinutes: 0.001 }); // 60 ms on the test clock
+    const wf = workflow(
+      line(node('in', 'core:input-manual'), toH264(), node('ro', 'core:replace-original')),
+    );
+    const id = await queue(file(), wf);
+    await t.deps.engine.start();
+    await until('spawn', () => spawner.calls.length === 1);
+    // Output that grows keeps it running.
+    t.clock.advance(50);
+    spawner.emitProgress({ outTimeSeconds: 1, speed: 1, fps: 25, sizeBytes: 100 });
+    t.clock.advance(50);
+    await new Promise((r) => setTimeout(r, 50));
+    expect(spawner.signals).toEqual([]);
+    // Then nothing more: stopped.
+    t.clock.advance(60);
+    const job = await settled(id);
+    expect(spawner.signals).toEqual(['SIGKILL']);
+    expect(job).toMatchObject({ state: 'failed', attempt: 1 });
+    expect(job.reason).toMatch(/^ffmpeg wrote no output for 0\.001 minutes and was stopped\. /);
     expect((await stat(file())).size).toBe(1000);
   });
 

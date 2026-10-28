@@ -29,6 +29,19 @@ describe('loadConfig', () => {
     expect(c.healthMinFreeGiB).toBe(12);
   });
 
+  it('reads the encode stall guard: 60 minutes by default, 0 turns it off', () => {
+    expect(loadConfig({}).encodeStallMinutes).toBe(60);
+    expect(loadConfig({ TRANSCODA_ENCODE_STALL_MINUTES: '90' }).encodeStallMinutes).toBe(90);
+    expect(loadConfig({ TRANSCODA_ENCODE_STALL_MINUTES: '0' }).encodeStallMinutes).toBe(0);
+    for (const value of ['abc', '-5']) {
+      expect(() => loadConfig({ TRANSCODA_ENCODE_STALL_MINUTES: value })).toThrow(
+        new ConfigError(
+          `TRANSCODA_ENCODE_STALL_MINUTES must be 0 (off) or a positive number of minutes, got "${value}"`,
+        ),
+      );
+    }
+  });
+
   it.each([
     ['TRANSCODA_HEALTH_STALL_HOURS', '0'],
     ['TRANSCODA_HEALTH_STALL_HOURS', 'abc'],

@@ -1,7 +1,8 @@
 // An image stored as a one-frame video track, with the real ffmpeg: the probe marks it, the plan
-// copies it instead of encoding it, and the job writes its output. Encoded, the lone frame stays
-// inside the encoder until the input ends and the muxer keeps every other packet in memory: the
-// output stays empty for the whole encode.
+// copies it instead of encoding it, and the job writes its output. Encoded, the lone frame never
+// reaches the muxer until the input ends (the decoder and encoder hold it), so the muxer keeps
+// every other packet in memory: no progress is reported and the output stays empty for the whole
+// encode. The stall guard stops such an encode.
 import { execFile, spawnSync } from 'node:child_process';
 import { mkdir, rm, stat, utimes } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -15,6 +16,8 @@ import { chain, node } from '../workflows/test-helpers.ts';
 import { realCapabilities, tempDir, toolPaths } from './fixtures.ts';
 import { type FsOps, nodeFsOps } from './fs-ops.ts';
 import { probeFile } from './probe.ts';
+import { nodeSpawner } from './process.ts';
+import { OutputStallGuard, watchForStall } from './stall-guard.ts';
 
 const execFileAsync = promisify(execFile);
 const { ffmpegPath, ffprobePath } = toolPaths();
@@ -162,5 +165,52 @@ describe.skipIf(!toolsAvailable())('an image stored as a video track, with real 
     ]);
     expect((await stat(file)).size).toBeGreaterThan(0);
     expect(out.durationSeconds).toBeGreaterThan(3.5);
+  }, 120_000);
+
+  it('encoding the image track stalls the output (no progress, empty file); the stall guard stops it', async () => {
+    const dir = join(base, 'stall');
+    await mkdir(dir, { recursive: true });
+    const file = await sample(dir);
+    /**
+     * The sample through ffmpeg at real time (the `realtime` filter on the main video: about 4 s),
+     * with the image track encoded or copied, watched by a 1.5 s stall guard.
+     */
+    const encode = async (imageTrack: 'libx265' | 'copy') => {
+      const output = join(dir, `out-${imageTrack}.mkv`);
+      const limitMs = 1500;
+      const guard = new OutputStallGuard(limitMs, Date.now);
+      let samples = 0;
+      let stalled = false;
+      // biome-ignore format: flag/value pairs
+      const proc = nodeSpawner.spawn(ffmpegPath, [
+        '-nostdin', '-v', 'error', '-y', '-stats_period', '0.1', '-progress', 'pipe:1',
+        '-i', file, '-map', '0',
+        '-filter:v:0', 'realtime', '-c:v:0', 'libx265', '-preset:v:0', 'ultrafast',
+        '-x265-params', 'log-level=error',
+        '-c:v:1', imageTrack, '-c:a', 'aac', output,
+      ], {
+        logPath: join(dir, `${imageTrack}.log`),
+        onProgress: (s) => {
+          samples += 1;
+          guard.sample(s);
+        },
+      });
+      const watch = watchForStall(proc, guard, limitMs, () => {
+        stalled = true;
+      });
+      const result = await proc.done;
+      watch.stop();
+      return { result, stalled, samples, size: (await stat(output)).size };
+    };
+
+    const stuck = await encode('libx265');
+    expect(stuck).toMatchObject({ stalled: true, samples: 0, size: 0 });
+    expect(stuck.result.signal).toBe('SIGKILL');
+
+    const copied = await encode('copy');
+    expect(copied.stalled).toBe(false);
+    expect(copied.result.code).toBe(0);
+    expect(copied.samples).toBeGreaterThan(10);
+    expect(copied.size).toBeGreaterThan(0);
   }, 120_000);
 });
