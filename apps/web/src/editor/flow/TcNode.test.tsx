@@ -15,7 +15,7 @@ import {
 } from './actions-context.ts';
 import { edgeTypes, nodeTypes } from './nodeTypes.ts';
 import { SubworkflowsContext } from './subworkflows-context.ts';
-import { portLabel } from './TcHandle.tsx';
+import { branchType, namesFileOutputs, portLabel } from './TcHandle.tsx';
 import { TcNode as TcNodeCard } from './TcNode.tsx';
 import type { TcNode } from './types.ts';
 
@@ -117,6 +117,23 @@ describe('portLabel', () => {
     expect(portLabel(file('else', 'Other'))).toBe('Other');
     expect(portLabel(file('out', 'Out'))).toBe('file');
   });
+  it('a named file output (one of several) reads its own label; branch ports are unchanged', () => {
+    expect(portLabel(file('ok', 'OK'), true)).toBe('OK');
+    expect(portLabel(file('damaged', 'Damaged'), true)).toBe('Damaged');
+    expect(portLabel(file('pass', 'Pass'), true)).toBe('Yes');
+    expect(branchType(file('damaged', 'Damaged'), true)).toBe('file');
+    expect(branchType(file('out', 'Out'))).toBeNull();
+  });
+});
+
+describe('namesFileOutputs', () => {
+  const port = (id: string, type = 'file'): PortSpec => ({ id, label: id, type }) as PortSpec;
+  it('is true only with more than one file output that is not a Yes / No branch', () => {
+    expect(namesFileOutputs([port('out')])).toBe(false);
+    expect(namesFileOutputs([port('pass'), port('else')])).toBe(false);
+    expect(namesFileOutputs([port('out'), port('lang', 'data:language')])).toBe(false);
+    expect(namesFileOutputs([port('ok'), port('damaged')])).toBe(true);
+  });
 });
 
 describe('TcNode', () => {
@@ -201,6 +218,26 @@ describe('TcNode', () => {
     });
     expect(card('vi').querySelector('.tc-port-type')).toBeNull();
     expect(card('vi').querySelector('.tc-port-out')).toBeNull();
+  });
+
+  it('several file outputs read their names: Check source OK / Damaged, Render Done / Damaged with Quality check on', async () => {
+    await show([
+      tcNode(instance('cs', 'core:check-source')),
+      tcNode(instance('r1', 'core:render', { settings: { qualityCheck: true } }), { x: 400 }),
+      tcNode(instance('r0', 'core:render'), { x: 800 }),
+    ]);
+    const rows = (id: string) =>
+      [...card(id).querySelectorAll('.tc-port')].map((r) => r.textContent);
+    // "OK · file" on screen; "OK, file" read aloud.
+    expect(rows('cs')).toEqual(['fileOK, file', 'Damaged, file']);
+    expect(handle('cs', 'ok').getAttribute('title')).toBe('OK, file out');
+    expect(handle('cs', 'damaged').getAttribute('title')).toBe('Damaged, file out');
+    // Not a Yes / No branch: no branch colour.
+    expect(card('cs').querySelector('.is-branch-else')).toBeNull();
+    expect(rows('r1')).toEqual(['fileDone, file', 'Damaged, file']);
+    // Damaged hidden: the one output left reads "file", as before.
+    expect(rows('r0')).toEqual(['filefile']);
+    expect(handle('r0', 'done').getAttribute('title')).toBe('file out');
   });
 
   it('the size gate shows two outputs, Yes and No, each with a connect button', async () => {

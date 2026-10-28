@@ -23,7 +23,14 @@ import { useEditorActions } from './actions-context.ts';
 import { BADGE_ICON } from './badges.ts';
 import { connectionFit, type Fit, type HandleRef, nodeFaded } from './connectionFit.ts';
 import { useSubworkflowList } from './subworkflows-context.ts';
-import { branchClass, branchType, dragFromOf, portLabel, TcHandle } from './TcHandle.tsx';
+import {
+  branchClass,
+  branchType,
+  dragFromOf,
+  namesFileOutputs,
+  portLabel,
+  TcHandle,
+} from './TcHandle.tsx';
 import { TcSelectionToolbar, TcToolbar } from './TcToolbar.tsx';
 import { VALUE_LINK_HANDLE } from './toFlow.ts';
 import type { TcNode as TcNodeType, TraceNodeData } from './types.ts';
@@ -95,6 +102,7 @@ function PortRow({
   connectedOut,
   onPlus,
   labelOf,
+  named,
   showLabels,
   traced,
   fitOf,
@@ -105,7 +113,9 @@ function PortRow({
   connectedIn: ReadonlySet<string>;
   connectedOut: ReadonlySet<string>;
   onPlus: ((port: PortSpec) => void) | undefined;
-  labelOf(port: PortSpec): string;
+  labelOf(port: PortSpec, named: boolean): string;
+  /** The node's file outputs read their own names (`namesFileOutputs`). */
+  named: boolean;
   showLabels: boolean;
   traced: PortTrace | null;
   fitOf: FitOf;
@@ -115,7 +125,7 @@ function PortRow({
   const data = (input ?? output)?.type !== 'file';
   let outClass = 'tc-port-out';
   const branch = output ? branchClass(output) : null;
-  const outType = output ? branchType(output) : null;
+  const outType = output ? branchType(output, named) : null;
   if (branch) outClass += ` ${branch}`;
   if (traced && output?.type === 'file') {
     if (output.id === traced.taken) outClass += ' is-taken';
@@ -125,7 +135,7 @@ function PortRow({
     <div className={`tc-port${data ? ' is-data' : ''}`}>
       {input && (
         <>
-          {showLabels && <span className="tc-port-in">{labelOf(input)}</span>}
+          {showLabels && <span className="tc-port-in">{labelOf(input, false)}</span>}
           {!ghost && (
             <TcHandle
               port={input}
@@ -140,7 +150,7 @@ function PortRow({
         <>
           {showLabels && (
             <span className={outClass}>
-              {labelOf(output)}
+              {labelOf(output, named)}
               {outType && <BranchType type={outType} />}
             </span>
           )}
@@ -150,6 +160,7 @@ function PortRow({
               direction="out"
               connected={connectedOut.has(output.id)}
               fit={fitOf('out', output.id)}
+              named={named}
               {...(onPlus && { onPlus })}
             />
           )}
@@ -160,8 +171,8 @@ function PortRow({
 }
 
 /**
- * The type a branch output passes, after its Yes / No: "Yes · file" on screen (the stylesheet
- * draws the dot, hidden from assistive tech), "Yes, file" read aloud.
+ * The type a branch or named output passes, after its label: "Yes · file" or "Damaged · file" on
+ * screen (the stylesheet draws the dot, hidden from assistive tech), "Yes, file" read aloud.
  */
 function BranchType({ type }: { type: 'file' | 'data' }) {
   return (
@@ -294,6 +305,8 @@ export function TcNode({ id, data, selected }: NodeProps<TcNodeType>) {
     ? def.outputs.filter((p) => portShown(p, instance.settings) || connectedOut.has(p.id))
     : portsFrom(connectedOut);
   const labelOf = def ? portLabel : (port: PortSpec) => port.id;
+  // Several file outputs (Check source's OK / Damaged) read their names instead of "file".
+  const named = def !== null && namesFileOutputs(outputs);
   // N5: an unknown node's stand-in ports have no type (`portType: null`), so nothing glows there.
   const refOf = (direction: 'in' | 'out', p: PortSpec): HandleRef => ({
     nodeId: id,
@@ -395,6 +408,7 @@ export function TcNode({ id, data, selected }: NodeProps<TcNodeType>) {
           direction={direction}
           connected={connected.has(port.id)}
           fit={fitOf(direction, port.id)}
+          named={named}
         />
       ));
     return (
@@ -443,6 +457,7 @@ export function TcNode({ id, data, selected }: NodeProps<TcNodeType>) {
           connectedOut={connectedOut}
           onPlus={ghost ? undefined : onPlus}
           labelOf={labelOf}
+          named={named}
           showLabels={zoom === 'full'}
           traced={portTrace}
           fitOf={fitOf}

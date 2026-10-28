@@ -4579,13 +4579,14 @@ a.btn-secondary:hover {
 }
 
 .node-search-option {
+  position: relative;
   display: grid;
   grid-template-columns: auto auto 1fr auto;
   align-items: center;
   column-gap: 8px;
   min-height: 44px;
   padding: 4px 10px;
-  border-radius: var(--r-sm);
+  border-radius: var(--r-md);
   font-size: 14px;
   cursor: pointer;
 }
@@ -4599,9 +4600,25 @@ a.btn-secondary:hover {
   justify-self: start;
 }
 
+/* Selected: the same marks as the current Settings item (fill, weight and a straight bar inset from
+   the rounded corners), so colour is not the only sign. */
 .node-search-option[aria-selected="true"] {
   background: var(--raised);
-  box-shadow: inset 2px 0 0 var(--accent-text);
+}
+
+.node-search-option[aria-selected="true"] .node-search-title {
+  font-weight: 700;
+}
+
+.node-search-option[aria-selected="true"]::before {
+  content: "";
+  position: absolute;
+  top: 10px;
+  bottom: 10px;
+  left: 0;
+  width: 3px;
+  border-radius: 0;
+  background: var(--accent-text);
 }
 
 .node-search-option[aria-disabled="true"] {
@@ -4616,6 +4633,37 @@ a.btn-secondary:hover {
   font-weight: 600;
   color: var(--faint);
   text-transform: uppercase;
+}
+
+/* The node's description under its title: one muted line, cut with an ellipsis (the full text
+   is the title attribute and the option's description). */
+.node-search-desc {
+  grid-column: 2 / 4;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.node-search-option[aria-disabled="true"] .node-search-desc {
+  color: inherit;
+}
+
+/* The part of a name or description that matches the search. */
+.search-hit {
+  padding: 0;
+  border-radius: 2px;
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+/* On a row that can't be picked the match stays visible but doesn't outshine the greyed text. */
+.node-search-option[aria-disabled="true"] .search-hit {
+  background: var(--raised);
+  color: inherit;
+  text-decoration: underline;
 }
 
 .node-search-reason {

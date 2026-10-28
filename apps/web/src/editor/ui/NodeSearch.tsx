@@ -3,6 +3,7 @@ import { RUN_SUBWORKFLOW_TYPE, SUBWORKFLOW_START_TYPE, type WorkflowKind } from 
 import { type KeyboardEvent, useEffect, useId, useState } from 'react';
 import { KIND_WORD } from '../../components/Chips.tsx';
 import { Dialog } from '../../components/Dialog.tsx';
+import { Highlight } from '../../components/Highlight.tsx';
 import { Icon } from '../../components/Icon.tsx';
 import { NodeIcon } from '../../components/NodeIcon.tsx';
 import type { Catalog, PortType } from '../../hooks/useCatalog.ts';
@@ -202,6 +203,12 @@ function OpenSearch({
             : plugin
               ? `${def.title}, plugin`
               : def.title;
+          // A named sub-workflow has no description of its own (the Run node's would mislead).
+          const description = workflow ? '' : def.description.trim();
+          const describedBy = [
+            reason && `${optionId(i)}-why`,
+            description && `${optionId(i)}-desc`,
+          ].filter(Boolean);
           return (
             // The input keeps focus and drives the active option (combobox pattern); a click
             // picks too, so the options take no keyboard handlers of their own.
@@ -214,7 +221,7 @@ function OpenSearch({
               aria-label={label}
               aria-selected={i === current}
               aria-disabled={disabled}
-              aria-describedby={reason ? `${optionId(i)}-why` : undefined}
+              aria-describedby={describedBy.length ? describedBy.join(' ') : undefined}
               className="node-search-option"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => {
@@ -226,11 +233,18 @@ function OpenSearch({
               ) : (
                 <NodeIcon name={def.icon} kind={def.kind} size={14} />
               )}
-              <span className="node-search-title">{workflow ? workflow.name : def.title}</span>
+              <span className="node-search-title">
+                <Highlight text={workflow ? workflow.name : def.title} query={query} />
+              </span>
               {plugin && <PluginMark />}
               <span className="node-search-kind">
                 {workflow ? KIND_WORD.subworkflow : KIND_WORD[def.kind]}
               </span>
+              {description && (
+                <span id={`${optionId(i)}-desc`} className="node-search-desc" title={description}>
+                  <Highlight text={description} query={query} />
+                </span>
+              )}
               {reason && (
                 <span id={`${optionId(i)}-why`} className="node-search-reason">
                   {reason}
@@ -254,8 +268,10 @@ function OpenSearch({
  * The ⌘K-style "add a node" overlay. With `filter` (a "+" handle or a dragged connection) it lists
  * only nodes with an input of that port type (after a finish node, only the finish steps that may
  * follow it), its heading counts them (`title` plus " · N matches") and a line under the list
- * (`filterHint`, also the combobox's description) says so. Arrow keys move, Enter picks, Escape closes; unavailable nodes are listed disabled with
- * their reason. The parent closes it after `onPick`.
+ * (`filterHint`, also the combobox's description) says so. Each row shows the node's description
+ * on one line under its title, and the typed text is marked in both (`Highlight`). Arrow keys
+ * move, Enter picks, Escape closes; unavailable nodes are listed disabled with their reason. The
+ * parent closes it after `onPick`.
  */
 export function NodeSearch({
   open,

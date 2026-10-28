@@ -6,21 +6,33 @@ import type { Fit, HandleRef } from './connectionFit.ts';
 import type { TcNodeData } from './types.ts';
 
 /**
- * The text beside a handle: file ports read "file", a branch output reads "Yes" (the `pass` port)
- * or "No" (the `else` port). The stored ids stay `pass` and `else`; a plugin's own words for such
- * a port are kept (see `branchPortLabel`).
+ * Whether a node's file outputs read their own names: true when it shows more than one file
+ * output that is not a Yes / No branch (Check source's OK and Damaged, Render's Done and Damaged
+ * with Quality check on). Pass the outputs the card shows, so a hidden one does not count.
  */
-export function portLabel(port: PortSpec): string {
-  if (branchWord(port.id) !== null) return branchPortLabel(port);
-  return port.type === 'file' ? 'file' : port.label;
+export function namesFileOutputs(outputs: readonly PortSpec[]): boolean {
+  return outputs.filter((p) => p.type === 'file' && branchWord(p.id) === null).length > 1;
 }
 
 /**
- * The type word a two-way branch output names beside its Yes / No ("Yes · file", "No · data");
- * `null` on every other port.
+ * The text beside a handle: a branch output reads "Yes" (the `pass` port) or "No" (the `else`
+ * port); other file ports read "file", except an output of a node with several (`named`, see
+ * `namesFileOutputs`), which reads its own label ("OK", "Damaged"). The stored ids stay `pass` and
+ * `else`; a plugin's own words for such a port are kept (see `branchPortLabel`).
  */
-export function branchType(port: PortSpec): 'file' | 'data' | null {
-  if (branchWord(port.id) === null) return null;
+export function portLabel(port: PortSpec, named = false): string {
+  if (branchWord(port.id) !== null) return branchPortLabel(port);
+  if (port.type !== 'file') return port.label;
+  return named ? port.label : 'file';
+}
+
+/**
+ * The type word an output names after its label: on a two-way branch output ("Yes · file",
+ * "No · data") and, with `named`, on a named file output ("Damaged · file"); `null` on every other
+ * port.
+ */
+export function branchType(port: PortSpec, named = false): 'file' | 'data' | null {
+  if (branchWord(port.id) === null && !(named && port.type === 'file')) return null;
   return port.type === 'file' ? 'file' : 'data';
 }
 
@@ -69,11 +81,14 @@ export function TcHandle({
   direction,
   connected,
   fit = null,
+  named = false,
   onPlus,
 }: {
   port: PortSpec;
   direction: 'in' | 'out';
   connected: boolean;
+  /** An output of a node with several file outputs: its title names the port (`portLabel`). */
+  named?: boolean | undefined;
   fit?: Fit | undefined;
   onPlus?(port: PortSpec): void;
 }) {
@@ -83,8 +98,10 @@ export function TcHandle({
   if (branch) classes.push(branch);
   // The dragged handle itself ('source') gets no class: nothing styles it.
   if (fit === 'compatible' || fit === 'incompatible') classes.push(`is-${fit}`);
-  const type = direction === 'out' ? branchType(port) : null;
-  const label = type ? `${portLabel(port)}, ${type}` : portLabel(port);
+  const outNamed = direction === 'out' && named;
+  const type = direction === 'out' ? branchType(port, outNamed) : null;
+  const text = portLabel(port, outNamed);
+  const label = type ? `${text}, ${type}` : text;
   return (
     <>
       <Handle
