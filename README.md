@@ -13,6 +13,7 @@
 <p align="center">
   <a href="https://github.com/transcoda/transcoda/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/transcoda/transcoda?sort=semver&label=release"></a>
   <a href="https://github.com/transcoda/transcoda/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/transcoda/transcoda/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="https://scorecard.dev/viewer/?uri=github.com/transcoda/transcoda"><img alt="OpenSSF Scorecard" src="https://api.scorecard.dev/projects/github.com/transcoda/transcoda/badge"></a>
   <a href="LICENSE"><img alt="License: GPL-3.0" src="https://img.shields.io/badge/license-GPL--3.0-blue"></a>
 </p>
 
