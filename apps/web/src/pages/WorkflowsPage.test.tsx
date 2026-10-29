@@ -114,7 +114,10 @@ beforeEach(() => {
   otherMocks.librariesList.mockReset().mockResolvedValue({ libraries: [], notices: [] });
   resetCatalogCache();
 });
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.useRealTimers();
+});
 
 describe('WorkflowsPage', () => {
   it('lists workflows first, then a "Sub-workflows" section with its own h2 and count', async () => {
@@ -247,8 +250,11 @@ describe('WorkflowsPage', () => {
   });
 
   it('Last edited shows an older date this year without the year, and the full date as its title', async () => {
-    const thisYear = new Date(new Date().getFullYear(), 0, 2, 12).toISOString();
-    const lastYear = new Date(new Date().getFullYear() - 1, 9, 27, 12).toISOString();
+    // Only Date is faked, so the list's promises and waitFor still run on real timers.
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-10-16T12:00:00'));
+    const thisYear = new Date('2026-01-02T12:00:00').toISOString();
+    const lastYear = new Date('2025-10-27T12:00:00').toISOString();
     mocks.list.mockResolvedValue({
       workflows: [
         summary({ id: 'a', name: 'Old', currentVersion: 12, updatedAt: thisYear }),
