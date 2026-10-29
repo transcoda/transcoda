@@ -21,7 +21,9 @@ export function parseConversion(
   note: string,
   type: (typeof STREAM_TYPES)[number],
 ): Conversion | null {
-  const m = /convert \S+?→\S+ \(([^)]*)\)/.exec(note);
+  // No part may contain "(" (the note never puts one there), so each attempt stops at the next
+  // "(" instead of scanning to the end: linear on any note.
+  const m = /convert [^\s→]+→[^\s(]+ \(([^()]*)\)/.exec(note);
   if (!m?.[1]) return null;
   const tokens = m[1].split(' ').filter((t) => t !== '');
   const [encoder, ...rest] = tokens;
