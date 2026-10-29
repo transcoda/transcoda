@@ -1,8 +1,10 @@
 import type { RunDetail } from '@transcoda/contract';
 import { type JobState, RUN_OUTCOME_KEYS } from '@transcoda/shared';
-import { Fragment } from 'react';
 import { Icon, type IconName } from '../components/Icon.tsx';
-import { DryRunBadge } from './JobStateChip.tsx';
+import { StatTile } from '../components/StatTile.tsx';
+import { fmtBytes } from '../lib/bytes.ts';
+import { DryRunBadge, VERDICT_ICON } from './JobStateChip.tsx';
+import type { Verdict } from './jobText.ts';
 
 export type OutcomeKey = (typeof RUN_OUTCOME_KEYS)[number];
 
@@ -62,7 +64,29 @@ export function outcomeWord(outcome: OutcomeKey, dryRun: boolean): string {
   return (dryRun && WOULD_LABEL[outcome]) || OUTCOME_LABEL[outcome].word;
 }
 
-/** A dry run's file shows what would have happened, with the dashed "Dry run" badge beside it. */
+/** The Jobs list chip's verdict for a run outcome, so both pages draw the same chip. */
+const OUTCOME_VERDICT: Record<OutcomeKey, Verdict> = {
+  done: 'replaced',
+  dry_run: 'replaced',
+  kept_original: 'kept',
+  nothing_to_do: 'noop',
+  failed: 'failed',
+  cancelled: 'cancelled',
+  skipped: 'skipped',
+  already_processed: 'already',
+  queued: 'queued',
+  in_progress: 'running',
+};
+
+/** A run file's verdict: a dry run's "would" outcomes are the dry-run amber. */
+export function outcomeVerdict(outcome: OutcomeKey, dryRun = false): Verdict {
+  return dryRun && WOULD_LABEL[outcome] ? 'dry' : OUTCOME_VERDICT[outcome];
+}
+
+/**
+ * A run file's outcome as the Jobs list chip (same size, colours and icons). A dry run's file shows
+ * what would have happened, with the dashed "Dry run" badge beside it.
+ */
 export function OutcomeChip({
   outcome,
   dryRun = false,
@@ -79,14 +103,12 @@ export function OutcomeChip({
   /** The run test-encoded: the badge says "Test encode". */
   testEncode?: boolean;
 }) {
-  const { icon } = OUTCOME_LABEL[outcome];
+  const verdict = outcomeVerdict(outcome, dryRun);
   const text = word ?? outcomeWord(outcome, dryRun);
   return (
-    <span className="outcome-with-tag">
-      <span
-        className={`outcome-chip outcome-${outcome === 'dry_run' ? 'done' : outcome}${dryRun && WOULD_LABEL[outcome] ? ' is-would' : ''}`}
-      >
-        <Icon name={icon} size={12} />
+    <span className="job-chips">
+      <span className={`job-chip is-${verdict}`}>
+        <Icon name={VERDICT_ICON[OUTCOME_VERDICT[outcome]]} size={13} strokeWidth={2.6} />
         {estimate ? `${text} · ${estimate}` : text}
       </span>
       {dryRun ? <DryRunBadge testEncode={testEncode} /> : null}
@@ -104,9 +126,12 @@ export function dryRunSummary(counts: RunDetail['counts']): string {
   return `${would} would replace · ${depends} ${depends === 1 ? 'depends' : 'depend'} on size · ${counts.nothing_to_do} nothing to do`;
 }
 
+const num = new Intl.NumberFormat('en-US');
+
 /**
- * One tile per outcome and the "in = out" line. The nine keys must sum to `total`; when they do
- * not, the page says so instead of hiding it (no lost episodes).
+ * The run's tiles, in the Jobs tile style: first what it saved ("554 GB", "1.19 TB → 636 GB") once a
+ * file was replaced, then one tile per outcome that happened (tiles at 0 are hidden). The keys must
+ * sum to `total`; only when they do not does a line say how many files are unaccounted for.
  */
 export function RunCounts({
   counts,
@@ -122,45 +147,43 @@ export function RunCounts({
   planOnly?: boolean;
 }) {
   const accounted = RUN_OUTCOME_KEYS.reduce((sum, k) => sum + counts[k], 0);
-  const fileWord = counts.total === 1 ? 'file' : 'files';
+  const depends = counts.dependsOnSize ?? 0;
+  const tiles: Array<{ key: string; label: string; value: string; sub?: string }> = [];
+  if (!dryRun && counts.done > 0) {
+    const change = counts.beforeBytes - counts.afterBytes;
+    tiles.push({
+      key: 'saved',
+      label: change >= 0 ? 'Saved' : 'Grew',
+      value: fmtBytes(Math.abs(change)),
+      sub: `${fmtBytes(counts.beforeBytes)} → ${fmtBytes(counts.afterBytes)}`,
+    });
+  }
+  for (const k of OUTCOME_ORDER) {
+    // A dry-run job ends `dry_run`: it is the outcome "replaced" would have had, unless its size
+    // gate decides after encoding (its own tile, #41).
+    const n = k === 'done' ? counts.done + counts.dry_run - depends : counts[k];
+    if (n > 0) tiles.push({ key: k, label: outcomeWord(k, dryRun), value: num.format(n) });
+    if (k === 'done' && planOnly && depends > 0) {
+      tiles.push({ key: 'depends', label: 'Depends on size', value: num.format(depends) });
+    }
+  }
+  const missing = counts.total - accounted;
   return (
     <section className="run-counts" aria-label="Counts">
-      <ul className={dryRun ? 'run-tiles is-dry' : 'run-tiles'} aria-label="Outcomes">
-        {OUTCOME_ORDER.map((k) => {
-          // A dry-run job ends `dry_run`: it is the outcome "replaced" would have had, unless its
-          // size gate decides after encoding (its own tile, #41).
-          const depends = counts.dependsOnSize ?? 0;
-          const n = k === 'done' ? counts.done + counts.dry_run - depends : counts[k];
-          return (
-            <Fragment key={k}>
-              <li className={`run-tile outcome-${k}${n === 0 ? ' is-zero' : ''}`}>
-                <span className="run-tile-word">
-                  <Icon name={OUTCOME_LABEL[k].icon} size={14} />
-                  {outcomeWord(k, dryRun)}
-                </span>
-                <span className="run-tile-n">{n}</span>
-              </li>
-              {k === 'done' && planOnly ? (
-                <li className={`run-tile outcome-depends${depends === 0 ? ' is-zero' : ''}`}>
-                  <span className="run-tile-word">
-                    <Icon name="scale" size={14} />
-                    Depends on size
-                  </span>
-                  <span className="run-tile-n">{depends}</span>
-                </li>
-              ) : null}
-            </Fragment>
-          );
-        })}
-      </ul>
+      {tiles.length > 0 ? (
+        <ul className="stat-tiles run-stats" aria-label="Outcomes">
+          {tiles.map((t) => (
+            <StatTile key={t.key} label={t.label} value={t.value} sub={t.sub} />
+          ))}
+        </ul>
+      ) : null}
       {planOnly ? <p className="run-dry-summary">{dryRunSummary(counts)}</p> : null}
-      <p className="run-reconcile">
-        {`${counts.total} ${fileWord} in this run · ${accounted} accounted for`}
-      </p>
-      {accounted !== counts.total ? (
+      {missing !== 0 ? (
         <p className="run-mismatch" role="alert">
           <Icon name="alert" size={16} round />
-          {`Counts don't add up (${counts.total} vs ${accounted})`}
+          {missing > 0
+            ? `${num.format(missing)} of ${num.format(counts.total)} ${counts.total === 1 ? 'file is' : 'files are'} not accounted for`
+            : `Counts don't add up (${counts.total} vs ${accounted})`}
         </p>
       ) : null}
     </section>

@@ -62,33 +62,34 @@ describe('Shell', () => {
 
   it('asks for the plugin list once across Shells', async () => {
     const first = render(<Shell>x</Shell>);
-    await screen.findByText('v1.2.3');
+    await screen.findByText('admin');
     await waitFor(() => expect(pluginsList).toHaveBeenCalledTimes(1));
     first.unmount();
     render(<Shell>x</Shell>);
-    await screen.findByText('v1.2.3');
+    await screen.findByText('admin');
     expect(pluginsList).toHaveBeenCalledTimes(1);
   });
 
   it('shows no TMDB notice without the tmdb plugin, or when the list cannot be read', async () => {
     const view = render(<Shell>x</Shell>);
-    await screen.findByText('v1.2.3');
+    await screen.findByText('admin');
     expect(pluginsList).toHaveBeenCalled();
     expect(screen.queryByText(NOTICE)).toBeNull();
     view.unmount();
     pluginsList.mockRejectedValue(new Error('down'));
     render(<Shell>x</Shell>);
-    await screen.findByText('v1.2.3');
+    await screen.findByText('admin');
     expect(screen.queryByText(NOTICE)).toBeNull();
   });
 
-  it('shows version, username and nav', async () => {
+  it('shows username and nav, and no version (it lives in About and on the login page)', async () => {
     render(
       <Shell>
         <p>content</p>
       </Shell>,
     );
-    expect(await screen.findByText('v1.2.3')).toBeTruthy();
+    expect(await screen.findByText('admin')).toBeTruthy();
+    expect(screen.queryByText('v1.2.3')).toBeNull();
     expect(screen.getByText('admin')).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Workflows' })).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Settings' })).toBeTruthy();
@@ -161,7 +162,7 @@ describe('Shell', () => {
 
     it('is absent when nothing runs or waits', async () => {
       render(<Shell>x</Shell>);
-      await screen.findByText('v1.2.3');
+      await screen.findByText('admin');
       // The widget's own list (the running states) has answered.
       await waitFor(() =>
         expect(jobsList.mock.calls.some(([input]) => input && 'state' in input)).toBe(true),
@@ -232,18 +233,18 @@ describe('Shell', () => {
     }
   });
 
-  it('shows the server name after the version when one is set', async () => {
+  it('shows the server name after the brand when one is set', async () => {
     appearance.current = { theme: 'system', serverName: 'Basement' };
     const { container } = render(<Shell>x</Shell>);
-    await screen.findByText('v1.2.3');
+    await screen.findByText('admin');
     const name = container.querySelector('.topbar .server-name') as HTMLElement;
     expect(name.textContent).toBe('Basement');
-    expect(container.querySelector('.version-pill')?.nextElementSibling).toBe(name);
+    expect(container.querySelector('.topbar .brand')?.nextElementSibling).toBe(name);
   });
 
   it('shows no server name when none is set', async () => {
     const { container } = render(<Shell>x</Shell>);
-    await screen.findByText('v1.2.3');
+    await screen.findByText('admin');
     expect(container.querySelector('.server-name')).toBeNull();
   });
 
@@ -381,7 +382,7 @@ describe('Shell', () => {
     it('leaves the server name out of the phone header', async () => {
       appearance.current = { theme: 'system', serverName: 'Basement' };
       const { container } = render(<Shell>x</Shell>);
-      await screen.findByText('v1.2.3');
+      await screen.findByText('admin');
       expect(container.querySelector('.server-name')).toBeNull();
     });
 

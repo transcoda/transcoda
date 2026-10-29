@@ -78,3 +78,41 @@ export const jobLastTime = (job: {
   startedAt: string | null;
   finishedAt: string | null;
 }) => job.finishedAt ?? job.startedAt ?? job.queuedAt;
+
+/**
+ * The one way a list shows when something happened (convention 13): "just now", "8 min ago",
+ * "3 h ago" under a day; "Oct 25" this year; "Oct 25, 2025" another year. `time` adds the 24 h
+ * clock (", 06:28") to a date, for places where the time of day matters. `timeZone` reads the
+ * date in that zone (the server's, for server-local days); the browser's by default.
+ * `relative: false` always gives the date ("since Oct 22", where "since 3 h ago" would not read).
+ */
+export function fmtStamp(
+  iso: string,
+  {
+    time = false,
+    relative = true,
+    now = new Date(),
+    timeZone,
+  }: { time?: boolean; relative?: boolean; now?: Date; timeZone?: string } = {},
+): string {
+  const d = new Date(iso);
+  const s = (now.getTime() - d.getTime()) / 1000;
+  if (relative && s >= 0 && s < 86400) return fmtAgo(iso, now);
+  const zone = timeZone ? { timeZone } : {};
+  const year = (x: Date) =>
+    new Intl.DateTimeFormat('en-US', { year: 'numeric', ...zone }).format(x);
+  const date = new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: 'numeric',
+    ...(year(d) === year(now) ? {} : { year: 'numeric' }),
+    ...zone,
+  }).format(d);
+  if (!time) return date;
+  const clock = new Intl.DateTimeFormat('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+    ...zone,
+  }).format(d);
+  return `${date}, ${clock}`;
+}

@@ -23,7 +23,7 @@ vi.mock('../api/client.ts', () => ({
 
 import { EventsProvider } from '../hooks/useEvents.ts';
 import { REFETCH_COALESCE_MS } from '../hooks/useRefetchOn.ts';
-import { fmtDate } from '../lib/time.ts';
+import { fmtDate, fmtStamp } from '../lib/time.ts';
 import { fakeEventSource, jobChanged, queueSnapshot } from '../test/fakeEventStream.ts';
 import { renderAt } from '../test/render.tsx';
 import { RunPage } from './RunPage.tsx';
@@ -155,49 +155,48 @@ beforeEach(() => {
     .mockReset()
     .mockResolvedValue({ paused: false, lanes: { encode: null, quick: null } });
 });
+const realMatchMedia = window.matchMedia;
 afterEach(() => {
   cleanup();
   vi.useRealTimers();
+  window.matchMedia = realMatchMedia;
 });
 
 describe('RunPage', () => {
-  it('renders the counts with words and icons and the "N files in this run · M accounted for" line that reconciles', async () => {
+  it('leads with the saved total, then one tile per outcome that happened; no reconcile line', async () => {
     mocks.get.mockResolvedValue(settledRun());
     renderAt('/runs/r1', page());
 
-    expect(
-      await screen.findByRole('heading', { name: 'Run · TV cleanup v7 · Shows' }),
-    ).toBeTruthy();
+    expect(await screen.findByRole('heading', { level: 1, name: 'TV cleanup v7' })).toBeTruthy();
     expect(mocks.get).toHaveBeenCalledWith({ id: 'r1' });
-    expect(screen.getByText('/transcode/shows/Bluey')).toBeTruthy();
+    // The muted subtitle: library and when the run started; the path is only a hover title.
+    const sub = document.querySelector('.page-head .head-sub') as HTMLElement;
+    expect(sub.textContent).toBe(`Run on Shows · ${fmtStamp('2026-10-16T18:00:00.000Z')}`);
+    expect(within(sub).getByText('Shows').getAttribute('title')).toBe('/transcode/shows/Bluey');
+    expect(sub.querySelector('time')?.getAttribute('dateTime')).toBe('2026-10-16T18:00:00.000Z');
 
     const counts = screen.getByRole('list', { name: 'Outcomes' });
     const tiles = within(counts).getAllByRole('listitem');
     expect(tiles.map((t) => t.textContent)).toEqual([
+      'Saved790 MB2.41 GB → 1.62 GB',
       'Replaced1',
       'Kept original1',
       'Nothing to do1',
       'Failed1',
-      'Cancelled0',
       'Skipped1',
-      'Already processed0',
-      'Queued0',
-      'In progress0',
     ]);
-    // Colour never carries meaning alone: every tile has an icon next to its word.
-    for (const t of tiles) expect(t.querySelector('svg[data-icon]')).toBeTruthy();
-    expect(tiles[0]?.querySelector('[data-icon="check"]')).toBeTruthy();
-    expect(tiles[4]?.className).toContain('is-zero');
-    // No "Dry run" tile: a dry run is counted like a real run.
+    // Plain tiles (convention 6), none at zero.
+    for (const t of tiles) expect(t.className).toBe('stat-tile');
     expect(within(counts).queryByText('Dry run')).toBeNull();
-    expect(tiles[0]?.className).not.toContain('is-zero');
 
-    expect(screen.getByText('5 files in this run · 5 accounted for')).toBeTruthy();
+    expect(screen.queryByText(/accounted for/)).toBeNull();
     expect(screen.queryByRole('alert')).toBeNull();
-    expect(screen.getByText('2.41 GB → 1.62 GB, saved 790 MB')).toBeTruthy();
     // A settled run is not live.
     expect(screen.queryByText('Live')).toBeNull();
     expect(screen.queryByText('reconnecting…')).toBeNull();
+    const files = screen.getByRole('heading', { level: 2 });
+    expect(files.textContent).toBe('Files5');
+    expect(files.querySelector('.section-count')?.textContent).toBe('5');
   });
 
   it('shows "Dry run · No active version" from run.note and each file\'s version when it differs from the run\'s', async () => {
@@ -222,36 +221,35 @@ describe('RunPage', () => {
     expect(second?.textContent).toContain('ran on v6');
   });
 
-  it('has a breadcrumb above the title, like the job page: Jobs (a link) / Run · workflow vN (M12)', async () => {
+  it('has a breadcrumb above the title that names only the parent: "Jobs /"', async () => {
     mocks.get.mockResolvedValue(settledRun());
     renderAt('/runs/r1', page());
-    const heading = await screen.findByRole('heading', { name: 'Run · TV cleanup v7 · Shows' });
+    const heading = await screen.findByRole('heading', { level: 1, name: 'TV cleanup v7' });
     const crumbs = screen.getByRole('navigation', { name: 'Breadcrumb' });
     expect(crumbs.classList.contains('job-crumbs')).toBe(true);
     const jobs = within(crumbs).getByRole('link', { name: 'Jobs' });
     expect(jobs.getAttribute('href')).toBe('/jobs');
     expect(jobs.classList.contains('job-crumb-link')).toBe(true);
-    expect(crumbs.textContent).toBe('Jobs/Run · TV cleanup v7');
+    expect(crumbs.textContent).toBe('Jobs/');
     expect(crumbs.compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it('has no note line for an ordinary run', async () => {
     mocks.get.mockResolvedValue(settledRun());
     renderAt('/runs/r1', page());
-    await screen.findByRole('heading', { name: 'Run · TV cleanup v7 · Shows' });
+    await screen.findByRole('heading', { level: 1, name: 'TV cleanup v7' });
     expect(screen.queryByText(/no active version/i)).toBeNull();
   });
 
-  it('shows the alert when the counts do not add up', async () => {
+  it('says how many files are unaccounted for, only when some are', async () => {
     const r = settledRun();
     mocks.get.mockResolvedValue({ ...r, counts: { ...r.counts, total: 6 } });
     renderAt('/runs/r1', page());
 
     const alerts = await screen.findAllByRole('alert');
-    expect(alerts[0]?.textContent).toContain("Counts don't add up (6 vs 5)");
+    expect(alerts[0]?.textContent).toContain('1 of 6 files are not accounted for');
     // Five files listed of six queued.
     expect(alerts[1]?.textContent).toContain('The list shows 5 of 6 files');
-    expect(screen.getByText('6 files in this run · 5 accounted for')).toBeTruthy();
   });
 
   it('says so when the file list does not hold every queued file', async () => {
@@ -261,11 +259,16 @@ describe('RunPage', () => {
     expect((await screen.findByRole('alert')).textContent).toContain('The list shows 4 of 5 files');
   });
 
-  it('lists every file with outcome, reason and sizes and links to its job', async () => {
+  it('lists every file as File / Outcome / Size; the row is the link to its job', async () => {
     mocks.get.mockResolvedValue(settledRun());
     renderAt('/runs/r1', page());
 
     const table = await screen.findByRole('table', { name: 'Files' });
+    expect(
+      within(table)
+        .getAllByRole('columnheader')
+        .map((h) => h.textContent),
+    ).toEqual(['File', 'Outcome', 'Size']);
     const rows = within(table).getAllByRole('row').slice(1);
     expect(rows).toHaveLength(5);
 
@@ -273,55 +276,68 @@ describe('RunPage', () => {
       within(rows[i] as HTMLElement)
         .getAllByRole('cell')
         .map((c) => c.textContent);
-    expect(cells(0)).toEqual([
-      'Bluey S01E01.mkv',
-      'Replaced',
-      'Re-encoded to HEVC · original in recycle folder',
-      '2.41 GB → 1.62 GB',
-      'Details',
-    ]);
+    // The reason is a muted line under the name, only when it says more than the chip.
+    expect(cells(0)).toEqual(['Bluey S01E01.mkv', 'Replaced', '2.41 GB → 1.62 GB']);
     expect(cells(1)).toEqual([
-      'Bluey S01E02.mkv',
+      'Bluey S01E02.mkvOnly 6% smaller, size gate needs 20%',
       'Kept original',
-      'Only 6% smaller, size gate needs 20% · original untouched',
       '1.00 GB',
-      'Details',
     ]);
-    expect(cells(2)).toEqual(['Bluey S01E03.mkv', 'Nothing to do', 'Already HEVC', '—', 'Details']);
+    expect(cells(2)).toEqual(['Bluey S01E03.mkvAlready HEVC', 'Nothing to do', '—']);
     expect(cells(3)).toEqual([
-      'Bluey S01E04.mkv',
+      'Bluey S01E04.mkvVerification failed: output 4 s shorter',
       'Failed',
-      'Verification failed: output 4 s shorter · original untouched',
       '800 MB',
-      'Details',
     ]);
-    expect(cells(4)).toEqual([
-      'Bluey S01E05.mkv',
-      'Skipped',
-      'Hardlinked by the torrent client',
-      '—',
-      'Details',
-    ]);
+    expect(cells(4)).toEqual(['Bluey S01E05.mkvHardlinked by the torrent client', 'Skipped', '—']);
 
-    // The outcome chip pairs an icon with the word.
+    // The Jobs list's chip: icon and word, "Kept original" neutral.
     expect(
       within(rows[3] as HTMLElement)
         .getByText('Failed')
         .querySelector('[data-icon="cross"]'),
     ).toBeTruthy();
-    // One name for the job link, shared with the Jobs list: "Details for <file>".
-    const jobs = within(table).getAllByRole('link', { name: /^Details for / });
-    expect(jobs[0]?.getAttribute('aria-label')).toBe('Details for Bluey S01E01.mkv');
-    expect(jobs.map((a) => a.getAttribute('href'))).toEqual([
+    expect(within(rows[1] as HTMLElement).getByText('Kept original').className).toBe(
+      'job-chip is-kept',
+    );
+    // No "Details" links: the file name is the row's link.
+    expect(within(table).queryByText('Details')).toBeNull();
+    const links = within(table).getAllByRole('link');
+    expect(links.map((a) => a.getAttribute('href'))).toEqual([
       '/jobs/j1',
       '/jobs/j2',
       '/jobs/j3',
       '/jobs/j4',
       '/jobs/j5',
     ]);
-    expect(screen.getByText('Bluey S01E01.mkv').getAttribute('title')).toBe(
-      '/transcode/shows/Bluey S01E01.mkv',
-    );
+    expect(links[0]?.textContent).toBe('Bluey S01E01.mkv');
+    expect(rows[0]?.classList.contains('row-link')).toBe(true);
+    expect(links[0]?.getAttribute('title')).toBe('/transcode/shows/Bluey S01E01.mkv');
+  });
+
+  it('phone: stacked cards like the Jobs phone list, no table', async () => {
+    window.matchMedia = (query: string) =>
+      ({
+        matches: query === '(max-width: 639px)',
+        media: query,
+        onchange: null,
+        addEventListener() {},
+        removeEventListener() {},
+        addListener() {},
+        removeListener() {},
+        dispatchEvent: () => false,
+      }) as MediaQueryList;
+    mocks.get.mockResolvedValue(settledRun());
+    renderAt('/runs/r1', page());
+    const first = await screen.findByRole('link', { name: /Bluey S01E01\.mkv/ });
+    expect(first.getAttribute('href')).toBe('/jobs/j1');
+    expect(first.className).toBe('phone-finished');
+    expect(within(first).getByText('Replaced · 2.41 GB → 1.62 GB')).toBeTruthy();
+    expect(screen.getByText('Kept original · 1.00 GB')).toBeTruthy();
+    expect(
+      within(screen.getByRole('link', { name: /Bluey S01E03\.mkv/ })).getByText('Nothing to do'),
+    ).toBeTruthy();
+    expect(screen.queryByRole('table')).toBeNull();
   });
 
   it('words an already-processed reason and a nothing-to-do row without one', async () => {
@@ -339,10 +355,10 @@ describe('RunPage', () => {
     renderAt('/runs/r1', page());
     const table = await screen.findByRole('table', { name: 'Files' });
     const rows = within(table).getAllByRole('row').slice(1);
-    const reason = (i: number) =>
-      within(rows[i] as HTMLElement).getAllByRole('cell')[2]?.textContent;
-    expect(reason(0)).toBe(`Processed on ${fmtDate(at)}: nothing to do`);
-    expect(reason(1)).toBe('Already complies with every rule');
+    const note = (i: number) => rows[i]?.querySelector('.run-file-note')?.textContent ?? null;
+    expect(note(0)).toBe(`Processed on ${fmtDate(at)}: nothing to do`);
+    // "Nothing to do" without a reason of its own: the chip says it all.
+    expect(note(1)).toBeNull();
   });
 
   it('stays live while in_progress > 0 and refetches on run.changed', async () => {
@@ -357,7 +373,7 @@ describe('RunPage', () => {
         <Route path="/runs/:id" component={RunPage} />
       </EventsProvider>,
     );
-    await screen.findByText('5 files in this run · 5 accounted for');
+    await screen.findByRole('table', { name: 'Files' });
     await act(async () => fake.last().push(queueSnapshot));
     expect(await screen.findByText('Live')).toBeTruthy();
     const table = within(screen.getByRole('table', { name: 'Files' }));
@@ -381,9 +397,8 @@ describe('RunPage', () => {
       ).toHaveLength(0),
     );
     expect(screen.queryByText('Live')).toBeNull();
-    expect(
-      within(screen.getByRole('list', { name: 'Outcomes' })).getAllByRole('listitem')[7]?.className,
-    ).toContain('is-zero');
+    // Tiles at 0 are hidden: no Queued tile once nothing waits.
+    expect(within(screen.getByRole('list', { name: 'Outcomes' })).queryByText('Queued')).toBeNull();
   });
 
   it('a paused queue: queued files read "Queued", the run says the queue is paused and is not live (P1)', async () => {
@@ -417,7 +432,7 @@ describe('RunPage', () => {
         <Route path="/runs/:id" component={RunPage} />
       </EventsProvider>,
     );
-    await screen.findByText('5 files in this run · 5 accounted for');
+    await screen.findByRole('table', { name: 'Files' });
     await act(async () => fake.last().push(queueSnapshot));
     await act(async () => fake.last().push(jobChanged('j2')));
     await waitFor(() => expect(mocks.get).toHaveBeenCalledTimes(2));
@@ -431,13 +446,13 @@ describe('RunPage', () => {
         <Route path="/runs/:id" component={RunPage} />
       </EventsProvider>,
     );
-    await screen.findByText('5 files in this run · 5 accounted for');
+    await screen.findByRole('table', { name: 'Files' });
     await act(async () => fake.last().push(queueSnapshot));
     await act(async () => fake.last().push({ type: 'run.changed', runId: 'r1' }));
     expect((await screen.findByRole('alert')).textContent).toContain(
       'Could not refresh: Could not reach the server',
     );
-    expect(screen.getByText('5 files in this run · 5 accounted for')).toBeTruthy();
+    expect(screen.getByText('Saved')).toBeTruthy();
     expect(screen.getByRole('table', { name: 'Files' })).toBeTruthy();
   });
 
@@ -533,21 +548,13 @@ describe('RunPage dry run', () => {
     const tiles = within(await screen.findByRole('list', { name: 'Outcomes' })).getAllByRole(
       'listitem',
     );
-    // Same tiles as a real run (no Dry run tile) plus "Depends on size" (#41); "would" words, and
+    // Same tiles as a real run (no Dry run tile, no saved tile, none at 0); "would" words, and
     // the dry runs fold into the first.
     expect(tiles.map((t) => t.textContent)).toEqual([
       'Would replace2',
-      'Depends on size0',
       'Would keep original1',
       'Nothing to do1',
-      'Failed0',
-      'Cancelled0',
-      'Skipped0',
-      'Already processed0',
-      'Queued0',
-      'In progress0',
     ]);
-    expect(screen.getByText('4 files in this run · 4 accounted for')).toBeTruthy();
     const rows = within(screen.getByRole('table', { name: 'Files' }))
       .getAllByRole('row')
       .slice(1);
@@ -555,10 +562,10 @@ describe('RunPage dry run', () => {
       within(rows[i] as HTMLElement)
         .getAllByRole('cell')
         .map((c) => c.textContent);
-    // The dashed badge sits beside the verdict; the plan summary is the REASON (never an empty dash).
+    // The dashed badge sits beside the verdict; the reason is the muted line under the name.
     expect(cells(0)[1]).toBe('Would replaceDry run');
-    expect(cells(0)[2]).toBe('Would drop 9 tracks · no file changed');
-    expect(cells(1)[2]).toBe('No file changed');
+    expect(cells(0)[0]).toBe('a.mkvWould drop 9 tracks');
+    expect(cells(1)[0]).toBe('b.mkv');
     expect(cells(2)[1]).toBe('Would keep originalDry run');
     expect(cells(3)[1]).toBe('Nothing to doDry run');
     expect(rows[0]?.querySelector('.badge-dry')).not.toBeNull();
@@ -594,11 +601,11 @@ describe('RunPage dry run', () => {
       await screen.findByRole('table', { name: 'Files' });
       const cells = rowsOf()[0] as HTMLElement[];
       expect(cells[1]?.textContent).toBe('Would replace · −34%Dry run');
-      expect(cells[2]?.textContent).toBe('Convert 1 video track; drop 1 subtitle track');
-      expect(cells[3]?.textContent).toBe('2.41 GB → ≈1.59 GB');
+      expect(cells[0]?.textContent).toBe('a.mkvConvert 1 video track; drop 1 subtitle track');
+      expect(cells[2]?.textContent).toBe('2.41 GB → ≈1.59 GB');
     });
 
-    it('a file without an estimate or plan reads as before: "Would replace", "No file changed", the original size', async () => {
+    it('a file without an estimate or plan reads "Would replace" with the original size and no note', async () => {
       mocks.get.mockResolvedValue(
         dryRun([file('j1', 'a.mkv', 'dry_run', { beforeBytes: 2_410_000_000 })]),
       );
@@ -606,8 +613,8 @@ describe('RunPage dry run', () => {
       await screen.findByRole('table', { name: 'Files' });
       const cells = rowsOf()[0] as HTMLElement[];
       expect(cells[1]?.textContent).toBe('Would replaceDry run');
-      expect(cells[2]?.textContent).toBe('No file changed');
-      expect(cells[3]?.textContent).toBe('2.41 GB');
+      expect(cells[0]?.textContent).toBe('a.mkv');
+      expect(cells[2]?.textContent).toBe('2.41 GB');
     });
 
     it('totals the estimate and labels it estimated, saying how many files it covers when some have none', async () => {
@@ -681,10 +688,10 @@ describe('RunPage dry run', () => {
         .getAllByRole('cell')
         .map((c) => c.textContent);
     expect(cells(0)[1]).toBe('Would replace · −40%Test encode');
-    expect(cells(0)[2]).toBe('Would replace · 315 MB → 190 MB (−40%)');
-    expect(cells(0)[3]).toBe('315 MB → 190 MB');
-    expect(cells(1)[2]).toBe('Would keep the original · saved only 3% (gate ≥ 10%)');
-    expect(cells(2)[2]).toBe('Encode failed · original untouched');
+    expect(cells(0)[0]).toBe('a.mkvWould replace · 315 MB → 190 MB (−40%)');
+    expect(cells(0)[2]).toBe('315 MB → 190 MB');
+    expect(cells(1)[0]).toBe('b.mkvWould keep the original · saved only 3% (gate ≥ 10%)');
+    expect(cells(2)[0]).toBe('c.mkvEncode failed');
     const tiles = within(screen.getByRole('list', { name: 'Outcomes' })).getAllByRole('listitem');
     expect(tiles.map((t) => t.textContent).slice(0, 2)).toEqual([
       'Would replace1',

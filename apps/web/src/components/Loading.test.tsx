@@ -54,11 +54,8 @@ describe('Loading', () => {
 });
 
 describe('uppercase labels use text-transform, not typed capitals', () => {
-  it('styles the tile label and the phone section headings as uppercase', () => {
+  it('styles the tile label and the table column heads as uppercase (section headings are sentence case)', () => {
     expect(css.match(/\n\.stat-label\s*\{([^}]*)\}/)?.[1]).toMatch(/text-transform:\s*uppercase/);
-    expect(css.match(/\n\.phone-section h2\s*\{([^}]*)\}/)?.[1]).toMatch(
-      /text-transform:\s*uppercase/,
-    );
     expect(css.match(/\n\.run-files th\s*\{([^}]*)\}/)?.[1]).toMatch(/text-transform:\s*uppercase/);
   });
 });

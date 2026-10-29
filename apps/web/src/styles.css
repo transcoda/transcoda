@@ -1039,16 +1039,6 @@ a:hover {
   font-size: 20px;
 }
 
-.version-pill {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--faint);
-  padding: 3px 8px;
-  border: 1px solid var(--line-strong);
-  border-radius: var(--r-pill);
-}
-
 .server-name {
   max-width: 24ch;
   overflow: hidden;
@@ -1649,6 +1639,104 @@ a.nav-item.is-active:focus-visible,
 
 .page-head .mono {
   font-size: var(--fs-small);
+}
+
+/* ---------- Shared conventions (UI consistency pass) ----------
+   Headings (conventions 4/5): one section heading (H2) with a muted count, and one muted group
+   label (H3). Sentence case and sans; mono capitals are for table column heads and stat-tile
+   labels only. Use <SectionHeading> / <GroupLabel> from components/Headings.tsx. */
+.section-h2 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 10px;
+  margin: 0;
+  font-family: var(--font-ui);
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--text);
+}
+.section-count {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+}
+/* The explanation under a section heading: its own muted line, never inline. */
+.section-note {
+  margin: 2px 0 0;
+  font-size: var(--fs-small);
+  color: var(--muted);
+}
+.group-h3 {
+  margin: 0;
+  font-family: var(--font-ui);
+  font-size: var(--fs-small);
+  font-weight: 700;
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--muted);
+}
+/* The one muted status line under a page's H1 (convention 1). */
+.head-sub {
+  margin: 2px 0 0;
+  font-size: var(--fs-small);
+  color: var(--muted);
+}
+/* A page header in one row: title block left, actions right (convention 1). */
+.head-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+.head-row > .head-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-left: auto;
+  padding-top: 4px;
+}
+
+/* The row is the link (convention 9): put .row-link on the row and .row-link-main on its one
+   primary link (the name: semibold, never underlined); the link's hit area covers the whole row.
+   Other links and buttons in the row stay clickable above it. Secondary links use .link-muted. */
+.row-link {
+  position: relative;
+  cursor: pointer;
+}
+.row-link:hover {
+  background: var(--raised);
+}
+.row-link-main {
+  color: var(--text);
+  font-weight: 600;
+  text-decoration: none;
+}
+.row-link-main:hover {
+  color: var(--text);
+  text-decoration: none;
+}
+.row-link-main::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+.row-link a:not(.row-link-main),
+.row-link button {
+  position: relative;
+  z-index: 1;
+}
+/* A secondary link (library, workflow, run): muted, underlined on hover only. */
+.link-muted {
+  color: var(--muted);
+  text-decoration: none;
+}
+.link-muted:hover {
+  color: var(--text);
+  text-decoration: underline;
 }
 
 .panel {
@@ -3334,16 +3422,16 @@ a.btn-secondary:hover {
 }
 
 .chip {
+  /* The one chip size and font (convention 8): the same pill as the Jobs list's state chip. */
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  height: 24px;
-  padding: 0 8px;
+  gap: 6px;
+  height: 28px;
+  padding: 0 10px;
   border-radius: var(--r-pill);
-  border: 1px solid currentColor;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 600;
+  border: 1.5px solid currentColor;
+  font-size: var(--fs-small);
+  font-weight: 700;
   white-space: nowrap;
 }
 
@@ -3360,7 +3448,13 @@ a.btn-secondary:hover {
 }
 
 .chip-outdated {
-  color: var(--kind-condition);
+  color: var(--st-needs-setting);
+}
+
+/* No change (Not active, Kept original, Nothing to do, Skipped): a neutral outline. */
+.chip-neutral {
+  border-color: var(--line-strong);
+  color: var(--muted);
 }
 
 .eyebrow-kind {
@@ -5956,18 +6050,23 @@ a.nav-item.is-active .nav-count {
 .jobs-page {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 12px;
   padding: 28px 32px 48px;
 }
 
 .jobs-head {
+  /* One header row (.head-row): the title block, then the queue actions on the right. */
+  margin-bottom: 4px;
+}
+.jobs-title {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
+  min-width: 0;
+}
+.jobs-title-row {
+  display: flex;
   align-items: center;
   gap: 14px;
-}
-.jobs-retry-failed {
-  margin-left: auto;
 }
 .jobs-head h1 {
   font-size: 32px;
@@ -6033,7 +6132,6 @@ a.nav-item.is-active .nav-count {
 
 .filter-chip:focus-visible,
 .job-name:focus-visible,
-.job-details-link:focus-visible,
 .phone-finished:focus-visible {
   outline: none;
   box-shadow: var(--focus-ring);
@@ -6046,15 +6144,25 @@ a.nav-item.is-active .nav-count {
   overflow-x: auto;
 }
 .job-row {
-  min-width: 900px;
+  min-width: 760px;
   display: grid;
-  grid-template-columns: minmax(0, 1.6fr) 170px minmax(0, 1.4fr) 180px;
+  /* File, state, detail; a fourth column for Pause / Cancel only while a job on the list runs. */
+  grid-template-columns: minmax(0, 1.6fr) 170px minmax(0, 1.4fr);
   align-items: center;
   gap: 16px;
   padding: 14px 20px;
 }
+.job-list.has-actions .job-row {
+  grid-template-columns: minmax(0, 1.6fr) 170px minmax(0, 1.4fr) 180px;
+}
 .job-row + .job-row {
   border-top: 1px solid var(--line);
+}
+.job-row:first-child {
+  border-radius: var(--r-lg) var(--r-lg) 0 0;
+}
+.job-row:last-child {
+  border-radius: 0 0 var(--r-lg) var(--r-lg);
 }
 .job-file {
   min-width: 0;
@@ -6064,7 +6172,7 @@ a.nav-item.is-active .nav-count {
 }
 .job-name {
   color: var(--text);
-  font-weight: 700;
+  font-weight: 600;
   text-decoration: none;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -6073,7 +6181,6 @@ a.nav-item.is-active .nav-count {
 }
 .job-name:hover {
   color: var(--text);
-  text-decoration: underline;
 }
 .job-where {
   font-size: var(--fs-small);
@@ -6088,9 +6195,11 @@ a.nav-item.is-active .nav-count {
   padding: 12px 6px;
   margin: -12px -6px;
   color: var(--muted);
+  text-decoration: none;
 }
 .job-run-link:hover {
   color: var(--text);
+  text-decoration: underline;
 }
 
 .job-chips {
@@ -6116,7 +6225,13 @@ a.nav-item.is-active .nav-count {
   color: var(--st-running-ink);
 }
 .job-chip.is-queued,
-.job-chip.is-paused {
+.job-chip.is-paused,
+.job-chip.is-kept,
+.job-chip.is-noop,
+.job-chip.is-cancelled,
+.job-chip.is-already,
+.job-chip.is-skipped {
+  /* Nothing changed (or not yet): a neutral outline, never a colour that reads as an outcome. */
   background: transparent;
   border-color: var(--line-strong);
   color: var(--muted);
@@ -6126,25 +6241,8 @@ a.nav-item.is-active .nav-count {
   border-color: var(--st-replaced);
   color: var(--st-replaced-ink);
 }
-.job-chip.is-kept {
-  background: var(--st-kept);
-  border-color: var(--st-kept);
-  color: var(--st-kept-ink);
-}
-.job-chip.is-noop,
-.job-chip.is-cancelled,
-.job-chip.is-already {
-  background: var(--st-noop);
-  border-color: var(--st-noop);
-  color: var(--st-noop-ink);
-}
 .job-chip.is-noop svg {
   stroke-dasharray: 3 3;
-}
-.job-chip.is-skipped {
-  background: var(--st-skipped);
-  border-color: var(--st-skipped);
-  color: var(--st-skipped-ink);
 }
 .job-chip.is-failed {
   background: var(--st-failed);
@@ -6173,11 +6271,9 @@ a.nav-item.is-active .nav-count {
 .job-detail-text.is-replaced {
   color: var(--st-replaced-text);
 }
-.job-detail-text.is-kept {
-  color: var(--st-kept-text);
-}
-.job-detail-text.is-skipped {
-  color: var(--st-skipped-text);
+/* Desktop rows: the chip already says "Replaced"; the sizes beside it read as plain text. */
+.job-row .job-detail-text.is-replaced {
+  color: var(--text);
 }
 .job-detail-text.is-failed {
   color: var(--st-failed-text);
@@ -6202,15 +6298,6 @@ a.nav-item.is-active .nav-count {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
-}
-.job-details-link {
-  display: inline-flex;
-  align-items: center;
-  min-height: var(--target-min);
-  padding: 0 4px;
-  font-size: var(--fs-small);
-  color: var(--muted);
-  border-radius: var(--r-sm);
 }
 
 .jobs-empty {
@@ -6282,6 +6369,28 @@ a.nav-item.is-active .nav-count {
 .is-phone .jobs-head {
   gap: 10px;
 }
+.is-phone .jobs-title {
+  flex: 1;
+}
+.is-phone .jobs-title-row {
+  gap: 10px;
+}
+.is-phone .head-actions {
+  padding-top: 2px;
+}
+/* Two or more actions (Retry failed, Cancel all) do not fit beside the title on a phone: they go
+   to their own row under it, so the lanes line keeps the full width. */
+.is-phone .jobs-head:has(.head-actions > :nth-child(2)) {
+  flex-wrap: wrap;
+}
+.is-phone .jobs-head:has(.head-actions > :nth-child(2)) .jobs-title {
+  flex-basis: 100%;
+}
+.is-phone .jobs-head:has(.head-actions > :nth-child(2)) .head-actions {
+  justify-content: flex-start;
+  margin-left: 0;
+  padding-top: 0;
+}
 .is-phone .jobs-head h1 {
   font-size: 26px;
 }
@@ -6306,14 +6415,12 @@ a.nav-item.is-active .nav-count {
 }
 .week-bars-axis {
   stroke: var(--line-strong);
+  vector-effect: non-scaling-stroke;
 }
 .week-bars text {
   font-family: var(--font-mono);
   font-size: 10px;
   fill: var(--faint);
-}
-.week-bars .week-bars-total {
-  fill: var(--muted);
 }
 .week-bars-day.is-hover rect:not(.week-bars-hit) {
   filter: brightness(1.12);
@@ -6369,6 +6476,11 @@ a.nav-item.is-active .nav-count {
   display: block;
   width: 100%;
   height: 80px;
+}
+.load-baseline {
+  stroke: var(--line-strong);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
 }
 .load-line {
   stroke-width: 1.5;
@@ -6458,19 +6570,9 @@ a.nav-item.is-active .nav-count {
   font-size: 24px;
   font-weight: 700;
 }
-.stat-tile.is-saved {
-  background: var(--accent);
-  color: var(--on-accent);
-}
-.stat-tile.is-failed {
-  background: var(--st-failed-bg);
-  color: var(--st-failed-text);
-}
-.stat-tile.is-saved .stat-label,
-.stat-tile.is-failed .stat-label,
-.stat-tile.is-saved .stat-sub,
-.stat-tile.is-failed .stat-sub {
-  color: inherit;
+/* A zero that is not good news (nothing saved, nothing queued) is dimmed, not hidden. */
+.stat-tile.is-zero .stat-value {
+  color: var(--faint);
 }
 /* "Saved all time" sits at the end of the Today row, apart from its list. */
 .stat-row {
@@ -6484,14 +6586,6 @@ a.nav-item.is-active .nav-count {
 .stat-row > .stat-tile.is-alltime {
   flex: 1;
 }
-.stat-tile.is-alltime {
-  background: var(--accent);
-  color: var(--on-accent);
-}
-.stat-tile.is-alltime .stat-label,
-.stat-tile.is-alltime .stat-sub {
-  color: inherit;
-}
 .is-phone .stat-row {
   flex-wrap: wrap;
 }
@@ -6499,26 +6593,27 @@ a.nav-item.is-active .nav-count {
 .is-phone .stat-row > .stat-tile.is-alltime {
   flex: 1 1 100%;
 }
-/* Last 7 days and the encoder's last hour (mockup option A). */
-.jobs-history h2,
-.encoder-strip h2 {
-  margin: 0 0 10px;
-  font-size: var(--fs-body, 15px);
-  font-weight: 700;
+/* Last 7 days and the encoder's last hour: one row of four half-height cards (2 × 2 on a phone),
+   title and total on one line, the chart under them. */
+.jobs-history {
+  display: flex;
+  flex-direction: column;
 }
 .history-cards {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
 }
 .is-phone .history-cards {
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 .history-card {
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 8px;
   min-width: 0;
-  padding: 14px 16px 10px;
+  padding: 8px 12px;
   border-radius: 14px;
   background: var(--raised);
 }
@@ -6527,8 +6622,8 @@ a.nav-item.is-active .nav-count {
   color: var(--muted);
 }
 .history-card-total {
-  margin: 2px 0 8px;
-  font-size: 22px;
+  margin: 0;
+  font-size: 18px;
   font-weight: 700;
 }
 .history-card-total small {
@@ -6539,50 +6634,96 @@ a.nav-item.is-active .nav-count {
   font-weight: 400;
   color: var(--faint);
 }
+.history-card .week-bars {
+  flex: 1 1 100%;
+  margin-top: 6px;
+}
+.history-card .week-bars-svg,
+.history-card .load-strip-svg {
+  display: block;
+  width: 100%;
+  height: 44px;
+}
+.week-days {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  margin-top: 2px;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--faint);
+}
 .history-legend {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
-  margin-top: 6px;
-  font-size: var(--fs-small);
+  gap: 10px;
+  margin-top: 3px;
+  font-family: var(--font-mono);
+  font-size: 10px;
   color: var(--muted);
+}
+.history-card > .history-legend {
+  flex: 1 1 100%;
 }
 .history-legend i {
   display: inline-block;
-  width: 9px;
-  height: 9px;
+  width: 7px;
+  height: 7px;
   margin-right: 5px;
   border-radius: 2px;
 }
-.encoder-strip-head {
-  display: flex;
-  align-items: baseline;
-  gap: 12px;
+.encoder-card .load-strip-axis {
+  align-items: center;
 }
-.encoder-strip-head h2 {
-  margin-right: auto;
+.encoder-card .encoder-legend {
+  margin: 0;
 }
-.encoder-strip-gpu,
-.encoder-strip-now {
-  font-size: var(--fs-small);
+.encoder-gpu {
+  flex: 1 1 100%;
+  margin-top: 3px;
+  font-size: 11px;
   color: var(--muted);
 }
-.encoder-strip-now {
-  font-weight: 700;
-  color: var(--text);
+/* Phone: smaller type; no legends or day names, the GPU's name under the title. */
+.is-phone .history-card {
+  padding: 10px 10px 8px;
+}
+.is-phone .history-card-title {
+  flex: 1 1 100%;
+  overflow: hidden;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.is-phone .history-card-total {
+  font-size: 16px;
+}
+.is-phone .history-card-total small {
+  font-size: 11px;
+}
+.is-phone .history-card .week-bars-svg,
+.is-phone .history-card .load-strip-svg {
+  height: 34px;
+}
+.is-phone .history-card > .history-legend,
+.is-phone .week-days,
+.is-phone .encoder-card .load-strip-axis > span:not(.encoder-legend) {
+  display: none;
+}
+.is-phone .encoder-card .load-strip-axis {
+  justify-content: flex-start;
+}
+.is-phone .encoder-gpu {
+  order: 2;
+  margin: 0;
 }
 .phone-section {
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
-.phone-section h2 {
+.phone-section .section-h2 {
   margin-top: 6px;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  color: var(--faint);
 }
 .phone-card {
   padding: 14px;
@@ -6646,13 +6787,15 @@ a.nav-item.is-active .nav-count {
   background: var(--st-replaced);
   color: var(--st-replaced-ink);
 }
-.phone-finished-icon.is-kept {
-  background: var(--st-kept);
-  color: var(--st-kept-ink);
-}
-.phone-finished-icon.is-skipped {
-  background: var(--st-skipped);
-  color: var(--st-skipped-ink);
+.phone-finished-icon.is-kept,
+.phone-finished-icon.is-noop,
+.phone-finished-icon.is-skipped,
+.phone-finished-icon.is-cancelled,
+.phone-finished-icon.is-already,
+.phone-finished-icon.is-queued {
+  background: transparent;
+  border: 1.5px solid var(--line-strong);
+  color: var(--muted);
 }
 .phone-finished-icon.is-failed {
   background: var(--st-failed);
@@ -6905,74 +7048,7 @@ a.nav-item.is-active .nav-count {
   font-weight: 500;
 }
 
-/* ---------- Run summary (Task 25): outcome tiles, in = out line, per-file table ---------- */
-
-.outcome-done {
-  --outcome: var(--st-replaced);
-  --outcome-ink: var(--st-replaced-ink);
-}
-.outcome-kept_original {
-  --outcome: var(--st-kept);
-  --outcome-ink: var(--st-kept-ink);
-}
-.outcome-nothing_to_do,
-.outcome-cancelled,
-.outcome-already_processed {
-  --outcome: var(--st-noop);
-  --outcome-ink: var(--st-noop-ink);
-}
-.outcome-skipped {
-  --outcome: var(--st-skipped);
-  --outcome-ink: var(--st-skipped-ink);
-}
-.outcome-failed {
-  --outcome: var(--st-failed);
-  --outcome-ink: var(--st-failed-ink);
-}
-.outcome-queued {
-  --outcome: var(--st-noop);
-  --outcome-ink: var(--st-noop-ink);
-}
-.outcome-in_progress {
-  --outcome: var(--st-running);
-  --outcome-ink: var(--st-running-ink);
-}
-
-.outcome-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  height: 24px;
-  padding: 0 8px;
-  border-radius: var(--r-pill);
-  border: 1px solid var(--outcome);
-  background: var(--outcome);
-  color: var(--outcome-ink);
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 600;
-  white-space: nowrap;
-}
-/* A dry run's would-be verdict: solid amber (the dashed "Dry run" badge sits beside it). */
-.outcome-chip.is-would {
-  --outcome: var(--st-dry);
-  --outcome-ink: var(--st-dry);
-  background: var(--st-dry-bg);
-}
-.outcome-with-tag {
-  display: inline-flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-}
-.outcome-depends {
-  --outcome: var(--st-dry);
-  --outcome-ink: var(--st-dry);
-}
-.run-tiles.is-dry .outcome-done,
-.run-tiles.is-dry .outcome-kept_original {
-  --outcome: var(--st-dry);
-}
+/* ---------- Run summary: header, Jobs-style tiles, per-file table (phone: stacked cards) ---------- */
 
 .run-title-row {
   display: flex;
@@ -6980,59 +7056,18 @@ a.nav-item.is-active .nav-count {
   align-items: center;
   gap: var(--sp-3);
 }
-.run-path {
-  overflow-wrap: anywhere;
-}
 
 .run-counts {
   display: flex;
   flex-direction: column;
   gap: var(--sp-3);
 }
-.run-tiles {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: var(--sp-2);
-  margin: 0;
-  padding: 0;
-  list-style: none;
+.run-stats .stat-tile {
+  flex: 0 1 200px;
 }
-.run-tile {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-1);
-  padding: var(--sp-3);
-  border-radius: var(--r-md);
-  border: 1px solid var(--line);
-  border-left: 4px solid var(--outcome);
-  background: var(--surface);
-}
-.run-tile-word {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
+.run-dry-summary {
+  color: var(--muted);
   font-size: var(--fs-small);
-  font-weight: 500;
-  color: var(--muted);
-}
-.run-tile-n {
-  font-size: var(--fs-h2);
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-}
-.run-tile.is-zero {
-  border-left-color: var(--line);
-}
-.run-tile.is-zero .run-tile-word,
-.run-tile.is-zero .run-tile-n {
-  color: var(--faint);
-}
-
-.run-reconcile {
-  font-family: var(--font-mono);
-  font-size: var(--fs-mono);
-  font-weight: 600;
-  color: var(--muted);
 }
 .run-bytes {
   color: var(--muted);
@@ -7056,7 +7091,6 @@ a.nav-item.is-active .nav-count {
 }
 .run-files table {
   width: 100%;
-  min-width: 640px;
   border-collapse: collapse;
   font-size: 14px;
 }
@@ -7077,10 +7111,30 @@ a.nav-item.is-active .nav-count {
 }
 .run-cell.run-file-name {
   color: var(--text);
-  font-weight: 700;
   overflow-wrap: anywhere;
 }
+.run-cell.run-file-name .job-name {
+  white-space: normal;
+}
+/* Why a file ended as it did, under its name (no Reason column). */
+.run-file-note {
+  display: block;
+  margin-top: 2px;
+  font-size: var(--fs-small);
+  color: var(--muted);
+}
+.run-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.run-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
 .run-cell.run-size {
+  color: var(--muted);
   font-family: var(--font-mono);
   font-size: 12px;
   white-space: nowrap;
@@ -7089,6 +7143,19 @@ a.nav-item.is-active .nav-count {
 @media (max-width: 639px) {
   .run-page {
     padding: 20px 16px 32px;
+  }
+  .run-page .page-head h1 {
+    font-size: 26px;
+  }
+  /* Phone: the saved tile on its own row, the outcomes side by side under it. */
+  .run-stats {
+    flex-wrap: wrap;
+  }
+  .run-stats .stat-tile {
+    flex: 1 1 0;
+  }
+  .run-stats .stat-tile:first-child {
+    flex-basis: 100%;
   }
 }
 
@@ -9641,13 +9708,6 @@ button.job-step-more:hover {
   background: var(--st-dry-bg);
   color: var(--st-dry);
   border: 1.5px solid var(--st-dry);
-}
-.stat-tile.is-attention {
-  background: var(--st-dry-bg);
-  color: var(--st-dry);
-}
-.stat-tile.is-attention .stat-label {
-  color: inherit;
 }
 .problem-banner {
   align-items: flex-start;
