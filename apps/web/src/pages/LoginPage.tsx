@@ -47,7 +47,11 @@ export function LoginPage() {
     <AuthLayout>
       <CredentialsForm
         title="Sign in"
-        intro={`to Transcoda on ${window.location.hostname}`}
+        // The host once: the brand panel's footer beside the form, this line on a phone (where
+        // that footer is hidden).
+        intro={
+          <span className="auth-host-intro">{`to Transcoda on ${window.location.hostname}`}</span>
+        }
         submitLabel={locked ? `Sign in · wait ${wait} s` : 'Sign in'}
         minPasswordLength={1}
         error={locked ? 'Too many attempts. Try again shortly.' : error}

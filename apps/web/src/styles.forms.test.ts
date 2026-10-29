@@ -109,9 +109,10 @@ describe('workflows tables and libraries (M6, L4, L9)', () => {
     expect(rule('.inline-edit')).toMatch(/height:\s*40px/);
   });
 
-  it('library names keep their words and paths wrap at slashes', () => {
+  it('library names keep their words; a path stays on one line, cut from the left', () => {
     expect(rule('.lib-table .lib-name')).toMatch(/min-width:/);
-    expect(rule('.lib-table .lib-cell .mono')).toMatch(/overflow-wrap:\s*break-word/);
+    expect(rule('.lib-path,\n.lib-note-path')).toMatch(/white-space:\s*nowrap/);
+    expect(rule('.lib-path,\n.lib-note-path')).toMatch(/direction:\s*rtl/);
   });
 });
 

@@ -44,7 +44,9 @@ describe('PluginsSection', () => {
 
   it('finish-step timeout and isolation are read-only; catalogs link to the Plugins page', async () => {
     renderAt('/settings/plugins', <PluginsSection />);
-    expect(await screen.findByText('600 seconds')).toBeTruthy();
+    // The shared "Set on the server" panel starts closed.
+    fireEvent.click(await screen.findByRole('button', { name: /Set on the server/ }));
+    expect(screen.getByText('600 seconds')).toBeTruthy();
     expect(screen.getByText('Separate user')).toBeTruthy();
     expect(screen.queryByRole('spinbutton', { name: /finish/i })).toBeNull();
     const link = screen.getByRole('link', { name: /catalogs are managed on the plugins page/i });
@@ -56,7 +58,8 @@ describe('PluginsSection', () => {
     loaded.plugins.isolation = { mode: 'same-user', variable: 'TRANSCODA_PLUGIN_ISOLATION' };
     mocks.get.mockResolvedValue(loaded);
     const { container } = renderAt('/settings/plugins', <PluginsSection />);
-    expect(await screen.findByText('Same user')).toBeTruthy();
+    fireEvent.click(await screen.findByRole('button', { name: /Set on the server/ }));
+    expect(screen.getByText('Same user')).toBeTruthy();
     expect(container.textContent).toContain('From TRANSCODA_PLUGIN_ISOLATION');
   });
 });

@@ -1,6 +1,6 @@
 import type { Library, WorkflowSummary } from '@transcoda/contract';
 import { runHoursSummary } from '@transcoda/shared';
-import { type FormEvent, Fragment, useEffect, useId, useRef, useState } from 'react';
+import { type FormEvent, type ReactNode, useEffect, useId, useRef, useState } from 'react';
 import { Link, useLocation } from 'wouter';
 import { api, isDefinedError, safe } from '../api/client.ts';
 import { describeError } from '../api/errors.ts';
@@ -13,6 +13,7 @@ import { Loading } from '../components/Loading.tsx';
 import { RowMenu } from '../components/RowMenu.tsx';
 import { useToast } from '../components/Toast.tsx';
 import { ActivateDialog } from '../editor/ui/ActivateDialog.tsx';
+import { ActivationPill } from '../editor/ui/ActivationControl.tsx';
 import { useAsync } from '../hooks/useAsync.ts';
 import { usePageTitle } from '../lib/pageTitle.ts';
 import {
@@ -21,9 +22,6 @@ import {
   type ServerClock,
   scanWaitText,
 } from '../libraries/RunHoursCard.tsx';
-
-/** The engine's `recycleFolder: null`: every replace recycles into this folder in the root. */
-const DEFAULT_RECYCLE = 'Default (.transcoda-recycle in the library)';
 
 type FieldErrors = Partial<Record<'name' | 'path' | 'recycle', string>>;
 
@@ -47,21 +45,45 @@ function capitalise(text: string): string {
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
-/** A path that may wrap after any slash, so it breaks between folders and never inside a name. */
-function BreakablePath({ path }: { path: string }) {
-  const parts = path.split('/');
+/**
+ * A path on one muted line, cut from the left when it does not fit ("…/media/movies"): the end of
+ * a path names the folder. The full path is the tooltip. The LRM marks keep a leading slash where
+ * it belongs under `direction: rtl`.
+ */
+function TailPath({ path, className }: { path: string; className: string }) {
   return (
-    <>
-      {parts.map((part, i) => (
-        // biome-ignore lint/suspicious/noArrayIndexKey: a path's parts are static and may repeat.
-        <Fragment key={i}>
-          {i > 0 ? '/' : null}
-          {i > 0 ? <wbr /> : null}
-          {part}
-        </Fragment>
-      ))}
-    </>
+    <span className={`mono ${className}`} title={path}>
+      {`\u200e${path}\u200e`}
+    </span>
   );
+}
+
+/**
+ * The settings that differ from the default, one muted line each (convention 11): a recycle
+ * folder other than `<root>/.transcoda-recycle` (inside the root it is shown relative to it), and
+ * processing hardlinked files. Nothing when both are default.
+ */
+function NonDefaultNotes({ library }: { library: Library }) {
+  const notes: ReactNode[] = [];
+  const recycle = library.recycleFolder;
+  if (recycle !== null) {
+    const inside = recycle.startsWith(`${library.path}/`)
+      ? recycle.slice(library.path.length + 1)
+      : recycle;
+    notes.push(
+      <span key="recycle" className="lib-note">
+        Recycles to <TailPath path={inside} className="lib-note-path" />
+      </span>,
+    );
+  }
+  if (library.processHardlinked) {
+    notes.push(
+      <span key="hardlinked" className="lib-note">
+        Processes hardlinked files
+      </span>,
+    );
+  }
+  return notes.length > 0 ? <>{notes}</> : null;
 }
 
 function ErrorAlert({ children }: { children: string }) {
@@ -766,6 +788,16 @@ export function LibrariesPage() {
   /** The force checkbox of Scan now: a real run of the feeder's active version may rewrite files. */
   const forceLabel = `Also re-run files v${confirmScan?.feeds?.version ?? ''} already finished (they may be rewritten)`;
 
+  /**
+   * The feeder's active version for its pill: the workflow list's (it knows whether the version
+   * can run), else the library's own version, taken as runnable until the list loads.
+   */
+  function feederActive(feeds: NonNullable<Library['feeds']>): WorkflowSummary['active'] {
+    const active = allWorkflows.find((w) => w.id === feeds.workflowId)?.active;
+    if (active && active.version === feeds.version) return active;
+    return { version: feeds.version, runnable: true, activatedAt: '', activatedBy: '' };
+  }
+
   function openForm(library: Library | null) {
     opened.current += 1;
     // A fresh key per opening, so the form starts from the row (or empty) every time.
@@ -775,7 +807,15 @@ export function LibrariesPage() {
   return (
     <div className="page">
       <div className="page-head page-head-row">
-        <h1>Libraries</h1>
+        <h1>
+          Libraries
+          {list && list.length > 0 ? (
+            <>
+              {' '}
+              <span className="lib-h1-count">{list.length}</span>
+            </>
+          ) : null}
+        </h1>
         <div className="page-actions">
           <button
             ref={newButton}
@@ -823,12 +863,16 @@ export function LibrariesPage() {
       {list && list.length > 0 ? (
         <section className="panel lib-table" aria-label="Libraries">
           <table>
+            <colgroup>
+              <col className="lib-col-name" />
+              <col />
+              <col className="lib-col-feeds" />
+              <col className="lib-col-actions" />
+            </colgroup>
             <thead>
               <tr>
                 <th scope="col">Name</th>
                 <th scope="col">Path</th>
-                <th scope="col">Recycle folder</th>
-                <th scope="col">Process hardlinked files</th>
                 <th scope="col">Feeds</th>
                 <th scope="col">
                   <span className="sr-only">Actions</span>
@@ -847,7 +891,7 @@ export function LibrariesPage() {
                 return (
                   <tr key={l.id}>
                     <td className="lib-cell lib-name">
-                      {l.name}
+                      <span className="lib-name-text">{l.name}</span>
                       {l.runHours?.enabled ? (
                         <span className="lib-run-hours">
                           <Icon name="clock" size={13} />
@@ -855,30 +899,18 @@ export function LibrariesPage() {
                         </span>
                       ) : null}
                     </td>
-                    <td data-label="Path" className="lib-cell">
-                      <span className="mono">
-                        <BreakablePath path={l.path} />
-                      </span>
-                    </td>
-                    <td data-label="Recycle folder" className="lib-cell">
-                      {l.recycleFolder === null ? (
-                        <span>{DEFAULT_RECYCLE}</span>
-                      ) : (
-                        <span className="mono">
-                          <BreakablePath path={l.recycleFolder} />
-                        </span>
-                      )}
-                    </td>
-                    <td data-label="Process hardlinked files" className="lib-cell">
-                      {l.processHardlinked ? 'Yes' : 'No'}
+                    <td className="lib-cell lib-path-cell">
+                      <TailPath path={l.path} className="lib-path" />
+                      <NonDefaultNotes library={l} />
                     </td>
                     {l.feeds ? (
-                      <td
-                        data-label="Feeds"
-                        className="lib-cell"
-                      >{`${l.feeds.name} v${l.feeds.version}, active`}</td>
+                      <td className="lib-cell">
+                        <span className="lib-feed">
+                          {l.feeds.name} <ActivationPill active={feederActive(l.feeds)} />
+                        </span>
+                      </td>
                     ) : waiting ? (
-                      <td data-label="Feeds" className="lib-cell lib-feeds-waiting">
+                      <td className="lib-cell lib-feeds-waiting">
                         <span
                           title={`Library inputs naming ${l.name}: ${l.namedByInactive
                             .map((w) => `${w.name} v${w.version}`)
@@ -904,7 +936,7 @@ export function LibrariesPage() {
                         )}
                       </td>
                     ) : (
-                      <td data-label="Feeds" className="lib-cell lib-feeds-none">
+                      <td className="lib-cell lib-feeds-none">
                         <span>—</span> <Link href="/">{ADD_INPUT}</Link>
                       </td>
                     )}

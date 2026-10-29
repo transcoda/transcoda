@@ -38,8 +38,11 @@ describe('GeneralSection', () => {
     expect(nameBox().value).toBe('');
     expect(nameBox().getAttribute('placeholder')).toBe('Transcoda');
     expect(nameBox().maxLength).toBe(64);
+    // Nothing changed: Save is off without a sentence saying so; default values carry no tag.
     expect(save().disabled).toBe(true);
-    expect(screen.getByText('No changes to save')).toBeTruthy();
+    expect(screen.queryByText('No changes to save')).toBeNull();
+    expect(document.querySelector('.form-reason')).toBeNull();
+    expect(document.querySelectorAll('.setting-tag')).toHaveLength(0);
     fireEvent.change(nameBox(), { target: { value: '  ' } });
     expect(save().disabled).toBe(true);
     fireEvent.change(nameBox(), { target: { value: 'Den' } });
@@ -49,6 +52,10 @@ describe('GeneralSection', () => {
       expect(mocks.setAppearance).toHaveBeenCalledWith({ theme: 'system', serverName: 'Den' }),
     );
     expect(save().disabled).toBe(true);
+    // A value other than the default says where it comes from.
+    expect([...document.querySelectorAll('.setting-tag')].map((t) => t.textContent)).toEqual([
+      'Set here',
+    ]);
   });
 
   it('clearing a saved name sends null', async () => {
@@ -101,17 +108,39 @@ describe('GeneralSection', () => {
     expect((screen.getByRole('radio', { name: 'System' }) as HTMLInputElement).checked).toBe(true);
   });
 
-  it('public URL and allowed hosts are read-only, each with its source', async () => {
+  it('public URL and allowed hosts are read-only, closed under "Set on the server"', async () => {
     const { container } = renderAt('/settings/general', <GeneralSection />);
-    expect(await screen.findByText('Not set: notifications carry no link')).toBeTruthy();
+    const toggle = await screen.findByRole('button', { name: /Set on the server/ });
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    expect(toggle.textContent).toContain('Read-only');
+    expect(screen.queryByText('Not set: notifications carry no link')).toBeNull();
+    fireEvent.click(toggle);
+    expect(screen.getByText('Not set: notifications carry no link')).toBeTruthy();
     expect(screen.queryByRole('textbox', { name: /public url/i })).toBeNull();
     expect(
       [...container.querySelectorAll('.setting-source code')].map((c) => c.textContent),
     ).toContain('TRANSCODA_PUBLIC_URL');
+    // Each host that is not built in says where it comes from; "built in" is said once.
     const hosts = screen.getByRole('list', { name: 'Allowed hosts' });
     expect(hosts.textContent).toContain('localhost');
-    expect(hosts.textContent).toContain('Built in');
+    expect(hosts.textContent).not.toContain('Built in');
     expect(hosts.textContent).toContain('Recorded at setup');
     expect(hosts.textContent).toContain('From TRANSCODA_ALLOWED_HOSTS');
+    expect(screen.getByText('The others are built in')).toBeTruthy();
+  });
+
+  it('says "Built in" once when every allowed host is built in', async () => {
+    const loaded = settingsFixture();
+    loaded.general.allowedHosts = [
+      { host: 'localhost', source: { kind: 'built-in' } },
+      { host: '127.0.0.1', source: { kind: 'built-in' } },
+    ];
+    mocks.get.mockResolvedValue(loaded);
+    renderAt('/settings/general', <GeneralSection />);
+    fireEvent.click(await screen.findByRole('button', { name: /Set on the server/ }));
+    expect(screen.getAllByText('Built in')).toHaveLength(1);
+    expect(screen.getByRole('list', { name: 'Allowed hosts' }).textContent).toBe(
+      'localhost127.0.0.1',
+    );
   });
 });

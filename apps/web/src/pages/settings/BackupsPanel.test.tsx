@@ -2,6 +2,7 @@ import { ORPCError } from '@orpc/client';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import type { Backup, BackupsListOutput } from '@transcoda/contract';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { fmtFull, fmtStamp } from '../../lib/time.ts';
 
 const mocks = vi.hoisted(() => ({ list: vi.fn(), create: vi.fn() }));
 vi.mock('../../api/client.ts', () => ({
@@ -49,6 +50,10 @@ describe('BackupsPanel', () => {
     expect(items[1]?.textContent).toContain('Before migration');
     expect(items[1]?.textContent).toContain('612 kB');
     expect(screen.getByText(/keeps the 5 newest of each kind/)).toBeTruthy();
+    // The one date style, with the time of day; the exact moment as its title.
+    const time = items[0]?.querySelector('time') as HTMLTimeElement;
+    expect(time.textContent).toBe(fmtStamp(build.createdAt, { time: true }));
+    expect(time.getAttribute('title')).toBe(fmtFull(build.createdAt));
   });
 
   it('each row has a Download link to the session-only download route', async () => {

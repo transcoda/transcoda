@@ -921,6 +921,14 @@ a:hover {
   max-width: 400px;
 }
 
+/* Sign in names the host once: in the brand panel's footer beside the form; under the title on a
+   phone, where that footer is hidden. */
+@media (min-width: 900px) {
+  .lead:has(> .auth-host-intro) {
+    display: none;
+  }
+}
+
 .credentials {
   display: flex;
   flex-direction: column;
@@ -971,6 +979,10 @@ a:hover {
 
   .auth-tagline {
     font-size: 40px;
+  }
+
+  .auth-meta {
+    display: none;
   }
 
   .auth-main {
@@ -2238,34 +2250,18 @@ a.nav-item.is-active:focus-visible,
   min-width: 0;
 }
 
-.settings-group > .settings-group-head {
-  margin: 0;
+.settings-group > .group-h3 {
+  margin: 0 0 var(--sp-1);
 }
 
-/* Read-only values: last in a section, on their own inset panel. */
-.settings-readonly {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  padding: var(--sp-4) var(--sp-4) 0;
-  border: 1px solid var(--line);
-  border-radius: var(--r-lg);
-  background: var(--surface);
+/* Read-only values ("Set on the server"): last in a section, closed, "Read-only" on the right. */
+.settings-server {
+  margin-top: var(--sp-4);
+  border-top: 1px solid var(--line);
 }
 
-.settings-readonly-head {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-1);
-}
-
-.settings-readonly-head .settings-group-head,
-.settings-readonly-head .setting-hint {
-  margin: 0;
-}
-
-.settings-readonly > .setting-row:last-child {
-  border-bottom: 0;
+.settings-server .disclosure-meta {
+  margin-left: auto;
 }
 
 /* "Advanced": rarely changed rows, closed by default; it sits in the list of rows like one. */
@@ -2331,6 +2327,21 @@ a.nav-item.is-active:focus-visible,
   flex-direction: row;
   flex-wrap: wrap;
   gap: var(--sp-1) var(--sp-4);
+}
+
+/* Phone: the section name is the page's title (beside the nav it is for screen readers only),
+   and long choices (a GPU's name) take a line each. */
+@media (max-width: 639px) {
+  .settings-section > h2 {
+    font-size: 28px;
+    letter-spacing: -0.02em;
+  }
+
+  .setting-radios-stack {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0;
+  }
 }
 
 .setting-radio {
@@ -2473,9 +2484,20 @@ a.nav-item.is-active:focus-visible,
   max-width: 420px;
 }
 
-.account-form h3 {
-  font-size: var(--fs-body);
+.account-form .setting-row {
+  padding: var(--sp-2) 0;
+  border-bottom: 0;
+}
+
+.account-form > .form-actions {
+  margin-top: var(--sp-3);
+}
+
+/* Recycle: what the recycled originals take now, a value rather than a sentence. */
+.recycle-usage-value {
+  font-size: 20px;
   font-weight: 700;
+  color: var(--text);
 }
 
 /* About */
@@ -6848,8 +6870,68 @@ a.nav-item.is-active .nav-count {
   vertical-align: middle;
 }
 
-.lib-table .lib-cell .mono {
-  overflow-wrap: break-word;
+.lib-table table {
+  table-layout: fixed;
+}
+.lib-table .lib-col-name {
+  width: 24%;
+}
+.lib-table .lib-col-feeds {
+  width: 28%;
+}
+.lib-table .lib-col-actions {
+  width: 170px;
+}
+
+/* The count beside the H1 ("Libraries 1"), like a section heading's count. */
+.lib-h1-count {
+  margin-left: 4px;
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0;
+  color: var(--muted);
+}
+
+/* A path on one muted line, cut from the left ("…/media/movies"); the full path is its title. */
+.lib-path,
+.lib-note-path {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  direction: rtl;
+  text-align: left;
+  font-size: 13px;
+  color: var(--muted);
+}
+.lib-note-path {
+  display: inline-block;
+  vertical-align: bottom;
+  max-width: calc(100% - 7em);
+  font-size: 12px;
+}
+/* A setting that differs from the default, under the path. */
+.lib-note {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* Feeds: the workflow's name and the same activation pill as the Workflows list. */
+.lib-feed {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  color: var(--text);
+}
+.lib-feed .activation-pill {
+  min-height: 24px;
+  padding: 0 9px;
+  font-size: 11px;
 }
 
 .lib-table th:first-child,
@@ -9896,23 +9978,10 @@ button.job-step-more:hover {
   color: var(--muted);
 }
 
-/* Settings: a group's small heading ("Applies at once", "Set on the server"). */
-.settings-group-head {
-  margin: var(--sp-4) 0 var(--sp-1);
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-.settings-group-head:first-child {
-  margin-top: 0;
-}
-
-/* About: what Transcoda encodes with, before the full list. */
+/* About: what Transcoda encodes with, first in "Show all encoders". */
 .about-encoders {
   list-style: none;
-  margin: var(--sp-3) 0;
+  margin: var(--sp-3) 16px var(--sp-2);
   padding: 0;
   display: grid;
   gap: 6px;
@@ -10002,14 +10071,39 @@ button.job-step-more:hover {
   }
 }
 @media (max-width: 639px) {
-  /* A library's actions (Scan now and the menu) are too wide for the side: a row under the card. */
-  .lib-table .lib-cell.lib-actions {
-    grid-column: 1 / -1;
-    grid-row: auto;
-    margin-top: 6px;
+  /* A library card: the name with Scan now and the menu on its row; schedule, path and feeds
+     under it, without column names. */
+  .lib-table colgroup {
+    display: none;
   }
-  .lib-table tbody tr {
-    grid-template-columns: minmax(0, 1fr);
+  .lib-table .lib-cell {
+    grid-column: 1 / -1;
+  }
+  /* The name cell's parts join the card's grid: the name beside the actions, the run hours on
+     their own line under them. */
+  .lib-table .lib-cell.lib-name {
+    display: contents;
+  }
+  .lib-table .lib-name-text {
+    grid-column: 1;
+    grid-row: 1;
+    align-self: center;
+    min-width: 0;
+    color: var(--text);
+    font-weight: 700;
+  }
+  .lib-table .lib-run-hours {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    margin-top: 0;
+  }
+  .lib-table .lib-cell.lib-actions {
+    grid-column: 2;
+    grid-row: 1;
+    align-self: start;
+  }
+  .lib-table .lib-path {
+    font-size: 12px;
   }
 }
 @media (max-width: 639px) {
@@ -10026,9 +10120,10 @@ button.job-step-more:hover {
   gap: var(--sp-2);
 }
 
-/* A group after another group: a little more air than between rows. */
+/* A group after another group: clearly apart (the pause switch applies at once, the group after
+   it has its own Save). */
 .settings-group + .settings-group {
-  margin-top: var(--sp-4);
+  margin-top: var(--sp-6);
 }
 
 /* Library dialog: the recycle folder and the two switches, under "Advanced". */

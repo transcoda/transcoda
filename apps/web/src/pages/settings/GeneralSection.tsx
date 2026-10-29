@@ -10,7 +10,13 @@ import {
   SectionStatus,
   useSettingsForm,
 } from './SectionForm.tsx';
-import { ServerValues, SettingFieldset, SettingHead, SettingRow } from './SettingRow.tsx';
+import {
+  ServerValues,
+  SettingFieldset,
+  SettingHead,
+  SettingRow,
+  shownSource,
+} from './SettingRow.tsx';
 import { sourceText } from './sourceText.ts';
 
 interface GeneralDraft extends Draft {
@@ -76,6 +82,7 @@ export function GeneralSection() {
   if (!settings || !draft) return <SectionStatus loaded={false} error={form.loadError} />;
   const { general } = settings;
   const nameIssue = form.issues.serverName;
+  const builtIn = general.allowedHosts.filter((h) => h.source.kind === 'built-in').length;
 
   return (
     <>
@@ -90,7 +97,7 @@ export function GeneralSection() {
         <SettingRow
           label="Server name"
           hint="Shown in the top bar and the browser tab. Leave empty for none."
-          source={general.serverName.source}
+          source={shownSource(general.serverName)}
           htmlFor={`${id}-name`}
         >
           <input
@@ -109,7 +116,7 @@ export function GeneralSection() {
         <SettingFieldset
           label="Theme"
           hint="For everyone who uses this server"
-          source={general.theme.source}
+          source={shownSource(general.theme)}
         >
           {THEMES.map((t) => (
             <label key={t.value} className="setting-radio">
@@ -129,7 +136,7 @@ export function GeneralSection() {
           ))}
         </SettingFieldset>
         <FormError message={form.formError} />
-        <SaveRow reason={form.dirty ? null : 'No changes to save'} busy={form.busy} />
+        <SaveRow reason={null} disabled={!form.dirty} busy={form.busy} />
       </form>
       {/* Below the form and its Save: what this page shows but the server's environment sets. */}
       <ServerValues>
@@ -154,11 +161,19 @@ export function GeneralSection() {
             {general.allowedHosts.map((h) => (
               <li key={h.host}>
                 <span className="mono">{h.host}</span>
-                <span className="setting-source">{sourceText(h.source)}</span>
+                {/* "Built in" is said once, under the list; another source is said per host. */}
+                {h.source.kind === 'built-in' ? null : (
+                  <span className="setting-source">{sourceText(h.source)}</span>
+                )}
               </li>
             ))}
           </ul>
           <p className="setting-hint">Names this server answers to in the browser</p>
+          {builtIn === 0 ? null : (
+            <p className="setting-source">
+              {builtIn === general.allowedHosts.length ? 'Built in' : 'The others are built in'}
+            </p>
+          )}
         </div>
       </ServerValues>
     </>
