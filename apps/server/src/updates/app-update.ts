@@ -7,6 +7,7 @@ import semver from 'semver';
 import { z } from 'zod';
 import type { EngineEvents } from '../engine/events.ts';
 import type { Logger } from '../logger.ts';
+import { readLimited } from '../plugins/token-hosts.ts';
 
 const REPO = 'transcoda/transcoda';
 export const LATEST_RELEASE_URL = `https://api.github.com/repos/${REPO}/releases/latest`;
@@ -166,9 +167,10 @@ export class AppUpdateChecker {
       signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     });
     if (!res.ok) throw new Error(`${url} answered ${res.status}`);
-    const text = await res.text();
-    if (text.length > MAX_BODY_BYTES) throw new Error(`${url} answered more than 1 MB`);
-    return JSON.parse(text);
+    // Read with the cap, so a huge answer is cut off instead of held in memory.
+    const body = await readLimited(res, MAX_BODY_BYTES);
+    if (body === null) throw new Error(`${url} answered more than 1 MB`);
+    return JSON.parse(body.toString('utf8'));
   }
 
   private schedule(ms: number): void {

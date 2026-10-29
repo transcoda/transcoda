@@ -158,6 +158,29 @@ describe('AppUpdateChecker', () => {
     );
   });
 
+  it('stops reading an answer at 1 MB', async () => {
+    let read = 0;
+    const endless = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        read += 65_536;
+        controller.enqueue(new Uint8Array(65_536).fill(32));
+      },
+    });
+    const { checker, warn } = make({
+      fetch: vi.fn<typeof fetch>(async (input) =>
+        String(input) === LATEST_RELEASE_URL
+          ? new Response(JSON.stringify(release('v0.4.0')), { status: 200 })
+          : new Response(endless, { status: 200 }),
+      ),
+    });
+    await checker.checkOnce();
+    expect(checker.status().update).toMatchObject({ version: '0.4.0', releases: [] });
+    expect(read).toBeLessThan(2_000_000);
+    expect(warn).toHaveBeenCalledWith(
+      expect.objectContaining({ msg: 'release notes could not be read' }),
+    );
+  });
+
   it('a failed check keeps the answer last known and logs a warning', async () => {
     const answers: Record<string, unknown> = {
       [LATEST_RELEASE_URL]: release('v0.4.0'),
