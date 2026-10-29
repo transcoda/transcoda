@@ -4,8 +4,8 @@ import { Icon, type IconName } from './Icon.tsx';
 
 // Colour never carries meaning alone: every badge and chip pairs an icon with a word.
 // One meaning per colour (convention 7): `ok` lime = changed / active; `neutral` outline = no change
-// (Not active, Kept original, Nothing to do, Skipped); `error` red = failed; `warning` and
-// `outdated` amber = needs attention. Same size and font as the Jobs list's state chip.
+// (Not active, Kept original, Nothing to do, Skipped); `error` red = failed; `warning` amber =
+// needs attention. Same size and font as the Jobs list's state chip.
 
 export function StatusChip({
   tone,
@@ -15,7 +15,7 @@ export function StatusChip({
   srText,
   srId,
 }: {
-  tone: 'ok' | 'neutral' | 'error' | 'warning' | 'outdated';
+  tone: 'ok' | 'neutral' | 'error' | 'warning';
   icon?: IconName;
   children: string;
   title?: string;

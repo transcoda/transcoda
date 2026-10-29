@@ -36,10 +36,6 @@ describe('chips (conventions 7/8)', () => {
     expect(rulesFor('.job-chip.is-kept')).not.toContain('--st-kept');
     expect(rulesFor('.phone-finished-icon.is-kept')).not.toContain('--st-kept');
   });
-
-  it('an outdated chip is amber, not purple', () => {
-    expect(rulesFor('.chip-outdated')).not.toContain('--kind-condition');
-  });
 });
 
 describe('stat tiles (convention 6)', () => {

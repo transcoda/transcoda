@@ -114,7 +114,10 @@ beforeEach(() => {
   otherMocks.librariesList.mockReset().mockResolvedValue({ libraries: [], notices: [] });
   resetCatalogCache();
 });
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.useRealTimers();
+});
 
 describe('WorkflowsPage', () => {
   it('lists workflows first, then a "Sub-workflows" section with its own h2 and count', async () => {
@@ -130,7 +133,7 @@ describe('WorkflowsPage', () => {
     expect(within(wfTable).getByRole('link', { name: 'Movies' })).toBeTruthy();
     expect(within(wfTable).queryByRole('link', { name: 'Audio tidy' })).toBeNull();
     expect(within(subTable).getByRole('link', { name: 'Audio tidy' })).toBeTruthy();
-    expect(within(subTable).getByText('Used by 2').getAttribute('title')).toBe(
+    expect(within(subTable).getByText('TV cleanup, Movies').getAttribute('title')).toBe(
       'TV cleanup, Movies',
     );
     expect(
@@ -164,6 +167,120 @@ describe('WorkflowsPage', () => {
     expect(css).toMatch(/\.wf-count\s*\{[^}]*color:\s*var\(--muted\)/);
   });
 
+  it('the page title says "Workflows" once, with the count beside it; the table heading is for screen readers', async () => {
+    renderAt('/', <WorkflowsPage />);
+    await screen.findByRole('link', { name: 'Audio tidy' });
+    const title = screen.getByRole('heading', { level: 1, name: 'Workflows' });
+    const count = title.parentElement?.querySelector('.wf-count') as HTMLElement;
+    expect(count.textContent).toBe('2');
+    expect(count.getAttribute('aria-hidden')).toBe('true');
+    const wfHeading = screen.getByRole('heading', { level: 2, name: /^Workflows\b/ });
+    expect(wfHeading.className).toBe('sr-only');
+    expect(wfHeading.textContent).toBe('Workflows 2');
+    const subHeading = screen.getByRole('heading', { level: 2, name: /^Sub-workflows\b/ });
+    expect(subHeading.className).toBe('wf-section-head');
+  });
+
+  it('the workflow table has Name, Library, Active, Last edited and the row menu; no Status column', async () => {
+    renderAt('/', <WorkflowsPage />);
+    await screen.findByRole('link', { name: 'TV cleanup' });
+    const wfTable = screen.getByRole('table', { name: /^Workflows\b/ });
+    expect(
+      within(wfTable)
+        .getAllByRole('columnheader')
+        .map((h) => h.textContent),
+    ).toEqual(['Name', 'Library', 'Active', 'Last edited', 'Actions']);
+    expect(screen.queryByRole('columnheader', { name: 'Status' })).toBeNull();
+    expect(screen.queryByRole('columnheader', { name: 'Version' })).toBeNull();
+  });
+
+  it('the Library column names the library a workflow processes, or says it runs on a file only', async () => {
+    mocks.list.mockResolvedValue({
+      workflows: [
+        summary({
+          id: 'a',
+          name: 'Shows',
+          active: activeV(2, true),
+          currentVersion: 2,
+          feedsLibrary: { id: 'l1', name: 'TV' },
+        }),
+        summary({ id: 'b', name: 'Loose', currentVersion: 1 }),
+      ],
+    });
+    renderAt('/', <WorkflowsPage />);
+    await screen.findByRole('link', { name: 'Shows' });
+    const shows = rowOf('Shows').querySelector('.wf-library') as HTMLElement;
+    expect(shows.textContent).toBe('TV');
+    expect(within(shows).getByText('TV').getAttribute('title')).toBe('TV');
+    const loose = within(rowOf('Loose')).getByText('Run on a file only');
+    expect(loose.className).toContain('wf-quiet');
+  });
+
+  it('lists active workflows first, then the rest, each A–Z ignoring case; sub-workflows A–Z', async () => {
+    mocks.list.mockResolvedValue({
+      workflows: [
+        summary({ id: '1', name: 'zebra' }),
+        summary({ id: '2', name: 'Movies', active: activeV(1, true) }),
+        summary({ id: '3', name: 'apple' }),
+        summary({ id: '4', name: 'anime', active: activeV(1, false) }),
+        summary({ id: '5', name: 'Banana' }),
+        summary({ id: 's1', name: 'tidy', kind: 'subworkflow' }),
+        summary({ id: 's2', name: 'Audio', kind: 'subworkflow' }),
+      ],
+    });
+    renderAt('/', <WorkflowsPage />);
+    await screen.findByRole('link', { name: 'zebra' });
+    const names = (table: RegExp) =>
+      within(screen.getByRole('table', { name: table }))
+        .getAllByRole('link')
+        .map((a) => a.textContent);
+    expect(names(/^Workflows\b/)).toEqual(['anime', 'Movies', 'apple', 'Banana', 'zebra']);
+    expect(names(/^Sub-workflows\b/)).toEqual(['Audio', 'tidy']);
+  });
+
+  it('a valid row shows no chip; problems show as chips next to the name', async () => {
+    renderAt('/', <WorkflowsPage />);
+    await screen.findByRole('link', { name: 'TV cleanup' });
+    expect(rowOf('TV cleanup').querySelector('.chip')).toBeNull();
+    expect(rowOf('Audio tidy').querySelector('.chip')).toBeNull();
+    expect(screen.queryByText('Valid')).toBeNull();
+    const name = rowOf('Movies').querySelector('.wf-name') as HTMLElement;
+    expect(within(name).getByText('2 errors')).toBeTruthy();
+    expect(within(name).getByText("can't run")).toBeTruthy();
+  });
+
+  it('Last edited shows an older date this year without the year, and the full date as its title', async () => {
+    // Only Date is faked, so the list's promises and waitFor still run on real timers.
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-10-16T12:00:00'));
+    const thisYear = new Date('2026-01-02T12:00:00').toISOString();
+    const lastYear = new Date('2025-10-27T12:00:00').toISOString();
+    mocks.list.mockResolvedValue({
+      workflows: [
+        summary({ id: 'a', name: 'Old', currentVersion: 12, updatedAt: thisYear }),
+        summary({ id: 'b', name: 'Older', currentVersion: 1, updatedAt: lastYear }),
+      ],
+    });
+    renderAt('/', <WorkflowsPage />);
+    await screen.findByRole('link', { name: 'Old' });
+    const day = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short' });
+    const edited = (name: string) =>
+      (rowOf(name).querySelector('.wf-version span') as HTMLElement) ?? null;
+    expect(edited('Old').textContent).toBe(`v12 · ${day.format(new Date(thisYear))}`);
+    expect(edited('Old').getAttribute('title')).toBe(new Date(thisYear).toLocaleString());
+    expect(edited('Older').textContent).toContain(String(new Date(lastYear).getFullYear()));
+  });
+
+  it('a sub-workflow used by nothing says "Not used"', async () => {
+    mocks.list.mockResolvedValue({
+      workflows: [summary({ id: 's', name: 'Spare', kind: 'subworkflow' })],
+    });
+    renderAt('/', <WorkflowsPage />);
+    await screen.findByRole('link', { name: 'Spare' });
+    expect(within(rowOf('Spare')).getByText('Not used').className).toContain('wf-quiet');
+    expect(within(rowOf('Spare')).queryByText(/Used by/)).toBeNull();
+  });
+
   it('a sub-workflow row has no ACTIVE column or activation chip, and no review chip', async () => {
     mocks.list.mockResolvedValue({
       workflows: [
@@ -186,50 +303,60 @@ describe('WorkflowsPage', () => {
       within(subTable)
         .getAllByRole('columnheader')
         .map((h) => h.textContent),
-    ).toEqual(['Name', 'Used by', 'Status', 'Version', 'Actions']);
+    ).toEqual(['Name', 'Used by', 'Last edited', 'Actions']);
     expect(sub.textContent).not.toContain('never active');
     expect(sub.querySelector('.activation-pill')).toBeNull();
-    expect(within(sub).queryByText('Needs review')).toBeNull();
-    expect(within(sub).getByText('Valid')).toBeTruthy();
-    expect(within(sub).getByText('Used by 1')).toBeTruthy();
+    expect(within(sub).queryByText("can't run")).toBeNull();
+    expect(sub.querySelector('.chip')).toBeNull();
+    expect(within(sub).getByText('TV cleanup').getAttribute('title')).toBe('TV cleanup');
     expect(within(rowOf('TV cleanup')).getByText('Active v7')).toBeTruthy();
   });
 
-  it('both tables share one colgroup layout, and name cells carry no kind eyebrow', async () => {
+  it('the used-by column spans library and active, so both tables end alike; no kind eyebrow', async () => {
     renderAt('/', <WorkflowsPage />);
     await screen.findByRole('link', { name: 'Audio tidy' });
     const colClasses = (name: RegExp) =>
       [...screen.getByRole('table', { name }).querySelectorAll('col')].map((c) => c.className);
-    expect(colClasses(/^Sub-workflows\b/)).toEqual(colClasses(/^Workflows\b/));
-    expect(colClasses(/^Workflows\b/)).toHaveLength(5);
+    expect(colClasses(/^Workflows\b/)).toEqual([
+      'wf-col-name',
+      'wf-col-library',
+      'wf-col-active',
+      'wf-col-edited',
+      'wf-col-actions',
+    ]);
+    expect(colClasses(/^Sub-workflows\b/)).toEqual([
+      'wf-col-name',
+      'wf-col-used-by',
+      'wf-col-edited',
+      'wf-col-actions',
+    ]);
     expect(document.querySelector('.eyebrow-kind')).toBeNull();
     expect(screen.queryByText('Workflow')).toBeNull();
     expect(screen.queryByText('Sub-workflow')).toBeNull();
   });
 
-  it('lists name, active pill, status chips and version', async () => {
+  it('lists name, active pill, problem chips and the version once, with when it was edited', async () => {
     renderAt('/', <WorkflowsPage />);
     await screen.findByRole('link', { name: 'TV cleanup' });
 
     const tv = rowOf('TV cleanup');
     expect(within(tv).getByText('Active v7')).toBeTruthy();
-    expect(within(tv).getByText('Valid')).toBeTruthy();
     expect(within(tv).getByText('v7 · 5 min ago')).toBeTruthy();
+    expect(within(tv).getAllByText(/\bv7\b/)).toHaveLength(2); // "Active v7" and "v7 · 5 min ago"
     expect(screen.getByRole('link', { name: 'TV cleanup' }).getAttribute('href')).toBe(
       '/workflows/w1',
     );
 
     const movies = rowOf('Movies');
-    expect(within(movies).getByText("v3 · can't run")).toBeTruthy();
+    expect(within(movies).getByText('Active v3')).toBeTruthy();
     expect(within(movies).getByText('2 errors')).toBeTruthy();
-    expect(within(movies).getByText('Needs review').closest('[title]')?.getAttribute('title')).toBe(
+    expect(within(movies).getByText("can't run").closest('[title]')?.getAttribute('title')).toBe(
       "This version can't run; open the workflow to see why",
     );
-    expect(within(movies).queryByText('Valid')).toBeNull();
     expect(within(movies).getByText(/^v3 · \d+ min ago/)).toBeTruthy();
 
     const sub = rowOf('Audio tidy');
-    const usedBy = within(sub).getByText('Used by 2');
+    const usedBy = within(sub).getByText('TV cleanup, Movies');
     expect(usedBy.getAttribute('title')).toBe('TV cleanup, Movies');
     expect(within(sub).queryByText('Outdated sub-workflow')).toBeNull();
 
@@ -250,8 +377,10 @@ describe('WorkflowsPage', () => {
     renderAt('/', <WorkflowsPage />);
     await screen.findByRole('link', { name: 'One' });
     expect(within(rowOf('One')).getByText('1 error')).toBeTruthy();
-    expect(within(rowOf('Two')).getByText('Outdated sub-workflow')).toBeTruthy();
-    expect(within(rowOf('Two')).queryByText('Valid')).toBeNull();
+    const outdated = within(rowOf('Two')).getByText('Outdated sub-workflow');
+    // Amber like the can't-run chip, not a colour of its own.
+    expect(outdated.className).toBe('chip chip-warning');
+    expect(within(rowOf('Two')).getAllByText(/./, { selector: '.chip' })).toHaveLength(1);
   });
 
   it('shows an "Invalid" chip for an invalid workflow that reports no error count', async () => {
@@ -674,11 +803,11 @@ describe('WorkflowsPage', () => {
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 
-  it('the Active column: Active v7, Not active, "v3 · can\'t run" with the title; none for a sub-workflow', async () => {
+  it('the Active column: Active v7, and a can\'t-run "Active v3" with the reason as its title; none for a sub-workflow', async () => {
     renderAt('/', <WorkflowsPage />);
     await screen.findByRole('link', { name: 'TV cleanup' });
     expect(within(rowOf('TV cleanup')).getByText('Active v7')).toBeTruthy();
-    const movies = within(rowOf('Movies')).getByText("v3 · can't run");
+    const movies = within(rowOf('Movies')).getByText('Active v3');
     expect(movies.closest('[title]')?.getAttribute('title')).toBe(
       "This version can't run; open the workflow to see why",
     );
@@ -686,7 +815,7 @@ describe('WorkflowsPage', () => {
     expect(screen.queryByRole('columnheader', { name: 'MODE' })).toBeNull();
   });
 
-  it('a can\'t-run pill fits the column: visible "v3 · can\'t run", read as "Active v3 · can\'t run" plus the reason', async () => {
+  it('a can\'t-run pill shows "Active v3" (the name\'s chip says can\'t run), read as "Active v3 · can\'t run" plus the reason', async () => {
     mocks.list.mockResolvedValue({
       workflows: [
         // Active and newest are the same version: the pill is not inside an Activate button.
@@ -696,7 +825,7 @@ describe('WorkflowsPage', () => {
     renderAt('/', <WorkflowsPage />);
     await screen.findByRole('link', { name: 'Gate' });
     const row = rowOf('Gate');
-    const visible = within(row).getByText("v3 · can't run");
+    const visible = within(row).getByText('Active v3');
     expect(visible.getAttribute('aria-hidden')).toBe('true');
     const pill = visible.closest('.activation-pill') as HTMLElement;
     expect(pill.className).toContain('is-danger');
@@ -722,7 +851,7 @@ describe('WorkflowsPage', () => {
     expect(within(rowOf('Fresh')).getByText('Not active').getAttribute('aria-hidden')).toBeNull();
   });
 
-  it('one activation style: neutral "Not active" without the dry-run eye, lime "Active vN"', async () => {
+  it('"Not active" is quiet text, not a pill; a live version is the lime "Active vN" pill', async () => {
     mocks.list.mockResolvedValue({
       workflows: [
         summary({ id: 'n', name: 'Fresh', currentVersion: 1 }),
@@ -732,9 +861,8 @@ describe('WorkflowsPage', () => {
     renderAt('/', <WorkflowsPage />);
     await screen.findByRole('link', { name: 'Fresh' });
     const off = within(rowOf('Fresh')).getByText('Not active');
-    expect(off.className).toContain('activation-pill');
-    expect(off.className).toContain('is-off');
-    expect(off.className).not.toContain('chip');
+    expect(off.className).toBe('wf-activate');
+    expect(rowOf('Fresh').querySelector('.activation-pill')).toBeNull();
     const on = within(rowOf('Live')).getByText('Active v2');
     expect(on.className).toContain('is-active');
   });
@@ -748,7 +876,7 @@ describe('WorkflowsPage', () => {
     expect(within(rowOf('Fresh')).getByText('Not active')).toBeTruthy();
   });
 
-  it("the can't-run reason is reachable without hover: in the chip text, in the Needs review chip, and as the Activate button's name and description", async () => {
+  it("the can't-run reason is reachable without hover: in the pill, in the can't-run chip, and as the Activate button's name and description", async () => {
     mocks.list.mockResolvedValue({
       workflows: [
         summary({ id: 'x', name: 'Broke', active: activeV(3, false), currentVersion: 6 }),
@@ -760,21 +888,23 @@ describe('WorkflowsPage', () => {
     await screen.findByRole('link', { name: 'Broke' });
     const reason = "This version can't run; open the workflow to see why";
     const broke = screen.getByRole('button', {
-      name: "Activate v6 of Broke (active: v3 · can't run)",
+      name: "v6 not activated: activate v6 of Broke (active: v3 · can't run)",
     });
     expect(broke.getAttribute('aria-describedby')).toBeTruthy();
     expect(
       document.getElementById(broke.getAttribute('aria-describedby') as string)?.textContent,
     ).toBe(reason);
     expect(within(rowOf('Broke')).getByText(`: ${reason}`)).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Activate v6 of Fine (active: v3)' })).toBeTruthy();
-    const idle = screen.getByRole('button', { name: 'Activate v2 of Idle (not active)' });
-    // The chip is the button: one pill, no bordered button box around it.
-    expect(idle.classList.contains('chip-button')).toBe(true);
-    expect(idle.classList.contains('btn')).toBe(false);
+    expect(
+      screen.getByRole('button', { name: 'v6 not activated: activate v6 of Fine (active: v3)' }),
+    ).toBeTruthy();
+    const idle = screen.getByRole('button', { name: 'Not active: activate v2 of Idle' });
+    // A quiet text button, no bordered button box.
+    expect(idle.className).toBe('wf-activate');
+    expect(idle.textContent).toBe('Not active');
   });
 
-  it('shows "v6 newest" under the chip; the chip is a button that opens the dialog; not a button when the newest has errors or is the active one', async () => {
+  it('shows a "v6 not activated" button under the pill that opens the dialog; plain text when the newest has errors; nothing when the newest is the active one', async () => {
     mocks.list.mockResolvedValue({
       workflows: [
         summary({ id: 'a', name: 'TV cleanup', active: activeV(2, true), currentVersion: 6 }),
@@ -791,12 +921,14 @@ describe('WorkflowsPage', () => {
     });
     renderAt('/', <WorkflowsPage />);
     await screen.findByRole('link', { name: 'TV cleanup' });
-    expect(within(rowOf('TV cleanup')).getByText('v6 newest')).toBeTruthy();
-    expect(within(rowOf('Broken')).getByText('v6 newest')).toBeTruthy();
-    expect(within(rowOf('Broken')).queryByRole('button', { name: /^Activate/ })).toBeNull();
-    expect(within(rowOf('Current')).queryByRole('button', { name: /^Activate/ })).toBeNull();
-    expect(within(rowOf('Current')).queryByText(/newest/)).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: /^Activate v6 of TV cleanup/ }));
+    const offer = within(rowOf('TV cleanup')).getByRole('button', { name: /^v6 not activated/ });
+    expect(offer.textContent).toBe('v6 not activated');
+    expect(within(rowOf('TV cleanup')).queryByText(/newest/)).toBeNull();
+    expect(within(rowOf('Broken')).getByText('v6 not activated').tagName).toBe('SPAN');
+    expect(within(rowOf('Broken')).queryByRole('button', { name: /activate/i })).toBeNull();
+    expect(within(rowOf('Current')).queryByRole('button', { name: /activate/i })).toBeNull();
+    expect(within(rowOf('Current')).queryByText(/not activated/)).toBeNull();
+    fireEvent.click(offer);
     expect(await screen.findByRole('dialog', { name: /Activate/ })).toBeTruthy();
   });
 
@@ -807,7 +939,9 @@ describe('WorkflowsPage', () => {
       .mockResolvedValue({ workflows: [{ ...tv, active: activeV(7, true) }] });
     mocks.activate.mockResolvedValue({ ...tv, active: activeV(7, true) });
     renderAt('/', <WorkflowsPage />);
-    fireEvent.click(await screen.findByRole('button', { name: /^Activate v7 of TV cleanup/ }));
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Not active: activate v7 of TV cleanup' }),
+    );
     const dialog = await screen.findByRole('dialog', { name: /Activate/ });
     fireEvent.click(within(dialog).getByRole('button', { name: /^Activate/ }));
     expect(mocks.activate).toHaveBeenCalledWith({ id: 'w1', version: 7, confirm: true });

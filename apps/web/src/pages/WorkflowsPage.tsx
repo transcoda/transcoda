@@ -18,14 +18,16 @@ import { useWorkflows } from '../hooks/useWorkflows.ts';
 import { runBlocked, useRunOnFile } from '../jobs/useRunOnFile.tsx';
 import { useTryOnFile } from '../jobs/useTryOnFile.ts';
 import { usePageTitle } from '../lib/pageTitle.ts';
-import { fmtAgo } from '../lib/time.ts';
+import { fmtAgoShort } from '../lib/time.ts';
 
 const CANT_RUN_TITLE = "This version can't run; open the workflow to see why";
 
 /**
- * The ACTIVE column (workflows only): the same activation pill as the editor; a button that opens
- * the Activate dialog for the newest version when that one is not active and is valid. A can't-run
- * pill reads "v3 · can't run" here (the header says ACTIVE), so it fits the column (#34).
+ * The ACTIVE column (workflows only): the activation pill when a version is live, with a small
+ * "v6 not activated" button under it when there is a newer version; quiet "Not active" text when
+ * none is. Either opens the Activate dialog for the newest version when that one is valid. A
+ * can't-run pill keeps its danger look but reads "Active v3" here: the name's "can't run" chip
+ * says why, and screen readers still get the full wording and the reason.
  */
 function ActiveCell({
   w,
@@ -37,80 +39,90 @@ function ActiveCell({
   const active = w.active;
   const reasonId = `wf-cant-run-${w.id}`;
   const cantRun = active !== null && !active.runnable;
-  const pill = (
-    <ActivationPill
-      active={active}
-      {...(cantRun ? { title: CANT_RUN_TITLE, text: `v${active.version} · can't run` } : {})}
-    >
-      {cantRun ? (
-        <span className="sr-only" id={reasonId}>
-          {CANT_RUN_TITLE}
-        </span>
-      ) : null}
-    </ActivationPill>
-  );
-  const newer = active !== null && w.currentVersion > active.version;
   const canActivate = w.valid && w.currentVersion !== active?.version;
+  const offer =
+    active === null
+      ? 'Not active'
+      : w.currentVersion > active.version
+        ? `v${w.currentVersion} not activated`
+        : null;
   return (
-    <>
-      {canActivate ? (
+    <div className="wf-active">
+      {active !== null ? (
+        <ActivationPill
+          active={active}
+          {...(cantRun ? { title: CANT_RUN_TITLE, text: `Active v${active.version}` } : {})}
+        >
+          {cantRun ? (
+            <span className="sr-only" id={reasonId}>
+              {CANT_RUN_TITLE}
+            </span>
+          ) : null}
+        </ActivationPill>
+      ) : null}
+      {offer !== null && canActivate ? (
         <button
           type="button"
-          className="chip-button"
-          aria-label={`Activate v${w.currentVersion} of ${w.name} (${
+          className="wf-activate"
+          aria-label={`${offer}: activate v${w.currentVersion} of ${w.name}${
             active === null
-              ? 'not active'
-              : `active: v${active.version}${active.runnable ? '' : " · can't run"}`
-          })`}
+              ? ''
+              : ` (active: v${active.version}${active.runnable ? '' : " · can't run"})`
+          }`}
           {...(cantRun ? { 'aria-describedby': reasonId } : {})}
           onClick={(e) => onActivate(e.currentTarget)}
         >
-          {pill}
+          {offer}
         </button>
-      ) : (
-        pill
-      )}
-      {newer ? <span className="wf-active-newest">{`v${w.currentVersion} newest`}</span> : null}
-    </>
+      ) : offer !== null ? (
+        <span className="wf-activate-off">{offer}</span>
+      ) : null}
+    </div>
   );
 }
 
-function StatusCell({ w }: { w: WorkflowSummary }) {
-  const needsReview = w.active !== null && !w.active.runnable;
+/** Warning chips next to a name, only when something is wrong; a valid row shows none. */
+function ProblemChips({ w }: { w: WorkflowSummary }) {
+  const cantRun = w.active !== null && !w.active.runnable;
+  if (w.valid && !cantRun && !w.usesOutdatedSubworkflow) return null;
   return (
-    <div className="wf-status">
-      {w.valid && !needsReview && !w.usesOutdatedSubworkflow ? (
-        <StatusChip tone="ok" icon="check">
-          Valid
-        </StatusChip>
-      ) : null}
-      {w.errorCount > 0 ? (
+    <>
+      {!w.valid ? (
         <StatusChip tone="error" icon="alert">
-          {w.errorCount === 1 ? '1 error' : `${w.errorCount} errors`}
+          {w.errorCount === 0
+            ? 'Invalid'
+            : w.errorCount === 1
+              ? '1 error'
+              : `${w.errorCount} errors`}
         </StatusChip>
       ) : null}
-      {!w.valid && w.errorCount === 0 ? (
-        <StatusChip tone="error" icon="alert">
-          Invalid
-        </StatusChip>
-      ) : null}
-      {needsReview ? (
+      {cantRun ? (
         <StatusChip
           tone="warning"
           icon="alert"
           title={CANT_RUN_TITLE}
           srText={`: ${CANT_RUN_TITLE}`}
         >
-          Needs review
+          can't run
         </StatusChip>
       ) : null}
       {w.usesOutdatedSubworkflow ? (
-        <StatusChip tone="outdated" icon="workflow">
+        <StatusChip tone="warning" icon="workflow">
           Outdated sub-workflow
         </StatusChip>
       ) : null}
-    </div>
+    </>
   );
+}
+
+/** Active workflows first, then the rest; each group A–Z, ignoring case. */
+function byActiveThenName(a: WorkflowSummary, b: WorkflowSummary): number {
+  const live = Number(b.active !== null) - Number(a.active !== null);
+  return live || byName(a, b);
+}
+
+function byName(a: WorkflowSummary, b: WorkflowSummary): number {
+  return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
 }
 
 /** The list header's "Examples" menu (shown once the list has workflows). */
@@ -458,31 +470,48 @@ export function WorkflowsPage() {
     await onGraph(nameFromFile(file.name), graph, file.name);
   }
 
-  const plain = (workflows ?? []).filter((w) => w.kind !== 'subworkflow');
-  const subs = (workflows ?? []).filter((w) => w.kind === 'subworkflow');
+  const plain = (workflows ?? []).filter((w) => w.kind !== 'subworkflow').sort(byActiveThenName);
+  const subs = (workflows ?? []).filter((w) => w.kind === 'subworkflow').sort(byName);
 
-  /** One table per kind: workflows first, then sub-workflows, each under its own heading with a count. */
+  /**
+   * One table per kind: workflows first, then sub-workflows. The workflows' heading is for screen
+   * readers only (the page title says it, with the count beside it); "Sub-workflows" is shown.
+   * Each row is a card at phone width: the name and its menu on top, the other cells as one meta
+   * line under it.
+   */
   function renderSection(title: string, headingId: string, list: WorkflowSummary[], sub = false) {
     return (
       <section className="wf-section" aria-labelledby={headingId}>
-        <h2 id={headingId} className="wf-section-head">
+        <h2 id={headingId} className={sub ? 'wf-section-head' : 'sr-only'}>
           {title} <span className="wf-count">{list.length}</span>
         </h2>
         <div className="panel wf-table">
           <table aria-labelledby={headingId}>
             <colgroup>
               <col className="wf-col-name" />
-              <col className="wf-col-second" />
-              <col className="wf-col-status" />
-              <col className="wf-col-version" />
+              {sub ? (
+                <col className="wf-col-used-by" />
+              ) : (
+                <>
+                  <col className="wf-col-library" />
+                  <col className="wf-col-active" />
+                </>
+              )}
+              <col className="wf-col-edited" />
               <col className="wf-col-actions" />
             </colgroup>
             <thead>
               <tr>
                 <th scope="col">Name</th>
-                <th scope="col">{sub ? 'Used by' : 'Active'}</th>
-                <th scope="col">Status</th>
-                <th scope="col">Version</th>
+                {sub ? (
+                  <th scope="col">Used by</th>
+                ) : (
+                  <>
+                    <th scope="col">Library</th>
+                    <th scope="col">Active</th>
+                  </>
+                )}
+                <th scope="col">Last edited</th>
                 <th scope="col">
                   <span className="sr-only">Actions</span>
                 </th>
@@ -502,35 +531,50 @@ export function WorkflowsPage() {
                         }}
                       />
                     ) : (
-                      <Link href={`/workflows/${w.id}`} className="wf-link">
-                        {w.name}
-                      </Link>
+                      <div className="wf-name-line">
+                        <Link href={`/workflows/${w.id}`} className="wf-link">
+                          {w.name}
+                        </Link>
+                        <ProblemChips w={w} />
+                      </div>
                     )}
                   </td>
-                  <td data-label={sub ? undefined : 'Active'} className="wf-cell">
-                    {sub ? (
-                      <span title={w.usedBy.map((r) => r.name).join(', ')}>
-                        {`Used by ${w.usedBy.length}`}
-                      </span>
-                    ) : (
-                      <ActiveCell
-                        w={w}
-                        onActivate={(button) => {
-                          activateOpener.current = button;
-                          setActivating(w);
-                        }}
-                      />
-                    )}
-                  </td>
-                  <td data-label="Status" className="wf-cell">
-                    <StatusCell w={w} />
-                  </td>
-                  <td data-label="Version" className="wf-cell wf-version">
+                  {sub ? (
+                    <td className="wf-cell wf-meta wf-used-by">
+                      {w.usedBy.length > 0 ? (
+                        <span title={w.usedBy.map((r) => r.name).join(', ')}>
+                          {w.usedBy.map((r) => r.name).join(', ')}
+                        </span>
+                      ) : (
+                        <span className="wf-quiet">Not used</span>
+                      )}
+                    </td>
+                  ) : (
+                    <>
+                      <td className="wf-cell wf-meta wf-library">
+                        {w.feedsLibrary ? (
+                          <span title={w.feedsLibrary.name}>{w.feedsLibrary.name}</span>
+                        ) : (
+                          <span className="wf-quiet">Run on a file only</span>
+                        )}
+                      </td>
+                      <td className="wf-cell wf-meta">
+                        <ActiveCell
+                          w={w}
+                          onActivate={(button) => {
+                            activateOpener.current = button;
+                            setActivating(w);
+                          }}
+                        />
+                      </td>
+                    </>
+                  )}
+                  <td className="wf-cell wf-meta wf-version">
                     <span title={new Date(w.updatedAt).toLocaleString()}>
-                      {`v${w.currentVersion} · ${fmtAgo(w.updatedAt)}`}
+                      {`v${w.currentVersion} · ${fmtAgoShort(w.updatedAt)}`}
                     </span>
                   </td>
-                  <td className="wf-cell">
+                  <td className="wf-cell wf-actions">
                     <RowMenu
                       name={w.name}
                       items={[
@@ -575,9 +619,17 @@ export function WorkflowsPage() {
   return (
     <div className="page">
       <div className="page-head page-head-row">
-        <h1 ref={heading} tabIndex={-1}>
-          Workflows
-        </h1>
+        <div className="wf-title">
+          <h1 ref={heading} tabIndex={-1}>
+            Workflows
+          </h1>
+          {/* The count is also in the workflows table's heading, for screen readers. */}
+          {plain.length > 0 ? (
+            <span className="wf-count" aria-hidden="true">
+              {plain.length}
+            </span>
+          ) : null}
+        </div>
         <div className="page-actions">
           <Link href="/workflows/new?kind=workflow" className="btn btn-primary">
             <Icon name="plus" size={16} strokeWidth={2.6} />
