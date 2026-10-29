@@ -303,10 +303,32 @@ describe('validateWorkflow', () => {
     // the mismatched edge still counts as a connection: no INPUT_UNCONNECTED for kl2
     expect(find(mismatch, 'INPUT_UNCONNECTED')).toEqual([]);
 
-    // two edges into ro.file
-    const double = withEdges({ ...edge('vi', 'ro', { from: 'else' }), id: 'second' });
-    expect(find(double, 'INPUT_MULTIPLE_EDGES')).toEqual([
-      expect.objectContaining({ severity: 'error', nodeId: 'ro' }),
+    // two edges into a file input (kl.file from vi's pass and else): branches that never both
+    // run merge there, so that is fine
+    const fileFanIn = withEdges({ ...edge('vi', 'kl', { from: 'else' }), id: 'second' });
+    expect(find(fileFanIn, 'INPUT_MULTIPLE_EDGES')).toEqual([]);
+    expect(fileFanIn.map((i) => `${i.code}:${i.nodeId}`)).toEqual([]);
+
+    // two edges into a data input (kl.language) are still an error
+    const dataTwice = validateWorkflow(
+      {
+        ...fixed,
+        nodes: [...fixed.nodes, node('d1', 'test:data-language'), node('d2', 'test:data-language')],
+        edges: [
+          ...fixed.edges,
+          edge('d1', 'kl', { from: 'language', to: 'language' }),
+          edge('d2', 'kl', { from: 'language', to: 'language' }),
+        ],
+      },
+      ctx(),
+    );
+    expect(find(dataTwice, 'INPUT_MULTIPLE_EDGES')).toEqual([
+      {
+        severity: 'error',
+        code: 'INPUT_MULTIPLE_EDGES',
+        message: 'Keep languages: data input Original language takes one connection, not 2',
+        nodeId: 'kl',
+      },
     ]);
 
     // required input unconnected (kl.file); kl.language is optional
@@ -1265,6 +1287,46 @@ describe('validateWorkflow', () => {
         expect(find(validateWorkflow(g, ctx()), 'ELSE_ONLY_NOTIFY')).toEqual([]);
       });
 
+      it('Yes and No may both lead into one notify (each path is checked on its own); both into a write is still ELSE_ONLY_NOTIFY', () => {
+        /** in → r → sg; sg.pass → ro → `shared`; sg.else → `shared`. */
+        const merged = (shared: NodeInstance, passEdges: Edge[]) =>
+          bareGraph(
+            [
+              node('in', 'core:input-manual'),
+              node('r', 'core:render'),
+              node('sg', 'core:size-gate'),
+              node('ro', 'core:replace-original'),
+              shared,
+            ],
+            [
+              edge('in', 'r'),
+              edge('r', 'sg', { from: 'done' }),
+              edge('sg', 'ro', { from: 'pass' }),
+              ...passEdges,
+              edge('sg', shared.id, { from: 'else' }),
+            ],
+          );
+        expect(validateWorkflow(merged(notify(), [edge('ro', 'nw')]), ctx())).toEqual([]);
+        // Yes and No both into Replace original: fine on Yes, a write below No
+        const intoWrite = bareGraph(
+          [
+            node('in', 'core:input-manual'),
+            node('r', 'core:render'),
+            node('sg', 'core:size-gate'),
+            node('ro', 'core:replace-original'),
+          ],
+          [
+            edge('in', 'r'),
+            edge('r', 'sg', { from: 'done' }),
+            edge('sg', 'ro', { from: 'pass' }),
+            { ...edge('sg', 'ro', { from: 'else' }), id: 'sg-ro-else' },
+          ],
+        );
+        expect(validateWorkflow(intoWrite, ctx())).toEqual([
+          { severity: 'error', code: 'ELSE_ONLY_NOTIFY', message: ELSE_TEXT, nodeId: 'ro' },
+        ]);
+      });
+
       it('a pass chain still warns when it never writes; only else is exempt', () => {
         const g = mainGraph(
           [node('in', 'core:input-manual'), node('sg', 'core:size-gate'), notify()],
@@ -1668,6 +1730,75 @@ describe('validateWorkflow', () => {
         expect(
           find(validateWorkflow(onOk, damagedCtx()), 'DAMAGED_ONLY').map((i) => i.nodeId),
         ).toEqual(['rd']);
+      });
+
+      it('Check source’s Damaged and Render’s Damaged may both lead into one damagedOnly node; a path from Done into it is still DAMAGED_ONLY', () => {
+        /** in → cs; OK → r → (Done) ro; r.damaged → rd; cs.damaged → rd. */
+        const both = (extra: Edge[] = []) =>
+          bareGraph(
+            [
+              node('in', 'core:input-manual'),
+              node('cs', 'core:check-source'),
+              node('r', 'core:render', { qualityCheck: true }),
+              node('ro', 'core:replace-original'),
+              node('rd', 'test:replace-damaged'),
+            ],
+            [
+              edge('in', 'cs'),
+              edge('cs', 'r', { from: 'ok' }),
+              edge('r', 'ro', { from: 'done' }),
+              edge('r', 'rd', { from: 'damaged' }),
+              edge('cs', 'rd', { from: 'damaged' }),
+              ...extra,
+            ],
+          );
+        expect(validateWorkflow(both(), damagedCtx())).toEqual([]);
+        const alsoFromDone = validateWorkflow(both([edge('ro', 'rd')]), damagedCtx());
+        expect(codes(alsoFromDone)).toEqual(['error:DAMAGED_ONLY']);
+        expect(alsoFromDone[0]).toMatchObject({ nodeId: 'rd' });
+      });
+
+      it('a shared node is checked per path: a path without Render into it → RENDER_MISSING, and an action reached after a finish node on one path → FINISH_ORDER', () => {
+        // in → r → sg → ro, and in → ro: the second path skips Render
+        const skipsRender = bareGraph(
+          [
+            node('in', 'core:input-manual'),
+            node('sg', 'core:size-gate'),
+            node('r', 'core:render'),
+            node('ro', 'core:replace-original'),
+          ],
+          [
+            edge('in', 'r'),
+            edge('r', 'sg', { from: 'done' }),
+            edge('sg', 'ro', { from: 'pass' }),
+            edge('in', 'ro'),
+          ],
+        );
+        expect(
+          find(validateWorkflow(skipsRender, ctx()), 'RENDER_MISSING').map((i) => i.nodeId),
+        ).toEqual(['ro']);
+        // in → kl → r → ro → nw → kl2, and in → kl2: on the first path kl2 follows finish nodes
+        const afterFinish = bareGraph(
+          [
+            node('in', 'core:input-manual'),
+            node('kl', 'core:keep-languages'),
+            node('r', 'core:render'),
+            node('ro', 'core:replace-original'),
+            notifyNode('nw'),
+            node('kl2', 'core:keep-languages'),
+          ],
+          [
+            edge('in', 'kl'),
+            edge('kl', 'r'),
+            edge('r', 'ro', { from: 'done' }),
+            edge('ro', 'nw'),
+            edge('nw', 'kl2'),
+            edge('in', 'kl2'),
+          ],
+        );
+        expect(
+          find(validateWorkflow(afterFinish, ctx()), 'FINISH_ORDER').map((i) => i.nodeId),
+        ).toEqual(['kl2']);
       });
 
       it('Check source in a sub-workflow → NODE_NOT_ALLOWED_HERE', () => {

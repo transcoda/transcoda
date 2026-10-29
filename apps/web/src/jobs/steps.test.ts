@@ -739,6 +739,34 @@ describe('steps: the Damaged side', () => {
     expect([...side].sort()).toEqual(['nw', 'nw2', 'rd']);
   });
 
+  it('damagedSideOf leaves out a node also reached without a Damaged output; one reached from two Damaged outputs stays', () => {
+    const edge = (id: string, from: string, port: string, to: string) => ({
+      id,
+      from: { node: from, port },
+      to: { node: to, port: 'file' },
+    });
+    // ro → nw too: nw runs after a good render as well, and so does rd behind it
+    const mixed = { ...graph, edges: [...graph.edges, edge('e6', 'ro', 'file', 'nw')] };
+    expect([...damagedSideOf(mixed)].sort()).toEqual(['nw2']);
+    // cs.damaged → rd as well: both ways in are Damaged sides
+    const both = { ...graph, edges: [...graph.edges, edge('e7', 'cs', 'damaged', 'rd')] };
+    expect([...damagedSideOf(both)].sort()).toEqual(['nw', 'nw2', 'rd']);
+    // a data node feeding nw is not a way in for the file
+    const withData: WorkflowGraph = {
+      ...graph,
+      nodes: [
+        ...graph.nodes,
+        { ...(graph.nodes[0] as WorkflowGraph['nodes'][number]), id: 'd', type: 'test:data' },
+      ],
+      edges: [
+        ...graph.edges,
+        { id: 'e8', from: { node: 'd', port: 'v' }, to: { node: 'nw', port: 'v' } },
+      ],
+    };
+    const kindOf = (type: string) => (type === 'test:data' ? 'data' : undefined);
+    expect([...damagedSideOf(withData, kindOf)].sort()).toEqual(['nw', 'nw2', 'rd']);
+  });
+
   it('a plan shows "if the source is damaged: …" on Render and on the Damaged steps', () => {
     const ctx = { ...DRY, damagedSide: side };
     expect(

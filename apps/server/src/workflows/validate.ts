@@ -265,11 +265,14 @@ function checkEdges(graph: WorkflowGraph, states: Map<string, NodeState>, issues
     if (!def) continue;
     for (const input of def.inputs) {
       const count = inputEdges.get(`${n.id}\0${input.id}`) ?? 0;
-      if (count > 1) {
+      // A file input takes any number of connections: a file follows one path per run, so the
+      // edges into it merge branches that never both run. A data input takes one: its value is
+      // read from the source on demand, and two sources would disagree.
+      if (count > 1 && input.type !== 'file') {
         issues.push(
           error(
             'INPUT_MULTIPLE_EDGES',
-            `${title(n, def)}: input ${input.label} has ${count} connections`,
+            `${title(n, def)}: data input ${input.label} takes one connection, not ${count}`,
             {
               nodeId: n.id,
             },

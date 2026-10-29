@@ -188,6 +188,8 @@ The three finish nodes all hang off Replace original. The order they run in is f
 
 Only finish steps can share an output. A file follows one path, so an output wired to two actions or conditions (or to an action and a finish step) is an error when you save (`OUTPUT_MULTIPLE_EDGES`, "only finish steps can share an output"), and the editor draws the offending lines broken. Two more rules apply to a shared output: the **Size gate** must be the only step on its output (`SIZE_GATE_SHARED_OUTPUT`; put the other steps after its Yes or No, because it decides only for the steps wired after it), and only one step that writes the result (Replace original or Move or copy) can be on it (`OUTPUT_MULTIPLE_WRITES`). Data outputs, such as Sonarr's original language, can feed any number of nodes.
 
+The other way round, a file input can take any number of connections. A file follows one path per run, so lines from several branches into one step (Check source's Damaged and Render's Damaged both into one **Replace damaged file**, or the size gate's Yes and No both into one notification) merge branches that never both run: the step runs once, on whichever branch the file took, and each way in is checked on its own when you save. A data input, such as the original language of Keep languages, takes one connection (`INPUT_MULTIPLE_EDGES`): its value is read from the node wired to it, and two would disagree.
+
 To use it, install and configure Sonarr, Jellyfin and ntfy, create a workflow, save this file as its graph, set the Sonarr and ntfy values to yours, try a dry run, then activate it. With Jellyfin seeing `/shows` and Sonarr and Transcoda seeing `/data/shows`, the path mappings need no changes for that layout.
 
 ## Subtitles from Bazarr into the file

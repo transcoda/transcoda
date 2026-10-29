@@ -6,7 +6,13 @@ import { describe, expect, it } from 'vitest';
 import { buildCatalog } from '../../hooks/useCatalog.ts';
 import { catalogFixture as catalog, nodesFixture } from '../../test/fixtures/catalog.ts';
 import { chainMainReplace, tiggerPoohSub } from '../../test/fixtures/graphs.ts';
-import { checkConnection, compatibleTargets, freeOutputs, nextNodeRule } from './connection.ts';
+import {
+  checkConnection,
+  compatibleTargets,
+  freeOutputs,
+  nextNodeRule,
+  onDamagedSide,
+} from './connection.ts';
 
 /** A hand-made plugin finish node (the core catalogue has no library-manager or media-server). */
 function pluginFinish(type: string, title: string, finishPhase?: FinishPhase): NodeInfo {
@@ -68,9 +74,10 @@ describe('connection rules', () => {
     expect(
       checkConnection(g, { node: 'in', port: 'file' }, { node: 'keep', port: 'language' }, catalog),
     ).toEqual({ ok: false, reason: "Those ports don't match (file → data:language)" });
+    // A file input takes several connections (branches that never both run merge there).
     expect(
-      checkConnection(g, { node: 'in', port: 'file' }, { node: 'keep', port: 'file' }, catalog),
-    ).toEqual({ ok: false, reason: 'That input is already connected' });
+      checkConnection(g, { node: 'in', port: 'file' }, { node: 'ro', port: 'file' }, catalog),
+    ).toEqual({ ok: true });
     expect(
       checkConnection(g, { node: 'ro', port: 'file' }, { node: 'ro', port: 'file' }, catalog),
     ).toEqual({ ok: false, reason: "A node can't connect to itself" });
@@ -80,6 +87,37 @@ describe('connection rules', () => {
     expect(
       checkConnection(g, { node: 'in', port: 'file' }, { node: 'gone', port: 'file' }, catalog),
     ).toEqual({ ok: false, reason: 'That node no longer exists' });
+  });
+
+  it('checkConnection: a data input takes one connection', () => {
+    const language: NodeInfo = {
+      ...pluginFinish('example:language', 'Language'),
+      kind: 'data',
+      inputs: [],
+      outputs: [{ id: 'language', label: 'Language', type: 'data:language' }],
+    };
+    const withData = buildCatalog([...nodesFixture, language]);
+    const base = chainMainReplace();
+    const at = (id: string) => ({
+      id,
+      type: 'example:language',
+      typeVersion: 1,
+      settings: {},
+      position: { x: 0, y: 0 },
+    });
+    const g: WorkflowGraph = { ...base, nodes: [...base.nodes, at('d1'), at('d2')] };
+    const into = { node: 'keep', port: 'language' };
+    expect(checkConnection(g, { node: 'd1', port: 'language' }, into, withData)).toEqual({
+      ok: true,
+    });
+    const wired: WorkflowGraph = {
+      ...g,
+      edges: [...g.edges, { id: 'd1-keep', from: { node: 'd1', port: 'language' }, to: into }],
+    };
+    expect(checkConnection(wired, { node: 'd2', port: 'language' }, into, withData)).toEqual({
+      ok: false,
+      reason: 'That data input is already connected',
+    });
   });
 
   it('compatibleTargets for file in a sub-workflow excludes trigger and finish nodes', () => {
@@ -223,7 +261,11 @@ describe('connection rules', () => {
       ...g,
       edges: [
         ...g.edges,
-        { id: 'x', from: { node: from[0], port: from[1] }, to: { node: to, port: 'file' } },
+        {
+          id: `x${g.edges.length}`,
+          from: { node: from[0], port: from[1] },
+          to: { node: to, port: 'file' },
+        },
       ],
     });
     const check = (g: WorkflowGraph, from: [string, string], to: string) =>
@@ -261,6 +303,28 @@ describe('connection rules', () => {
       // A notify after Done is not on a Damaged side.
       const afterDone = withEdge(graph(true), ['ro', 'file'], 'nw');
       expect(check(afterDone, ['nw', 'file'], 'rd')).toEqual(refused);
+      // A second connection into rd: from the other Damaged output is fine, from Done is not.
+      const onRender = withEdge(graph(true), ['r', 'damaged'], 'rd');
+      expect(check(onRender, ['cs', 'damaged'], 'rd')).toEqual({ ok: true });
+      expect(check(onRender, ['ro', 'file'], 'rd')).toEqual(refused);
+    });
+
+    it('onDamagedSide follows every connection into a node: all on a Damaged side → true, mixed → false', () => {
+      const both = withEdge(withEdge(graph(true), ['r', 'damaged'], 'nw'), ['cs', 'damaged'], 'nw');
+      expect(onDamagedSide(both, 'nw', 'file', damagedCatalog)).toBe(true);
+      expect(check(both, ['nw', 'file'], 'rd')).toEqual({ ok: true });
+      const mixed = withEdge(withEdge(graph(true), ['r', 'damaged'], 'nw'), ['ro', 'file'], 'nw');
+      expect(onDamagedSide(mixed, 'nw', 'file', damagedCatalog)).toBe(false);
+      expect(check(mixed, ['nw', 'file'], 'rd')).toEqual({
+        ok: false,
+        reason: 'Replace damaged file can only follow a Damaged output',
+      });
+      // What may follow a node reached from both sides is what may follow after Done.
+      expect(nextNodeRule(mixed, 'nw', 'file', damagedCatalog)).toMatchObject({
+        kind: 'finish-after',
+        noWrite: false,
+      });
+      expect(nextNodeRule(both, 'nw', 'file', damagedCatalog)).toMatchObject({ damaged: true });
     });
 
     it('nextNodeRule after Damaged allows non-writing phases and damagedOnly nodes; after Done the gate phase and later, no damagedOnly', () => {
