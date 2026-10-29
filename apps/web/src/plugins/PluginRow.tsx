@@ -16,6 +16,7 @@ import {
   removeConfirmText,
   stateLabel,
   statusOf,
+  updateNeedsLook,
   usedByText,
   webLink,
 } from './pluginText.ts';
@@ -50,7 +51,7 @@ function reasonLine(p: PluginSummary, now: Date): string | null {
 
 /**
  * One installed plugin: tile, name, version, the workflows using it and its status, with Update
- * (when the catalog has a newer version) and Settings. Settings open inline: the integration's
+ * (when the catalog has a newer version; one click unless it touches a workflow) and Settings. Settings open inline: the integration's
  * form with its last test, the plugin's own buttons (disable, restart, remove), the nodes it
  * adds and the other catalog versions it can switch to.
  */
@@ -138,8 +139,12 @@ export function PluginRow({
     setAsking({ kind, text, unchecked: usedBy === null });
   }
 
-  /** Asks what the update would do to workflows; a failed check says why and does not update. */
-  async function checkUpdate(version: string) {
+  /**
+   * Asks what the update would do to workflows; a failed check says why and does not update.
+   * `oneClick` (the Update button): an update that touches no workflow happens at once, only one
+   * that does opens the dialog. Switching versions always asks.
+   */
+  async function checkUpdate(version: string, oneClick = false) {
     if (pending) return;
     setPending('update');
     setError(null);
@@ -149,17 +154,26 @@ export function PluginRow({
       setError(pluginFailure(err));
       return;
     }
+    if (oneClick && !updateNeedsLook(check)) {
+      // The Update button is gone once updated: focus goes to the row's heading.
+      if (await runUpdate(version)) heading.current?.focus();
+      return;
+    }
     setUpdating({ version, check });
+  }
+
+  function runUpdate(version: string) {
+    return act('update', async () => {
+      const out = await api.plugins.update({ name, version });
+      toast.success(`Updated ${name} to ${out.version}`);
+      return out;
+    });
   }
 
   async function confirmUpdate() {
     const current = updating;
     if (!current) return;
-    const ok = await act('update', async () => {
-      const out = await api.plugins.update({ name, version: current.version });
-      toast.success(`Updated ${name} to ${out.version}`);
-      return out;
-    });
+    const ok = await runUpdate(current.version);
     // The Update button is gone once updated: the dialog hands focus to the row's heading.
     if (ok) updateReturn.current = heading.current;
     setUpdating(null);
@@ -254,7 +268,7 @@ export function PluginRow({
                 disabled={busy}
                 onClick={(e) => {
                   updateReturn.current = e.currentTarget;
-                  void checkUpdate(update);
+                  void checkUpdate(update, true);
                 }}
               >
                 Update

@@ -3,7 +3,9 @@
 // details (addresses, keys, blocklist, adding one) collapsed at the end.
 
 import type { PluginSummary } from '@transcoda/contract';
-import { type KeyboardEvent, useId, useRef, useState } from 'react';
+import { type KeyboardEvent, useEffect, useId, useRef, useState } from 'react';
+import { useSearch } from 'wouter';
+import { api, safe } from '../api/client.ts';
 import { describeError } from '../api/errors.ts';
 import { Icon } from '../components/Icon.tsx';
 import { Loading } from '../components/Loading.tsx';
@@ -23,13 +25,56 @@ import {
   latestVersion,
   matchesQuery,
 } from '../plugins/CatalogSection.tsx';
+import { pluginFailure } from '../plugins/errors.ts';
 import { type Entry, InstallDialog, type Target } from '../plugins/InstallDialog.tsx';
 import { PluginRow } from '../plugins/PluginRow.tsx';
 import type { NodeChip } from '../plugins/PluginTile.tsx';
-import { testEffect } from '../plugins/pluginText.ts';
+import { testEffect, updateNeedsLook } from '../plugins/pluginText.ts';
 import { type CatalogView, usePlugins } from '../plugins/usePlugins.ts';
 
 type Show = 'all' | 'installed' | 'updates';
+
+/** The tab a link asks for (`/plugins?show=updates`: the menu, when updates wait), else All. */
+function showOf(search: string): Show {
+  const asked = new URLSearchParams(search).get('show');
+  return asked === 'installed' || asked === 'updates' ? asked : 'all';
+}
+
+/** What Update all did, for its closing line. */
+interface UpdateAllResult {
+  updated: number;
+  /** Updates that would touch a workflow: left for their own dialog. */
+  changes: string[];
+  /** Updates whose effect on workflows could not be checked. */
+  unchecked: string[];
+  failed: Array<{ title: string; reason: string }>;
+}
+
+/**
+ * "Updated 2; Sonarr needs a look: it changes a node your workflows use."; null when everything
+ * was updated (a toast says so).
+ */
+export function updateAllSummary(r: UpdateAllResult): string | null {
+  if (r.changes.length === 0 && r.unchecked.length === 0 && r.failed.length === 0) return null;
+  const one = (list: readonly string[]) => list.length === 1;
+  const parts = [r.updated > 0 ? `Updated ${r.updated}` : 'Nothing updated'];
+  if (r.changes.length > 0) {
+    parts.push(
+      one(r.changes)
+        ? `${r.changes[0]} needs a look: it changes a node your workflows use`
+        : `${joinAnd(r.changes)} need a look: they change nodes your workflows use`,
+    );
+  }
+  if (r.unchecked.length > 0) {
+    parts.push(
+      one(r.unchecked)
+        ? `${r.unchecked[0]} needs a look: it can't be checked against your workflows`
+        : `${joinAnd(r.unchecked)} need a look: they can't be checked against your workflows`,
+    );
+  }
+  for (const f of r.failed) parts.push(`${f.title} failed: ${f.reason}`);
+  return `${parts.join('; ')}.`;
+}
 
 /** "Sonarr", "Sonarr and Jellyfin", "Sonarr, Radarr and Jellyfin". */
 export function joinAnd(words: readonly string[]): string {
@@ -243,7 +288,13 @@ export function PluginsPage() {
   const { catalog: nodeCatalog } = useCatalog();
   const searchId = useId();
   const [query, setQuery] = useState('');
-  const [show, setShow] = useState<Show>('all');
+  const search = useSearch();
+  const [show, setShow] = useState<Show>(() => showOf(search));
+  // The menu's link can point here again while the page is open.
+  useEffect(() => setShow(showOf(search)), [search]);
+  // Update all: "1 of 3" while it runs, then what it left for a person.
+  const [updatingAll, setUpdatingAll] = useState<{ at: number; of: number } | null>(null);
+  const [allSummary, setAllSummary] = useState<string | null>(null);
   // A freshly installed plugin's row takes focus once it is listed.
   const [focusName, setFocusName] = useState<string | null>(null);
   // Builds to install, one confirmation dialog after the other; the first one's is open.
@@ -278,6 +329,49 @@ export function PluginsPage() {
   const catalogEmpty =
     state.catalogs !== undefined && !catalogFailed && catalogs.every((c) => c.plugins.length === 0);
   const searching = query.trim() !== '';
+
+  /**
+   * Updates every plugin with an update, one after another, each through the same check as its
+   * Update button: one that would touch a workflow is skipped and named at the end, so its own
+   * dialog can be opened from its card.
+   */
+  async function updateAll() {
+    if (updatingAll) return;
+    const targets = updates.map((p) => ({
+      name: p.name,
+      version: p.updateAvailable ?? '',
+      title: titleOf(p),
+    }));
+    const result: UpdateAllResult = { updated: 0, changes: [], unchecked: [], failed: [] };
+    setAllSummary(null);
+    for (const [i, t] of targets.entries()) {
+      setUpdatingAll({ at: i + 1, of: targets.length });
+      const [checkErr, check] = await safe(
+        api.plugins.updateCheck({ name: t.name, version: t.version }),
+      );
+      if (checkErr || !check) {
+        result.failed.push({ title: t.title, reason: pluginFailure(checkErr) });
+        continue;
+      }
+      if (updateNeedsLook(check)) {
+        (check.unknown && check.wouldBreak.length === 0 && check.needsReview.length === 0
+          ? result.unchecked
+          : result.changes
+        ).push(t.title);
+        continue;
+      }
+      const [err] = await safe(api.plugins.update({ name: t.name, version: t.version }));
+      if (err) result.failed.push({ title: t.title, reason: pluginFailure(err) });
+      else result.updated += 1;
+    }
+    setUpdatingAll(null);
+    const summary = updateAllSummary(result);
+    setAllSummary(summary);
+    if (summary === null) {
+      toast.success(`Updated ${result.updated} ${result.updated === 1 ? 'plugin' : 'plugins'}`);
+    }
+    state.reload();
+  }
   const needed = show === 'all' && missing !== undefined && missing.length > 0;
   const retry = () => void state.checkForUpdates();
 
@@ -394,7 +488,25 @@ export function PluginsPage() {
       {state.loading && !plugins ? <Loading /> : null}
       {plugins && (plugins.length > 0 || show !== 'all' || !needed) ? (
         <section className="plugins-section" aria-labelledby="plugins-installed">
-          <h2 id="plugins-installed">{show === 'updates' ? 'Updates' : 'Installed'}</h2>
+          <div className="plugins-section-head">
+            <h2 id="plugins-installed">{show === 'updates' ? 'Updates' : 'Installed'}</h2>
+            {show === 'updates' && (updates.length >= 2 || updatingAll) ? (
+              <button
+                type="button"
+                className="btn btn-update"
+                disabled={updatingAll !== null}
+                onClick={() => void updateAll()}
+              >
+                {updatingAll ? `Updating ${updatingAll.at} of ${updatingAll.of}…` : 'Update all'}
+              </button>
+            ) : null}
+          </div>
+          {show === 'updates' && allSummary ? (
+            <div className="alert alert-warning" role="status">
+              <Icon name="alert" size={16} round />
+              <span>{allSummary}</span>
+            </div>
+          ) : null}
           {rows.length > 0 ? (
             <ul className="plugin-rows">
               {rows.map((p) => {

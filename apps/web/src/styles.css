@@ -9074,6 +9074,14 @@ button.job-step-more:hover {
   font-size: var(--fs-h2);
   font-weight: 700;
 }
+/* The section's name with Update all beside it (on the Updates tab). */
+.plugins-section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
 .plugins-group-head {
   display: flex;
   flex-wrap: wrap;

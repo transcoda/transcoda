@@ -150,6 +150,10 @@ const NO_ORIGINS = { allowedOrigins: [], allowInsecureTls: false };
 /** The blocklist is fetched at start in the background: an offline server never waits longer. */
 const BLOCKLIST_TIMEOUT_MS = 3000;
 const BLOCKLIST_RECHECK_MS = 3_600_000;
+/** The first background update check waits this long after start, so it never competes with boot. */
+export const UPDATE_CHECK_DELAY_MS = 60_000;
+/** Then the catalogs are asked for updates this often. */
+export const UPDATE_CHECK_MS = 6 * 3_600_000;
 /** The catalog waits this long for a build's manifest (its nodes and icon), then shows it without. */
 const CATALOG_MANIFEST_TIMEOUT_MS = 10_000;
 /** Catalog manifests fetched at the same time. */
@@ -242,6 +246,8 @@ export class PluginService {
   private readonly settings: PluginSettings;
   private readonly blocklist: BlocklistClient;
   private recheckTimer: ReturnType<typeof setInterval> | null = null;
+  private updateTimer: ReturnType<typeof setTimeout> | null = null;
+  private updateRun: Promise<void> = Promise.resolve();
   /** Clears the crash-loop guard's counts once this boot has stayed up for `stableMs`. */
   private stableTimer: ReturnType<typeof setTimeout> | null = null;
   private startupRecheck: Promise<void> = Promise.resolve();
@@ -348,6 +354,7 @@ export class PluginService {
     this.startupRecheck = this.recheckBlocklist();
     this.recheckTimer = setInterval(() => void this.recheckBlocklist(), BLOCKLIST_RECHECK_MS);
     this.recheckTimer.unref();
+    this.scheduleUpdateCheck(UPDATE_CHECK_DELAY_MS);
     this.stableTimer = setTimeout(() => this.clearStartAttempts(), this.limits.stableMs);
     this.stableTimer.unref();
     const states = this.supervisor.statuses().map((s) => s.state);
@@ -365,10 +372,13 @@ export class PluginService {
     this.stopping = true;
     if (this.recheckTimer !== null) clearInterval(this.recheckTimer);
     this.recheckTimer = null;
+    if (this.updateTimer !== null) clearTimeout(this.updateTimer);
+    this.updateTimer = null;
     if (this.stableTimer !== null) clearTimeout(this.stableTimer);
     this.stableTimer = null;
     await this.blocklist.close();
     await this.startupRecheck;
+    await this.updateRun;
     await this.tail;
     await this.supervisor.stopAll();
     // A clean stop: whatever ran this boot did not take the server down.
@@ -859,7 +869,7 @@ export class PluginService {
     if (refresh) await this.recheckBlocklist();
     else await this.blocklist.refresh(false);
     const { entries, errors, catalogs } = await this.catalogClient.list(urls, { refresh });
-    this.updates.clear();
+    this.applyUpdates(entries, errors.length > 0);
     const installed = new Map(this.names().map((n) => [n, this.record(n)?.version ?? null]));
     const manifests = await this.catalogManifestsFor(entries, refresh);
     const out: PluginCatalogOutput = {
@@ -882,6 +892,68 @@ export class PluginService {
     return out;
   }
 
+  /**
+   * The background update check: asks every catalog afresh (at `UPDATE_CHECK_DELAY_MS` after
+   * start, then every `UPDATE_CHECK_MS`), so the menu shows updates without the Plugins page being
+   * opened. Never throws: a catalog that cannot be read keeps the updates last known.
+   */
+  async checkUpdates(): Promise<void> {
+    const { log } = this.deps;
+    try {
+      const { entries, errors } = await this.catalogClient.list(this.catalogUrls(), {
+        refresh: true,
+      });
+      if (this.stopping) return;
+      for (const e of errors)
+        log.warn({ msg: 'plugin update check', catalog: e.catalogUrl, error: e.message });
+      this.applyUpdates(entries, errors.length > 0);
+    } catch (err) {
+      log.warn({ msg: 'plugin update check failed', error: messageOf(err) });
+    }
+  }
+
+  private scheduleUpdateCheck(ms: number): void {
+    this.updateTimer = setTimeout(() => {
+      this.updateRun = this.checkUpdates().then(() => {
+        if (!this.stopping) this.scheduleUpdateCheck(UPDATE_CHECK_MS);
+      });
+    }, ms);
+    this.updateTimer.unref();
+  }
+
+  /**
+   * Sets `updates` from a catalog answer: the newest catalog version of each installed plugin, when
+   * newer than the installed one (a dev plugin never has one). With `partial` (a catalog could not
+   * be read), a plugin no catalog listed keeps the update it had. Publishes plugins.changed for
+   * every plugin whose update changed, so open pages and the menu badge follow.
+   */
+  private applyUpdates(entries: CatalogEntry[], partial: boolean): void {
+    const installed = new Map<string, string>();
+    for (const name of this.names()) {
+      const rec = this.record(name);
+      if (rec !== null && !rec.dev) installed.set(name, rec.version);
+    }
+    const next = new Map<string, string>();
+    const listed = new Set(entries.map((e) => e.name));
+    for (const name of installed.keys()) {
+      const kept = this.updates.get(name);
+      if (partial && !listed.has(name) && kept !== undefined) next.set(name, kept);
+    }
+    for (const e of entries) {
+      const version = installed.get(e.name);
+      const latest = latestOf(e);
+      if (version === undefined || latest === null || !semver.gt(latest, version)) continue;
+      const known = next.get(e.name);
+      if (known === undefined || semver.gt(latest, known)) next.set(e.name, latest);
+    }
+    const changed = [...new Set([...this.updates.keys(), ...next.keys()])].filter(
+      (name) => this.updates.get(name) !== next.get(name),
+    );
+    this.updates.clear();
+    for (const [name, version] of next) this.updates.set(name, version);
+    for (const name of changed) this.publish(name);
+  }
+
   private catalogEntry(
     e: CatalogEntry,
     installed: string | null,
@@ -891,7 +963,6 @@ export class PluginService {
     if (installed !== null) {
       const known = this.provenanceOf(e, installed);
       if (known !== null) this.provenance.set(e.name, known);
-      if (latest !== null && semver.gt(latest, installed)) this.updates.set(e.name, latest);
     }
     return {
       name: e.name,

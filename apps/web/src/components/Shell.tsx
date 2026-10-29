@@ -6,7 +6,7 @@ import { useJobsCounts } from '../jobs/useJobsList.ts';
 import { GuardedLink, guardedRun } from '../lib/navigation.tsx';
 import { usePhone } from '../lib/usePhone.ts';
 import { TmdbAttribution } from '../plugins/TmdbAttribution.tsx';
-import { useTmdbInstalled } from '../plugins/useTmdbInstalled.ts';
+import { usePluginsNav } from '../plugins/usePluginsNav.ts';
 import { ActivityButton } from './ActivityButton.tsx';
 import { Icon, type IconName } from './Icon.tsx';
 import { Mark, Wordmark } from './Logo.tsx';
@@ -17,6 +17,7 @@ function NavLink({
   rail,
   section,
   count,
+  countLabel = 'running',
   children,
 }: {
   href: string;
@@ -26,6 +27,8 @@ function NavLink({
   section?: string;
   /** Running jobs, as a pill after the name (screen 07 "Jobs 2"); hidden when 0. */
   count?: number;
+  /** What the count is, read after it: "Jobs, 2 running". */
+  countLabel?: string;
   children: string;
 }) {
   const [exact] = useRoute(href);
@@ -45,7 +48,7 @@ function NavLink({
           <span className="nav-count" aria-hidden="true">
             {count}
           </span>
-          <span className="sr-only">{`, ${count} running`}</span>
+          <span className="sr-only">{`, ${count} ${countLabel}`}</span>
         </>
       ) : null}
     </GuardedLink>
@@ -85,7 +88,7 @@ export function Shell({
   const serverName = appearance.serverName;
   const [error, setError] = useState<string | null>(null);
   // The TMDB terms ask for a notice wherever its data is used: shown while the plugin is installed.
-  const tmdb = useTmdbInstalled();
+  const { tmdb, updates } = usePluginsNav();
   const jobCounts = useJobsCounts();
   const running = jobCounts ? RUNNING_JOB_STATES.reduce((n, s) => n + jobCounts[s], 0) : 0;
   const phone = usePhone();
@@ -135,7 +138,15 @@ export function Shell({
       <NavLink href="/libraries" icon="libraries" rail={rail}>
         Libraries
       </NavLink>
-      <NavLink href="/plugins" icon="plugins" rail={rail}>
+      {/* With updates waiting, the link lands on the Updates tab. */}
+      <NavLink
+        href={updates > 0 ? '/plugins?show=updates' : '/plugins'}
+        icon="plugins"
+        rail={rail}
+        section="/plugins"
+        count={updates}
+        countLabel={updates === 1 ? 'update available' : 'updates available'}
+      >
         Plugins
       </NavLink>
       <hr className="nav-sep" />
