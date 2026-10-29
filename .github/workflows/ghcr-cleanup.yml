@@ -32,7 +32,9 @@ jobs:
     steps:
       # Deletes untagged images only. The action drops child manifests of
       # multi-arch indexes from its working set first, so the per-platform
-      # manifests of tagged images (main, vX.Y.Z) are kept.
+      # manifests of tagged images (main, vX.Y.Z) are kept, and so are the
+      # signed attestations (provenance, SBOM) that refer to a tagged image.
+      # Those of a superseded `main` build go with it.
       - uses: dataaxiom/ghcr-cleanup-action@d52806a0dc70b430571a37da1fde39733ffd640f # v1.2.2
         with:
           owner: transcoda

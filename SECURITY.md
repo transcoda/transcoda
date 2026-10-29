@@ -10,6 +10,18 @@ Useful to include: the Transcoda version (Settings → About), what an attacker 
 
 Fixes go into the newest release only: update to the latest `0.x` release to get them. Security fixes ship as a patch release as soon as they are ready (see [`docs/releasing.md`](docs/releasing.md)).
 
+## Verifying the image
+
+Every image in `ghcr.io/transcoda/transcoda` built by this repository's Docker workflow has a signed build provenance (which commit and workflow built it) and an SBOM, both signed keylessly through Sigstore with the workflow's identity and stored next to the image:
+
+```sh
+gh attestation verify oci://ghcr.io/transcoda/transcoda:<tag> --owner transcoda
+gh attestation verify oci://ghcr.io/transcoda/transcoda:<tag> --owner transcoda \
+  --predicate-type https://spdx.dev/Document/v2.3
+```
+
+Each GitHub Release also carries the provenance bundle (`transcoda-v<version>.sigstore.json`) and the SBOM (`transcoda-v<version>.spdx.json`) as files. Releases before 0.3.0 have neither.
+
 ## Scope
 
 In scope:

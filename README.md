@@ -93,6 +93,12 @@ Then open `http://<host>:8080` and create the admin account. Add a library for a
 
 Image tags: `latest` (newest release), `0.1` (newest 0.1.x), `0.1.0` (exact), `main` (unreleased builds). See [`docs/releasing.md`](docs/releasing.md).
 
+Every image built by our GitHub Actions carries a signed build provenance and a package list (SBOM). To check that an image really came from this repository, with the [GitHub CLI](https://cli.github.com/):
+
+```sh
+gh attestation verify oci://ghcr.io/transcoda/transcoda:latest --owner transcoda
+```
+
 <details>
 <summary>What the compose file sets up, and why</summary>
 
