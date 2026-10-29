@@ -1,5 +1,10 @@
 // What the Plugins page says: state words, the install warnings and the remove confirmation.
-import type { NodeInfo, PluginSettingsGetOutput, PluginSummary } from '@transcoda/contract';
+import type {
+  NodeInfo,
+  PluginSettingsGetOutput,
+  PluginSummary,
+  PluginUpdateCheckOutput,
+} from '@transcoda/contract';
 import { fmtAgo } from '../lib/time.ts';
 
 /** 'running' | 'starting' | 'restarting in 12 s' | 'stopped: <reason>' | 'disabled'. */
@@ -142,6 +147,14 @@ export function usedByText(usedBy: ReadonlyArray<{ name: string }>): string {
   const names = usedBy.slice(0, 3).map((w) => w.name);
   const rest = usedBy.length - names.length;
   return `Used by ${names.join(', ')}${rest > 0 ? ` and ${rest} more` : ''}`;
+}
+
+/**
+ * Whether an update needs a person to look first: it would stop or hold a workflow, write a
+ * version for review, or could not be checked at all. Otherwise it updates with one click.
+ */
+export function updateNeedsLook(check: PluginUpdateCheckOutput): boolean {
+  return check.wouldBreak.length > 0 || check.needsReview.length > 0 || check.unknown;
 }
 
 /** "Test failed 2 min ago: connection refused" (the plugin's own message, never a secret). */

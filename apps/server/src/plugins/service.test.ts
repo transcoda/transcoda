@@ -31,7 +31,12 @@ import { chain, edge, mainGraph, node } from '../workflows/test-helpers.ts';
 import { OFFICIAL_BLOCKLIST_URL } from './catalog-url.ts';
 import { checkPluginBundle } from './check-plugin.ts';
 import { BLOCKLIST_INERT_WARNING } from './official-keys.ts';
-import { type PluginServiceDeps, PluginServiceError } from './service.ts';
+import {
+  type PluginServiceDeps,
+  PluginServiceError,
+  UPDATE_CHECK_DELAY_MS,
+  UPDATE_CHECK_MS,
+} from './service.ts';
 import type { SigningKey } from './signature.ts';
 import { type FixtureName, fixturePluginPath, hostPath } from './testing/build.ts';
 import { signText } from './testing/sign.ts';
@@ -83,6 +88,8 @@ const signing: {
 
 /** What the test server answers at /blocklist.json (null: 404). */
 const blocklistServed: { body: string | null } = { body: null };
+/** The catalog index answers 500 (an unreachable catalog). */
+const indexServed = { down: false };
 
 const sha = (text: string): string => createHash('sha256').update(text).digest('hex');
 const key = (name: string, version: string): string => `${name}-${version}`;
@@ -121,6 +128,11 @@ beforeAll(async () => {
     const path = (req.url ?? '').slice(1);
     if (path === 'blocklist.json' && blocklistServed.body !== null) {
       res.end(blocklistServed.body);
+      return;
+    }
+    if ((path === 'index.json' || path === 'custom.json') && indexServed.down) {
+      res.statusCode = 500;
+      res.end('down');
       return;
     }
     if (path === 'index.json' || path === 'custom.json') {
@@ -209,6 +221,7 @@ async function serve(
 afterEach(() => {
   served.clear();
   blocklistServed.body = null;
+  indexServed.down = false;
   signing.on = false;
   signing.noBundleSig = false;
   signing.keyId = 'k1';
@@ -1877,6 +1890,85 @@ describe('catalog', () => {
     const out = await t.deps.plugins.catalog(true);
     expect(out.catalogs.find((x) => !x.official)?.error).toMatch(/catalog fetch failed/);
     expect(out.catalogs.find((x) => x.official)?.error).toBeNull();
+  });
+});
+
+describe('background update check', () => {
+  const updatesChanged = (t: { events: Array<Record<string, unknown>> }, name: string) =>
+    t.events.filter((e) => e.type === 'plugins.changed' && e.name === name);
+
+  it('finds an update without the catalog being opened and publishes plugins.changed once', async () => {
+    await serve('example');
+    const t = setup();
+    await t.deps.plugins.start();
+    await install(t, 'example');
+    expect(t.deps.plugins.get('example')?.updateAvailable).toBeNull();
+    await serve('example', '0.2.0');
+    t.events.length = 0;
+
+    await t.deps.plugins.checkUpdates();
+    expect(t.deps.plugins.get('example')?.updateAvailable).toBe('0.2.0');
+    expect(updatesChanged(t, 'example')).toEqual([
+      { type: 'plugins.changed', name: 'example', state: 'running', stateReason: null },
+    ]);
+    // Nothing new: nothing published.
+    t.events.length = 0;
+    await t.deps.plugins.checkUpdates();
+    expect(t.events).toEqual([]);
+    // The catalog page's fetch publishes a change too (the menu badge follows).
+    served.delete('example-0.2.0');
+    await refresh(t);
+    expect(t.deps.plugins.get('example')?.updateAvailable).toBeNull();
+    expect(updatesChanged(t, 'example')).toHaveLength(1);
+  });
+
+  it('a catalog that cannot be read keeps the updates last known and only warns', async () => {
+    await serve('example');
+    await serve('example', '0.2.0');
+    const warnings: unknown[] = [];
+    const t = setup({ log: { info: () => {}, warn: (m) => warnings.push(m), error: () => {} } });
+    await t.deps.plugins.start();
+    await install(t, 'example');
+    await t.deps.plugins.checkUpdates();
+    expect(t.deps.plugins.get('example')?.updateAvailable).toBe('0.2.0');
+    t.events.length = 0;
+
+    // Unreachable, and no cached index to fall back on.
+    indexServed.down = true;
+    await rm(join(t.deps.config.pluginsDir, '.catalog'), { recursive: true, force: true });
+    await t.deps.plugins.checkUpdates();
+    expect(t.deps.plugins.get('example')?.updateAvailable).toBe('0.2.0');
+    expect(t.events).toEqual([]);
+    expect(warnings).toContainEqual(
+      expect.objectContaining({ msg: 'plugin update check', catalog: indexUrl }),
+    );
+  });
+
+  it('a dev plugin never has an update', async () => {
+    await serve('example', '0.2.0');
+    const t = setup({ plugins: { devPlugins: [fixturePluginPath('example')] } });
+    await t.deps.plugins.start();
+    await t.deps.plugins.checkUpdates();
+    expect(t.deps.plugins.get('example')?.updateAvailable).toBeNull();
+  });
+
+  it('runs shortly after start, then every 6 hours, and stops on shutdown', async () => {
+    const t = setup();
+    const check = vi.spyOn(t.deps.plugins, 'checkUpdates').mockResolvedValue();
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    try {
+      await t.deps.plugins.start();
+      expect(check).not.toHaveBeenCalled();
+      await vi.advanceTimersByTimeAsync(UPDATE_CHECK_DELAY_MS);
+      expect(check).toHaveBeenCalledTimes(1);
+      await vi.advanceTimersByTimeAsync(UPDATE_CHECK_MS);
+      expect(check).toHaveBeenCalledTimes(2);
+      await t.deps.plugins.stop();
+      await vi.advanceTimersByTimeAsync(UPDATE_CHECK_MS);
+      expect(check).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 
