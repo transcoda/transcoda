@@ -244,10 +244,12 @@ function JobView({ id }: { id: string }) {
             dependsOnSize: job.state === 'dry_run' && job.dependsOnSize != null,
             replacedTo: job.result?.replacedTo ?? null,
             sourceDamaged: job.result?.sourceDamaged === true,
-            damagedSide: job.graph ? damagedSideOf(job.graph) : new Set(),
+            damagedSide: job.graph
+              ? damagedSideOf(job.graph, (type) => catalog?.byType.get(type)?.kind)
+              : new Set(),
           }
         : null,
-    [job],
+    [job, catalog],
   );
 
   const select = useCallback((ref: NodeRef | null) => {

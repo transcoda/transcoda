@@ -32,7 +32,10 @@ const node = (id: string, type: string) => ({
   position: { x: 0, y: 0 },
 });
 
-/** `in` → `keep.file` is wired; `keep.language`, `gate.file` and every output are free. */
+/**
+ * `in` → `keep.file` and `lang` → `hs.language` are wired; `keep.language`, `gate.file` and every
+ * output are free. A wired file input still takes more connections; a wired data input does not.
+ */
 const graph: WorkflowGraph = {
   formatVersion: 2,
   kind: 'workflow',
@@ -41,9 +44,15 @@ const graph: WorkflowGraph = {
     node('keep', 'core:keep-languages'),
     node('gate', 'core:size-gate'),
     node('lang', 'test:language'),
+    node('hs', 'core:has-stream'),
   ],
   edges: [
     { id: 'in-keep', from: { node: 'in', port: 'file' }, to: { node: 'keep', port: 'file' } },
+    {
+      id: 'lang-hs',
+      from: { node: 'lang', port: 'language' },
+      to: { node: 'hs', port: 'language' },
+    },
   ],
   groups: [],
 };
@@ -58,7 +67,8 @@ const handles: HandleRef[] = graph.nodes.flatMap((n) => {
       portId: p.id,
       direction: 'in',
       portType: p.type,
-      occupied: graph.edges.some((e) => e.to.node === n.id && e.to.port === p.id),
+      occupied:
+        p.type !== 'file' && graph.edges.some((e) => e.to.node === n.id && e.to.port === p.id),
     }),
   );
   const outs = def.outputs.map(
@@ -120,23 +130,26 @@ describe('connectionFit', () => {
     expect(connectionFit(from, find('keep', 'language', 'in'))).toBe('incompatible');
   });
 
-  it('refuses a type mismatch and an occupied input, accepts a free matching input', () => {
+  it('refuses a type mismatch and an occupied data input, accepts a free matching input and a wired file input', () => {
     expect(connectionFit(find('lang', 'language', 'out'), find('gate', 'file', 'in'))).toBe(
       'incompatible',
     );
     expect(connectionFit(find('lang', 'language', 'out'), find('keep', 'language', 'in'))).toBe(
       'compatible',
     );
-    expect(connectionFit(find('gate', 'pass', 'out'), find('keep', 'file', 'in'))).toBe(
+    expect(connectionFit(find('lang', 'language', 'out'), find('hs', 'language', 'in'))).toBe(
       'incompatible',
+    );
+    expect(connectionFit(find('gate', 'pass', 'out'), find('keep', 'file', 'in'))).toBe(
+      'compatible',
     );
     expect(connectionFit(find('gate', 'pass', 'out'), find('lang', 'language', 'out'))).toBe(
       'incompatible',
     );
   });
 
-  it('dragging from an occupied input: every output is incompatible', () => {
-    const from = find('keep', 'file', 'in');
+  it('dragging from an occupied data input: every output is incompatible', () => {
+    const from = find('hs', 'language', 'in');
     for (const me of handles.filter((h) => h.direction === 'out')) {
       expect(connectionFit(from, me), name(me)).toBe('incompatible');
     }

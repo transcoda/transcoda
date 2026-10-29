@@ -278,6 +278,12 @@ class Walker {
   sourceDamagedAt: SourceDamagedAt | null = null;
   /** Where each node seen so far comes from, for the trace's `source`. */
   private readonly sources = new Map<string, Source>();
+  /**
+   * The finish actions of each finish node built so far (dataKey). A node several branches lead
+   * into (a notify behind both Yes and No) is built once: the other branches reuse its actions,
+   * so its hook runs, and is traced, once.
+   */
+  private readonly finished = new Map<string, AnyFinishAction[]>();
 
   constructor(
     private readonly deps: WalkDeps,
@@ -795,10 +801,13 @@ class Walker {
       const bypassed = n.bypassed === true;
       // A Run node's work is its sub-workflow's nodes, which follow it in the path.
       if (n.type === RUN_SUBWORKFLOW_TYPE && !bypassed) continue;
-      this.deps.onNodeStart?.({ workflowPath: [...path], nodeId });
+      const builtBefore = def.kind === 'finish' ? this.finished.get(dataKey(path, nodeId)) : null;
+      if (!builtBefore) this.deps.onNodeStart?.({ workflowPath: [...path], nodeId });
       const phase = def.kind === 'finish' ? 'finish' : 'build';
       if (bypassed) {
+        if (builtBefore) continue;
         this.note(nodeId, path, phase, port, this.bypassReason(n));
+        if (def.kind === 'finish') this.finished.set(dataKey(path, nodeId), []);
         continue;
       }
       if (
@@ -815,8 +824,13 @@ class Walker {
           `a step that writes the result cannot follow ${NO_WRITE_WHERE[run.noWrite]}`,
         );
       }
+      if (builtBefore) {
+        actions.push(...builtBefore);
+        continue;
+      }
       const data = await this.dataFor(n, def, graph, path);
       const ctx = { ...this.base(n, data), model };
+      const firstAction = actions.length;
       if (n.type === SIZE_GATE_TYPE) this.gateIndex.set(nodeId, actions.length);
       if (n.type === RENDER_TYPE) this.renderIndex.set(nodeId, actions.length);
       if (def.kind === 'action' && def.build) {
@@ -896,8 +910,10 @@ class Walker {
         } else {
           actions.push(...result.actions);
         }
+        this.finished.set(dataKey(path, nodeId), actions.slice(firstAction));
       } else {
         this.note(nodeId, path, phase, port, 'no-op');
+        if (def.kind === 'finish') this.finished.set(dataKey(path, nodeId), []);
       }
     }
     return { model, actions, autoPicks };

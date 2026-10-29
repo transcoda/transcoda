@@ -7,7 +7,10 @@ export type HandleRef = {
   direction: 'in' | 'out';
   /** `null`: the node has no catalogue entry (an unknown node), so nothing can connect to it. */
   portType: PortType | null;
-  /** An input with an edge already (an output may fan out, so false for outputs). */
+  /**
+   * A data input with an edge already: it takes no more. A file input takes any number (branches
+   * that never both run merge there) and an output may fan out, so false for both.
+   */
   occupied: boolean;
 };
 
@@ -17,7 +20,7 @@ export type Fit = 'source' | 'compatible' | 'incompatible' | null;
 /**
  * How `me` takes the edge dragged from `from` (N5); `null` when nothing is dragged. Mirrors
  * `checkConnection` exactly, so a handle glows only where the drop is accepted: not on the
- * dragged node, not on the same side, not for another port type, not on an occupied input.
+ * dragged node, not on the same side, not for another port type, not on an occupied data input.
  */
 export function connectionFit(from: HandleRef | null, me: HandleRef): Fit {
   if (from === null) return null;

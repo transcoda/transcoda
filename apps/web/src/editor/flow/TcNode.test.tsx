@@ -596,12 +596,13 @@ describe('TcNode', () => {
       'is-incompatible',
     );
     expect(card('keep2').className).not.toContain('is-faded');
-    // No input at all, or only an occupied file input and a data input: the card fades.
+    // No input at all: the card fades.
     expect(card('in').className).toContain('is-faded');
+    // A wired file input still takes the edge (several connections may lead into it).
     expect(card('hs').querySelector('.target[data-handleid="file"]')?.className).toContain(
-      'is-incompatible',
+      'is-compatible',
     );
-    expect(card('hs').className).toContain('is-faded');
+    expect(card('hs').className).not.toContain('is-faded');
   });
 
   it('nothing glows or fades while no connection is dragged', async () => {

@@ -51,7 +51,8 @@ export function branchClass(port: PortSpec): 'is-branch-pass' | 'is-branch-else'
 /**
  * The handle a connection is being dragged from (N5), read from React Flow's connection state, or
  * `null` when nothing is dragged. Its port type comes from the dragged node's catalogue entry
- * (`null` for an unknown node); a dragged input is occupied when an edge already ends on it.
+ * (`null` for an unknown node); a dragged data input is occupied when an edge already ends on it
+ * (a file input never is: it takes several).
  */
 export function dragFromOf(s: ReactFlowState): HandleRef | null {
   const c = s.connection;
@@ -61,13 +62,15 @@ export function dragFromOf(s: ReactFlowState): HandleRef | null {
   const direction = c.fromHandle.type === 'source' ? 'out' : 'in';
   const def = (c.fromNode.data as Partial<TcNodeData>).def;
   const ports = direction === 'out' ? def?.outputs : def?.inputs;
+  const portType = ports?.find((p) => p.id === portId)?.type ?? null;
   return {
     nodeId,
     portId,
     direction,
-    portType: ports?.find((p) => p.id === portId)?.type ?? null,
+    portType,
     occupied:
       direction === 'in' &&
+      portType !== 'file' &&
       s.edges.some((e) => e.target === nodeId && (e.targetHandle ?? '') === portId),
   };
 }
