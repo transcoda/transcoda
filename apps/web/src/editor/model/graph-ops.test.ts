@@ -234,10 +234,17 @@ describe('graph operations', () => {
     });
     expect(edge?.id).toMatch(/^[A-Za-z0-9_-]{10}$/);
 
+    // A second connection into a file input is fine: branches that never both run merge there.
     const two = graphOf(addNode(connected, 'core:remux', { x: 0, y: 200 }, catalog, { id: 'wh' }));
-    expect(
+    const merged = graphOf(
       connect(two, { node: 'wh', port: 'file' }, { node: 'keep', port: 'file' }, catalog),
-    ).toEqual({ ok: false, refusal: { reason: 'That input is already connected' } });
+    );
+    expect(
+      merged.edges.filter((e) => e.to.node === 'keep' && e.to.port === 'file').map((e) => e.from),
+    ).toEqual([
+      { node: 'in', port: 'file' },
+      { node: 'wh', port: 'file' },
+    ]);
 
     expect(
       connect(two, { node: 'keep', port: 'file' }, { node: 'keep', port: 'file' }, catalog),

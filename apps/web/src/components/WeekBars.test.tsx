@@ -43,7 +43,9 @@ describe('WeekBars', () => {
     const sat = screen.getByRole('img', { name: 'Sat 24 Oct: 429 replaced · 690 kept' });
     expect(sat.querySelectorAll(BAR)).toHaveLength(2);
     expect(sat.querySelector(BAR)?.getAttribute('fill')).toBe('var(--st-replaced)');
-    expect(screen.getByText('1,119')).toBeTruthy();
+    // Half-height cards: no total over each bar (the tooltip and the label carry it).
+    expect(screen.queryByText('1,119')).toBeNull();
+    expect(container.querySelector('svg')?.getAttribute('preserveAspectRatio')).toBe('none');
     // Empty days have no bar and no total.
     expect(
       screen.getByRole('img', { name: 'Mon 19 Oct: 0 replaced · 0 kept' }).querySelector(BAR),

@@ -75,7 +75,8 @@ function targetOf(issue: Issue): IssueTarget {
 }
 
 /**
- * The issues list at the bottom of the inspector column: errors first, then warnings, each an
+ * The issues list at the bottom of the inspector column (all of it while nothing is selected), or
+ * a muted "No issues": errors first, then warnings, each an
  * icon + word, the node title (or "Edge" / "Workflow") and the server's message. An entry is a
  * button that asks the page to select and centre its node or edge (and focus the setting).
  */
@@ -90,6 +91,7 @@ export function IssuesPanel({
   graph: WorkflowGraph;
   onFocus(target: IssueTarget): void;
 }) {
+  if (issues.length === 0) return <p className="issues-none">{issuesSummary(issues)}</p>;
   const ordered = [
     ...issues.filter((i) => i.severity === 'error'),
     ...issues.filter((i) => i.severity !== 'error'),
@@ -97,31 +99,27 @@ export function IssuesPanel({
   return (
     <details className="issues-panel" open>
       <summary className="issues-summary">{issuesSummary(issues)}</summary>
-      {ordered.length > 0 && (
-        <ul className="issues-list">
-          {ordered.map((issue, i) => {
-            const error = issue.severity === 'error';
-            return (
-              // Issues have no id; the server's order is stable for one response.
-              // biome-ignore lint/suspicious/noArrayIndexKey: see above.
-              <li key={i}>
-                <button
-                  type="button"
-                  className={`issues-entry ${error ? 'is-error' : 'is-warning'}`}
-                  onClick={() => onFocus(targetOf(issue))}
-                >
-                  <Icon name={error ? 'x-circle' : 'alert'} size={15} round />
-                  <span className="sr-only">{error ? 'Error' : 'Warning'}</span>
-                  <span className="issues-entry-subject">{subjectOf(issue, graph, catalog)}</span>
-                  <span className="issues-entry-message">
-                    {messageUnder(issue, graph, catalog)}
-                  </span>
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      )}
+      <ul className="issues-list">
+        {ordered.map((issue, i) => {
+          const error = issue.severity === 'error';
+          return (
+            // Issues have no id; the server's order is stable for one response.
+            // biome-ignore lint/suspicious/noArrayIndexKey: see above.
+            <li key={i}>
+              <button
+                type="button"
+                className={`issues-entry ${error ? 'is-error' : 'is-warning'}`}
+                onClick={() => onFocus(targetOf(issue))}
+              >
+                <Icon name={error ? 'x-circle' : 'alert'} size={15} round />
+                <span className="sr-only">{error ? 'Error' : 'Warning'}</span>
+                <span className="issues-entry-subject">{subjectOf(issue, graph, catalog)}</span>
+                <span className="issues-entry-message">{messageUnder(issue, graph, catalog)}</span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
     </details>
   );
 }

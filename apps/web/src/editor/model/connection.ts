@@ -39,8 +39,10 @@ export function isDamagedOutput(type: string, port: string): boolean {
 
 /**
  * Whether output `port` of `nodeId` is on a Damaged side: a Damaged output itself, or an output of
- * a finish node whose file comes (through finish nodes only) from a Damaged output. Mirrors
- * validate.ts `afterDamaged` / `afterSourceDamaged`.
+ * a finish node whose file comes (through finish nodes only) from a Damaged output. A node whose
+ * file input has several connections is on a Damaged side only when every one of them is: the
+ * file may come by any of them. Mirrors validate.ts `afterDamaged` / `afterSourceDamaged`, which
+ * checks each path on its own.
  */
 export function onDamagedSide(
   g: WorkflowGraph,
@@ -48,21 +50,26 @@ export function onDamagedSide(
   port: string,
   catalog: Catalog,
 ): boolean {
-  const seen = new Set<string>();
-  let at = nodeId;
-  let leaving = port;
-  for (;;) {
+  /** `${node}\0${port}` → the answer; false while being worked out (a cycle is not a Damaged side). */
+  const known = new Map<string, boolean>();
+  const side = (at: string, leaving: string): boolean => {
+    const key = `${at}\0${leaving}`;
+    const hit = known.get(key);
+    if (hit !== undefined) return hit;
+    known.set(key, false);
     const node = g.nodes.find((n) => n.id === at);
-    if (!node || seen.has(at)) return false;
-    seen.add(at);
-    if (isDamagedOutput(node.type, leaving)) return true;
-    const def = catalog.byType.get(node.type);
-    if (def?.kind !== 'finish') return false;
-    const into = g.edges.find((e) => e.to.node === at && e.to.port === 'file');
-    if (!into) return false;
-    at = into.from.node;
-    leaving = into.from.port;
-  }
+    let result = false;
+    if (node && isDamagedOutput(node.type, leaving)) result = true;
+    else if (node && catalog.byType.get(node.type)?.kind === 'finish') {
+      const into = g.edges.filter(
+        (e) => e.to.node === at && catalog.portType(node.type, e.to.port) === 'file',
+      );
+      result = into.length > 0 && into.every((e) => side(e.from.node, e.from.port));
+    }
+    known.set(key, result);
+    return result;
+  };
+  return side(nodeId, port);
 }
 
 /** The editor's live connection rules; cycles are left to the server's `GRAPH_CYCLE`. */
@@ -84,8 +91,13 @@ export function checkConnection(
   if (out.type !== input.type) {
     return { ok: false, reason: `Those ports don't match (${out.type} → ${input.type})` };
   }
-  if (g.edges.some((e) => e.to.node === to.node && e.to.port === to.port)) {
-    return { ok: false, reason: 'That input is already connected' };
+  // A file input takes any number of connections (branches that never both run merge there); a
+  // data input takes one (validate.ts INPUT_MULTIPLE_EDGES).
+  if (
+    input.type !== 'file' &&
+    g.edges.some((e) => e.to.node === to.node && e.to.port === to.port)
+  ) {
+    return { ok: false, reason: 'That data input is already connected' };
   }
   const target = g.nodes.find((n) => n.id === to.node);
   const targetDef = target && catalog.byType.get(target.type);

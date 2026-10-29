@@ -3,6 +3,9 @@ import type { NodeKind } from '../hooks/useCatalog.ts';
 import { Icon, type IconName } from './Icon.tsx';
 
 // Colour never carries meaning alone: every badge and chip pairs an icon with a word.
+// One meaning per colour (convention 7): `ok` lime = changed / active; `neutral` outline = no change
+// (Not active, Kept original, Nothing to do, Skipped); `error` red = failed; `warning` amber =
+// needs attention. Same size and font as the Jobs list's state chip.
 
 export function StatusChip({
   tone,
@@ -12,8 +15,8 @@ export function StatusChip({
   srText,
   srId,
 }: {
-  tone: 'ok' | 'error' | 'warning';
-  icon: IconName;
+  tone: 'ok' | 'neutral' | 'error' | 'warning';
+  icon?: IconName;
   children: string;
   title?: string;
   /** Text for screen readers only (what `title` shows on hover). */
@@ -22,7 +25,7 @@ export function StatusChip({
 }) {
   return (
     <span className={`chip chip-${tone}`} title={title}>
-      <Icon name={icon} size={12} />
+      {icon ? <Icon name={icon} size={13} strokeWidth={2.6} /> : null}
       {children}
       {srText ? (
         <span className="sr-only" id={srId}>

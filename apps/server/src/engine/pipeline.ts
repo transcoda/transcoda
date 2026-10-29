@@ -827,10 +827,18 @@ export class Pipeline implements JobExecutor {
         const pass = built.path.map((s) =>
           s.workflowPath.length === 0 && branching.has(s.nodeId) ? { ...s, port: null } : s,
         );
+        // A step several branches lead into (a notify behind both Yes and No) is listed once.
+        const listed = new Set<string>();
+        const once = (s: { workflowPath: string[]; nodeId: string }) => {
+          const key = [...s.workflowPath, s.nodeId].join('\0');
+          if (listed.has(key)) return false;
+          listed.add(key);
+          return true;
+        };
         this.update(job, ctl, {
-          walkPath: [...pass, ...gates.flatMap((g) => g.elsePath), ...(damaged?.path ?? [])].map(
-            stepOf,
-          ),
+          walkPath: [...pass, ...gates.flatMap((g) => g.elsePath), ...(damaged?.path ?? [])]
+            .filter(once)
+            .map(stepOf),
         });
       }
       if (damaged !== null) {

@@ -74,26 +74,45 @@ export interface StepContext {
 
 /**
  * The nodes below a Damaged output (Render's or Check source's) of the top-level graph: they run
- * only when the source turns out damaged.
+ * only when the source turns out damaged. A node the file can also reach without passing a
+ * Damaged output (several connections into one input) runs either way, so it is not listed.
+ * `kindOf` (the catalogue's kind of a node type) keeps data nodes from counting as a way in.
  */
-export function damagedSideOf(graph: WorkflowGraph): Set<string> {
+export function damagedSideOf(
+  graph: WorkflowGraph,
+  kindOf: (type: string) => string | undefined = () => undefined,
+): Set<string> {
   const byId = new Map(graph.nodes.map((n) => [n.id, n]));
-  const queue = graph.edges
-    .filter((e) => {
-      const type = byId.get(e.from.node)?.type;
-      return (
-        (type === RENDER_TYPE && e.from.port === RENDER_DAMAGED_PORT) ||
-        (type === CHECK_SOURCE_TYPE && e.from.port === CHECK_SOURCE_DAMAGED_PORT)
-      );
-    })
-    .map((e) => e.to.node);
-  const out = new Set<string>();
-  for (let id = queue.pop(); id !== undefined; id = queue.pop()) {
-    if (out.has(id)) continue;
-    out.add(id);
-    for (const e of graph.edges) if (e.from.node === id) queue.push(e.to.node);
-  }
-  return out;
+  const isData = (id: string) => {
+    const type = byId.get(id)?.type;
+    return type !== undefined && kindOf(type) === 'data';
+  };
+  const isDamagedEdge = (e: WorkflowGraph['edges'][number]) => {
+    const type = byId.get(e.from.node)?.type;
+    return (
+      (type === RENDER_TYPE && e.from.port === RENDER_DAMAGED_PORT) ||
+      (type === CHECK_SOURCE_TYPE && e.from.port === CHECK_SOURCE_DAMAGED_PORT)
+    );
+  };
+  const reach = (starts: string[], follow: (e: WorkflowGraph['edges'][number]) => boolean) => {
+    const out = new Set<string>();
+    const queue = [...starts];
+    for (let id = queue.pop(); id !== undefined; id = queue.pop()) {
+      if (out.has(id)) continue;
+      out.add(id);
+      for (const e of graph.edges) if (e.from.node === id && follow(e)) queue.push(e.to.node);
+    }
+    return out;
+  };
+  const below = reach(
+    graph.edges.filter(isDamagedEdge).map((e) => e.to.node),
+    () => true,
+  );
+  // Where the file goes without a Damaged output: from the nodes nothing leads into (the trigger).
+  const into = new Set(graph.edges.map((e) => e.to.node));
+  const roots = graph.nodes.filter((n) => !into.has(n.id) && !isData(n.id)).map((n) => n.id);
+  const clean = reach(roots, (e) => !isDamagedEdge(e) && !isData(e.from.node));
+  return new Set([...below].filter((id) => !clean.has(id)));
 }
 
 type Changed = TraceChanges['dropped'][number];

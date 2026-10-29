@@ -116,7 +116,13 @@ function paletteButton(section: string, name: string): HTMLElement {
   });
 }
 
-const pill = () => screen.getByRole('button', { name: /^v\d+ · / });
+const pill = () => screen.getByRole('button', { name: /^(Active )?v\d+ · / });
+/** Opens the header's "More actions" menu (when closed) and returns its item `name`, or null. */
+function menuItem(name: string | RegExp): HTMLElement | null {
+  const more = screen.getByRole('button', { name: 'More actions' });
+  if (more.getAttribute('aria-expanded') !== 'true') fireEvent.click(more);
+  return screen.queryByRole('menuitem', { name });
+}
 
 const realMatchMedia = window.matchMedia;
 
@@ -184,21 +190,24 @@ describe('EditorPage', () => {
     expect(crumb.textContent).toBe('Workflows/Smoke');
     expect(within(crumb).getByRole('link', { name: 'Workflows' }).getAttribute('href')).toBe('/');
     expect(within(crumb).getByRole('button', { name: 'Smoke' })).toBeTruthy();
-    expect(pill().textContent).toBe('v3 · saved 2 min ago');
+    expect(pill().textContent).toBe('v3 · Not active · saved 2 min ago');
     expect(screen.getByRole('group', { name: /Trigger Manual input/ })).toBeTruthy();
     expect(screen.getByRole('group', { name: /Finish Replace original/ })).toBeTruthy();
     const save = screen.getByRole('button', { name: 'Save v4' }) as HTMLButtonElement;
     expect(save.disabled).toBe(true);
     const tryIt = screen.getByRole('button', { name: 'Dry run on a file' }) as HTMLButtonElement;
     expect(tryIt.disabled).toBe(false);
-    expect(screen.getByText('Select a node')).toBeTruthy();
+    // Nothing selected: the column is the issues list alone, the header says the version.
+    const inspector = screen.getByRole('complementary', { name: 'Inspector' });
+    expect(within(inspector).queryByRole('region', { name: 'Selection' })).toBeNull();
+    expect(within(inspector).getByRole('region', { name: 'Issues' })).toBeTruthy();
   });
 
   it('adding a node from the palette marks the draft dirty and shows "v3 · unsaved changes"', async () => {
     await loadedEditor();
     fireEvent.click(paletteButton('Action', 'Keep languages'));
     expect(screen.getAllByRole('group', { name: /Action Keep languages/ })).toHaveLength(2);
-    expect(pill().textContent).toBe('v3 · unsaved changes');
+    expect(pill().textContent).toBe('v3 · Not active · unsaved changes');
     expect((screen.getByRole('button', { name: 'Save v4' }) as HTMLButtonElement).disabled).toBe(
       false,
     );
@@ -208,7 +217,7 @@ describe('EditorPage', () => {
     await loadedEditor();
     fireEvent.click(paletteButton('Trigger', 'Library input'));
     expect(await screen.findByText('A workflow has exactly one trigger')).toBeTruthy();
-    expect(pill().textContent).toBe('v3 · saved 2 min ago');
+    expect(pill().textContent).toBe('v3 · Not active · saved 2 min ago');
   });
 
   it('validation issues become node badges', async () => {
@@ -259,7 +268,7 @@ describe('EditorPage', () => {
     for (const n of arg.graph.nodes) {
       expect(Object.keys(n).every((k) => NODE_KEYS.includes(k))).toBe(true);
     }
-    await waitFor(() => expect(pill().textContent).toBe('v4 · saved just now'));
+    await waitFor(() => expect(pill().textContent).toBe('v4 · Not active · saved just now'));
     expect((screen.getByRole('button', { name: 'Save v5' }) as HTMLButtonElement).disabled).toBe(
       true,
     );
@@ -319,7 +328,7 @@ describe('EditorPage', () => {
 
     fireEvent.keyDown(document.body, { key: 'z', metaKey: true });
     await waitFor(() => expect(edge()).not.toBeNull());
-    expect(pill().textContent).toBe('v4 · unsaved changes');
+    expect(pill().textContent).toBe('v4 · Not active · unsaved changes');
   });
 
   it('VERSION_CONFLICT opens the conflict dialog; "Save over it" re-saves with baseVersion = currentVersion', async () => {
@@ -368,7 +377,7 @@ describe('EditorPage', () => {
     const dialog = await screen.findByRole('dialog');
     mocks.get.mockResolvedValueOnce(detail(chainMainReplace(), 5));
     fireEvent.click(within(dialog).getByRole('button', { name: 'Reload the latest version' }));
-    await waitFor(() => expect(pill().textContent).toMatch(/^v5 · saved/));
+    await waitFor(() => expect(pill().textContent).toMatch(/^v5 · Not active · saved/));
     // The canvas drops the draft's node a render after the pill changes.
     await waitFor(() =>
       expect(screen.getAllByRole('group', { name: /Action Keep languages/ })).toHaveLength(1),
@@ -385,7 +394,7 @@ describe('EditorPage', () => {
 
     const alert = await screen.findByRole('alert');
     expect(alert.textContent).toContain('The workflow is too large to save (2 MB limit)');
-    expect(pill().textContent).toBe('v3 · unsaved changes');
+    expect(pill().textContent).toBe('v3 · Not active · unsaved changes');
     expect(screen.getAllByRole('group', { name: /Action Keep languages/ })).toHaveLength(2);
     expect((screen.getByRole('button', { name: 'Save v4' }) as HTMLButtonElement).disabled).toBe(
       false,
@@ -411,7 +420,7 @@ describe('EditorPage', () => {
     expect((await screen.findByRole('alert')).textContent).toContain(
       "Those ports don't match (file → data:language)",
     );
-    expect(pill().textContent).toBe('v3 · saved 2 min ago');
+    expect(pill().textContent).toBe('v3 · Not active · saved 2 min ago');
     expect(mocks.validate).not.toHaveBeenCalled();
   });
 
@@ -431,7 +440,7 @@ describe('EditorPage', () => {
     renderEditor();
     fireEvent.click(await screen.findByRole('button', { name: 'Collapse group Cleanup' }));
     expect(screen.getByRole('button', { name: 'Expand group Cleanup' })).toBeTruthy();
-    expect(pill().textContent).toBe('v3 · unsaved changes');
+    expect(pill().textContent).toBe('v3 · Not active · unsaved changes');
     cleanup();
 
     mocks.get.mockResolvedValue(detail(tiggerPoohMain('sub', 1), 2));
@@ -439,7 +448,7 @@ describe('EditorPage', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Collapse group Cleanup' }));
     expect(screen.getByRole('button', { name: 'Expand group Cleanup' })).toBeTruthy();
     expect(mocks.get).toHaveBeenLastCalledWith({ id: 'wf1', version: 2 });
-    expect(pill().textContent).toMatch(/^v2 · saved/);
+    expect(pill().textContent).toMatch(/^v2 · Not active · saved/);
     expect(screen.queryByRole('button', { name: /^Save v/ })).toBeNull();
     const palette = screen.getByRole('complementary', { name: 'Node palette' });
     const remux = within(palette).getByRole('button', { name: 'Remux' });
@@ -457,7 +466,7 @@ describe('EditorPage', () => {
     expect(save.title).toBe('Node catalogue unavailable');
     // Read-only: no toolbar, Delete does nothing, nothing is validated or saved.
     fireEvent.keyDown(document.body, { key: 'Delete' });
-    expect(pill().textContent).toBe('v3 · saved 2 min ago');
+    expect(pill().textContent).toBe('v3 · Not active · saved 2 min ago');
     expect(mocks.validate).not.toHaveBeenCalled();
 
     mocks.nodesList.mockResolvedValue({ nodes: nodesFixture });
@@ -581,10 +590,10 @@ describe('EditorPage', () => {
 
     fireEvent.keyDown(document.activeElement as Element, { key: 'Delete' });
     await waitFor(() => expect(flowNode(container, 'keep')).toBeNull());
-    expect(pill().textContent).toBe('v3 · unsaved changes');
+    expect(pill().textContent).toBe('v3 · Not active · unsaved changes');
     fireEvent.keyDown(document.body, { key: 'z', metaKey: true });
     expect(await screen.findByRole('group', { name: /Action Keep languages/ })).toBeTruthy();
-    expect(pill().textContent).toBe('v3 · saved 2 min ago');
+    expect(pill().textContent).toBe('v3 · Not active · saved 2 min ago');
 
     fireEvent.keyDown(document.body, { key: '/' });
     expect(await screen.findByRole('dialog', { name: 'Add a node' })).toBeTruthy();
@@ -674,7 +683,7 @@ describe('EditorPage', () => {
     });
     const { container } = await loadedEditor();
     const inspector = screen.getByRole('complementary', { name: 'Inspector' });
-    expect(within(inspector).getByText('Select a node')).toBeTruthy();
+    expect(within(inspector).queryByRole('region', { name: 'Selection' })).toBeNull();
     fireEvent.click(within(inspector).getByRole('button', { name: /Expected boolean/ }));
     await waitFor(() => expect(flowNode(container, 'keep').classList).toContain('selected'));
     expect(
@@ -689,7 +698,7 @@ describe('EditorPage', () => {
     const field = inspector.querySelector('[data-field="keepUntagged"]') as HTMLElement;
     expect(within(field).getByText('Expected boolean')).toBeTruthy();
     fireEvent.click(within(field).getByRole('switch'));
-    expect(pill().textContent).toBe('v3 · unsaved changes');
+    expect(pill().textContent).toBe('v3 · Not active · unsaved changes');
   });
 
   it("the inspector's Group select joins the group and grows the box around the measured card", async () => {
@@ -734,12 +743,12 @@ describe('EditorPage', () => {
       target: { value: 'Keep German' },
     });
     expect(await screen.findByRole('group', { name: /Action Keep German/ })).toBeTruthy();
-    expect(pill().textContent).toBe('v3 · unsaved changes');
+    expect(pill().textContent).toBe('v3 · Not active · unsaved changes');
     fireEvent.click(within(inspector).getByRole('button', { name: 'Remove node' }));
     await waitFor(() =>
       expect(screen.queryByRole('group', { name: /Action Keep German/ })).toBeNull(),
     );
-    expect(within(inspector).getByText('Select a node')).toBeTruthy();
+    expect(within(inspector).queryByRole('region', { name: 'Selection' })).toBeNull();
   });
 
   describe('fix round (Task 10 review)', () => {
@@ -767,7 +776,7 @@ describe('EditorPage', () => {
       mocks.get.mockResolvedValueOnce(detail(chainMainReplace(), 5));
       fireEvent.click(within(alert).getByRole('button', { name: 'Try again' }));
       await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
-      expect(pill().textContent).toMatch(/^v5 · saved/);
+      expect(pill().textContent).toMatch(/^v5 · Not active · saved/);
       expect(screen.getAllByRole('group', { name: /Action Keep languages/ })).toHaveLength(1);
     });
 
@@ -800,7 +809,7 @@ describe('EditorPage', () => {
       fireEvent.click(paletteButton('Action', 'Remux'));
       pending.resolve(saveOk(4));
       expect(await screen.findByText('Saved v4')).toBeTruthy();
-      expect(pill().textContent).toBe('v4 · unsaved changes');
+      expect(pill().textContent).toBe('v4 · Not active · unsaved changes');
       expect((screen.getByRole('button', { name: 'Save v5' }) as HTMLButtonElement).disabled).toBe(
         false,
       );
@@ -832,7 +841,7 @@ describe('EditorPage', () => {
       fireEvent.change(input, { target: { value: 'Smoke 2' } });
       fireEvent.keyDown(input, { key: 'Enter' });
       expect(await within(crumb).findByRole('button', { name: 'Smoke 2' })).toBeTruthy();
-      expect(pill().textContent).toBe('v3 · saved 2 min ago');
+      expect(pill().textContent).toBe('v3 · Not active · saved 2 min ago');
     });
 
     it('deleting a selected group keeps its members', async () => {
@@ -847,7 +856,7 @@ describe('EditorPage', () => {
       );
       expect(flowNode(container, 'run-a')).toBeTruthy();
       expect(flowNode(container, 'run-b')).toBeTruthy();
-      expect(pill().textContent).toBe('v3 · unsaved changes');
+      expect(pill().textContent).toBe('v3 · Not active · unsaved changes');
     });
 
     it('Delete removes a selected edge; a mixed selection is one undo step; redo removes it again', async () => {
@@ -865,7 +874,7 @@ describe('EditorPage', () => {
       expect(flowNode(container, 'in')).toBeTruthy();
       fireEvent.keyDown(document.body, { key: 'z', metaKey: true });
       await waitFor(() => expect(edge('in-vi')).toBeTruthy());
-      expect(pill().textContent).toBe('v3 · saved 2 min ago');
+      expect(pill().textContent).toBe('v3 · Not active · saved 2 min ago');
 
       // Group + a node outside it + an unrelated edge, selected together.
       fireEvent.click(flowNode(container, 'cleanup'));
@@ -895,13 +904,13 @@ describe('EditorPage', () => {
       await waitFor(() => expect(flowNode(container, 'ev')).toBeTruthy());
       expect(screen.getByRole('group', { name: 'Group Cleanup' })).toBeTruthy();
       expect(edge('sg-ro-a')).toBeTruthy();
-      expect(pill().textContent).toBe('v3 · saved 2 min ago');
+      expect(pill().textContent).toBe('v3 · Not active · saved 2 min ago');
 
       fireEvent.keyDown(document.body, { key: 'z', ctrlKey: true, shiftKey: true });
       await waitFor(() => expect(flowNode(container, 'ev')).toBeNull());
       expect(screen.queryByRole('group', { name: 'Group Cleanup' })).toBeNull();
       expect(edge('sg-ro-a')).toBeNull();
-      expect(pill().textContent).toBe('v3 · unsaved changes');
+      expect(pill().textContent).toBe('v3 · Not active · unsaved changes');
     });
 
     it('deleting the Start of a sub-workflow is refused with a toast and the node stays', async () => {
@@ -1008,8 +1017,7 @@ describe('EditorPage', () => {
       ]);
 
       fireEvent.click(paletteButton('Action', 'Remux'));
-      fireEvent.click(screen.getByRole('button', { name: 'More save options' }));
-      fireEvent.click(screen.getByRole('menuitem', { name: 'Save with a note…' }));
+      fireEvent.click(menuItem('Save with a note…') as HTMLElement);
       const dialog = screen.getByRole('dialog', { name: 'Save with a note' });
       fireEvent.change(within(dialog).getByRole('textbox', { name: 'Note' }), {
         target: { value: '  Second remux ' },
@@ -1027,7 +1035,7 @@ describe('EditorPage', () => {
         ],
       });
       await loadedEditor();
-      await waitFor(() => expect(pill().textContent).toBe('v3 · saved 5 min ago'));
+      await waitFor(() => expect(pill().textContent).toBe('v3 · Not active · saved 5 min ago'));
       fireEvent.click(pill());
       const panel = screen.getByRole('dialog', { name: 'Versions' });
       const v2 = await within(panel).findByRole('link', { name: /^v2 · / });
@@ -1049,7 +1057,7 @@ describe('EditorPage', () => {
       expect(paletteButton('Action', 'Remux').getAttribute('aria-disabled')).toBe('true');
       // A past version is not saved from (final review M9): no Save button at all.
       expect(screen.queryByRole('button', { name: /^Save v/ })).toBeNull();
-      expect(screen.queryByRole('button', { name: 'More save options' })).toBeNull();
+      expect(menuItem('Save with a note…')).toBeNull();
       fireEvent.keyDown(document.body, { key: '/' });
       expect(screen.queryByRole('dialog', { name: 'Add a node' })).toBeNull();
       expect(screen.queryByRole('toolbar', { name: 'Node actions' })).toBeNull();
@@ -1133,7 +1141,7 @@ describe('EditorPage', () => {
         'A hidden webhook URL could not be matched to a saved one. Enter the URL again in Keep languages.',
       );
       expect(alert.closest('.canvas-banners')).toBeTruthy();
-      expect(pill().textContent).toBe('v3 · unsaved changes');
+      expect(pill().textContent).toBe('v3 · Not active · unsaved changes');
       fireEvent.click(within(alert).getByRole('button', { name: 'Show Keep languages' }));
       await waitFor(() => expect(flowNode(container, 'keep').classList).toContain('selected'));
       // The next successful save clears it.
@@ -1203,7 +1211,7 @@ describe('EditorPage on-node settings, groups and bypass (Task 14)', () => {
     fireEvent.change(card.getByRole('spinbutton', { name: 'Quality (CRF)' }), {
       target: { value: '22' },
     });
-    expect(pill().textContent).toBe('v3 · unsaved changes');
+    expect(pill().textContent).toBe('v3 · Not active · unsaved changes');
     fireEvent.click(flowNode(container, 'ev'));
     await waitFor(() =>
       expect(within(inspector()).getByRole('heading', { name: 'Encode video' })).toBeTruthy(),
@@ -1234,7 +1242,7 @@ describe('EditorPage on-node settings, groups and bypass (Task 14)', () => {
     const select = card.getByRole('combobox', { name: 'Default audio' }) as HTMLSelectElement;
     expect(select.value).toBe('en');
     fireEvent.change(select, { target: { value: 'fr' } });
-    expect(pill().textContent).toBe('v3 · unsaved changes');
+    expect(pill().textContent).toBe('v3 · Not active · unsaved changes');
     expect((card.getByRole('combobox', { name: 'Default audio' }) as HTMLSelectElement).value).toBe(
       'fr',
     );
@@ -1263,7 +1271,7 @@ describe('EditorPage on-node settings, groups and bypass (Task 14)', () => {
     const name = within(inspector()).getByRole('textbox', { name: 'Group name' });
     await waitFor(() => expect(document.activeElement).toBe(name));
     expect(within(inspector()).getByText('2 nodes')).toBeTruthy();
-    expect(pill().textContent).toBe('v3 · unsaved changes');
+    expect(pill().textContent).toBe('v3 · Not active · unsaved changes');
 
     fireEvent.change(name, { target: { value: 'Audio rules' } });
     expect(await screen.findByRole('group', { name: 'Group Audio rules' })).toBeTruthy();
@@ -1345,8 +1353,8 @@ describe('EditorPage on-node settings, groups and bypass (Task 14)', () => {
       mocks.get.mockResolvedValue(subDetail([{ id: 'a', name: 'Smoke' }]));
       renderAt('/workflows/sub-lang', <Route path="/workflows/:id" component={EditorPage} />);
       await screen.findByRole('group', { name: /Action Keep languages/ });
-      expect(screen.queryByText('Not active')).toBeNull();
-      expect(screen.queryByRole('button', { name: /^Activate v/ })).toBeNull();
+      expect(pill().textContent).not.toMatch(/active/i);
+      expect(menuItem(/^Activate v/)).toBeNull();
       expect(screen.getByText('Used by 1 workflow')).toBeTruthy();
     });
 
@@ -1443,7 +1451,7 @@ describe('EditorPage on-node settings, groups and bypass (Task 14)', () => {
         await within(inspector).findByText('will be dropped on save: keep.languages'),
       ).toBeTruthy();
       fireEvent.click(within(inspector).getByRole('button', { name: 'Update to v2' }));
-      expect(pill().textContent).toBe('v3 · unsaved changes');
+      expect(pill().textContent).toBe('v3 · Not active · unsaved changes');
       expect(within(inspector).getByText('v2 pinned')).toBeTruthy();
       await waitFor(() => expect(mocks.get).toHaveBeenCalledWith({ id: 'sub-lang', version: 2 }));
     });
@@ -1520,7 +1528,7 @@ describe('EditorPage leave guard, undo/redo and save shortcut (Task 19)', () => 
     fireEvent.click(crumbLink());
     fireEvent.click(within(leaveDialog()).getByRole('button', { name: 'Stay' }));
     expect(view.location()).toBe('/workflows/wf1');
-    expect(pill().textContent).toBe('v3 · unsaved changes');
+    expect(pill().textContent).toBe('v3 · Not active · unsaved changes');
 
     // A failed save stays inside the dialog; the draft and the route are kept.
     fireEvent.click(crumbLink());
@@ -1528,7 +1536,7 @@ describe('EditorPage leave guard, undo/redo and save shortcut (Task 19)', () => 
     const alert = await within(leaveDialog()).findByRole('alert');
     expect(alert.textContent).toContain('The workflow is too large to save (2 MB limit)');
     expect(view.location()).toBe('/workflows/wf1');
-    expect(pill().textContent).toBe('v3 · unsaved changes');
+    expect(pill().textContent).toBe('v3 · Not active · unsaved changes');
 
     fireEvent.click(within(leaveDialog()).getByRole('button', { name: 'Save and leave' }));
     await waitFor(() => expect(view.location()).toBe('/'));
@@ -1583,7 +1591,7 @@ describe('EditorPage leave guard, undo/redo and save shortcut (Task 19)', () => 
     const alert = await within(leaveDialog()).findByRole('alert');
     expect(alert.textContent).toBe('It changed while saving. Save again to keep the new changes.');
     expect(view.location()).toBe('/workflows/wf1');
-    expect(pill().textContent).toBe('v4 · unsaved changes');
+    expect(pill().textContent).toBe('v4 · Not active · unsaved changes');
   });
 
   it('undo/redo header buttons reflect the stacks and loading a version clears them', async () => {
@@ -1608,7 +1616,7 @@ describe('EditorPage leave guard, undo/redo and save shortcut (Task 19)', () => 
     await waitFor(() => expect(keepCount()).toBe(1));
     expect(button('Undo').disabled).toBe(true);
     expect(button('Redo').disabled).toBe(false);
-    expect(pill().textContent).toBe('v3 · saved 2 min ago');
+    expect(pill().textContent).toBe('v3 · Not active · saved 2 min ago');
 
     fireEvent.click(button('Redo'));
     await waitFor(() => expect(keepCount()).toBe(2));
@@ -1647,7 +1655,7 @@ describe('EditorPage leave guard, undo/redo and save shortcut (Task 19)', () => 
     const dialog = await screen.findByRole('dialog');
     mocks.get.mockResolvedValueOnce(detail(chainMainReplace(), 5));
     fireEvent.click(within(dialog).getByRole('button', { name: 'Reload the latest version' }));
-    await waitFor(() => expect(pill().textContent).toMatch(/^v5 · saved/));
+    await waitFor(() => expect(pill().textContent).toMatch(/^v5 · Not active · saved/));
     expect(button('Undo').disabled).toBe(true);
   });
 
@@ -1683,14 +1691,14 @@ describe('EditorPage activation (Task 17, activation Task 9)', () => {
 
   it('sits in the header; an unsaved edit leaves the saved, valid version activatable; saved errors say "Fix N errors before activating"', async () => {
     await loadedEditor();
-    expect(screen.getByText('Not active')).toBeTruthy();
-    const activate = () => screen.getByRole('button', { name: 'Activate v3' });
+    expect(pill().textContent).toBe('v3 · Not active · saved 2 min ago');
+    const activate = () => menuItem('Activate v3') as HTMLElement;
     expect(activate().getAttribute('aria-disabled')).toBeNull();
 
     fireEvent.click(paletteButton('Action', 'Keep languages'));
     // The server activates the saved v3, which is valid: the draft's state does not block it.
     expect(activate().getAttribute('aria-disabled')).toBeNull();
-    expect(activate().getAttribute('title')).toBeNull();
+    expect(activate().hasAttribute('title')).toBe(false);
 
     const issues: Issue[] = [
       { severity: 'error', code: 'TRIGGER_COUNT', message: 'First' },
@@ -1705,19 +1713,20 @@ describe('EditorPage activation (Task 17, activation Task 9)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save v4' }));
     await screen.findByText('Saved v4');
     await waitFor(() =>
-      expect(screen.getByRole('button', { name: 'Activate v4' }).getAttribute('title')).toBe(
-        'Fix 2 errors before activating',
-      ),
+      expect(menuItem('Activate v4')?.getAttribute('title')).toBe('Fix 2 errors before activating'),
     );
-    fireEvent.click(screen.getByRole('button', { name: 'Activate v4' }));
+    expect(menuItem('Activate v4')?.getAttribute('aria-disabled')).toBe('true');
+    fireEvent.click(menuItem('Activate v4') as HTMLElement);
     expect(screen.queryByRole('dialog', { name: /^Activate v4/ })).toBeNull();
   });
 
   it('the header shows "Active v3" and "Activate v4" after a save; the toast reads "Saved v4 · v3 stays active" and the changes banner lists the save\'s changes once', async () => {
     mocks.get.mockResolvedValue({ ...detail(), active: activeV3() });
     await loadedEditor();
-    expect(screen.getByText('Active v3')).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Deactivate' })).toBeTruthy();
+    expect(pill().textContent).toBe('Active v3 · saved 2 min ago');
+    expect(pill().className).toContain('is-active');
+    expect(menuItem('Deactivate')).toBeTruthy();
+    fireEvent.keyDown(screen.getByRole('menu'), { key: 'Escape' });
     fireEvent.click(paletteButton('Action', 'Keep languages'));
     mocks.save.mockResolvedValue({
       ...saveOk(4),
@@ -1727,8 +1736,10 @@ describe('EditorPage activation (Task 17, activation Task 9)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save v4' }));
     expect(await screen.findByText('Saved v4 · v3 stays active')).toBeTruthy();
     expect(screen.getByText('This version: Added Keep languages; Moved 2 nodes')).toBeTruthy();
-    expect(screen.getByText('Active v3')).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Activate v4' })).toBeTruthy();
+    expect(pill().textContent).toMatch(/^v4 · Active v3 · /);
+    expect(pill().className).not.toContain('is-active');
+    expect(menuItem('Activate v4')).toBeTruthy();
+    fireEvent.keyDown(screen.getByRole('menu'), { key: 'Escape' });
     // The next edit drops the changes banner.
     fireEvent.click(paletteButton('Action', 'Remux'));
     expect(screen.queryByText(/^This version:/)).toBeNull();
@@ -1742,17 +1753,17 @@ describe('EditorPage activation (Task 17, activation Task 9)', () => {
       active: { ...activeV3(), version: 4 },
     });
     await loadedEditor();
-    fireEvent.click(screen.getByRole('button', { name: 'Activate v4' }));
+    fireEvent.click(menuItem('Activate v4') as HTMLElement);
     const dialog = await screen.findByRole('dialog', { name: 'Activate v4 of Smoke?' });
     const confirm = within(dialog).getByRole('button', {
       name: 'Activate v4',
     }) as HTMLButtonElement;
     await waitFor(() => expect(confirm.disabled).toBe(false));
     fireEvent.click(confirm);
-    expect(await screen.findByText('Active v4')).toBeTruthy();
+    await waitFor(() => expect(pill().textContent).toMatch(/^Active v4 · /));
     expect(mocks.activate).toHaveBeenCalledWith({ id: 'wf1', version: 4, confirm: true });
-    expect(screen.queryByRole('button', { name: 'Activate v4' })).toBeNull();
-    expect(screen.getByRole('button', { name: 'Deactivate' })).toBeTruthy();
+    expect(menuItem('Activate v4')).toBeNull();
+    expect(menuItem('Deactivate')).toBeTruthy();
   });
 
   it('a past version shows "Activate v2" beside "Restore as new version"; the active version shows "Viewing v3 — active" without it', async () => {
@@ -1764,7 +1775,9 @@ describe('EditorPage activation (Task 17, activation Task 9)', () => {
     await loadedEditor('/workflows/wf1?version=2');
     expect(screen.getByText('Viewing v2 — current is v3')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Restore as new version' })).toBeTruthy();
+    // Read-only: the header menu has no Activate, the past-version banner has the one.
     expect(screen.getAllByRole('button', { name: 'Activate v2' })).toHaveLength(1);
+    expect(menuItem('Activate v2')).toBeNull();
     cleanup();
 
     mocks.get.mockResolvedValue({
@@ -1775,6 +1788,7 @@ describe('EditorPage activation (Task 17, activation Task 9)', () => {
     await loadedEditor('/workflows/wf1?version=3');
     expect(screen.getByText('Viewing v3 — active')).toBeTruthy();
     expect(screen.queryByRole('button', { name: /^Activate v/ })).toBeNull();
+    expect(menuItem(/^Activate v/)).toBeNull();
   });
 
   it('a workflow whose active version can\'t run shows the danger banner with "Activate v6" (error-free current) and none when the current version has errors', async () => {
@@ -1838,9 +1852,9 @@ describe('EditorPage activation (Task 17, activation Task 9)', () => {
     });
     mocks.deactivate.mockResolvedValue({ ...summary, currentVersion: 4, active: null });
     await loadedEditor();
-    expect(screen.getByRole('button', { name: 'Activate v4' })).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: 'Deactivate' }));
-    expect(await screen.findByText('Not active')).toBeTruthy();
+    expect(menuItem('Activate v4')).toBeTruthy();
+    fireEvent.click(menuItem('Deactivate') as HTMLElement);
+    await waitFor(() => expect(pill().textContent).toMatch(/^v4 · Not active · /));
     expect(mocks.deactivate).toHaveBeenCalledWith({ id: 'wf1' });
     cleanup();
 
@@ -1850,7 +1864,7 @@ describe('EditorPage activation (Task 17, activation Task 9)', () => {
       active: activeV3(),
     });
     await loadedEditor('/workflows/wf1?version=2');
-    expect(screen.getByRole('button', { name: 'Deactivate' })).toBeTruthy();
+    expect(menuItem('Deactivate')).toBeTruthy();
   });
 
   it("no Activate in the can't-run banner on a past version (the past-version banner has it)", async () => {
@@ -1887,7 +1901,8 @@ describe('EditorPage activation (Task 17, activation Task 9)', () => {
     const go = within(dialog).getByRole('button', { name: 'Roll back to v2' }) as HTMLButtonElement;
     await waitFor(() => expect(go.disabled).toBe(false));
     fireEvent.click(go);
-    await waitFor(() => expect(document.activeElement).toBe(screen.getByText('Active v2')));
+    await waitFor(() => expect(document.activeElement).toBe(pill()));
+    expect(pill().textContent).toMatch(/^Active v2 · /);
     cleanup();
 
     mocks.get.mockResolvedValue({
@@ -1912,7 +1927,8 @@ describe('EditorPage activation (Task 17, activation Task 9)', () => {
     const go2 = within(dialog).getByRole('button', { name: 'Activate v6' }) as HTMLButtonElement;
     await waitFor(() => expect(go2.disabled).toBe(false));
     fireEvent.click(go2);
-    await waitFor(() => expect(document.activeElement).toBe(screen.getByText('Active v6')));
+    await waitFor(() => expect(document.activeElement).toBe(pill()));
+    expect(pill().textContent).toMatch(/^Active v6 · /);
   });
 
   it("the danger banner's Activate opens the dialog for the shown version", async () => {
@@ -1991,8 +2007,8 @@ describe('EditorPage try on a file (Task 24)', () => {
 
   it('"Run on a file" is disabled until a version is active, then runs the active version for real', async () => {
     await loadedEditor();
-    const off = screen.getByRole('button', { name: 'Run on a file' }) as HTMLButtonElement;
-    expect(off.disabled).toBe(true);
+    const off = menuItem('Run on a file') as HTMLElement;
+    expect(off.getAttribute('aria-disabled')).toBe('true');
     expect(off.title).toBe('Activate a version to run for real');
     cleanup();
 
@@ -2006,7 +2022,7 @@ describe('EditorPage try on a file (Task 24)', () => {
       },
     });
     const live = await loadedEditor();
-    fireEvent.click(screen.getByRole('button', { name: 'Run on a file' }));
+    fireEvent.click(menuItem('Run on a file') as HTMLElement);
     const picker = await screen.findByRole('dialog', { name: 'Run Smoke v2 on a file' });
     fireEvent.click(await within(picker).findByRole('button', { name: /tigger-pooh\.mp4/ }));
     const confirm = await screen.findByRole('dialog', { name: 'Run Smoke on this file?' });
@@ -2072,7 +2088,7 @@ describe('EditorPage try on a file (Task 24)', () => {
     expect(await screen.findByText('The workflow is too large to save (2 MB limit)')).toBeTruthy();
     expect(mocks.queue).not.toHaveBeenCalled();
     expect(view.location()).toBe('/workflows/wf1');
-    expect(pill().textContent).toBe('v3 · unsaved changes');
+    expect(pill().textContent).toBe('v3 · Not active · unsaved changes');
 
     mocks.queue.mockRejectedValueOnce(
       new ORPCError('WORKFLOW_INVALID', { defined: true, status: 422, data: { issues: [] } }),

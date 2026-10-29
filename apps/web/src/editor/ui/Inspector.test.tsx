@@ -438,13 +438,11 @@ describe('Inspector', () => {
     expect(line?.classList).toContain('tone-red');
   });
 
-  it('with nothing selected it shows the workflow itself: type, version and node count', () => {
+  it('with nothing selected it draws nothing (the header says the version; the column is the issues list)', () => {
     const g = chainMainReplace();
-    renderInspector(stateOf(g, { nodes: [], edges: [] }));
-    const region = screen.getByRole('region', { name: 'Selection' });
-    const facts = [...region.querySelectorAll('.inspector-facts > div')].map((d) => d.textContent);
-    expect(facts).toEqual(['TypeWorkflow', 'Saved versionv3', `Nodes${g.nodes.length}`]);
-    expect(within(region).getByText('Select a node')).toBeTruthy();
+    const { container } = renderInspector(stateOf(g, { nodes: [], edges: [] }));
+    expect(container.textContent).toBe('');
+    expect(screen.queryByText('Select a node')).toBeNull();
   });
 
   it('empty, group and multi-node selections', () => {
@@ -462,9 +460,7 @@ describe('Inspector', () => {
       ],
     };
     renderInspector(stateOf(grouped, { nodes: [], edges: [] }));
-    expect(
-      within(screen.getByRole('region', { name: 'Selection' })).getByText('Select a node'),
-    ).toBeTruthy();
+    expect(screen.queryByRole('region', { name: 'Selection' })).toBeNull();
     cleanup();
     renderInspector(stateOf(grouped, { nodes: [], edges: [], group: 'g1' }));
     expect(

@@ -3,6 +3,7 @@ import { useRef } from 'react';
 import { Link, useParams } from 'wouter';
 import { api } from '../api/client.ts';
 import { describeError } from '../api/errors.ts';
+import { SectionHeading } from '../components/Headings.tsx';
 import { Icon } from '../components/Icon.tsx';
 import { LiveDot } from '../components/LiveDot.tsx';
 import { Loading } from '../components/Loading.tsx';
@@ -10,36 +11,29 @@ import { NotFound } from '../components/NotFound.tsx';
 import { useAsync } from '../hooks/useAsync.ts';
 import type { EngineEvent } from '../hooks/useEvents.ts';
 import { useRefetchOn } from '../hooks/useRefetchOn.ts';
-import { DryRunBadge } from '../jobs/JobStateChip.tsx';
+import { DryRunBadge, VERDICT_ICON } from '../jobs/JobStateChip.tsx';
 import {
   dependsWord,
-  detailsLinkName,
   estimatePercent,
   reasonOf,
   sentence,
   testEncodeLine,
 } from '../jobs/jobText.ts';
 import { QUEUE_PAUSED_TEXT } from '../jobs/QueueBar.tsx';
-import { OutcomeChip, outcomeOf, RunCounts } from '../jobs/RunCounts.tsx';
+import {
+  OutcomeChip,
+  outcomeOf,
+  outcomeVerdict,
+  outcomeWord,
+  RunCounts,
+} from '../jobs/RunCounts.tsx';
 import { useQueue } from '../jobs/useQueue.ts';
-import { fmtBytes, fmtSaving } from '../lib/bytes.ts';
+import { fmtBytes } from '../lib/bytes.ts';
 import { usePageTitle } from '../lib/pageTitle.ts';
+import { fmtFull, fmtStamp } from '../lib/time.ts';
+import { usePhone } from '../lib/usePhone.ts';
 
 type RunFile = RunDetail['files'][number];
-
-/** What happened to the original, appended to the reason so no file's fate is left implied. */
-function fateNote(f: RunFile): string | null {
-  // A dry run's own fate: nothing was written, whatever the plan would have done.
-  if (f.state === 'dry_run') return 'no file changed';
-  if (f.state === 'done') {
-    if (f.replacedTo === 'recycle') return 'original in recycle folder';
-    if (f.replacedTo === 'deleted') return 'original deleted';
-    return null;
-  }
-  // The engine never fails or keeps a file after writing to it (a write ends the job as done).
-  if (f.state === 'failed' || f.state === 'kept_original') return 'original untouched';
-  return null;
-}
 
 /** The estimate a dry-run file carries (only a file that would be rewritten has one). */
 const estimateOf = (f: RunFile): number | null => (f.state === 'dry_run' ? f.estimatedBytes : null);
@@ -64,15 +58,19 @@ function measuredLine(f: RunFile): string | null {
   });
 }
 
-function reasonText(f: RunFile, testEncode: boolean): string {
-  // A test-encode's measured outcome is its reason, where a plan-only dry run shows its plan.
+/**
+ * The muted line under a file's name: why it ended as it did, when there is more to say than its
+ * chip. A test-encode's measured outcome, a dry run's plan, otherwise the reason. A replaced file's
+ * sizes say it all; a nothing-to-do file without its own reason has nothing to add.
+ */
+function noteText(f: RunFile, testEncode: boolean): string | null {
   const measured = testEncode ? measuredLine(f) : null;
   if (measured) return measured;
-  // A dry run's own plan summary is its reason, and says more than "no file changed".
   if (f.state === 'dry_run' && f.planSummary) return sentence(f.planSummary);
-  // The plan summary (a dry run's reason) comes first; the first letter is capital, like every value.
-  const text = [reasonOf(f), fateNote(f)].filter(Boolean).join(' · ');
-  return text ? sentence(text) : '—';
+  if (f.state === 'done') return null;
+  if (f.state === 'nothing_to_do' && (!f.reason || f.reason === 'already as planned')) return null;
+  const reason = reasonOf(f);
+  return reason ? sentence(reason) : null;
 }
 
 /** "2.41 GB → 1.62 GB" for a replaced file; otherwise the original's size (it is unchanged). */
@@ -104,9 +102,110 @@ function estimatedSaving(files: RunFile[], testEncode: boolean): string | null {
   return `≈ ${amount} estimated${covers}.`;
 }
 
+function FileChip({ f, run }: { f: RunFile; run: RunDetail['run'] }) {
+  return (
+    <OutcomeChip
+      outcome={outcomeOf(f.state)}
+      dryRun={run.dryRun}
+      testEncode={run.testEncode}
+      word={dependsWord({ ...f, dryRun: run.dryRun })}
+      estimate={
+        f.dependsOnSize
+          ? null
+          : estimatePercent(f.beforeBytes, run.testEncode ? measuredOf(f) : estimateOf(f))
+      }
+    />
+  );
+}
+
+/** "ran on v6" after the name when a file ran on another version than the run's. */
+function VersionNote({ f, run }: { f: RunFile; run: RunDetail['run'] }) {
+  if (f.workflowVersion === run.workflowVersion) return null;
+  return (
+    <>
+      {' '}
+      <span className="run-file-version">
+        <span className="sr-only">ran on </span>v{f.workflowVersion}
+      </span>
+    </>
+  );
+}
+
+/** Desktop: File / Outcome / Size; the row is the link to the job. */
+function FilesTable({ files, run }: { files: RunFile[]; run: RunDetail['run'] }) {
+  return (
+    <section className="panel run-files">
+      <table aria-label="Files">
+        <thead>
+          <tr>
+            <th scope="col">File</th>
+            <th scope="col">Outcome</th>
+            <th scope="col">Size</th>
+          </tr>
+        </thead>
+        <tbody>
+          {files.map((f) => {
+            const note = noteText(f, run.testEncode);
+            return (
+              <tr key={f.jobId} className="row-link">
+                <td className="run-cell run-file-name">
+                  <Link
+                    href={`/jobs/${f.jobId}`}
+                    className="job-name row-link-main"
+                    title={f.filePath}
+                  >
+                    {f.fileName}
+                  </Link>
+                  <VersionNote f={f} run={run} />
+                  {note ? <span className="run-file-note">{note}</span> : null}
+                </td>
+                <td className="run-cell">
+                  <FileChip f={f} run={run} />
+                </td>
+                <td className="run-cell run-size">{sizeText(f, run.testEncode)}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </section>
+  );
+}
+
+/** Phone: the Jobs phone list's stacked cards (icon, name, "Replaced · 4.37 GB → 1.00 GB"). */
+function FilesCards({ files, run }: { files: RunFile[]; run: RunDetail['run'] }) {
+  return (
+    <div className="run-cards">
+      {files.map((f) => {
+        const outcome = outcomeOf(f.state);
+        const verdict = outcomeVerdict(outcome, run.dryRun);
+        const word = dependsWord({ ...f, dryRun: run.dryRun }) ?? outcomeWord(outcome, run.dryRun);
+        const size = sizeText(f, run.testEncode);
+        return (
+          <Link key={f.jobId} href={`/jobs/${f.jobId}`} className="phone-finished">
+            <span className={`phone-finished-icon is-${verdict}`}>
+              <Icon name={VERDICT_ICON[outcomeVerdict(outcome)]} size={16} strokeWidth={2.6} />
+            </span>
+            <span className="phone-finished-text">
+              <b>
+                {f.fileName}
+                <VersionNote f={f} run={run} />
+              </b>
+              <span className={`job-detail-text is-${verdict}`}>
+                {size === '—' ? word : `${word} · ${size}`}
+              </span>
+            </span>
+          </Link>
+        );
+      })}
+    </div>
+  );
+}
+
 function RunBody({ detail }: { detail: RunDetail }) {
   const { run, counts, files } = detail;
   const paused = useQueue().status?.paused ?? false;
+  const phone = usePhone();
   const waiting = counts.queued + counts.in_progress;
   return (
     <>
@@ -115,18 +214,24 @@ function RunBody({ detail }: { detail: RunDetail }) {
           Jobs
         </Link>
         <span aria-hidden="true">/</span>
-        <span>{`Run · ${detail.workflowName} v${run.workflowVersion}`}</span>
       </nav>
       <div className="page-head">
         <div className="run-title-row">
-          <h1>{`Run · ${detail.workflowName} v${run.workflowVersion} · ${detail.libraryName}`}</h1>
+          <h1>{`${detail.workflowName} v${run.workflowVersion}`}</h1>
           {run.dryRun ? <DryRunBadge testEncode={run.testEncode} /> : null}
           {counts.in_progress > 0 && !paused ? <LiveDot /> : null}
         </div>
+        <p className="head-sub">
+          {'Run on '}
+          <span title={run.requestedPath}>{detail.libraryName}</span>
+          {' · '}
+          <time dateTime={run.createdAt} title={fmtFull(run.createdAt)}>
+            {fmtStamp(run.createdAt)}
+          </time>
+        </p>
         {run.dryRun && run.note === 'no active version' ? (
           <p className="run-note">Dry run · No active version</p>
         ) : null}
-        <p className="mono run-path">{run.requestedPath}</p>
       </div>
       {paused && waiting > 0 ? (
         <p className="alert alert-warning queue-paused" role="status">
@@ -134,81 +239,24 @@ function RunBody({ detail }: { detail: RunDetail }) {
         </p>
       ) : null}
       <RunCounts counts={counts} dryRun={run.dryRun} planOnly={run.dryRun && !run.testEncode} />
-      <p className="run-bytes">
-        {counts.done > 0
-          ? `${fmtBytes(counts.beforeBytes)} → ${fmtBytes(counts.afterBytes)}, ${fmtSaving(counts.beforeBytes, counts.afterBytes)}`
-          : run.dryRun
-            ? ['Dry run: no file was changed.', estimatedSaving(files, run.testEncode)]
-                .filter(Boolean)
-                .join(' ')
-            : waiting > 0
-              ? 'No file replaced yet.'
-              : 'No file replaced.'}
-      </p>
+      {run.dryRun ? (
+        <p className="run-bytes">
+          {['Dry run: no file was changed.', estimatedSaving(files, run.testEncode)]
+            .filter(Boolean)
+            .join(' ')}
+        </p>
+      ) : null}
       {files.length !== counts.total ? (
         <p className="run-mismatch" role="alert">
           <Icon name="alert" size={16} round />
           {`The list shows ${files.length} of ${counts.total} files.`}
         </p>
       ) : null}
-      <section className="panel run-files">
-        <table aria-label="Files">
-          <thead>
-            <tr>
-              <th scope="col">File</th>
-              <th scope="col">Outcome</th>
-              <th scope="col">Reason</th>
-              <th scope="col">Size</th>
-              <th scope="col">
-                <span className="sr-only">Details</span>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {files.map((f) => (
-              <tr key={f.jobId}>
-                <td className="run-cell run-file-name" title={f.filePath}>
-                  {f.fileName}
-                  {f.workflowVersion !== run.workflowVersion ? (
-                    <>
-                      {' '}
-                      <span className="run-file-version">
-                        <span className="sr-only">ran on </span>v{f.workflowVersion}
-                      </span>
-                    </>
-                  ) : null}
-                </td>
-                <td className="run-cell">
-                  <OutcomeChip
-                    outcome={outcomeOf(f.state)}
-                    dryRun={run.dryRun}
-                    testEncode={run.testEncode}
-                    word={dependsWord({ ...f, dryRun: run.dryRun })}
-                    estimate={
-                      f.dependsOnSize
-                        ? null
-                        : estimatePercent(
-                            f.beforeBytes,
-                            run.testEncode ? measuredOf(f) : estimateOf(f),
-                          )
-                    }
-                  />
-                </td>
-                <td className="run-cell">{reasonText(f, run.testEncode)}</td>
-                <td className="run-cell run-size">{sizeText(f, run.testEncode)}</td>
-                <td className="run-cell">
-                  <Link
-                    className="job-details-link"
-                    href={`/jobs/${f.jobId}`}
-                    aria-label={detailsLinkName(f.fileName)}
-                  >
-                    Details
-                  </Link>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <section className="run-list" aria-labelledby="run-files-title">
+        <SectionHeading id="run-files-title" count={files.length}>
+          Files
+        </SectionHeading>
+        {phone ? <FilesCards files={files} run={run} /> : <FilesTable files={files} run={run} />}
       </section>
     </>
   );

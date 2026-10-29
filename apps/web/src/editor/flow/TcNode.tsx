@@ -313,7 +313,8 @@ export function TcNode({ id, data, selected }: NodeProps<TcNodeType>) {
     portId: p.id,
     direction,
     portType: def ? p.type : null,
-    occupied: direction === 'in' && connectedIn.has(p.id),
+    // A file input takes several connections; only a wired data input is full.
+    occupied: direction === 'in' && p.type !== 'file' && connectedIn.has(p.id),
   });
   const handleRefs = [...inputs.map((p) => refOf('in', p)), ...outputs.map((p) => refOf('out', p))];
   const fitKey = useStore((s) => fitsKey(s, handleRefs));

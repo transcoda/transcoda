@@ -1810,6 +1810,61 @@ describe('pipeline: size gate pass and else', () => {
     ]);
   });
 
+  describe('one notify behind both Yes and No (two connections into its input)', () => {
+    const URL = 'https://hooks.example.com/either';
+    const shared = () => {
+      const g = gated(50, [node('ro', 'core:replace-original'), hook('n', URL)], []);
+      return { ...g, edges: [...g.edges, edge('sg', 'n', { from: 'else' })] };
+    };
+    const finishEntries = (id: string) => traceOf(id, 'n').filter(([phase]) => phase === 'finish');
+
+    it('on Yes it runs once, after the replace', async () => {
+      const id = await queue(file(), workflow(shared()));
+      expect(await runOnce(id, 400)).toMatchObject({ state: 'done' });
+      expect(calledUrls()).toEqual([URL]);
+      expect(body(0)).toMatchObject({ outcome: 'done' });
+      expect(finishEntries(id)).toHaveLength(1);
+      expect(t.deps.engine.jobDetail(id)?.path.map((s) => s.nodeId)).toEqual([
+        'in',
+        'ev',
+        'render-1',
+        'sg',
+        'ro',
+        'n',
+      ]);
+    });
+
+    it('on No it runs once, and the walk goes through else', async () => {
+      const id = await queue(file(), workflow(shared()));
+      expect(await runOnce(id, 900)).toMatchObject({ state: 'kept_original' });
+      expect(calledUrls()).toEqual([URL]);
+      expect(body(0)).toMatchObject({ outcome: 'kept_original' });
+      expect(finishEntries(id)).toHaveLength(1);
+      expect(t.deps.engine.jobDetail(id)?.path.map((s) => [s.nodeId, s.port])).toEqual([
+        ['in', 'file'],
+        ['ev', 'file'],
+        ['render-1', 'done'],
+        ['sg', 'else'],
+        ['n', 'file'],
+      ]);
+    });
+
+    it('a dry run lists it once', async () => {
+      const id = await queue(file(), workflow(shared()), { dryRun: true });
+      await t.deps.engine.start();
+      expect(await settled(id)).toMatchObject({ state: 'dry_run' });
+      expect(fetchMock).not.toHaveBeenCalled();
+      expect(t.deps.engine.jobDetail(id)?.path.map((s) => s.nodeId)).toEqual([
+        'in',
+        'ev',
+        'render-1',
+        'sg',
+        'ro',
+        'n',
+      ]);
+    });
+  });
+
   it('dry run: both branches are possible; the walk lists the else steps and the gate says it depends', async () => {
     const wf = workflow(gated(50, [node('ro', 'core:replace-original')], [hook('en', ELSE_URL)]));
     const id = await queue(file(), wf, { dryRun: true });

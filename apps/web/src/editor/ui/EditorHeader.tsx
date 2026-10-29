@@ -3,6 +3,7 @@ import {
   type FormEvent,
   type KeyboardEvent,
   type ReactNode,
+  type RefObject,
   useEffect,
   useId,
   useRef,
@@ -13,11 +14,39 @@ import { Icon } from '../../components/Icon.tsx';
 import { tryLabel } from '../../jobs/useTryOnFile.ts';
 import { GuardedLink } from '../../lib/navigation.tsx';
 import { fmtAgoLong } from '../../lib/time.ts';
+import { hasActivation } from './ActivationControl.tsx';
 
 const NAME_MAX = 120;
 const NOTE_MAX = 120;
 /** "saved 2 min ago" moves on by itself. */
 const PILL_TICK_MS = 30_000;
+
+/**
+ * The version pill's text and look: the shown version, what runs on files and when it was saved,
+ * one line ("v2 · Not active · saved 8 min ago"). The shown version being the active one reads
+ * "Active v2 · …" in lime; an active version that can't run is red. A sub-workflow has no
+ * activation. Unsaved changes replace the time.
+ */
+export function versionPill(
+  workflow: Pick<WorkflowSummary, 'kind' | 'active'>,
+  savedVersion: number,
+  savedAt: string,
+  dirty: boolean,
+): { text: string; tone: 'neutral' | 'active' | 'danger' } {
+  const when = dirty ? 'unsaved changes' : fmtAgoLong(savedAt);
+  if (!hasActivation(workflow)) return { text: `v${savedVersion} · ${when}`, tone: 'neutral' };
+  const active = workflow.active;
+  if (active === null) return { text: `v${savedVersion} · Not active · ${when}`, tone: 'neutral' };
+  const state = `Active v${active.version}${active.runnable ? '' : " · can't run"}`;
+  const tone = active.runnable
+    ? active.version === savedVersion
+      ? 'active'
+      : 'neutral'
+    : 'danger';
+  return active.version === savedVersion
+    ? { text: `${state} · ${when}`, tone }
+    : { text: `v${savedVersion} · ${state} · ${when}`, tone };
+}
 
 /** "Used by 1 workflow" / "Used by 3 workflows". */
 export function usedByText(n: number): string {
@@ -66,11 +95,13 @@ function NoteDialog({
   nextVersion,
   onSave,
   onClose,
+  returnFocusTo,
 }: {
   open: boolean;
   nextVersion: number;
   onSave(note: string): void;
   onClose(): void;
+  returnFocusTo: RefObject<HTMLElement | null>;
 }) {
   const [note, setNote] = useState('');
   const inputId = useId();
@@ -84,7 +115,7 @@ function NoteDialog({
   }
 
   return (
-    <Dialog open={open} title="Save with a note" onClose={onClose}>
+    <Dialog open={open} title="Save with a note" onClose={onClose} returnFocusTo={returnFocusTo}>
       <form className="note-form" onSubmit={onSubmit}>
         <div className="field">
           <label htmlFor={inputId}>Note</label>
@@ -110,7 +141,7 @@ function NoteDialog({
   );
 }
 
-type OverflowItem = {
+export type OverflowItem = {
   label: string;
   onSelect?: (() => void) | undefined;
   /** Why it is unavailable (also its tooltip); absent: available. */
@@ -119,14 +150,21 @@ type OverflowItem = {
 };
 
 /**
- * The compact header's "More actions" menu: a button (`aria-haspopup="menu"`) opening a list of
+ * The header's "More actions" menu: a button (`aria-haspopup="menu"`) opening a list of
  * items. A blocked item stays in the list, `aria-disabled` with its reason as the tooltip.
  * Escape, a press outside or picking an item closes it; Escape returns focus to the button, arrow
  * keys move between the items and the first item takes focus on open.
  */
-function OverflowMenu({ items }: { items: OverflowItem[] }) {
+function OverflowMenu({
+  items,
+  buttonRef,
+}: {
+  items: OverflowItem[];
+  /** The menu button, for a dialog an item opened to return focus to. */
+  buttonRef: RefObject<HTMLButtonElement | null>;
+}) {
   const [open, setOpen] = useState(false);
-  const button = useRef<HTMLButtonElement>(null);
+  const button = buttonRef;
   const wrap = useRef<HTMLDivElement>(null);
   const list = useRef<HTMLDivElement>(null);
 
@@ -155,6 +193,7 @@ function OverflowMenu({ items }: { items: OverflowItem[] }) {
     }
   }
 
+  if (items.length === 0) return null;
   return (
     <div className="row-menu" ref={wrap}>
       <button
@@ -202,10 +241,11 @@ function OverflowMenu({ items }: { items: OverflowItem[] }) {
 }
 
 /**
- * The editor's header (screen 05): breadcrumb with an inline rename, the version pill (opens the
- * versions panel, Task 18), the activation control slot (Task 17), "Dry run on a file" (Task 24),
- * "Run on a file" (a real run of the active version; workflows only) and
- * Save, with undo/redo buttons before them (Task 19). `noteMenu` shows the "Save with a note…" menu once the contract takes a note (Task 18).
+ * The editor's header (screen 05): breadcrumb with an inline rename, the version pill (what is
+ * shown, whether it runs on files and when it was saved; opens the versions panel, Task 18), then
+ * undo/redo (Task 19), "Dry run on a file" (Task 24), Save (lime while there is something to save)
+ * and a "More actions" menu: "Run on a file" (a real run of the active version; workflows only),
+ * the page's activation items and "Save with a note…" (`noteMenu`, once the contract takes a note).
  * `versionsPanel` renders under the pill; `versionsOpen` is its state for `aria-expanded`.
  */
 export function EditorHeader({
@@ -220,6 +260,9 @@ export function EditorHeader({
   onOpenVersions,
   versionsOpen = false,
   versionsPanel,
+  pillRef,
+  activeIssue,
+  activationItems = [],
   noteMenu = false,
   saveBlockedReason,
   showSave = true,
@@ -232,7 +275,6 @@ export function EditorHeader({
   onRun,
   runBlockedReason,
   compact = false,
-  children,
 }: {
   workflow: WorkflowSummary;
   savedVersion: number;
@@ -246,6 +288,12 @@ export function EditorHeader({
   onOpenVersions?(): void;
   versionsOpen?: boolean;
   versionsPanel?: ReactNode;
+  /** The version pill: the page's dialogs return focus here. */
+  pillRef?: RefObject<HTMLButtonElement | null>;
+  /** The first active issue's message: the can't-run pill's tooltip. */
+  activeIssue?: string | undefined;
+  /** "Activate vN" / "Deactivate" (`useActivation`), in the "More actions" menu. */
+  activationItems?: OverflowItem[];
   noteMenu?: boolean;
   /** Why the editor cannot save at all (no catalogue, narrow window): Save's tooltip. */
   saveBlockedReason?: string | undefined;
@@ -265,18 +313,17 @@ export function EditorHeader({
   /** Why it cannot run for real ("Activate a version to run for real"): its tooltip. */
   runBlockedReason?: string | undefined;
   /**
-   * A narrow window (the editor only looks there): undo, redo and Try collapse into one "More
-   * actions" menu and Save, which cannot apply read-only, is not drawn.
+   * A narrow window (the editor only looks there): undo, redo and Try join the "More actions"
+   * menu, Save (which cannot apply read-only) is not drawn, and the pill becomes a muted status
+   * line under the name.
    */
   compact?: boolean;
-  children?: ReactNode;
 }) {
   const [renaming, setRenaming] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
   const [noteOpen, setNoteOpen] = useState(false);
   const [, setTick] = useState(0);
-  const menuButton = useRef<HTMLButtonElement>(null);
   const nameButton = useRef<HTMLButtonElement>(null);
+  const moreButton = useRef<HTMLButtonElement>(null);
   const focusName = useRef(false);
   const reasonBaseId = useId();
 
@@ -297,13 +344,62 @@ export function EditorHeader({
   const runAvailable = runShown && onRun !== undefined && runBlockedReason === undefined;
   // A disabled button's title is not read out: its reason is also a hidden description.
   const tryReasonId = `${reasonBaseId}-try-reason`;
-  const runReasonId = `${reasonBaseId}-run-reason`;
   const tryReason = (!onTry || saving) && tryBlockedReason ? tryBlockedReason : null;
-  const runReason = !runAvailable && runBlockedReason ? runBlockedReason : null;
   const nextVersion = savedVersion + 1;
-  const pill = dirty
-    ? `v${savedVersion} · unsaved changes`
-    : `v${savedVersion} · ${fmtAgoLong(savedAt)}`;
+  const pill = versionPill(workflow, savedVersion, savedAt, dirty);
+
+  const runItem: OverflowItem[] = runShown
+    ? [
+        {
+          label: 'Run on a file',
+          onSelect: runAvailable ? onRun : undefined,
+          blockedReason: runBlockedReason,
+        },
+      ]
+    : [];
+  const menuItems: OverflowItem[] = compact
+    ? [
+        ...(onUndo && onRedo
+          ? [
+              { label: 'Undo', onSelect: onUndo, disabled: !canUndo },
+              { label: 'Redo', onSelect: onRedo, disabled: !canRedo },
+            ]
+          : []),
+        {
+          label: tryLabel(dirty),
+          onSelect: saving ? undefined : onTry,
+          blockedReason: tryBlockedReason,
+        },
+        ...runItem,
+        ...activationItems,
+      ]
+    : [
+        ...runItem,
+        ...activationItems,
+        ...(noteMenu && showSave
+          ? [{ label: 'Save with a note…', onSelect: () => setNoteOpen(true), disabled: !canSave }]
+          : []),
+      ];
+
+  const pillWrap = (
+    <div className="version-pill-wrap">
+      <button
+        ref={pillRef}
+        type="button"
+        className={`version-pill-btn${pill.tone === 'neutral' ? '' : ` is-${pill.tone}`}`}
+        aria-haspopup="dialog"
+        aria-expanded={versionsOpen}
+        title={pill.tone === 'danger' ? activeIssue : undefined}
+        onClick={() => onOpenVersions?.()}
+      >
+        {pill.tone === 'active' && <Icon name="check" size={12} strokeWidth={2.4} />}
+        {pill.tone === 'danger' && <Icon name="alert" size={12} strokeWidth={2.4} />}
+        {pill.text}
+        <Icon name="chevron-down" size={12} strokeWidth={2.4} />
+      </button>
+      {versionsPanel}
+    </div>
+  );
 
   return (
     <header className={compact ? 'editor-head is-compact' : 'editor-head'}>
@@ -336,52 +432,14 @@ export function EditorHeader({
           </button>
         )}
       </nav>
-      <div className="version-pill-wrap">
-        <button
-          type="button"
-          className="version-pill-btn"
-          aria-haspopup="dialog"
-          aria-expanded={versionsOpen}
-          onClick={() => onOpenVersions?.()}
-        >
-          {pill}
-          <Icon name="chevron-down" size={12} strokeWidth={2.4} />
-        </button>
-        {versionsPanel}
-      </div>
+      {/* Compact: the name and the menu share the first row, the pill is the line below. */}
+      {!compact && pillWrap}
       {workflow.kind === 'subworkflow' && workflow.usedBy.length > 0 && (
         <span className="used-by" title={workflow.usedBy.map((r) => r.name).join(', ')}>
           {usedByText(workflow.usedBy.length)}
         </span>
       )}
       <div className="editor-head-end">
-        {children}
-        {compact && (
-          <OverflowMenu
-            items={[
-              ...(onUndo && onRedo
-                ? [
-                    { label: 'Undo', onSelect: onUndo, disabled: !canUndo },
-                    { label: 'Redo', onSelect: onRedo, disabled: !canRedo },
-                  ]
-                : []),
-              {
-                label: tryLabel(dirty),
-                onSelect: saving ? undefined : onTry,
-                blockedReason: tryBlockedReason,
-              },
-              ...(runShown
-                ? [
-                    {
-                      label: 'Run on a file',
-                      onSelect: runAvailable ? onRun : undefined,
-                      blockedReason: runBlockedReason,
-                    },
-                  ]
-                : []),
-            ]}
-          />
-        )}
         {!compact && onUndo && onRedo && (
           <div className="history-group">
             <button
@@ -424,73 +482,26 @@ export function EditorHeader({
             {tryReason}
           </span>
         ) : null}
-        {!compact && runShown && (
+        {showSave && !compact && (
           <button
             type="button"
-            className="btn btn-secondary editor-run"
-            disabled={!runAvailable}
-            title={runBlockedReason}
-            {...(runReason ? { 'aria-describedby': runReasonId } : {})}
-            onClick={() => onRun?.()}
+            className={canSave ? 'btn btn-primary editor-save' : 'btn btn-secondary editor-save'}
+            disabled={!canSave}
+            title={saveBlockedReason}
+            aria-busy={saving}
+            onClick={() => onSave()}
           >
-            <Icon name="play" size={15} strokeWidth={2.4} />
-            Run on a file
+            Save v{nextVersion}
           </button>
         )}
-        {!compact && runShown && runReason ? (
-          <span id={runReasonId} className="sr-only">
-            {runReason}
-          </span>
-        ) : null}
-        {showSave && !compact && (
-          <div className="save-group">
-            <button
-              type="button"
-              className={canSave ? 'btn btn-primary' : 'btn btn-secondary'}
-              disabled={!canSave}
-              title={saveBlockedReason}
-              aria-busy={saving}
-              onClick={() => onSave()}
-            >
-              Save v{nextVersion}
-            </button>
-            {noteMenu && (
-              <div className="row-menu">
-                <button
-                  ref={menuButton}
-                  type="button"
-                  className="btn btn-secondary save-menu-button"
-                  aria-label="More save options"
-                  aria-haspopup="menu"
-                  aria-expanded={menuOpen}
-                  disabled={!canSave}
-                  onClick={() => setMenuOpen((o) => !o)}
-                >
-                  <Icon name="chevron-down" size={14} strokeWidth={2.4} />
-                </button>
-                {menuOpen && (
-                  <div role="menu" className="row-menu-list">
-                    <button
-                      type="button"
-                      role="menuitem"
-                      onClick={() => {
-                        setMenuOpen(false);
-                        setNoteOpen(true);
-                      }}
-                    >
-                      Save with a note…
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        )}
+        <OverflowMenu items={menuItems} buttonRef={moreButton} />
       </div>
+      {compact && pillWrap}
       {noteMenu && showSave && (
         <NoteDialog
           open={noteOpen}
           nextVersion={nextVersion}
+          returnFocusTo={moreButton}
           onClose={() => setNoteOpen(false)}
           onSave={(note) => {
             setNoteOpen(false);

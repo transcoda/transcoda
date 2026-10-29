@@ -160,7 +160,7 @@ describe('App', () => {
     }
   });
 
-  it('keeps one shell while navigating (the version and job counts are not fetched per page)', async () => {
+  it('keeps one shell while navigating (the job counts are not fetched per page)', async () => {
     mocks.me.mockResolvedValue({
       setupRequired: false,
       user: { id: 'u1', username: 'admin' },
@@ -170,14 +170,16 @@ describe('App', () => {
     try {
       renderApp();
       expect(await screen.findByText('workflows page')).toBeTruthy();
-      expect(await screen.findByText('v0.0.0')).toBeTruthy();
+      const shell = document.querySelector('.shell');
+      // The top bar carries no version (it lives in About and on the login page).
+      expect(screen.queryByText('v0.0.0')).toBeNull();
       act(() => navigate('/libraries'));
       expect(await screen.findByText('libraries page')).toBeTruthy();
       act(() => navigate('/workflows/wf1'));
       expect(await screen.findByText('editor page')).toBeTruthy();
       act(() => navigate('/'));
       expect(await screen.findByText('workflows page')).toBeTruthy();
-      expect(mocks.health).toHaveBeenCalledTimes(1);
+      expect(document.querySelector('.shell')).toBe(shell);
     } finally {
       window.history.pushState(null, '', '/');
     }

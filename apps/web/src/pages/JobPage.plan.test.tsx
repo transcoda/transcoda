@@ -171,8 +171,11 @@ describe('JobPage dry-run plan (Task 24)', () => {
     const decisions = screen.getByRole('region', { name: 'What the workflow would do' });
     expect(within(decisions).getAllByRole('listitem')).toHaveLength(3);
     expect(decisions.textContent).toContain('Kept en, de, ja');
-    // A dry run never ran it; the command is only inside the collapsed raw ffmpeg output.
-    const raw = screen.getByText('Raw ffmpeg output').closest('details') as HTMLDetailsElement;
+    // A dry run never ran it; the command is only inside the Result's collapsed raw output.
+    const result = screen.getByRole('region', { name: 'Result' });
+    const raw = within(result)
+      .getByText(/^Show command/)
+      .closest('details') as HTMLDetailsElement;
     expect(raw.open).toBe(false);
     const command = within(raw).getByRole('region', { name: 'ffmpeg command (not run)' });
     expect(command.textContent).toContain('ffmpeg -i "Bluey S01E03.mp4"');

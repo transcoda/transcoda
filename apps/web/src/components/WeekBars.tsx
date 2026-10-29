@@ -1,11 +1,12 @@
-// Seven bars, one per day, each a stack of values; the Jobs page's "Last 7 days" cards. Hovering
-// (or tapping) a day shows a tooltip with each part of its stack.
+// Seven bars, one per day, each a stack of values; the Jobs page's "Last 7 days" cards. Half-height
+// cards: the bars stretch to the card's width (the SVG keeps no aspect ratio), and the day names sit
+// under it as text so they stay crisp. Hovering (or tapping) a day shows a tooltip with each part
+// of its stack and the day's total.
 import { useState } from 'react';
 
 const viewW = 280;
-const viewH = 120;
-const axisH = 16;
-const topPad = 14;
+const viewH = 100;
+const topPad = 4;
 const slot = viewW / 7;
 
 const dayName = new Intl.DateTimeFormat('en-GB', { weekday: 'short', timeZone: 'UTC' });
@@ -37,24 +38,18 @@ export function WeekBars({
   const [hover, setHover] = useState<number | null>(null);
   const totals = days.map((d) => d.values.reduce((s, v) => s + Math.max(0, v), 0));
   const max = Math.max(1, ...totals);
-  const scale = (viewH - axisH - topPad) / max;
+  const scale = (viewH - topPad) / max;
   const partText = (v: number, k: number) => `${format(Math.max(0, v))} ${parts[k] ?? ''}`.trim();
   const hovered = hover === null ? undefined : days[hover];
   return (
     <figure className="week-bars" aria-label={label}>
-      <svg className="week-bars-svg" viewBox={`0 0 ${viewW} ${viewH}`}>
+      <svg className="week-bars-svg" viewBox={`0 0 ${viewW} ${viewH}`} preserveAspectRatio="none">
         <title>{label}</title>
-        <line
-          className="week-bars-axis"
-          x1={0}
-          x2={viewW}
-          y1={viewH - axisH + 0.5}
-          y2={viewH - axisH + 0.5}
-        />
+        <line className="week-bars-axis" x1={0} x2={viewW} y1={viewH - 0.5} y2={viewH - 0.5} />
         {days.map((d, i) => {
           const x = i * slot;
           const total = totals[i] ?? 0;
-          let y = viewH - axisH;
+          let y = viewH;
           const bars = d.values.map((v, k) => {
             const h = Math.max(0, v) * scale;
             if (h <= 0) return null;
@@ -83,14 +78,6 @@ export function WeekBars({
               className={hover === i ? 'week-bars-day is-hover' : 'week-bars-day'}
             >
               {bars}
-              {total > 0 && (
-                <text className="week-bars-total" x={x + slot / 2} y={y - 4} textAnchor="middle">
-                  {format(total)}
-                </text>
-              )}
-              <text className="week-bars-label" x={x + slot / 2} y={viewH - 3} textAnchor="middle">
-                {dayName.format(asDate(d.date))}
-              </text>
               {/* biome-ignore lint/a11y/noStaticElementInteractions: a pointer readout; the day's numbers are also in its label. The whole column is the target, so a short bar is as easy to hit as a tall one. */}
               <rect
                 className="week-bars-hit"
@@ -105,6 +92,11 @@ export function WeekBars({
           );
         })}
       </svg>
+      <div className="week-days" aria-hidden="true">
+        {days.map((d) => (
+          <span key={d.date}>{dayName.format(asDate(d.date))}</span>
+        ))}
+      </div>
       {hovered && hover !== null ? (
         <div
           className={`chart-tip${hover < 2 ? ' is-start' : hover > 4 ? ' is-end' : ''}`}

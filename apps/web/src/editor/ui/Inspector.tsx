@@ -77,7 +77,7 @@ export interface InspectorProps {
 const plural = (n: number) => `${n} node${n === 1 ? '' : 's'}`;
 
 /**
- * The inspector column's top part (screen 05): "Select a node" with the workflow's own facts, the group inspector, the
+ * The inspector column's top part (screen 05), nothing while nothing is selected: the group inspector, the
  * selected node's header, settings form, "On the canvas" section and
  * footer, or "N nodes selected" with "Group N nodes" and "Delete N nodes".
  */
@@ -162,27 +162,9 @@ export function Inspector(props: InspectorProps) {
       />
     );
   }
-  return (
-    <section className="inspector" aria-label="Selection">
-      <div className="inspector-body">
-        <p className="inspector-empty">Select a node</p>
-        <dl className="inspector-facts">
-          <div>
-            <dt>Type</dt>
-            <dd>{state.workflow.kind === 'subworkflow' ? 'Sub-workflow' : 'Workflow'}</dd>
-          </div>
-          <div>
-            <dt>Saved version</dt>
-            <dd>v{state.savedVersion}</dd>
-          </div>
-          <div>
-            <dt>Nodes</dt>
-            <dd>{draft.nodes.length}</dd>
-          </div>
-        </dl>
-      </div>
-    </section>
-  );
+  // Nothing selected: nothing to inspect (the header already says the version); the column is
+  // the issues list alone.
+  return null;
 }
 
 /** The node's `INVALID_SETTINGS` by setting path; a path-less one under `''`. */

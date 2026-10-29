@@ -1,15 +1,19 @@
 // Jobs (screens 07, 08): the live job list with filters, per-job pause/resume/cancel and the
-// whole-queue controls (pause, cancel all); below 640 px the phone layout of screen 08.
+// whole-queue controls (pause, cancel all); below 640 px the phone layout of screen 08. One header
+// row (title, lanes line, queue actions), today's tiles, four half-height history cards, then the
+// list: the list stays above the fold.
 import { CANCELLABLE_JOB_STATES, isFinalState, type JobState } from '@transcoda/shared';
 import { useState } from 'react';
 import { Link } from 'wouter';
 import { api, isDefinedError, safe } from '../api/client.ts';
 import { describeError } from '../api/errors.ts';
 import { Dialog } from '../components/Dialog.tsx';
+import { SectionHeading } from '../components/Headings.tsx';
 import { Icon } from '../components/Icon.tsx';
 import { ListboxSelect } from '../components/ListboxSelect.tsx';
 import { LiveDot } from '../components/LiveDot.tsx';
 import { Loading } from '../components/Loading.tsx';
+import { StatTile } from '../components/StatTile.tsx';
 import { useToast } from '../components/Toast.tsx';
 import { useAsync } from '../hooks/useAsync.ts';
 import { useRefetchOn } from '../hooks/useRefetchOn.ts';
@@ -17,7 +21,6 @@ import { JobProgress } from '../jobs/JobProgress.tsx';
 import { JobStateChip, VERDICT_ICON } from '../jobs/JobStateChip.tsx';
 import {
   detailLine,
-  detailsLinkName,
   FILTERS,
   type Job,
   percentOf,
@@ -29,14 +32,14 @@ import {
   whereLine,
   wherePrefix,
 } from '../jobs/jobText.ts';
-import { QueueBar } from '../jobs/QueueBar.tsx';
+import { QueueLanes, QueuePausedNote, QueueToggle } from '../jobs/QueueBar.tsx';
 import { stateChangeTracker, useJobsList, useProblemCount } from '../jobs/useJobsList.ts';
 import { useQueue } from '../jobs/useQueue.ts';
 import { fmtBytes } from '../lib/bytes.ts';
 import { usePageTitle } from '../lib/pageTitle.ts';
-import { fmtAgo, fmtFull, jobLastTime } from '../lib/time.ts';
+import { fmtFull, fmtStamp, jobLastTime } from '../lib/time.ts';
 import { usePhone } from '../lib/usePhone.ts';
-import { AllTimeTile, EncoderStrip, JobsHistory, useJobsHistory } from './jobs-history.tsx';
+import { AllTimeTile, JobsHistory, useJobsHistory } from './jobs-history.tsx';
 
 const num = new Intl.NumberFormat('en-US');
 
@@ -171,7 +174,7 @@ function RetryFailed({ failed, onDone }: { failed: number; onDone(): void }) {
   return (
     <button
       type="button"
-      className="btn btn-secondary btn-sm jobs-retry-failed"
+      className="btn btn-secondary btn-sm"
       aria-busy={busy}
       disabled={busy}
       onClick={() => void retry()}
@@ -292,16 +295,21 @@ function JobRow({
   job,
   controls,
   queuePaused,
+  withActions,
 }: {
   job: Job;
   controls: Controls;
   queuePaused: boolean;
+  /** The list has a column for Pause / Cancel (some job on it is still active). */
+  withActions: boolean;
 }) {
   const percent = job.state === 'encoding' || job.state === 'verifying' ? percentOf(job) : null;
+  // The row is the link (convention 9): the name's hit area covers the row; the run link and the
+  // row's buttons sit above it.
   return (
-    <div className="job-row">
+    <div className="job-row row-link">
       <div className="job-file">
-        <Link href={`/jobs/${job.id}`} className="job-name">
+        <Link href={`/jobs/${job.id}`} className="job-name row-link-main">
           {job.fileName}
         </Link>
         <span className="job-where">
@@ -321,14 +329,14 @@ function JobRow({
           <span aria-hidden="true"> · </span>
           <Link
             href={`/runs/${job.runId}`}
-            className="job-run-link"
+            className="job-run-link link-muted"
             aria-label={`Run summary for ${job.fileName}`}
           >
             run
           </Link>
           <span aria-hidden="true"> · </span>
           <time dateTime={jobLastTime(job)} title={fmtFull(jobLastTime(job))}>
-            {fmtAgo(jobLastTime(job))}
+            {fmtStamp(jobLastTime(job))}
           </time>
         </span>
       </div>
@@ -341,19 +349,11 @@ function JobRow({
           {detailLine(job, { queuePaused })}
         </span>
       </div>
-      <div className="job-actions">
-        {isActive(job) ? (
-          <JobActions job={job} controls={controls} />
-        ) : (
-          <Link
-            href={`/jobs/${job.id}`}
-            className="job-details-link"
-            aria-label={detailsLinkName(job.fileName)}
-          >
-            Details
-          </Link>
-        )}
-      </div>
+      {withActions ? (
+        <div className="job-actions">
+          {isActive(job) ? <JobActions job={job} controls={controls} /> : null}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -406,8 +406,9 @@ function ListState({
 /**
  * The four "Today" tiles. Without `onSelect` (phone) they are plain figures; with it (desktop)
  * Queued, Failed and Needs attention are buttons that apply the filter of the same name, and the
- * active one is `aria-pressed`: the tile shows one ring and a check before its label. "Saved
- * today" has no filter, so it stays a figure. A tile is neutral until its value is above zero: a lime "saved 0 B" or a red "failed 0" says nothing.
+ * active one is `aria-pressed` (one ring and a check). "Saved today" has no filter. Plain tiles, no
+ * fills (convention 6); nothing saved and nothing queued are dimmed at zero, while zero failed and
+ * zero needing attention are good news and stay bright.
  */
 function StatTiles({
   stats,
@@ -421,77 +422,51 @@ function StatTiles({
   active?: string | undefined;
   onSelect?(filterLabel: string): void;
 }) {
-  const tiles: Array<{
-    cls: string;
-    label: string;
-    filter: string | null;
-    value: string;
-    /** A second line under the value (the file count of the saved tile). */
-    sub?: string;
-  }> = [
+  const tiles: Array<{ label: string; filter: string | null; value: string; zero: boolean }> = [
     {
-      cls: stats && stats.savedBytes > 0 ? 'stat-tile is-saved' : 'stat-tile',
       label: 'Saved today',
       filter: null,
       value: stats ? fmtBytes(stats.savedBytes) : '—',
-      ...(stats
-        ? { sub: `across ${num.format(stats.files)} ${stats.files === 1 ? 'file' : 'files'}` }
-        : {}),
+      zero: stats?.savedBytes === 0,
     },
     {
-      cls: 'stat-tile',
       label: 'Queued',
       filter: 'Queued',
       value: stats ? num.format(stats.queued) : '—',
+      zero: stats?.queued === 0,
     },
     {
-      cls: stats && stats.failed > 0 ? 'stat-tile is-failed' : 'stat-tile',
       label: 'Failed',
       filter: 'Failed',
       value: stats ? num.format(stats.failed) : '—',
+      zero: false,
     },
     {
-      cls: problemCount !== null && problemCount > 0 ? 'stat-tile is-attention' : 'stat-tile',
       label: 'Needs attention',
       filter: 'Needs attention',
       value: problemCount === null ? '—' : num.format(problemCount),
+      zero: false,
     },
   ];
   return (
     <ul className="stat-tiles" aria-label="Today">
       {tiles.map((t) => {
-        const pressed = onSelect !== undefined && t.filter !== null && active === t.filter;
-        const inner = (
-          <>
-            <span className="stat-label">
-              {/* Shape as well as the ring: the pressed tile is not marked by colour alone. */}
-              {pressed ? <Icon name="check" size={12} strokeWidth={3} /> : null}
-              {t.label}
-            </span>
-            <span className="stat-value">{t.value}</span>
-            {t.sub ? <span className="stat-sub">{t.sub}</span> : null}
-          </>
-        );
-        if (!onSelect || !t.filter) {
-          return (
-            <li key={t.label} className={t.cls}>
-              {inner}
-            </li>
-          );
-        }
         const filter = t.filter;
+        const clickable = onSelect !== undefined && filter !== null;
         return (
-          <li key={t.label} className={`${t.cls} is-button`}>
-            <button
-              type="button"
-              className="stat-tile-button"
-              aria-label={`Show ${filter}: ${t.value}`}
-              aria-pressed={pressed}
-              onClick={() => onSelect(filter)}
-            >
-              {inner}
-            </button>
-          </li>
+          <StatTile
+            key={t.label}
+            label={t.label}
+            value={t.value}
+            zero={t.zero}
+            {...(clickable
+              ? {
+                  onClick: () => onSelect(filter),
+                  pressed: active === filter,
+                  buttonLabel: `Show ${filter}: ${t.value}`,
+                }
+              : {})}
+          />
         );
       })}
     </ul>
@@ -539,6 +514,25 @@ export function JobsPage() {
     const keys = (f.states.length > 0 ? f.states : Object.keys(c)) as JobState[];
     return keys.reduce((sum, s) => sum + (c[s] ?? 0), 0);
   };
+  const failedFilter = FILTERS.find((f) => f.label === 'Failed');
+  // The same all-time count the Failed filter shows, not today's tile.
+  const failedCount = (failedFilter ? countOf(failedFilter) : null) ?? 0;
+  const header = (Tag: 'header' | 'div') => (
+    <Tag className="jobs-head head-row">
+      <div className="jobs-title">
+        <div className="jobs-title-row">
+          <h1>Jobs</h1>
+          <LiveDot />
+        </div>
+        <QueueLanes queue={queue} fileNameOf={fileNameOf} />
+      </div>
+      <div className="head-actions">
+        <RetryFailed failed={failedCount} onDone={list.reload} />
+        <QueueToggle queue={queue} />
+        {cancelAll}
+      </div>
+    </Tag>
+  );
   const listState = (
     <ListState
       loading={list.loading}
@@ -565,6 +559,8 @@ export function JobsPage() {
       />
       {FILTERS.map((f, i) => {
         const n = countOf(f);
+        // Only options with something in them, plus "All" and the current one (convention 15).
+        if (n === 0 && i !== 0 && i !== filterIndex) return null;
         return (
           <button
             key={f.label}
@@ -586,31 +582,24 @@ export function JobsPage() {
     const finished = jobs.filter((j) => !isActive(j));
     return (
       <div className="jobs-page is-phone">
-        <header className="jobs-head">
-          <h1>Jobs</h1>
-          <LiveDot />
-          <RetryFailed failed={list.counts?.failed ?? 0} onDone={list.reload} />
-        </header>
+        {header('header')}
+        <QueuePausedNote queue={queue} />
         <div className="stat-row">
           <StatTiles stats={stats} problemCount={problemCount} />
           <AllTimeTile history={history} />
         </div>
-        {history ? <JobsHistory history={history} /> : null}
-        <EncoderStrip />
-        <QueueBar queue={queue} fileNameOf={fileNameOf}>
-          {cancelAll}
-        </QueueBar>
+        <JobsHistory history={history} />
         {filterChips}
         {listState}
         {running.length > 0 ? (
           <section className="phone-section" aria-labelledby="jobs-running">
-            <h2 id="jobs-running">Running</h2>
+            <SectionHeading id="jobs-running">Running</SectionHeading>
             {running.map((job) => {
               const percent = job.state === 'encoding' ? percentOf(job) : null;
               return (
-                <div key={job.id} className="phone-card">
+                <div key={job.id} className="phone-card row-link">
                   <div className="phone-card-head">
-                    <Link href={`/jobs/${job.id}`} className="job-name">
+                    <Link href={`/jobs/${job.id}`} className="job-name row-link-main">
                       {job.fileName}
                     </Link>
                     {percent !== null ? <span className="mono">{percent}%</span> : null}
@@ -628,11 +617,11 @@ export function JobsPage() {
         ) : null}
         {queued.length > 0 ? (
           <section className="phone-section" aria-labelledby="jobs-queued">
-            <h2 id="jobs-queued">Queued</h2>
+            <SectionHeading id="jobs-queued">Queued</SectionHeading>
             {queued.map((job) => (
-              <div key={job.id} className="phone-card">
+              <div key={job.id} className="phone-card row-link">
                 <div className="phone-card-head">
-                  <Link href={`/jobs/${job.id}`} className="job-name">
+                  <Link href={`/jobs/${job.id}`} className="job-name row-link-main">
                     {job.fileName}
                   </Link>
                 </div>
@@ -652,7 +641,7 @@ export function JobsPage() {
         ) : null}
         {finished.length > 0 ? (
           <section className="phone-section" aria-labelledby="jobs-finished">
-            <h2 id="jobs-finished">Finished</h2>
+            <SectionHeading id="jobs-finished">Finished</SectionHeading>
             {finished.map((job) => (
               <Link key={job.id} href={`/jobs/${job.id}`} className="phone-finished">
                 <span className={`phone-finished-icon is-${verdictOf(job)}`}>
@@ -671,16 +660,11 @@ export function JobsPage() {
     );
   }
 
+  const withActions = jobs.some(isActive);
   return (
     <div className="jobs-page">
-      <div className="jobs-head">
-        <h1>Jobs</h1>
-        <LiveDot />
-        <RetryFailed failed={list.counts?.failed ?? 0} onDone={list.reload} />
-      </div>
-      <QueueBar queue={queue} fileNameOf={fileNameOf}>
-        {cancelAll}
-      </QueueBar>
+      {header('div')}
+      <QueuePausedNote queue={queue} />
       <div className="stat-row">
         <StatTiles
           stats={stats}
@@ -694,14 +678,22 @@ export function JobsPage() {
         />
         <AllTimeTile history={history} />
       </div>
-      {history ? <JobsHistory history={history} /> : null}
-      <EncoderStrip />
+      <JobsHistory history={history} />
       {filterChips}
       {listState}
       {jobs.length > 0 ? (
-        <section className="job-list" aria-label="Job list">
+        <section
+          className={withActions ? 'job-list has-actions' : 'job-list'}
+          aria-label="Job list"
+        >
           {jobs.map((job) => (
-            <JobRow key={job.id} job={job} controls={controls} queuePaused={queuePaused} />
+            <JobRow
+              key={job.id}
+              job={job}
+              controls={controls}
+              queuePaused={queuePaused}
+              withActions={withActions}
+            />
           ))}
         </section>
       ) : null}

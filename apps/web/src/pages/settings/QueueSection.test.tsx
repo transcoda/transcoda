@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { settingsFixture } from './settingsFixture.ts';
@@ -103,14 +105,14 @@ describe('QueueSection', () => {
     one.queue.gpus = [gpu('nvidia:0', 'GPU 0')];
     mocks.get.mockResolvedValue(one);
     const view = renderAt('/settings/queue', <QueueSection />);
-    await screen.findByText('Lanes');
+    await screen.findByRole('group', { name: 'Encoding device' });
     expect(screen.queryByRole('group', { name: 'GPU order' })).toBeNull();
     view.unmount();
     const cpu = twoGpus();
     cpu.queue.encodeDevice = { value: 'cpu', default: 'auto', source: { kind: 'database' } };
     mocks.get.mockResolvedValue(cpu);
     renderAt('/settings/queue', <QueueSection />);
-    await screen.findByText('Lanes');
+    await screen.findByRole('group', { name: 'Encoding device' });
     expect(screen.queryByRole('group', { name: 'GPU order' })).toBeNull();
   });
 
@@ -141,15 +143,38 @@ describe('QueueSection', () => {
     expect(screen.queryByRole('note')).toBeNull();
   });
 
-  it('groups the queue, encoding, then what the server sets (read-only, last)', async () => {
+  it('groups the queue, encoding, then what the server sets (read-only, closed, last)', async () => {
+    const { container } = renderAt('/settings/queue', <QueueSection />);
+    await screen.findByRole('group', { name: 'Encoding device' });
+    // Sentence-case group labels (the shared H3), not mono capitals.
+    expect([...container.querySelectorAll('h3.group-h3')].map((h) => h.textContent)).toEqual([
+      'Queue',
+      'Encoding',
+    ]);
+    expect(screen.getByRole('region', { name: 'Queue' })).toBeTruthy();
+    expect(screen.getByRole('region', { name: 'Encoding' })).toBeTruthy();
+    // The pause switch is outside the form whose Save it would otherwise seem to need.
+    const sw = screen.getByRole('switch', { name: 'Queue paused' });
+    expect(sw.closest('form')).toBeNull();
+    const toggle = screen.getByRole('button', { name: /Set on the server/ });
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    expect(screen.queryByText('Lanes')).toBeNull();
+    // Last: after the Save.
+    const save = screen.getByRole('button', { name: 'Save' });
+    expect(save.compareDocumentPosition(toggle) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    fireEvent.click(toggle);
+    expect(screen.getByText('Lanes')).toBeTruthy();
+    expect(container.querySelector('.settings-server .disclosure-body input')).toBeNull();
+  });
+
+  it('the device choices stack on a phone', async () => {
     renderAt('/settings/queue', <QueueSection />);
-    await screen.findByText('Lanes');
-    expect(
-      [...document.querySelectorAll('.settings-group-head')].map((h) => h.textContent),
-    ).toEqual(['Queue', 'Encoding', 'Set on the server']);
-    const readOnly = screen.getByRole('region', { name: 'Set on the server' });
-    expect(within(readOnly).getByText('Lanes')).toBeTruthy();
-    expect(within(readOnly).queryByRole('spinbutton')).toBeNull();
+    const group = await screen.findByRole('group', { name: 'Encoding device' });
+    expect(group.querySelector('.setting-radios')?.className).toContain('setting-radios-stack');
+    const css = readFileSync(join(__dirname, '../../styles.css'), 'utf8');
+    expect(css).toMatch(
+      /@media \(max-width: 639px\) \{[^@]*\.setting-radios-stack \{\s*flex-direction: column;/,
+    );
   });
 
   it('Advanced is closed by default, opens as a real disclosure and says when it holds a change', async () => {
@@ -189,10 +214,12 @@ describe('QueueSection', () => {
     await waitFor(() => expect(mocks.resume).toHaveBeenCalled());
   });
 
-  it('lanes are built in; stall hours and free space are env values without an input', async () => {
+  it('lanes; stall hours and free space are env values without an input', async () => {
     const { container } = renderAt('/settings/queue', <QueueSection />);
-    expect(await screen.findByText('Encode and Quick, one job each')).toBeTruthy();
-    expect(screen.getByText('Built in')).toBeTruthy();
+    fireEvent.click(await screen.findByRole('button', { name: /Set on the server/ }));
+    expect(screen.getByText('Encode and Quick, one job each')).toBeTruthy();
+    // Lanes are always built in: nothing to say about where they come from.
+    expect(screen.queryByText('Built in')).toBeNull();
     expect(screen.queryByRole('textbox', { name: /stall/i })).toBeNull();
     expect(screen.queryByRole('spinbutton', { name: /stall/i })).toBeNull();
     expect(screen.getByText('6 hours')).toBeTruthy();
@@ -212,8 +239,9 @@ describe('QueueSection', () => {
     );
     expect(field.getAttribute('aria-describedby')).toContain(hint.id);
     expect(screen.getByText('hours')).toBeTruthy();
-    // The encoding device and the retention, both unset.
-    expect(screen.getAllByText('Default')).toHaveLength(2);
+    // The encoding device and the retention hold their defaults: no tags.
+    expect(screen.queryByText('Default')).toBeNull();
+    expect(document.querySelectorAll('.setting-tag')).toHaveLength(0);
   });
 
   it('saves a changed retention and shows the answer as set here', async () => {
@@ -225,8 +253,9 @@ describe('QueueSection', () => {
     fireEvent.change(field, { target: { value: '6' } });
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(mocks.update).toHaveBeenCalledWith({ testEncodeKeepHours: 6 }));
-    // The pause switch says "Set here" too; the retention row now does as well.
-    await waitFor(() => expect(screen.getAllByText('Set here')).toHaveLength(2));
+    // The retention now differs from its default, so its row says where it comes from (the pause
+    // switch has no tag: it applies at once).
+    await waitFor(() => expect(screen.getAllByText('Set here')).toHaveLength(1));
     expect(field.value).toBe('6');
   });
 

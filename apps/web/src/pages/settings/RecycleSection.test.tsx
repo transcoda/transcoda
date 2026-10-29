@@ -29,16 +29,23 @@ describe('RecycleSection', () => {
     expect(
       (screen.getByRole('spinbutton', { name: /maximum share/i }) as HTMLInputElement).value,
     ).toBe('25');
-    expect(screen.getAllByText('Default')).toHaveLength(2);
-    expect(screen.getByText('Recycled originals use 12.3 GB in 41 files now')).toBeTruthy();
+    // Both hold their defaults: no source tags.
+    expect(screen.queryByText('Default')).toBeNull();
+    // The usage: a bold value under its label, the check interval as its muted hint.
+    expect(screen.getByText('Recycled originals now').className).toContain('setting-label');
+    expect(screen.getByText('12.3 GB in 41 files').className).toBe('recycle-usage-value');
+    expect(screen.getByText('Checked at start and every 10 minutes').className).toBe(
+      'setting-hint',
+    );
   });
 
-  it('Save is disabled with a reason until something changes, and again when changed back', async () => {
+  it('Save is disabled until something changes, and again when changed back', async () => {
     renderAt('/settings/recycle', <RecycleSection />);
     await screen.findByRole('spinbutton', { name: /retention/i });
     expect(save().disabled).toBe(true);
-    expect(screen.getByText('No changes to save')).toBeTruthy();
-    expect(save().getAttribute('aria-describedby')).toBeTruthy();
+    // No "No changes to save": a reason only when it names something to fix.
+    expect(screen.queryByText('No changes to save')).toBeNull();
+    expect(save().getAttribute('aria-describedby')).toBeNull();
     fireEvent.change(retention(), { target: { value: '14' } });
     expect(save().disabled).toBe(false);
     expect(screen.queryByText('No changes to save')).toBeNull();

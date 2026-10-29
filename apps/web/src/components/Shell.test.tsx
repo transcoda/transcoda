@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const logout = vi.fn();
@@ -7,11 +7,13 @@ const appearance = vi.hoisted(() => ({
 }));
 const jobsList = vi.hoisted(() => vi.fn());
 const pluginsList = vi.hoisted(() => vi.fn());
+const events = vi.hoisted(() => ({ subscribe: vi.fn() }));
 vi.mock('../api/client.ts', () => ({
   api: {
     system: { health: vi.fn().mockResolvedValue({ status: 'ok', version: '1.2.3' }) },
     jobs: { list: jobsList, get: vi.fn() },
     plugins: { list: pluginsList },
+    events,
     queue: {
       status: vi.fn().mockResolvedValue({
         paused: false,
@@ -25,15 +27,17 @@ vi.mock('../auth/useAuth.ts', () => ({
   useAuth: () => ({ user: { username: 'admin' }, logout, appearance: appearance.current }),
 }));
 
+import { EventsProvider } from '../hooks/useEvents.ts';
 import { setBeforeNavigate } from '../lib/navigation.tsx';
-import { resetTmdbInstalled } from '../plugins/useTmdbInstalled.ts';
+import { resetPluginsNav } from '../plugins/usePluginsNav.ts';
+import { fakeEventSource } from '../test/fakeEventStream.ts';
 import { counts, fx } from '../test/fixtures/jobs.ts';
 import { plugin } from '../test/fixtures/plugins.ts';
 import { renderAt } from '../test/render.tsx';
 import { Shell } from './Shell.tsx';
 
 beforeEach(() => {
-  resetTmdbInstalled();
+  resetPluginsNav();
   pluginsList.mockReset().mockResolvedValue({ plugins: [] });
   jobsList.mockReset().mockResolvedValue({ jobs: [], counts: counts() });
 });
@@ -62,33 +66,34 @@ describe('Shell', () => {
 
   it('asks for the plugin list once across Shells', async () => {
     const first = render(<Shell>x</Shell>);
-    await screen.findByText('v1.2.3');
+    await screen.findByText('admin');
     await waitFor(() => expect(pluginsList).toHaveBeenCalledTimes(1));
     first.unmount();
     render(<Shell>x</Shell>);
-    await screen.findByText('v1.2.3');
+    await screen.findByText('admin');
     expect(pluginsList).toHaveBeenCalledTimes(1);
   });
 
   it('shows no TMDB notice without the tmdb plugin, or when the list cannot be read', async () => {
     const view = render(<Shell>x</Shell>);
-    await screen.findByText('v1.2.3');
+    await screen.findByText('admin');
     expect(pluginsList).toHaveBeenCalled();
     expect(screen.queryByText(NOTICE)).toBeNull();
     view.unmount();
     pluginsList.mockRejectedValue(new Error('down'));
     render(<Shell>x</Shell>);
-    await screen.findByText('v1.2.3');
+    await screen.findByText('admin');
     expect(screen.queryByText(NOTICE)).toBeNull();
   });
 
-  it('shows version, username and nav', async () => {
+  it('shows username and nav, and no version (it lives in About and on the login page)', async () => {
     render(
       <Shell>
         <p>content</p>
       </Shell>,
     );
-    expect(await screen.findByText('v1.2.3')).toBeTruthy();
+    expect(await screen.findByText('admin')).toBeTruthy();
+    expect(screen.queryByText('v1.2.3')).toBeNull();
     expect(screen.getByText('admin')).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Workflows' })).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Settings' })).toBeTruthy();
@@ -130,6 +135,77 @@ describe('Shell', () => {
     expect(nav.textContent).not.toContain('coming in M3');
   });
 
+  describe('plugin updates badge', () => {
+    const withUpdates = (n: number) =>
+      pluginsList.mockResolvedValue({
+        plugins: [
+          plugin({ name: 'quiet' }),
+          ...Array.from({ length: n }, (_, i) =>
+            plugin({ name: `p${i}`, updateAvailable: '2.0.0' }),
+          ),
+        ],
+      });
+
+    it('counts the installed plugins with an update, and the link opens the Updates tab', async () => {
+      withUpdates(2);
+      render(<Shell>x</Shell>);
+      const nav = screen.getByRole('navigation', { name: 'Main' });
+      const link = await within(nav).findByRole('link', {
+        name: 'Plugins, 2 updates available',
+      });
+      expect(link.querySelector('.nav-count')?.textContent).toBe('2');
+      expect(link.getAttribute('href')).toBe('/plugins?show=updates');
+    });
+
+    it('says "1 update available" for one', async () => {
+      withUpdates(1);
+      render(<Shell>x</Shell>);
+      expect(await screen.findByRole('link', { name: 'Plugins, 1 update available' })).toBeTruthy();
+    });
+
+    it('is hidden at 0, and the link stays plain /plugins', async () => {
+      withUpdates(0);
+      render(<Shell>x</Shell>);
+      await waitFor(() => expect(pluginsList).toHaveBeenCalled());
+      await new Promise((r) => setTimeout(r, 20));
+      const link = screen.getByRole('link', { name: 'Plugins' });
+      expect(link.querySelector('.nav-count')).toBeNull();
+      expect(link.getAttribute('href')).toBe('/plugins');
+    });
+
+    it('stays lit on the Plugins page whichever link led there', async () => {
+      withUpdates(2);
+      renderAt('/plugins', <Shell>x</Shell>);
+      const link = await screen.findByRole('link', { name: 'Plugins, 2 updates available' });
+      expect(link.getAttribute('aria-current')).toBe('page');
+    });
+
+    it('updates live when plugins.changed arrives', async () => {
+      const fake = fakeEventSource();
+      events.subscribe.mockReset().mockImplementation(fake.subscribe);
+      withUpdates(0);
+      render(
+        <EventsProvider>
+          <Shell>x</Shell>
+        </EventsProvider>,
+      );
+      await waitFor(() => expect(fake.streams).toHaveLength(1));
+      withUpdates(3);
+      await act(async () =>
+        fake
+          .last()
+          .push({ type: 'plugins.changed', name: 'p0', state: 'running', stateReason: null }),
+      );
+      expect(
+        await screen.findByRole(
+          'link',
+          { name: 'Plugins, 3 updates available' },
+          { timeout: 3000 },
+        ),
+      ).toBeTruthy();
+    });
+  });
+
   it('Shell shows the running count on the Jobs nav item', async () => {
     jobsList.mockResolvedValue({
       jobs: [],
@@ -161,7 +237,7 @@ describe('Shell', () => {
 
     it('is absent when nothing runs or waits', async () => {
       render(<Shell>x</Shell>);
-      await screen.findByText('v1.2.3');
+      await screen.findByText('admin');
       // The widget's own list (the running states) has answered.
       await waitFor(() =>
         expect(jobsList.mock.calls.some(([input]) => input && 'state' in input)).toBe(true),
@@ -232,18 +308,18 @@ describe('Shell', () => {
     }
   });
 
-  it('shows the server name after the version when one is set', async () => {
+  it('shows the server name after the brand when one is set', async () => {
     appearance.current = { theme: 'system', serverName: 'Basement' };
     const { container } = render(<Shell>x</Shell>);
-    await screen.findByText('v1.2.3');
+    await screen.findByText('admin');
     const name = container.querySelector('.topbar .server-name') as HTMLElement;
     expect(name.textContent).toBe('Basement');
-    expect(container.querySelector('.version-pill')?.nextElementSibling).toBe(name);
+    expect(container.querySelector('.topbar .brand')?.nextElementSibling).toBe(name);
   });
 
   it('shows no server name when none is set', async () => {
     const { container } = render(<Shell>x</Shell>);
-    await screen.findByText('v1.2.3');
+    await screen.findByText('admin');
     expect(container.querySelector('.server-name')).toBeNull();
   });
 
@@ -381,7 +457,7 @@ describe('Shell', () => {
     it('leaves the server name out of the phone header', async () => {
       appearance.current = { theme: 'system', serverName: 'Basement' };
       const { container } = render(<Shell>x</Shell>);
-      await screen.findByText('v1.2.3');
+      await screen.findByText('admin');
       expect(container.querySelector('.server-name')).toBeNull();
     });
 

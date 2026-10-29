@@ -10,7 +10,7 @@ import {
   useSettingsForm,
   wholeNumberIssue,
 } from './SectionForm.tsx';
-import { SettingRow } from './SettingRow.tsx';
+import { SettingRow, shownSource } from './SettingRow.tsx';
 
 interface RecycleDraft extends Draft {
   retentionDays: string | number;
@@ -59,14 +59,15 @@ export function RecycleSection() {
         void form.save();
       }}
     >
-      <div className="section-intro">
-        <p>{`Recycled originals use ${fmtBytes(recycle.usage.bytes)} in ${files(recycle.usage.files)} now`}</p>
-        <p>Checked at start and every 10 minutes</p>
-      </div>
+      <SettingRow label="Recycled originals now" hint="Checked at start and every 10 minutes">
+        <span className="recycle-usage-value">
+          {`${fmtBytes(recycle.usage.bytes)} in ${files(recycle.usage.files)}`}
+        </span>
+      </SettingRow>
       <SettingRow
         label="Retention"
         hint="0 removes recycled originals at the next check"
-        source={recycle.retentionDays.source}
+        source={shownSource(recycle.retentionDays)}
         htmlFor={`${id}-days`}
       >
         <NumberField
@@ -82,7 +83,7 @@ export function RecycleSection() {
       <SettingRow
         label="Maximum share of free space"
         hint="Older recycled originals are removed first when they take more"
-        source={recycle.maxFreePercent.source}
+        source={shownSource(recycle.maxFreePercent)}
         htmlFor={`${id}-share`}
       >
         <NumberField
@@ -96,7 +97,7 @@ export function RecycleSection() {
         />
       </SettingRow>
       <FormError message={form.formError} />
-      <SaveRow reason={form.dirty ? null : 'No changes to save'} busy={form.busy} />
+      <SaveRow reason={null} disabled={!form.dirty} busy={form.busy} />
     </form>
   );
 }

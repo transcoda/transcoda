@@ -28,8 +28,16 @@ describe('AccountSection', () => {
     renderAt('/settings/account', <AccountSection />);
     expect(field('Current password').type).toBe('password');
     expect(field('New password').getAttribute('autocomplete')).toBe('new-password');
+    // Empty fields: off, with no reason printed (it would only say what the form shows).
     expect(save().disabled).toBe(true);
-    expect(screen.getByText('Fill in all three fields')).toBeTruthy();
+    expect(save().getAttribute('aria-describedby')).toBeNull();
+    expect(document.querySelector('.form-reason')).toBeNull();
+    expect(screen.queryByText(/Fill in/)).toBeNull();
+    // One heading: the section's; no "Change password" group label over the fields.
+    expect(screen.queryByRole('heading', { name: 'Change password' })).toBeNull();
+    fill('old-password', 'short', '');
+    expect(save().disabled).toBe(true);
+    expect(screen.queryByText(/needs at least/)).toBeNull();
     fill('old-password', 'short', 'short');
     expect(save().disabled).toBe(true);
     expect(screen.getByText('The new password needs at least 12 characters')).toBeTruthy();

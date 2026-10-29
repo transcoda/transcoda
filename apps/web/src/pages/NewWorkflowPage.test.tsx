@@ -45,13 +45,16 @@ describe('NewWorkflowPage', () => {
     ).toBeTruthy();
   });
 
-  it('has a Cancel that goes back to the list', () => {
+  it('has a Cancel that goes back to the list, before the primary (primary last)', () => {
     renderAt('/workflows/new', <NewWorkflowPage />);
     const cancel = screen.getByRole('link', { name: 'Cancel' });
     expect(cancel.getAttribute('href')).toBe('/workflows');
+    const create = screen.getByRole('button', { name: 'Create and open' });
+    expect(cancel.parentElement).toBe(create.parentElement);
+    expect(cancel.parentElement?.lastElementChild).toBe(create);
   });
 
-  it('defaults to a workflow, marks the name required, and keeps Create disabled until it has one', async () => {
+  it('defaults to a workflow, marks the name required, and keeps Create disabled until it has one, with no "Enter a name" line', async () => {
     renderAt('/workflows/new', <NewWorkflowPage />);
     expect((screen.getByRole('radio', { name: WORKFLOW }) as HTMLInputElement).checked).toBe(true);
     const name = screen.getByLabelText(/^Name/) as HTMLInputElement;
@@ -60,12 +63,12 @@ describe('NewWorkflowPage', () => {
     expect(document.querySelector(`label[for="${name.id}"] .required-mark`)).not.toBeNull();
     const create = screen.getByRole('button', { name: 'Create and open' }) as HTMLButtonElement;
     expect(create.disabled).toBe(true);
-    expect(create.getAttribute('aria-describedby')).toBe(screen.getByText('Enter a name').id);
+    expect(create.hasAttribute('aria-describedby')).toBe(false);
+    expect(screen.queryByText('Enter a name')).toBeNull();
     fireEvent.change(name, { target: { value: '   ' } });
     expect(create.disabled).toBe(true);
     fireEvent.change(name, { target: { value: 'Smoke' } });
     expect(create.disabled).toBe(false);
-    expect(screen.queryByText('Enter a name')).toBeNull();
     expect(mocks.create).not.toHaveBeenCalled();
   });
 

@@ -1,34 +1,65 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { cleanup, render, screen } from '@testing-library/react';
+import type { JobDetail } from '@transcoda/contract';
 import { afterEach, describe, expect, it } from 'vitest';
 import { fmtDate } from '../lib/time.ts';
 import { JobResult } from './JobResult.tsx';
+import { RESULT_TONE } from './jobOutcome.ts';
 import { VERDICT_WORD } from './jobText.ts';
 
 afterEach(cleanup);
 
+const DONE: NonNullable<JobDetail['result']> = {
+  outcome: 'done',
+  beforeBytes: 472_000,
+  afterBytes: 118_000,
+  estimatedBytes: null,
+  command: null,
+  replacedTo: 'recycle',
+  sourceDamaged: false,
+  warnings: [],
+  problems: [],
+};
+
+const head = (c: HTMLElement) => c.querySelector('.job-result-head')?.textContent;
+
 describe('JobResult', () => {
-  it('colours a kept original blue (the kept chip colour), never the replaced green', () => {
+  it('a replaced file leads with the sizes and the percent; where the original went is a muted line', () => {
+    const { container } = render(
+      <JobResult job={{ state: 'done', dryRun: false, reason: null, result: DONE }} />,
+    );
+    expect(head(container)).toBe('472 kB → 118 kB−75%');
+    expect(container.querySelector('.job-result-pct')?.textContent).toBe('−75%');
+    expect(container.querySelector('.job-result-meta')?.textContent).toBe(
+      'Original in recycle folder',
+    );
+    // The chip in the header says "Replaced": the card does not repeat it, nor label its cells.
+    expect(screen.queryByText('Replaced')).toBeNull();
+    expect(container.querySelector('.job-result-label')).toBeNull();
+    expect(container.querySelector('.job-result')?.classList.contains('is-ok')).toBe(true);
+  });
+
+  it('a kept original leads with its reason and is neutral, never blue or green', () => {
     const { container } = render(
       <JobResult
         job={{
           state: 'kept_original',
           dryRun: false,
           reason: 'saved only 2.9%, below 20%',
-          result: null,
+          result: { ...DONE, outcome: 'kept_original', afterBytes: 460_000, replacedTo: null },
         }}
       />,
     );
-    expect(container.querySelector('.job-result')?.classList.contains('v-kept')).toBe(true);
-    const css = readFileSync(join(__dirname, '../styles.css'), 'utf8');
-    const rule = css.match(/\.job-result\.v-kept\s*\{([^}]*)\}/)?.[1] ?? '';
-    expect(rule).toMatch(/background:\s*var\(--st-kept\)/);
-    expect(rule).not.toMatch(/--accent/);
+    expect(head(container)).toBe('Saved only 2.9%, below 20%');
+    expect(container.querySelector('.job-result-meta')?.textContent).toBe('472 kB → 460 kB');
+    const card = container.querySelector('.job-result');
+    expect(card?.classList.contains('is-neutral')).toBe(true);
+    expect(card?.classList.contains('v-kept')).toBe(true);
   });
 
-  it('prints an engine reason as a sentence ("probe failed" → "Probe failed")', () => {
-    render(
+  it('a failed probe says in plain words that the file could not be read; the raw error is not the headline', () => {
+    const { container } = render(
       <JobResult
         job={{
           state: 'failed',
@@ -36,9 +67,16 @@ describe('JobResult', () => {
           reason: 'probe failed: Invalid data found when processing input',
           result: null,
         }}
+        raw={<details className="ffmpeg-raw" />}
       />,
     );
-    expect(screen.getByText('Probe failed: Invalid data found when processing input')).toBeTruthy();
+    expect(head(container)).toBe('The file could not be read');
+    expect(container.querySelector('.job-result-text')?.textContent).toBe(
+      'ffprobe found invalid data in the file, so the workflow never started.',
+    );
+    expect(container.querySelector('.job-result')?.classList.contains('is-error')).toBe(true);
+    // The raw output slot comes last in the card.
+    expect(container.querySelector('.job-result')?.lastElementChild?.className).toBe('ffmpeg-raw');
   });
 
   it('words a nothing-to-do job without a reason and an already-processed reason', () => {
@@ -62,66 +100,25 @@ describe('JobResult', () => {
     expect(screen.getByText(`Processed on ${fmtDate(at)}: nothing to do`)).toBeTruthy();
   });
 
-  it('labels the cells in sentence case (uppercase is the label class), and the notes start with a capital (L6, L16)', () => {
+  it('lists the problems of a done job before its warnings, in amber', () => {
     const { container } = render(
       <JobResult
         job={{
           state: 'done',
           dryRun: false,
           reason: null,
-          result: {
-            outcome: 'done',
-            beforeBytes: 100,
-            afterBytes: 50,
-            estimatedBytes: null,
-            command: null,
-            replacedTo: 'recycle',
-            sourceDamaged: false,
-            warnings: [],
-            problems: [],
-          },
-        }}
-      />,
-    );
-    const labels = [...container.querySelectorAll('.job-result-label')].map((l) => l.textContent);
-    expect(labels).toEqual(['Result', 'Size']);
-    expect(screen.getByText('Original in recycle folder')).toBeTruthy();
-    const css = readFileSync(join(__dirname, '../styles.css'), 'utf8');
-    expect(css.match(/\n\.job-result-label\s*\{([^}]*)\}/)?.[1]).toMatch(
-      /text-transform:\s*uppercase/,
-    );
-  });
-
-  it('lists the problems of a done job, and its word is Needs attention', () => {
-    render(
-      <JobResult
-        job={{
-          state: 'done',
-          dryRun: false,
-          reason: null,
           problems: ['ntfy:notify failed: 503'],
-          result: {
-            outcome: 'done',
-            beforeBytes: 100,
-            afterBytes: 50,
-            estimatedBytes: null,
-            command: null,
-            replacedTo: 'recycle',
-            sourceDamaged: false,
-            warnings: ['a warning'],
-            problems: ['ntfy:notify failed: 503'],
-          },
+          result: { ...DONE, warnings: ['a warning'], problems: ['ntfy:notify failed: 503'] },
         }}
       />,
     );
-    expect(screen.getByText('Needs attention')).toBeTruthy();
     const problems = screen.getByRole('list', { name: 'Problems' });
     const warnings = screen.getByRole('list', { name: 'Warnings' });
     expect(problems.textContent).toContain('ntfy:notify failed: 503');
-    // Problems come before warnings.
     expect(
       problems.compareDocumentPosition(warnings) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
+    expect(container.querySelector('.job-result')?.classList.contains('is-warning')).toBe(true);
   });
 
   it('the raw ffmpeg output is one disclosure: the command in it is flat and its summary is a full-size target', () => {
@@ -134,45 +131,30 @@ describe('JobResult', () => {
     expect(summary).toMatch(/cursor:\s*pointer/);
   });
 
-  describe('every outcome has a deliberate colour', () => {
+  describe('the card is neutral; only the icon circle takes the chip colour', () => {
     const css = readFileSync(join(__dirname, '../styles.css'), 'utf8');
-    const ruleOf = (v: string) => {
-      const sel = '\\.job-result\\.v-[a-z]+';
-      const re = new RegExp(
-        `(?:${sel},\\s*)*\\.job-result\\.v-${v}(?:,\\s*${sel})*\\s*\\{([^}]*)\\}`,
-      );
-      return css.match(re)?.[1] ?? '';
-    };
 
-    it.each(Object.keys(VERDICT_WORD))(
-      'v-%s has a background and ink from the --st-* tokens',
+    it('no outcome colours the panel itself (no slab, no edge bar)', () => {
+      expect(css).not.toMatch(/\.job-result\.(v|is)-[a-z]+\s*\{/);
+      const panel = css.match(/\n\.job-result\s*\{([^}]*)\}/)?.[1] ?? '';
+      expect(panel).not.toMatch(/background|border/);
+    });
+
+    it.each(Object.keys(VERDICT_WORD) as (keyof typeof RESULT_TONE)[])(
+      '%s has a tone with a tinted icon rule (or the neutral default)',
       (v) => {
-        const rule = ruleOf(v);
-        if (v === 'replaced') {
-          expect(rule).toMatch(/background:\s*var\(--accent\)/); // the success green
-          return;
-        }
-        expect(rule).toMatch(/background:\s*(var\(--st-[a-z-]+\)|transparent)/);
-        expect(rule).toMatch(/color:\s*var\(--(st-[a-z-]+|muted)\)/);
-        expect(rule).not.toMatch(/--accent/);
+        const tone = RESULT_TONE[v];
+        if (tone === 'neutral') return;
+        expect(css).toMatch(new RegExp(`\\.job-result\\.is-${tone} \\.job-result-icon\\s*\\{`));
       },
     );
 
-    it('maps the outcomes to the right chip tokens', () => {
-      expect(ruleOf('failed')).toMatch(/background:\s*var\(--st-failed\)/);
-      expect(ruleOf('attention')).toMatch(/background:\s*var\(--st-dry\)/);
-      for (const v of ['noop', 'already', 'cancelled'])
-        expect(ruleOf(v)).toMatch(/background:\s*var\(--st-noop\)/);
-      // A dry run is dashed and never green; a needs-attention result is solid.
-      expect(ruleOf('dry')).toMatch(/background:\s*var\(--st-dry-bg\)/);
-      expect(ruleOf('dry')).toMatch(/border:\s*[\d.]+px dashed var\(--st-dry\)/);
-      expect(ruleOf('attention')).not.toMatch(/dashed/);
-    });
-
-    it('keeps the problem list readable on the solid warning background', () => {
-      expect(css).toMatch(
-        /\.job-result\.v-attention \.job-result-problems\s*\{[^}]*color:\s*inherit/,
-      );
+    it('maps the outcomes to the chip system', () => {
+      expect(RESULT_TONE.replaced).toBe('ok');
+      expect(RESULT_TONE.failed).toBe('error');
+      expect(RESULT_TONE.attention).toBe('warning');
+      for (const v of ['kept', 'noop', 'skipped', 'cancelled', 'already'] as const)
+        expect(RESULT_TONE[v]).toBe('neutral');
     });
   });
 
@@ -185,31 +167,26 @@ describe('JobResult', () => {
           reason: null,
           dependsOnSize: { minSavingPercent: 25 },
           result: {
+            ...DONE,
             outcome: 'dry_run',
             beforeBytes: 315_000_000,
             afterBytes: null,
             estimatedBytes: 190_000_000,
-            command: null,
             replacedTo: null,
-            sourceDamaged: false,
-            warnings: [],
-            problems: [],
           },
         }}
         testEncodeAction={<button type="button">Test-encode this file</button>}
       />,
     );
-    // The dry-run tone and its eye icon, never the replaced (success) check.
     expect(container.querySelector('.job-result')?.classList.contains('v-dry')).toBe(true);
-    expect(screen.getByText('Would replace if it saves ≥ 25%')).toBeTruthy();
+    expect(head(container)).toBe('Would replace if it saves ≥ 25%');
     expect(screen.getByText('315 MB → ? · decided after encoding')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Test-encode this file' })).toBeTruthy();
     // No estimate, no percent.
     expect(container.querySelector('.job-result-pct')).toBeNull();
-    expect(screen.queryByText('Size (est.)')).toBeNull();
   });
 
-  it('a test-encode: the result says only the outcome, the measured sizes and percent are only in the size cell, labelled Size (not an estimate)', () => {
+  it('a test-encode says its measured sizes once, never as an estimate', () => {
     const { container } = render(
       <JobResult
         job={{
@@ -218,29 +195,23 @@ describe('JobResult', () => {
           testEncode: true,
           reason: null,
           result: {
+            ...DONE,
             outcome: 'dry_run',
             beforeBytes: 315_000_000,
             afterBytes: 190_000_000,
             estimatedBytes: 400_000_000,
-            command: null,
             replacedTo: null,
-            sourceDamaged: false,
-            problems: [],
-            warnings: [],
           },
         }}
       />,
     );
-    expect(container.querySelector('.job-result-word')?.textContent).toBe('Would replace');
-    expect(screen.getByText('Size')).toBeTruthy();
-    expect(screen.queryByText('Size (est.)')).toBeNull();
-    expect(container.querySelector('.job-result-size')?.textContent).toBe('315 MB → 190 MB');
-    // The sizes and the percent are said once.
+    expect(head(container)).toBe('315 MB → 190 MB−40%');
+    expect(container.querySelector('.job-result-meta')?.textContent).toBe('Would replace');
     expect(container.textContent?.match(/315 MB/g)).toHaveLength(1);
     expect(container.textContent?.match(/−40%/g)).toHaveLength(1);
     cleanup();
 
-    render(
+    const kept = render(
       <JobResult
         job={{
           state: 'kept_original',
@@ -248,49 +219,23 @@ describe('JobResult', () => {
           testEncode: true,
           reason: 'saved only 3.0%, below 10%',
           result: {
+            ...DONE,
             outcome: 'kept_original',
             beforeBytes: 315_000_000,
             afterBytes: 305_000_000,
-            estimatedBytes: null,
-            command: null,
             replacedTo: null,
-            sourceDamaged: false,
-            problems: [],
-            warnings: [],
           },
         }}
       />,
     );
-    const kept = document.querySelector('.job-result');
-    expect(kept?.querySelector('.job-result-word')?.textContent).toBe('Would keep the original');
-    // The gate's saving is a note, worded once (never the engine's raw reason).
-    expect(screen.getByText('Saved only 3% (gate ≥ 10%)')).toBeTruthy();
+    // The gate's saving is the headline, worded once (never the engine's raw reason).
+    expect(head(kept.container)).toBe('Saved only 3% (gate ≥ 10%)');
     expect(screen.queryByText('saved only 3.0%, below 10%')).toBeNull();
-    expect(screen.getByText('Size')).toBeTruthy();
-    expect(kept?.querySelector('.job-result-size')?.textContent).toBe('315 MB → 305 MB');
-    expect(kept?.textContent?.match(/315 MB/g)).toHaveLength(1);
+    expect(kept.container.querySelector('.job-result-meta')?.textContent).toBe('315 MB → 305 MB');
   });
 
-  it('a real run and a plan-only dry run keep their words; the size stays in the size cell', () => {
-    const done = {
-      outcome: 'done' as const,
-      beforeBytes: 315_000_000,
-      afterBytes: 190_000_000,
-      estimatedBytes: null,
-      command: null,
-      replacedTo: 'recycle' as const,
-      sourceDamaged: false,
-      problems: [],
-      warnings: [],
-    };
+  it('a plan-only dry run marks its size as an estimate and says what would happen', () => {
     const { container } = render(
-      <JobResult job={{ state: 'done', dryRun: false, reason: null, result: done }} />,
-    );
-    expect(container.querySelector('.job-result-word')?.textContent).toBe('Replaced');
-    expect(container.querySelector('.job-result-size')?.textContent).toBe('315 MB → 190 MB');
-    cleanup();
-
-    const dry = render(
       <JobResult
         job={{
           state: 'dry_run',
@@ -298,18 +243,17 @@ describe('JobResult', () => {
           testEncode: false,
           reason: null,
           result: {
-            ...done,
+            ...DONE,
             outcome: 'dry_run',
+            beforeBytes: 315_000_000,
             afterBytes: null,
             estimatedBytes: 200_000_000,
             replacedTo: null,
-            sourceDamaged: false,
           },
         }}
       />,
     );
-    expect(dry.container.querySelector('.job-result-word')?.textContent).toBe('Would replace');
-    expect(screen.getByText('Size (est.)')).toBeTruthy();
-    expect(dry.container.querySelector('.job-result-size')?.textContent).toBe('315 MB → 200 MB');
+    expect(head(container)).toBe('315 MB → 200 MB (est.)−37%');
+    expect(container.querySelector('.job-result-meta')?.textContent).toBe('Would replace');
   });
 });

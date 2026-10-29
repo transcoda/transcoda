@@ -38,7 +38,8 @@ describe('SettingsPage (desktop)', () => {
     expect(
       within(nav).getByRole('link', { name: 'API tokens' }).getAttribute('aria-current'),
     ).toBeNull();
-    expect(screen.getByRole('heading', { level: 2, name: 'About' })).toBeTruthy();
+    // The h2 names the section for screen readers; the highlighted nav item already shows it.
+    expect(screen.getByRole('heading', { level: 2, name: 'About' }).className).toBe('sr-only');
     expect(screen.getByText('about body')).toBeTruthy();
     expect(screen.queryByText('tokens body')).toBeNull();
   });
@@ -57,7 +58,10 @@ describe('SettingsPage (desktop)', () => {
 
   it('a sub-page shows its own h2 and keeps its section current in the sub-nav', () => {
     renderAt('/settings/about/licences', <SettingsPage section="about" sub="licences" />);
-    expect(screen.getByRole('heading', { level: 2, name: 'Open-source licences' })).toBeTruthy();
+    // Not in the nav, so its h2 shows.
+    expect(
+      screen.getByRole('heading', { level: 2, name: 'Open-source licences' }).className,
+    ).not.toContain('sr-only');
     expect(screen.getByText('licences body')).toBeTruthy();
     expect(screen.queryByText('about body')).toBeNull();
     const nav = screen.getByRole('navigation', { name: 'Settings' });
@@ -116,7 +120,9 @@ describe('SettingsPage (phone)', () => {
     const back = screen.getByRole('link', { name: 'Settings' });
     expect(back.getAttribute('href')).toBe('/settings');
     expect(back.textContent).toContain('‹');
+    // On a phone the section name is the page's visible title.
     const h2 = screen.getByRole('heading', { level: 2, name: 'About' });
+    expect(h2.className).not.toContain('sr-only');
     expect(back.compareDocumentPosition(h2) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(screen.queryByRole('navigation', { name: 'Settings' })).toBeNull();
     expect(screen.getByText('about body')).toBeTruthy();
