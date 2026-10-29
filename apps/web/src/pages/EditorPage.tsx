@@ -49,11 +49,7 @@ import { addNote, addValuesCard } from '../editor/model/notes-values.ts';
 import { freeSpot, type ViewRect } from '../editor/model/placement.ts';
 import { saveNoteFor } from '../editor/model/save-note.ts';
 import { ActivateDialog } from '../editor/ui/ActivateDialog.tsx';
-import {
-  ActivationControl,
-  activateBlocked,
-  hasActivation,
-} from '../editor/ui/ActivationControl.tsx';
+import { activateBlocked, hasActivation, useActivation } from '../editor/ui/ActivationControl.tsx';
 import { type ApplyOptions, Canvas, FIT_VIEW, type GraphOp } from '../editor/ui/Canvas.tsx';
 import { Banner, CanvasBanner, PastVersionBanner } from '../editor/ui/CanvasBanner.tsx';
 import { ConflictDialog } from '../editor/ui/ConflictDialog.tsx';
@@ -213,8 +209,8 @@ function Editor({
   const [restoring, setRestoring] = useState(false);
   /** The version the Activate dialog is open for (the past-version banner, the can't-run banner). */
   const [activating, setActivating] = useState<number | null>(null);
-  /** The header pill: focus returns here when the page's Activate dialog closes. */
-  const pillRef = useRef<HTMLSpanElement>(null);
+  /** The header's version pill: focus returns here when an Activate dialog closes. */
+  const pillRef = useRef<HTMLButtonElement>(null);
   /** The nodes whose hidden webhook URL the last save could not match (HIDDEN_URL_UNKNOWN). */
   const [hiddenUrl, setHiddenUrl] = useState<string[] | null>(null);
   const [, navigate] = useLocation();
@@ -921,6 +917,27 @@ function Editor({
     if (focusRequest !== null && focusTarget === null) setFocusRequest(null);
   }, [focusRequest, focusTarget]);
 
+  const activation = useActivation({
+    workflow: ready ? state.workflow : null,
+    shown: {
+      version: state?.savedVersion ?? 0,
+      // A past version is blocked by its own errors, like the banner says; the newest by the
+      // saved version's, whatever the unsaved draft holds.
+      blocked: ready
+        ? activateBlocked(
+            version === undefined && state.dirty,
+            state.issues,
+            version === undefined
+              ? { valid: state.workflow.valid, errorCount: state.workflow.errorCount }
+              : null,
+          )
+        : null,
+    },
+    readOnly: !editable,
+    onChanged: (summary) => dispatch({ type: 'workflow', patch: summary }),
+    returnFocusTo: pillRef,
+  });
+
   if (!ready) {
     if (loadError)
       return (
@@ -990,27 +1007,11 @@ function Editor({
             onRun={ready && runBlockedReason === undefined ? runOnFile.open : undefined}
             runBlockedReason={runBlockedReason}
             compact={narrow}
-          >
-            <ActivationControl
-              workflow={state.workflow}
-              shown={{
-                version: state.savedVersion,
-                // A past version is blocked by its own errors, like the banner says; the newest
-                // by the saved version's, whatever the unsaved draft holds.
-                blocked: activateBlocked(
-                  version === undefined && state.dirty,
-                  state.issues,
-                  version === undefined
-                    ? { valid: state.workflow.valid, errorCount: state.workflow.errorCount }
-                    : null,
-                ),
-              }}
-              {...(state.activeIssues[0] ? { activeIssue: state.activeIssues[0].message } : {})}
-              readOnly={!editable}
-              onChanged={(summary) => dispatch({ type: 'workflow', patch: summary })}
-              pillRef={pillRef}
-            />
-          </EditorHeader>
+            pillRef={pillRef}
+            activeIssue={state.activeIssues[0]?.message}
+            activationItems={activation.items}
+          />
+          {activation.dialog}
           <div className="editor-body">
             {catalog ? (
               <Palette

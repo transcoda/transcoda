@@ -56,15 +56,20 @@ describe('forms (M2, L8)', () => {
 
 describe('selected (M8)', () => {
   it('every selected control is a fill plus bold', () => {
-    for (const sel of [
-      '.filter-chip[aria-pressed="true"]',
-      '.scope-chip:has(input:checked)',
-      '.kind-option:has(input:checked)',
-    ]) {
+    for (const sel of ['.filter-chip[aria-pressed="true"]', '.scope-chip:has(input:checked)']) {
       const r = rule(sel);
       expect(r, sel).toMatch(/background:\s*var\(--accent\)/);
       expect(r, sel).toMatch(/font-weight:\s*700/);
     }
+  });
+
+  it('a selected kind card is a lime ring and dot, never a fill, and keeps regular weight', () => {
+    const r = rule('.kind-option:has(input:checked)');
+    expect(r).toMatch(/border-color:\s*var\(--accent\)/);
+    expect(r).not.toMatch(/background/);
+    expect(r).not.toMatch(/font-weight/);
+    expect(rule('.kind-option input')).toMatch(/accent-color:\s*var\(--accent\)/);
+    expect(rule('.new-wf-form .form-actions')).toMatch(/justify-content:\s*flex-end/);
   });
 
   it('focus is shown for keyboard focus only, never :focus-within', () => {

@@ -52,6 +52,8 @@ export const FIT_VIEW = { maxZoom: 1, padding: 0.2 };
 
 /** Keys that add a clicked card to the selection: React Flow's Meta/Control plus Shift. */
 const MULTI_SELECT_KEYS = ['Meta', 'Control', 'Shift'];
+/** No "React Flow" link on the canvas (a stable object: React Flow compares props by reference). */
+const PRO_OPTIONS = { hideAttribution: true };
 
 /** How close (px) a dragged connection snaps to a handle; the handles' own hit area is 26 px. */
 const CONNECTION_RADIUS = 30;
@@ -400,7 +402,8 @@ export function Canvas({
         {...(onMoveEnd ? { onMoveEnd } : {})}
         fitViewOptions={FIT_VIEW}
         colorMode="dark"
-        attributionPosition="bottom-center"
+        // React Flow is MIT; the credit stays on Settings → About → Open-source licences.
+        proOptions={PRO_OPTIONS}
       >
         {/* Dots of 1.2px radius every 22px (React Flow's `size` is the dot diameter). */}
         <Background
