@@ -2,8 +2,13 @@
 // integration. Secrets are stored only sealed (AES-GCM, see crypto.ts), opened only to hand to the
 // plugin process and the fetch proxy, and never logged or returned.
 import type { PluginSettingsGetOutput, PluginSummary, PluginTestOutput } from '@transcoda/contract';
-import { secretPaths } from '@transcoda/sdk';
-import type { FetchPolicy, JsonValue } from '@transcoda/shared';
+import { createPaths, secretPaths } from '@transcoda/sdk';
+import {
+  type FetchPolicy,
+  type JsonValue,
+  type PathMapping,
+  PathMappingSchema,
+} from '@transcoda/shared';
 import type { z } from 'zod';
 import { type Database, openDatabase } from '../db/open.ts';
 import {
@@ -36,6 +41,46 @@ export interface SettingsTarget {
 }
 
 const MAX_TEST_TEXT = 500;
+/** Root folders a test may report; a service with more is checked on the first ones only. */
+const MAX_ROOTS = 20;
+
+/** Every path mapping in `values`: the settings the schema marks as path mappings. */
+function mappingsIn(schema: unknown, values: JsonObject): PathMapping[] {
+  const props = (schema as { properties?: Record<string, { 'x-transcoda'?: unknown }> } | null)
+    ?.properties;
+  return Object.entries(props ?? {})
+    .filter(([, s]) => s['x-transcoda'] === 'path-mappings')
+    .flatMap(([key]) => {
+      const r = PathMappingSchema.array().safeParse(values[key]);
+      return r.success ? r.data : [];
+    });
+}
+
+/**
+ * A warning for each root folder (as the service sees it) that is not inside a library once
+ * mapped: every file lookup in a folder Transcoda cannot place fails.
+ */
+export function rootWarnings(
+  roots: string[],
+  mappings: PathMapping[],
+  libraryCheck: (local: string) => { ok: boolean; message: string },
+): string[] {
+  const paths = createPaths(mappings);
+  return roots.flatMap((root) => {
+    // Trailing slashes dropped (a loop: a /\/+$/ regex is quadratic on many slashes).
+    let end = root.length;
+    while (end > 1 && root[end - 1] === '/') end--;
+    const remote = root.slice(0, end);
+    const local = paths.toLocal(remote);
+    const check = libraryCheck(local);
+    if (check.ok) return [];
+    return local === remote
+      ? [
+          `root folder ${remote} is not inside any library: add a path mapping from ${remote} to the matching library folder, or a library for it`,
+        ]
+      : [`root folder ${remote} maps to ${local}, but ${check.message}`];
+  });
+}
 
 /**
  * Only a token-like secret shows its last four characters (`endsWith`): at least this long and
@@ -127,6 +172,8 @@ export interface PluginSettingsDeps {
   log: Logger;
   /** Why the plugin's nodes cannot run now, or null. */
   unavailable(name: string): string | null;
+  /** Whether a folder on this server is inside a library (the path-mapping check). */
+  libraryCheck(local: string): { ok: boolean; message: string };
 }
 
 export class PluginSettings {
@@ -379,13 +426,22 @@ export class PluginSettings {
     if (!answer.ok) return { ok: false, kind: 'other', message: clean(answer.error.message) };
     const r = answer.result as Record<string, JsonValue> | null;
     if (r !== null && r.ok === true && typeof r.message === 'string') {
+      const strings = (v: JsonValue | undefined): string[] =>
+        Array.isArray(v) ? v.filter((w): w is string => typeof w === 'string') : [];
+      const roots = strings(r.roots)
+        .filter((p) => p.startsWith('/'))
+        .slice(0, MAX_ROOTS);
+      const warnings = [
+        ...strings(r.warnings),
+        ...rootWarnings(roots, mappingsIn(integration.settingsSchema, candidate), (local) =>
+          this.deps.libraryCheck(local),
+        ),
+      ].map(clean);
       return {
         ok: true,
         message: clean(r.message),
         ...(typeof r.version === 'string' ? { version: clean(r.version) } : {}),
-        ...(Array.isArray(r.warnings)
-          ? { warnings: r.warnings.filter((w): w is string => typeof w === 'string').map(clean) }
-          : {}),
+        ...(Array.isArray(r.warnings) || warnings.length > 0 ? { warnings } : {}),
       };
     }
     const kinds = ['unreachable', 'unauthorized', 'wrong-product', 'too-old', 'other'] as const;

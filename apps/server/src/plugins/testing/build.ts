@@ -18,6 +18,7 @@ export const FIXTURE_NAMES = [
   'ctxprobe',
   'versioned',
   'versioned2',
+  'roots',
 ] as const;
 export type FixtureName = (typeof FIXTURE_NAMES)[number];
 

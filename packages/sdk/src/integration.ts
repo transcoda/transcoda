@@ -7,6 +7,12 @@ export interface IntegrationTestOk {
   message: string;
   version?: string | undefined;
   warnings?: string[] | undefined;
+  /**
+   * The folders the service keeps its media in, as the service sees them (for example Radarr's
+   * root folders). Transcoda maps each through the integration's path mappings and adds a warning
+   * for any that is not inside one of its libraries, so a missing mapping shows at setup.
+   */
+  roots?: string[] | undefined;
 }
 export interface IntegrationTestFail {
   ok: false;
