@@ -27,8 +27,14 @@ jobs:
     timeout-minutes: 45
     outputs:
       tags: ${{ steps.meta.outputs.tags }}
+      release: ${{ steps.release.outputs.release }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # A GitHub Release exists only for the tags release.yml runs on (v[0-9]*); this builds on
+      # any v* tag, so the release files are kept only for those.
+      - id: release
+        run: |
+          if [[ "$GITHUB_REF" =~ ^refs/tags/v[0-9] ]]; then echo release=true; else echo release=false; fi >> "$GITHUB_OUTPUT"
       - uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
       - uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
@@ -90,7 +96,7 @@ jobs:
           push-to-registry: true
       # A release also carries both as files (release-assets below).
       - name: Keep the provenance bundle and the SBOM for the release
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: steps.release.outputs.release == 'true'
         env:
           BUNDLE: ${{ steps.provenance.outputs.bundle-path }}
         run: |
@@ -98,20 +104,20 @@ jobs:
           mkdir release-assets
           cp "$BUNDLE" "release-assets/transcoda-$GITHUB_REF_NAME.sigstore.json"
           cp sbom.spdx.json "release-assets/transcoda-$GITHUB_REF_NAME.spdx.json"
-      - if: startsWith(github.ref, 'refs/tags/v')
+      - if: steps.release.outputs.release == 'true'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: release-assets
           path: release-assets/
           retention-days: 1
 
-  # On a release tag: the image's signed provenance bundle and its SBOM go on the GitHub Release
+  # On a release tag (v[0-9]*): the image's signed provenance bundle and its SBOM go on the GitHub Release
   # too, for people who verify offline (cosign or sigstore-python read the bundle) and for
   # Scorecard's Signed-Releases check. release.yml creates the release from the same tag; it takes
   # seconds against the image's minutes, but this waits for it all the same.
   release-assets:
     needs: image
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: needs.image.outputs.release == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
