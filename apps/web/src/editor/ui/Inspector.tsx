@@ -1,5 +1,6 @@
 import type { NodeInfo, WorkflowSummary } from '@transcoda/contract';
 import {
+  ALREADY_PROCESSED_TYPE,
   type Issue,
   type JsonValue,
   linkedNodes,
@@ -41,6 +42,7 @@ import {
 } from '../model/notes-values.ts';
 import { type FieldDef, fieldsFor } from '../model/schema-fields.ts';
 import { effectiveNodeIssues } from '../model/setting-issues.ts';
+import { AlreadyProcessedInspector } from './AlreadyProcessedInspector.tsx';
 import type { ApplyOptions, GraphOp } from './Canvas.tsx';
 import { BooleanField } from './fields/BooleanField.tsx';
 import { GroupInspector } from './GroupInspector.tsx';
@@ -282,6 +284,9 @@ function NodeInspector({
   const def = catalog?.byType.get(node.type) ?? null;
   const runInline =
     def !== null && node.type === RUN_SUBWORKFLOW_TYPE && isSettingsObject(node.settings);
+  // Already processed picks a workflow by name: its own inspector, like the Run node's.
+  const processedInline =
+    def !== null && node.type === ALREADY_PROCESSED_TYPE && isSettingsObject(node.settings);
   const fields = useMemo(
     () => (def && !runInline ? fieldsFor(def.settingsSchema) : null),
     [def, runInline],
@@ -363,6 +368,16 @@ function NodeInspector({
             state={nodeState}
             // A sub-workflow never runs itself.
             subworkflows={(subworkflows ?? []).filter((w) => w.id !== state.workflow.id)}
+            readOnly={readOnly}
+            dispatch={dispatch}
+            focusField={focusField}
+          />
+        ) : processedInline ? (
+          <AlreadyProcessedInspector
+            instance={node}
+            state={nodeState}
+            workflows={subworkflows ?? []}
+            selfId={state.workflow.id}
             readOnly={readOnly}
             dispatch={dispatch}
             focusField={focusField}

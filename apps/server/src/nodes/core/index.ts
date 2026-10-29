@@ -8,6 +8,7 @@ import {
   reorderTracks,
   setDefaultTrack,
 } from './actions.ts';
+import { alreadyProcessed } from './already-processed.ts';
 import { checkSource } from './check-source.ts';
 import { fileMatches, hasStream, videoIs } from './conditions.ts';
 import { embedSidecarSubtitles } from './embed-subtitles.ts';
@@ -24,6 +25,7 @@ export const coreNodes: AnyNodeDefinition[] = [
   fileMatches,
   hasStream,
   checkSource,
+  alreadyProcessed,
   subworkflowStart,
   subworkflowEnd,
   runSubworkflow,

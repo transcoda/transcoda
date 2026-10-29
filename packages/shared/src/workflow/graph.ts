@@ -151,6 +151,30 @@ export const RunSubworkflowSettingsSchema = z.object({
 });
 export type RunSubworkflowSettings = z.infer<typeof RunSubworkflowSettingsSchema>;
 
+export const ALREADY_PROCESSED_TYPE = 'core:already-processed';
+
+/**
+ * Already processed: which workflow and version to look for. No `workflowId` means "This
+ * workflow": the workflow the job runs (in a sub-workflow too, since results are recorded for
+ * the top-level workflow); no `version` means any version.
+ */
+export const AlreadyProcessedSettingsSchema = z.object({
+  workflowId: z
+    .string()
+    .min(1)
+    .optional()
+    .describe(
+      'Workflow; the id of the workflow to look for. Leave it out for this workflow (the one the job runs, also inside a sub-workflow)',
+    ),
+  version: z
+    .number()
+    .int()
+    .min(1)
+    .optional()
+    .describe('Version; only this version of that workflow counts. Leave it out for any version'),
+});
+export type AlreadyProcessedSettings = z.infer<typeof AlreadyProcessedSettingsSchema>;
+
 export function emptyGraph(kind: WorkflowKind): WorkflowGraph {
   if (kind === 'workflow') {
     return { formatVersion: FORMAT_VERSION, kind, nodes: [], edges: [], groups: [] };

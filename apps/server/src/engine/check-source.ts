@@ -2,6 +2,7 @@
 import type { ProbeResult } from '@transcoda/sdk';
 import { isPicture } from '@transcoda/shared';
 import type { Exec } from '../capabilities/ffmpeg.ts';
+import type { AlreadyProcessedAnswer, AlreadyProcessedQuery } from './already-processed.ts';
 import { classifyErrorLine, READ_FAILURE, sourceDecoderNames } from './decoder-names.ts';
 import { progressReader } from './progress.ts';
 import type { VerifyFailure } from './verify.ts';
@@ -421,4 +422,6 @@ export async function checkSource(input: {
  */
 export interface CoreTools {
   checkSource(opts: { decodeVideo: boolean }): Promise<CheckSourceResult>;
+  /** Already processed: the job's history by fingerprint, then by content hash (already-processed.ts). */
+  alreadyProcessed(q: AlreadyProcessedQuery): Promise<AlreadyProcessedAnswer>;
 }

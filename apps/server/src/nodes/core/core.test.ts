@@ -70,6 +70,7 @@ describe('core nodes', () => {
 
   it('registers the full catalogue', () => {
     expect(coreNodes.map((d) => d.type).sort()).toEqual([
+      'core:already-processed',
       'core:check-source',
       'core:cover-attachments',
       'core:embed-sidecar-subtitles',
