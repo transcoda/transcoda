@@ -101,7 +101,6 @@ describe('labels typed in sentence case are shown in capitals by their class (L1
     '.plan-tile-label',
     '.plan-tile-now',
     '.plan-original',
-    '.job-result-label',
     '.eyebrow',
     '.eyebrow-kind-word',
     '.palette-heading',

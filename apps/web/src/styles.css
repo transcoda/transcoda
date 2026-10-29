@@ -7839,37 +7839,32 @@ a.nav-item.is-active .nav-count {
 }
 
 .job-head h1 {
+  min-width: 0;
   font-size: 32px;
   font-weight: 700;
   letter-spacing: -0.02em;
   overflow-wrap: anywhere;
 }
 
-.job-head-where {
-  font-family: var(--font-mono);
-  font-size: var(--fs-small);
+/* H1 left, Process again / Dry run again (or Pause / Cancel) right, centred on the title. */
+.job-title-row {
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.job-title-row > .head-actions {
+  padding-top: 0;
+}
+
+/* The one muted meta line: library · workflow · run · when (convention 1). */
+.job-head-meta {
   color: var(--faint);
 }
 
-.job-where-link {
-  color: var(--muted);
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-
-.job-where-link:hover {
-  color: var(--text);
-}
-
-.job-where-link:focus-visible {
+.job-head-meta .link-muted:focus-visible {
   outline: none;
   border-radius: var(--r-sm);
   box-shadow: var(--focus-ring);
-}
-
-.job-head-at {
-  font-size: var(--fs-small);
-  color: var(--muted);
 }
 
 .job-head-chips {
@@ -7905,26 +7900,39 @@ a.nav-item.is-active .nav-count {
   color: var(--muted);
 }
 
-.job-progress-actions {
+/* "Dry run again" / "Process again" on a finished job; the hint for an inactive workflow under them. */
+.job-again {
   display: flex;
-  gap: var(--sp-2);
-  margin-left: auto;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
 }
 
-/* "Process again" / "Dry run again" on a finished job. */
 .job-again-actions {
   display: flex;
   flex-wrap: wrap;
   gap: var(--sp-2);
 }
 
-/* The flow takes the page's full width above the decisions: beside them it was a ~600px column. */
-.trace-layout {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-6);
+/* Phone: the actions go under the meta line, left-aligned (the title row folds away). */
+@media (max-width: 639px) {
+  .job-title-row {
+    display: contents;
+  }
+  .job-title-row > .head-actions {
+    order: 1;
+    justify-content: flex-start;
+    margin: var(--sp-2) 0 0;
+  }
+  .job-again {
+    align-items: flex-start;
+  }
+  .job-progress {
+    order: 2;
+  }
 }
 
+/* The flow, last on the page, full width. */
 .trace-panel {
   overflow: hidden;
 }
@@ -7967,81 +7975,40 @@ a.nav-item.is-active .nav-count {
   overflow: hidden;
 }
 
-/* Screen 06b: heading, dry-run badge, counts and the All steps / Only changes filter on one line. */
+/* Screen 06b: heading with its step count, dry-run badge and the All / Changes pills on one line. */
 .job-steps-head {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 12px;
+  gap: 8px 10px;
   padding: 18px 22px;
   border-bottom: 1px solid var(--line);
-}
-
-.job-steps-head h2 {
-  margin: 0;
-  font-size: 22px;
-  font-weight: 700;
 }
 
 .job-steps-head .badge-dry {
   text-transform: uppercase;
 }
 
-/* Counts as separate pieces: a wrap never splits one of them. */
-.job-steps-counts {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 14px;
-  margin: 0;
-  font-size: 14px;
-  color: var(--muted);
-}
-
-.job-steps-counts b {
-  color: var(--text);
-}
-
-.job-steps-counts b.is-note {
-  color: var(--st-dry);
+/* "6 steps" is words, not a number: sans. */
+.job-steps-head .section-count {
+  font-family: var(--font-ui);
+  font-size: var(--fs-small);
+  font-weight: 500;
+  color: var(--faint);
 }
 
 .job-steps-filter {
-  display: flex;
   margin-left: auto;
-  padding: 3px;
-  border-radius: 10px;
-  background: var(--raised);
 }
 
-.job-steps-filter button {
-  min-height: 32px;
-  padding: 0 12px;
-  border: 0;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--text);
-  font: inherit;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
+.job-steps-filter .filter-chip {
+  height: 32px;
 }
 
-.job-steps-filter button[aria-checked="true"] {
-  background: var(--text);
-  color: var(--bg);
-}
-
-.job-steps-filter button:focus-visible,
 .job-step-main:focus-visible,
 .job-step-more:focus-visible {
   outline: none;
   box-shadow: var(--focus-ring);
-}
-
-.job-steps-empty {
-  margin: 0;
-  padding: 16px 22px;
-  color: var(--muted);
 }
 
 .job-steps-list {
@@ -8050,13 +8017,8 @@ a.nav-item.is-active .nav-count {
   list-style: none;
 }
 
-.job-steps-retry h3 {
+.job-steps-retry .group-h3 {
   margin: 8px 22px 0;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--st-needs-setting);
-  text-transform: uppercase;
 }
 
 /* One row: the kind tile on a rail that joins the rows, then the row's text. */
@@ -8217,16 +8179,19 @@ a.nav-item.is-active .nav-count {
   color: var(--faint);
 }
 
+/* Step badges are one chip family (convention 7): lime for a step that changed the file, red for
+   one that failed, a neutral outline for everything else. */
 .step-badge {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  height: 26px;
+  height: 28px;
   padding: 0 10px;
   border-radius: var(--r-pill);
-  border: 1.5px solid transparent;
-  font-size: 12px;
-  font-weight: 700;
+  border: 1.5px solid var(--line-strong);
+  color: var(--muted);
+  font-size: var(--fs-small);
+  font-weight: 600;
   white-space: nowrap;
 }
 
@@ -8236,28 +8201,10 @@ a.nav-item.is-active .nav-count {
   color: var(--on-accent);
 }
 
-.step-badge.is-same,
+/* A step that never ran: dashed, so it differs from one that ran and changed nothing. */
 .step-badge.is-not-run {
   border-style: dashed;
   border-color: var(--empty-link);
-  color: var(--muted);
-}
-
-.step-badge.is-start {
-  border-color: var(--kind-trigger);
-  color: var(--st-kept-text);
-}
-
-.step-badge.is-check,
-.step-badge.is-finish {
-  border-color: var(--kind-finish);
-  color: var(--finish-text);
-}
-
-.step-badge.is-yes,
-.step-badge.is-no {
-  border-color: var(--kind-condition);
-  color: var(--st-skipped-text);
 }
 
 .step-badge.is-failed {
@@ -8401,6 +8348,7 @@ button.job-step-more:hover {
   }
   .job-steps-filter {
     margin-left: 0;
+    width: 100%;
   }
   .job-step {
     grid-template-columns: 40px minmax(0, 1fr);
@@ -8441,115 +8389,88 @@ button.job-step-more:hover {
   }
 }
 
+/* The job's Result, right under the header: a neutral panel (no coloured slab or edge bar); the
+   outcome's colour is only the icon's softly tinted circle, in the state chip's colours
+   (convention 7, 16): lime replaced, red failed, amber needs attention, neutral left alone. */
 .job-result {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  column-gap: var(--sp-3);
+  row-gap: var(--sp-2);
+  align-items: start;
+  padding: 18px 22px;
+}
+
+.job-result > :not(.job-result-icon, h2) {
+  grid-column: 2;
+}
+
+.job-result-icon {
+  grid-column: 1;
+  grid-row: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--r-pill);
+  background: var(--raised);
+  color: var(--muted);
+}
+
+.job-result.is-ok .job-result-icon {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  color: var(--accent-text);
+}
+
+.job-result.is-error .job-result-icon {
+  background: color-mix(in srgb, var(--st-failed) 18%, transparent);
+  color: var(--st-failed-text);
+}
+
+.job-result.is-warning .job-result-icon {
+  background: var(--st-dry-bg);
+  color: var(--st-dry);
+}
+
+.job-result-head {
+  grid-row: 1;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 18px 24px;
-  padding: 16px 20px;
-}
-
-.job-result.v-replaced {
-  background: var(--accent);
-  color: var(--on-accent);
-  border-color: var(--accent);
-}
-
-/* Kept original: the same blue as the "Kept original" chip, so it never reads as a success. */
-.job-result.v-kept {
-  background: var(--st-kept);
-  color: var(--st-kept-ink);
-  border-color: var(--st-kept);
-}
-
-/* Every other outcome takes its state chip's tokens, so none falls back to a misleading colour.
-   The word and icon always carry the meaning; the colour only backs them. */
-.job-result.v-running {
-  background: var(--st-running);
-  color: var(--st-running-ink);
-  border-color: var(--st-running);
-}
-.job-result.v-queued {
-  background: transparent;
-  color: var(--muted);
-  border-color: var(--line-strong);
-}
-.job-result.v-noop,
-.job-result.v-already,
-.job-result.v-cancelled {
-  background: var(--st-noop);
-  color: var(--st-noop-ink);
-  border-color: var(--st-noop);
-}
-.job-result.v-skipped {
-  background: var(--st-skipped);
-  color: var(--st-skipped-ink);
-  border-color: var(--st-skipped);
-}
-.job-result.v-failed {
-  background: var(--st-failed);
-  color: var(--st-failed-ink);
-  border-color: var(--st-failed);
-}
-/* Dry run: the amber chip tone with its dashed border (nothing was changed). */
-.job-result.v-dry {
-  background: var(--st-dry-bg);
-  color: var(--st-dry);
-  border: 1.5px dashed var(--st-dry);
-}
-/* Needs attention: solid amber, so it differs from the dashed dry run by more than hue. */
-.job-result.v-attention {
-  background: var(--st-dry);
-  color: var(--st-dry-ink);
-  border-color: var(--st-dry);
-}
-
-.job-result-cell {
-  display: flex;
-  flex-direction: column;
-}
-
-.job-result-label {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-}
-
-.job-result-word {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--sp-2);
-  font-size: 22px;
+  gap: 0 var(--sp-3);
+  min-height: 28px;
+  margin: 0;
+  font-size: var(--fs-h2);
   font-weight: 700;
-}
-
-.job-result-size {
-  font-size: 22px;
-  font-weight: 700;
-}
-
-.job-result-action {
-  align-self: flex-start;
-  margin-top: var(--sp-2);
+  line-height: 1.3;
+  overflow-wrap: anywhere;
 }
 
 .job-result-pct {
-  font-size: 30px;
-  font-weight: 800;
-  letter-spacing: -0.03em;
+  color: var(--accent-text);
 }
 
-.job-result-notes {
-  flex: 1 1 240px;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
+.job-result-text {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.job-result-meta {
+  margin: 0;
   font-size: var(--fs-small);
+  color: var(--faint);
+}
+
+.job-result-action {
+  justify-self: start;
+}
+
+.job-result .ffmpeg-raw {
+  margin-top: var(--sp-2);
 }
 
 .job-result-warnings {
-  flex-basis: 100%;
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -8557,6 +8478,7 @@ button.job-step-more:hover {
   padding: 0;
   list-style: none;
   font-size: var(--fs-small);
+  color: var(--muted);
 }
 
 .job-result-warnings li {
@@ -8565,18 +8487,16 @@ button.job-step-more:hover {
   gap: 6px;
 }
 
+.job-result-problems {
+  color: var(--st-dry);
+}
+
 /* Before / after (job page, under the result): the source and the output side by side. */
 .before-after-head {
   display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 4px 16px;
-  padding: 16px 20px 8px;
-}
-
-.before-after-legend {
-  font-size: var(--fs-small);
-  color: var(--muted);
+  flex-direction: column;
+  gap: 2px;
+  padding: 18px 22px 8px;
 }
 
 .ba-table-wrap {
@@ -8772,12 +8692,6 @@ button.job-step-more:hover {
   flex-wrap: wrap;
   align-items: baseline;
   gap: 4px 10px;
-}
-
-.ffmpeg-notes-head h2 {
-  margin: 0;
-  font-size: var(--fs-h2);
-  font-weight: 700;
 }
 
 .ffmpeg-notes-summary {
@@ -9689,11 +9603,6 @@ button.job-step-more:hover {
   background: var(--st-damaged);
   color: var(--st-damaged-ink);
 }
-.job-result.v-damaged {
-  background: var(--st-damaged);
-  color: var(--st-damaged-ink);
-  border-color: var(--st-damaged);
-}
 
 /* Jobs: done with problems (needs attention) */
 .job-chip.is-attention {
@@ -9708,19 +9617,6 @@ button.job-step-more:hover {
   background: var(--st-dry-bg);
   color: var(--st-dry);
   border: 1.5px solid var(--st-dry);
-}
-.problem-banner {
-  align-items: flex-start;
-}
-.problem-banner-text ul {
-  margin: 4px 0 0;
-  padding-left: 18px;
-}
-.job-result-problems {
-  color: var(--st-dry);
-}
-.job-result.v-attention .job-result-problems {
-  color: inherit;
 }
 .tc-trace-plug {
   display: inline-flex;

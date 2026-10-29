@@ -137,13 +137,12 @@ describe('JobPage', () => {
   it('shows header, one sentence per step with its badge, the result, and the command with Copy in the raw output', async () => {
     await open();
     expect(mocks.jobs.get).toHaveBeenCalledWith({ id: 'j1' });
-    expect(document.querySelector('.job-head-where')?.textContent).toBe(
-      'Shows · TV cleanup v7 · Run',
+    // One muted meta line: where, then when it finished and how long it took.
+    expect(document.querySelector('.job-head-meta')?.textContent).toMatch(
+      /^Shows · TV cleanup v7 · Run · Finished .* · took /,
     );
-    // When it was queued, started and finished, and how long it took.
-    expect(document.querySelector('.job-head-times')?.textContent).toMatch(
-      /^Queued .* · started .* · finished .* · took /,
-    );
+    // The crumb names only the parent.
+    expect(document.querySelector('.job-crumbs')?.textContent).toBe('Jobs/');
     expect(screen.getAllByText('Replaced').length).toBeGreaterThan(0);
 
     const section = screen.getByRole('region', { name: 'What the workflow did' });
@@ -181,22 +180,19 @@ describe('JobPage', () => {
       "Replaced the original, which is now in this library's recycle folder",
     );
     expect(within(items.at(-1) as HTMLElement).getByText('After verification')).toBeTruthy();
-    // The counts: Keep languages changed the file; Cover and attachments did not.
-    expect(section.querySelector('.job-steps-counts')?.textContent).toBe(
-      '1 step changed the file1 no change',
-    );
+    expect(section.querySelector('.section-count')?.textContent).toMatch(/^\d+ steps$/);
 
     const result = screen.getByRole('region', { name: 'Result' });
     expect(within(result).getByText('2.41 GB → 1.62 GB')).toBeTruthy();
     expect(within(result).getByText('−33%')).toBeTruthy();
     expect(within(result).getByText('Original in recycle folder')).toBeTruthy();
 
-    // The ffmpeg command and the log are in the collapsed raw output under the notes.
-    const notes = screen.getByRole('region', { name: 'Notes from ffmpeg' });
-    expect(await within(notes).findByText('Nothing to note.')).toBeTruthy();
-    const raw = within(notes)
-      .getByText('Raw ffmpeg output')
-      .closest('details') as HTMLDetailsElement;
+    // Nothing to note: no "Notes from ffmpeg" section. The command and the log are in the
+    // Result's collapsed raw output.
+    const raw = (await within(result).findByText('Show command and log')).closest(
+      'details',
+    ) as HTMLDetailsElement;
+    expect(screen.queryByRole('region', { name: 'Notes from ffmpeg' })).toBeNull();
     expect(raw.open).toBe(false);
     expect(document.querySelectorAll('section.command-block')).toHaveLength(1);
     const command = within(raw).getByRole('region', { name: 'ffmpeg command' });
@@ -220,25 +216,21 @@ describe('JobPage', () => {
     ).toBe(true);
   });
 
-  it('"Only changes" hides the steps that change nothing; arrow keys move the choice', async () => {
+  it('"Changes" hides the steps that change nothing', async () => {
     await open();
     const section = screen.getByRole('region', { name: 'What the workflow did' });
     await waitFor(() =>
       expect(within(section).getByText('Dropped 1 audio track (French)')).toBeTruthy(),
     );
-    const group = within(section).getByRole('radiogroup', { name: 'Show steps' });
-    const all = within(group).getByRole('radio', { name: 'All steps' });
-    const only = within(group).getByRole('radio', { name: 'Only changes' });
-    expect(all.getAttribute('aria-checked')).toBe('true');
-    expect(all.tabIndex).toBe(0);
-    expect(only.tabIndex).toBe(-1);
+    const group = section.querySelector('.job-steps-filter') as HTMLElement;
+    const [all, only] = within(group).getAllByRole('button') as [HTMLElement, HTMLElement];
+    expect(all.textContent).toMatch(/^All/);
+    expect(all.getAttribute('aria-pressed')).toBe('true');
     fireEvent.click(only);
-    expect(only.getAttribute('aria-checked')).toBe('true');
+    expect(only.getAttribute('aria-pressed')).toBe('true');
     expect(within(section).queryByText('Covers and attachments stayed as they were')).toBeNull();
     expect(within(section).getByText('Dropped 1 audio track (French)')).toBeTruthy();
-    fireEvent.keyDown(only, { key: 'ArrowLeft' });
-    expect(all.getAttribute('aria-checked')).toBe('true');
-    expect(document.activeElement).toBe(all);
+    fireEvent.click(all);
     expect(within(section).getByText('Covers and attachments stayed as they were')).toBeTruthy();
   });
 
@@ -259,11 +251,12 @@ describe('JobPage', () => {
       'Expected',
     ]);
     expect(cards[1]?.textContent).toContain('printed this 500 times');
-    const raw = within(notes).getByText('Raw ffmpeg output').closest('details') as HTMLElement;
+    const result = screen.getByRole('region', { name: 'Result' });
+    const raw = within(result).getByText('Show command and log').closest('details') as HTMLElement;
     expect(within(raw).getByText('502 lines')).toBeTruthy();
     const text = raw.querySelector('.job-log-text')?.textContent ?? '';
     expect(text.match(/set_mempolicy/g)).toHaveLength(1);
-    expect(text).toContain('[500 times, see the note above]');
+    expect(text).toContain('[500 times, see Notes from ffmpeg]');
     // Not known: only in the raw output.
     expect(text).toContain('something nobody mapped');
     expect(cards.some((c) => c.textContent?.includes('nobody mapped'))).toBe(false);
@@ -470,23 +463,23 @@ describe('JobPage', () => {
     expect(document.querySelector('.react-flow__node.selected')).toBeNull();
   });
 
-  it('an empty log is a plain note, not an empty code block: "yet" while running, final once done, none in a plan-only dry run', async () => {
+  it('an empty log shows no notes section and no empty code block; the command stays in the raw output', async () => {
     mocks.jobs.get.mockResolvedValue(runningJobDetail({ state: 'encoding' }));
     mocks.jobs.log.mockReset().mockResolvedValue({ log: '' });
     await open();
-    expect(await screen.findByText('No log output yet.')).toBeTruthy();
+    await waitFor(() => expect(mocks.jobs.log).toHaveBeenCalled());
     expect(document.querySelector('.job-log-text')).toBeNull();
     cleanup();
 
     mocks.jobs.get.mockResolvedValue(jobDetail());
     await open();
-    expect(await screen.findByText('ffmpeg wrote no log for this job.')).toBeTruthy();
+    expect(screen.queryByRole('region', { name: 'Notes from ffmpeg' })).toBeNull();
     expect(document.querySelector('.job-log-text')).toBeNull();
+    expect(screen.getByText('Show command')).toBeTruthy();
     cleanup();
 
     mocks.jobs.get.mockResolvedValue(jobDetail({ state: 'dry_run', dryRun: true }));
     await open();
-    expect(await screen.findByText("ffmpeg doesn't run in a plan-only dry run.")).toBeTruthy();
     // The planned command is still there, in the raw output.
     expect(screen.getByRole('region', { name: 'ffmpeg command (not run)' })).toBeTruthy();
   });
@@ -665,7 +658,7 @@ describe('JobPage', () => {
     await waitFor(() => expect(within(list).getByText(/Keep languages/)).toBeTruthy());
   });
 
-  it('a done job with problems shows the problem banner, the problems in the result and the Needs attention chip', async () => {
+  it('a done job with problems lists them in the result (no separate banner) with the Needs attention chip', async () => {
     const problems = ['the server stopped before the remaining finish actions'];
     mocks.jobs.get.mockResolvedValue(
       jobDetail({
@@ -674,19 +667,12 @@ describe('JobPage', () => {
       }),
     );
     await open();
-    const banner = screen.getByRole('alert');
-    expect(banner.className).toContain('problem-banner');
-    expect(within(banner).getByText('Finished with a problem')).toBeTruthy();
-    expect(within(banner).getByText(problems[0] as string)).toBeTruthy();
-    const result = screen.getByRole('region', { name: 'Result' });
-    expect(within(result).getByText('Needs attention')).toBeTruthy();
-    // Problems are listed before warnings.
-    expect(within(result).getByRole('list', { name: 'Problems' })).toBeTruthy();
-  });
-
-  it('a job without problems has no problem banner', async () => {
-    await open();
     expect(document.querySelector('.problem-banner')).toBeNull();
+    expect(screen.getAllByText('Needs attention').length).toBeGreaterThan(0);
+    const result = screen.getByRole('region', { name: 'Result' });
+    const list = within(result).getByRole('list', { name: 'Problems' });
+    expect(within(list).getByText(problems[0] as string)).toBeTruthy();
+    expect(result.classList.contains('is-warning')).toBe(true);
   });
 
   it('a plugin trace entry shows the plug icon beside its title in the steps', async () => {
@@ -704,7 +690,7 @@ describe('JobPage', () => {
   });
   it("M12: the subtitle links the library, the workflow at the job's version, and the run", async () => {
     await open();
-    const where = document.querySelector('.job-head-where') as HTMLElement;
+    const where = document.querySelector('.job-head-meta') as HTMLElement;
     const link = (name: string) => within(where).getByRole('link', { name }) as HTMLAnchorElement;
     expect(link('Shows').getAttribute('href')).toBe('/libraries');
     expect(link('TV cleanup v7').getAttribute('href')).toBe('/workflows/w1?version=7');
@@ -713,7 +699,7 @@ describe('JobPage', () => {
 
   it('M3: the raw ffmpeg output shows a chevron that turns when it opens', async () => {
     await open();
-    const raw = (await screen.findByText('Raw ffmpeg output')).closest('details') as HTMLElement;
+    const raw = (await screen.findByText('Show command and log')).closest('details') as HTMLElement;
     const summary = raw.querySelector(':scope > summary') as HTMLElement;
     expect(summary.querySelector('.icon')?.getAttribute('aria-hidden')).toBe('true');
     const css = readFileSync(join(__dirname, '../styles.css'), 'utf8');
@@ -721,15 +707,48 @@ describe('JobPage', () => {
     expect(css).toMatch(/\.ffmpeg-raw > summary::-webkit-details-marker/);
   });
 
-  it('H4: the flow sits full width above the Decisions, and the page has no side-by-side layout', async () => {
+  it('one order for every outcome: header, Result, Before and after, steps, the flow last', async () => {
     await open();
-    const layout = document.querySelector('.trace-layout') as HTMLElement;
-    const kids = [...layout.children];
-    expect(kids[0]?.getAttribute('aria-label')).toBe('Workflow trace');
-    expect(kids[1]?.getAttribute('aria-labelledby')).toBeTruthy();
-    const css = readFileSync(join(__dirname, '../styles.css'), 'utf8');
-    const rule = css.match(/\.trace-layout\s*\{([^}]*)\}/)?.[1] ?? '';
-    expect(rule).not.toMatch(/360px|grid-template-columns/);
+    const page = document.querySelector('.job-page') as HTMLElement;
+    const order = [...page.children]
+      .filter((c) => c.tagName !== 'DIALOG')
+      .map(
+        (c) =>
+          c.getAttribute('aria-label') ??
+          (c.getAttribute('aria-labelledby')
+            ? document.getElementById(c.getAttribute('aria-labelledby') as string)?.textContent
+            : c.tagName.toLowerCase()),
+      );
+    expect(order[0]).toBe('header');
+    expect(order[1]).toBe('Result');
+    expect(order.indexOf('What the workflow did')).toBeGreaterThan(1);
+    expect(order.at(-1)).toBe('Workflow trace');
+  });
+
+  it('a failed probe leads with the cause in plain words, keeps the raw error, and makes Process again the primary', async () => {
+    const reason = 'probe failed: Invalid data found when processing input';
+    mocks.jobs.get.mockResolvedValue(
+      jobDetail({ state: 'failed', reason, result: null, trace: [], path: [] }),
+    );
+    mocks.jobs.log.mockReset().mockResolvedValue({ log: '' });
+    await open();
+    const result = screen.getByRole('region', { name: 'Result' });
+    expect(within(result).getByText('The file could not be read')).toBeTruthy();
+    const raw = within(result).getByText('Show error').closest('details') as HTMLElement;
+    expect(raw.querySelector('.job-log-text')?.textContent).toBe(reason);
+    // Never planned, no log: no steps and no notes section.
+    expect(screen.queryByRole('region', { name: /What the workflow/ })).toBeNull();
+    expect(screen.queryByRole('region', { name: 'Notes from ffmpeg' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Process again' }).className).toContain(
+      'btn-primary',
+    );
+  });
+
+  it('a finished job that did not fail has no lime primary in the header', async () => {
+    await open();
+    expect(screen.getByRole('button', { name: 'Process again' }).className).not.toContain(
+      'btn-primary',
+    );
   });
 
   it('a finished test-encode shows its kept output after the result; Delete now refetches the job', async () => {

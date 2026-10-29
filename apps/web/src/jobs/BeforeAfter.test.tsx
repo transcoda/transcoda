@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { cleanup, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
-import { testEncode } from '../test/fixtures/beforeAfter.ts';
+import { source, testEncode } from '../test/fixtures/beforeAfter.ts';
 import { BeforeAfter } from './BeforeAfter.tsx';
 
 afterEach(cleanup);
@@ -52,6 +52,23 @@ describe('BeforeAfter', () => {
     const subs = screen.getByRole('row', { name: /^Subtitles/ });
     expect(subs.querySelector('.ba-loss')).toBeNull();
     expect(subs.querySelectorAll('td')[1]?.textContent).toBe('kept');
+  });
+
+  it('the amber legend is there only when a row loses something', () => {
+    const { container } = render(
+      <BeforeAfter job={testEncode({ state: 'done', dryRun: false })} />,
+    );
+    expect(container.querySelector('.before-after-legend')?.textContent).toBe(
+      'Amber marks what the output loses.',
+    );
+    cleanup();
+    const same = render(
+      <BeforeAfter
+        job={testEncode({ state: 'done', dryRun: false, testEncode: false, outputProbe: source() })}
+      />,
+    );
+    expect(same.container.querySelector('.ba-loss')).toBeNull();
+    expect(same.container.querySelector('.before-after-legend')).toBeNull();
   });
 
   it('a plan-only dry run says its After is the plan', () => {
