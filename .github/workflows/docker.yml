@@ -24,8 +24,6 @@ jobs:
       # Sigstore, and the attestations are stored with the repository and in GHCR.
       id-token: write
       attestations: write
-      # The Grype findings for main go to code scanning (Security tab).
-      security-events: write
     timeout-minutes: 45
     outputs:
       tags: ${{ steps.meta.outputs.tags }}
@@ -96,22 +94,6 @@ jobs:
           subject-digest: ${{ steps.build.outputs.digest }}
           sbom-path: sbom.spdx.json
           push-to-registry: true
-      # Known vulnerabilities in main's image, from its SBOM: reported, never blocking (most come
-      # from the base image and wait for its next update). vulnerability-scan.yml repeats this
-      # weekly, for main and the latest release, as new vulnerabilities are published.
-      - id: grype
-        if: github.ref == 'refs/heads/main'
-        uses: anchore/scan-action@27805bf3b4e84b4a5c980df22ed233c00390a439 # v7.4.2
-        with:
-          sbom: sbom.spdx.json
-          fail-build: false
-          only-fixed: true
-          output-format: sarif
-      - if: github.ref == 'refs/heads/main'
-        uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
-        with:
-          sarif_file: ${{ steps.grype.outputs.sarif }}
-          category: grype-main
       # A release also carries both as files (release-assets below).
       - name: Keep the provenance bundle and the SBOM for the release
         if: steps.release.outputs.release == 'true'
@@ -128,6 +110,20 @@ jobs:
           name: release-assets
           path: release-assets/
           retention-days: 1
+
+  # Known vulnerabilities in main's new image, from its signed SBOM, into code scanning. A job of
+  # its own: a failed scan (Grype's install, its database, the upload) stays a red job here and
+  # never fails the image job or skips the checks below. vulnerability-scan.yml repeats it weekly.
+  vulnerabilities:
+    needs: image
+    if: github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      attestations: read
+      security-events: write
+    uses: ./.github/workflows/vulnerability-scan.yml
+    with:
+      targets: '["main"]'
 
   # On a release tag (v[0-9]*): the image's signed provenance bundle and its SBOM go on the GitHub Release
   # too, for people who verify offline (cosign or sigstore-python read the bundle) and for
