@@ -25,6 +25,7 @@ import { loadLimits } from './plugins/limits.ts';
 import { PluginRestartGate } from './plugins/restart-gate.ts';
 import { PluginService, type PluginServiceDeps } from './plugins/service.ts';
 import type { AppDeps } from './rpc/context.ts';
+import { AppUpdateChecker } from './updates/app-update.ts';
 import { WorkflowService } from './workflows/service.ts';
 
 export interface AppDepsInput {
@@ -62,6 +63,8 @@ export interface AppDepsInput {
   envSet?: ReadonlySet<string>;
   /** Generated third-party list (default: `third-party.json` in the install folder). */
   thirdPartyFile?: string;
+  /** The update check's fetch (tests; default the global one). */
+  updateFetch?: typeof fetch;
 }
 
 /** The names (never the values) of the TRANSCODA_* variables in the environment. */
@@ -148,6 +151,14 @@ export function createAppDeps(input: AppDepsInput): AppDeps {
     gpuLoad: new GpuLoadSampler({
       gpus: () => (caps.available ? (caps.gpus ?? []) : []),
       log: input.log,
+    }),
+    appUpdate: new AppUpdateChecker({
+      version: input.version,
+      enabled: config.updateCheck,
+      events: engine.events,
+      log: input.log,
+      now,
+      ...(input.updateFetch ? { fetch: input.updateFetch } : {}),
     }),
     log: input.log,
     now,

@@ -369,6 +369,13 @@ describe('parseIsolation', () => {
     );
   });
 
+  it('TRANSCODA_UPDATE_CHECK is on unless "false"; anything else stops the start', () => {
+    expect(loadConfig({}).updateCheck).toBe(true);
+    expect(loadConfig({ TRANSCODA_UPDATE_CHECK: 'true' }).updateCheck).toBe(true);
+    expect(loadConfig({ TRANSCODA_UPDATE_CHECK: 'false' }).updateCheck).toBe(false);
+    expect(() => loadConfig({ TRANSCODA_UPDATE_CHECK: 'no' })).toThrow(ConfigError);
+  });
+
   it('TRANSCODA_PLUGIN_ISOLATION accepts only "off" (or nothing)', () => {
     expect(loadConfig({}).pluginIsolationOff).toBe(false);
     expect(loadConfig({ TRANSCODA_PLUGIN_ISOLATION: '' }).pluginIsolationOff).toBe(false);

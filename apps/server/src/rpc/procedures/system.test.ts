@@ -109,6 +109,26 @@ describe('system.licences', () => {
   });
 });
 
+describe('system.update', () => {
+  it('answers the checker status: nothing known before the first check', async () => {
+    t = createTestApp();
+    const s = await login(t);
+    const res = await send(t, 'GET', '/system/update', { headers: asSession(s, false) });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({
+      current: '9.9.9',
+      checking: true,
+      checkedAt: null,
+      update: null,
+    });
+  });
+
+  it('anonymous → 401', async () => {
+    t = createTestApp();
+    expect((await send(t, 'GET', '/system/update')).status).toBe(401);
+  });
+});
+
 describe('system.gpuLoad', () => {
   it('serves the sampler snapshot: none without NVIDIA GPUs', async () => {
     t = createTestApp();

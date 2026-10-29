@@ -33,6 +33,10 @@ export const gpuLoad = os.system.gpuLoad
   .use(requireScope('read'))
   .handler(({ context }) => context.deps.gpuLoad.snapshot());
 
+export const update = os.system.update
+  .use(requireScope('read'))
+  .handler(({ context }) => context.deps.appUpdate.status());
+
 // Parsed once per app: the file is part of the build. A missing or unreadable file is not
 // remembered, so `pnpm licences` during development is picked up without a restart.
 const licenceCache = new WeakMap<AppDeps, LicencesOutput>();

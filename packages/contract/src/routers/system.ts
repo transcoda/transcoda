@@ -3,6 +3,7 @@ import { authedErrors, mutationErrors, pickErrors } from '../errors.ts';
 import { publicSpec } from '../openapi.ts';
 import { LicencesOutputSchema } from '../schemas/licences.ts';
 import {
+  AppUpdateOutputSchema,
   BackupSchema,
   BackupsListOutputSchema,
   CapabilitiesSchema,
@@ -41,6 +42,15 @@ export const system = {
     })
     .errors(authedErrors)
     .output(GpuLoadOutputSchema),
+  update: oc
+    .route({
+      method: 'GET',
+      path: '/system/update',
+      tags: ['system'],
+      summary: 'Whether a newer Transcoda release exists, with its release notes',
+    })
+    .errors(authedErrors)
+    .output(AppUpdateOutputSchema),
   licences: oc
     .route({
       method: 'GET',

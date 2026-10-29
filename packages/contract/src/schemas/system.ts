@@ -122,3 +122,38 @@ export const BackupsListOutputSchema = z.object({
   keep: z.number().int().positive(),
 });
 export type BackupsListOutput = z.infer<typeof BackupsListOutputSchema>;
+
+/** One release's notes, as `pnpm release` writes them to `apps/server/src/changelog.json`. */
+export const ReleaseNotesSchema = z.object({
+  version: z.string(),
+  /** `YYYY-MM-DD`. */
+  date: z.string(),
+  entries: z.array(
+    z.object({ type: z.enum(['new', 'improved', 'fixed', 'breaking']), text: z.string() }),
+  ),
+});
+export type ReleaseNotes = z.infer<typeof ReleaseNotesSchema>;
+
+/** Whether a newer Transcoda release exists (notice only: the person updates their container). */
+export const AppUpdateOutputSchema = z.object({
+  /** The running version. */
+  current: z.string(),
+  /** False with TRANSCODA_UPDATE_CHECK=false or a build from source: GitHub is never asked. */
+  checking: z.boolean(),
+  /** The last successful check; null before the first (a minute after start). */
+  checkedAt: z.iso.datetime().nullable(),
+  update: z
+    .object({
+      version: z.string(),
+      /** The release on GitHub. */
+      url: z.string(),
+      /** The full changelog. */
+      changelogUrl: z.string(),
+      /** The notes of the newest versions after the running one, newest first (empty when unread). */
+      releases: z.array(ReleaseNotesSchema),
+      /** Further missed versions, older than the ones in `releases`. */
+      olderReleases: z.number().int().nonnegative(),
+    })
+    .nullable(),
+});
+export type AppUpdateOutput = z.infer<typeof AppUpdateOutputSchema>;

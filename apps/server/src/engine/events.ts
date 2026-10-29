@@ -32,6 +32,8 @@ export type EngineEvent =
       reason: string | null;
     }
   | { type: 'plugins.changed'; name: string; state: PluginState; stateReason: string | null }
+  /** The update check found a newer release, or the running one caught up (null). */
+  | { type: 'app.update'; version: string | null }
   | { type: 'ping'; at: string }
   /** Events were dropped for a subscriber that fell behind: refetch the state, then go on. */
   | { type: 'resync'; at: string }
