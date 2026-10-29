@@ -319,6 +319,7 @@ export class PluginService {
       now: deps.now,
       log: deps.log,
       unavailable: (name) => this.unavailable(name),
+      libraryCheck: (local) => this.libraryCheck(local),
     });
   }
 
@@ -1478,18 +1479,23 @@ export class PluginService {
   /** The local side of a path mapping must be a directory inside a library root. */
   testMapping(name: string, mapping: PathMapping): { ok: boolean; message: string } {
     this.need(name);
+    return this.libraryCheck(mapping.local);
+  }
+
+  /** Whether `local` is a directory inside a library root (also run on a test's root folders). */
+  private libraryCheck(local: string): { ok: boolean; message: string } {
     let real: string;
     try {
-      real = realpathSync(mapping.local);
+      real = realpathSync(local);
     } catch {
-      return { ok: false, message: `${mapping.local} does not exist` };
+      return { ok: false, message: `${local} does not exist` };
     }
     try {
       if (!statSync(real).isDirectory()) {
-        return { ok: false, message: `${mapping.local} is not a directory` };
+        return { ok: false, message: `${local} is not a directory` };
       }
     } catch {
-      return { ok: false, message: `${mapping.local} cannot be read` };
+      return { ok: false, message: `${local} cannot be read` };
     }
     for (const root of this.deps.libraryRoots()) {
       let rootReal: string;
@@ -1502,9 +1508,9 @@ export class PluginService {
         real === rootReal ||
         real.startsWith(rootReal.endsWith(sep) ? rootReal : rootReal + sep)
       ) {
-        return { ok: true, message: `${mapping.local} is inside the library ${root}` };
+        return { ok: true, message: `${local} is inside the library ${root}` };
       }
     }
-    return { ok: false, message: `${mapping.local} is not inside any library` };
+    return { ok: false, message: `${local} is not inside any library` };
   }
 }

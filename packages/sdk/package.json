@@ -1,6 +1,6 @@
 {
   "name": "@transcoda/sdk",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Write plugins for Transcoda: nodes, integrations and triggers that run in a sandboxed process.",
   "license": "GPL-3.0-only",
   "type": "module",

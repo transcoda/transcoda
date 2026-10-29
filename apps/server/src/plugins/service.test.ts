@@ -395,12 +395,12 @@ describe('install', () => {
     await serve('example', '0.1.0', { manifest: { sdk: '^2' }, indexSdk: '^1' });
     expect(await install(t, 'example')).toEqual({
       ok: false,
-      reason: 'sdk ^2 is not supported by this server (sdk 1.1.0)',
+      reason: 'sdk ^2 is not supported by this server (sdk 1.2.0)',
     });
     await serve('example', '0.1.0', { indexSdk: '^2' });
     expect(await install(t, 'example')).toEqual({
       ok: false,
-      reason: 'sdk ^2 is not supported by this server (sdk 1.1.0)',
+      reason: 'sdk ^2 is not supported by this server (sdk 1.2.0)',
     });
     await clean('example');
 
@@ -1182,6 +1182,47 @@ describe('settings', () => {
     expect(() => t.deps.plugins.testMapping('ghost', { remote: '/a', local: '/b' })).toThrow(
       /not installed/,
     );
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  it('test(): a reported root folder outside every library, after the form mappings, is a warning', async () => {
+    await serve('roots');
+    const dir = await tempDir('plugin-roots-');
+    await mkdir(join(dir, 'lib', 'movies'), { recursive: true });
+    await mkdir(join(dir, 'elsewhere'), { recursive: true });
+    const t = setup({ libraryRoots: () => [join(dir, 'lib')] });
+    await t.deps.plugins.start();
+    await install(t, 'roots');
+    const test = (roots: string[], pathMappings: Array<{ remote: string; local: string }> = []) =>
+      t.deps.plugins.testSettings('roots', { roots, pathMappings });
+    const clean = { ok: true, message: 'reachable' };
+
+    // The service's own folder and no mapping: the warning names the root and asks for a mapping.
+    expect(await test(['/data/movies/'])).toEqual({
+      ...clean,
+      warnings: [
+        'root folder /data/movies is not inside any library: add a path mapping from /data/movies to the matching library folder, or a library for it',
+      ],
+    });
+    // Mapped into a library (the unsaved form's mappings count): no warning.
+    expect(
+      await test(
+        ['/data/movies/'],
+        [{ remote: '/data/movies', local: join(dir, 'lib', 'movies') }],
+      ),
+    ).toEqual(clean);
+    // Both sides see the same folder, inside a library: no mapping needed.
+    expect(await test([join(dir, 'lib', 'movies')])).toEqual(clean);
+    // Mapped, but to a folder Transcoda cannot place: the mapped path is named.
+    const missing = join(dir, 'elsewhere', 'movies');
+    expect(
+      await test(['/data/movies'], [{ remote: '/data', local: join(dir, 'elsewhere') }]),
+    ).toEqual({
+      ...clean,
+      warnings: [`root folder /data/movies maps to ${missing}, but ${missing} does not exist`],
+    });
+    // Entries that are not absolute paths are skipped.
+    expect(await test(['movies', ''])).toEqual(clean);
     await rm(dir, { recursive: true, force: true });
   });
 });

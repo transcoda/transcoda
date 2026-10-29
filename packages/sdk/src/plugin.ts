@@ -10,7 +10,7 @@ import { type AnyIntegration, checkIntegration } from './integration.ts';
 import type { AnyNodeDefinition } from './node.ts';
 import type { AnyTrigger } from './trigger.ts';
 
-export const SDK_VERSION = '1.1.0';
+export const SDK_VERSION = '1.2.0';
 
 export interface HookJob {
   id: string;

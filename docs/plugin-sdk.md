@@ -1,6 +1,6 @@
 # Writing a Transcoda plugin
 
-For plugin authors. The SDK is `@transcoda/sdk` (version `1.1.0`; the surface is frozen for 1.x and the full reference is [`packages/sdk/README.md`](../packages/sdk/README.md)). A plugin is one self-contained JavaScript file, built from TypeScript, that Transcoda installs into `/config/plugins` and runs in its own sandboxed process. Official plugins live in the separate `transcoda-plugins` repository; its `plugins/example` is the smallest working one. Install the SDK from npm with `npm install --save-dev @transcoda/sdk zod` (plugins bundle it, so it is a dev dependency).
+For plugin authors. The SDK is `@transcoda/sdk` (version `1.2.0`; the surface is frozen for 1.x and the full reference is [`packages/sdk/README.md`](../packages/sdk/README.md)). A plugin is one self-contained JavaScript file, built from TypeScript, that Transcoda installs into `/config/plugins` and runs in its own sandboxed process. Official plugins live in the separate `transcoda-plugins` repository; its `plugins/example` is the smallest working one. Install the SDK from npm with `npm install --save-dev @transcoda/sdk zod` (plugins bundle it, so it is a dev dependency).
 
 ## What a plugin is
 
