@@ -27,6 +27,10 @@ describe('workflows table CSS', () => {
     expect(rule('.wf-table .wf-meta + .wf-meta::before')).toContain('content: "·"');
   });
 
+  it('the Last edited column fits "v12 · 27 Oct 2025" (mono 12 px) and its padding', () => {
+    expect(rule('.wf-col-edited')).toContain('width: 160px');
+  });
+
   it('the actions column fits the 44 px menu button and its padding', () => {
     expect(rule('.wf-col-actions')).toContain('width: calc(var(--target-min) + 24px)');
   });

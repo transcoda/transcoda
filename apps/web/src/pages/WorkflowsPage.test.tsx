@@ -246,6 +246,25 @@ describe('WorkflowsPage', () => {
     expect(within(name).getByText("can't run")).toBeTruthy();
   });
 
+  it('Last edited shows an older date this year without the year, and the full date as its title', async () => {
+    const thisYear = new Date(new Date().getFullYear(), 0, 2, 12).toISOString();
+    const lastYear = new Date(new Date().getFullYear() - 1, 9, 27, 12).toISOString();
+    mocks.list.mockResolvedValue({
+      workflows: [
+        summary({ id: 'a', name: 'Old', currentVersion: 12, updatedAt: thisYear }),
+        summary({ id: 'b', name: 'Older', currentVersion: 1, updatedAt: lastYear }),
+      ],
+    });
+    renderAt('/', <WorkflowsPage />);
+    await screen.findByRole('link', { name: 'Old' });
+    const day = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short' });
+    const edited = (name: string) =>
+      (rowOf(name).querySelector('.wf-version span') as HTMLElement) ?? null;
+    expect(edited('Old').textContent).toBe(`v12 · ${day.format(new Date(thisYear))}`);
+    expect(edited('Old').getAttribute('title')).toBe(new Date(thisYear).toLocaleString());
+    expect(edited('Older').textContent).toContain(String(new Date(lastYear).getFullYear()));
+  });
+
   it('a sub-workflow used by nothing says "Not used"', async () => {
     mocks.list.mockResolvedValue({
       workflows: [summary({ id: 's', name: 'Spare', kind: 'subworkflow' })],

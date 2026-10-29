@@ -2733,17 +2733,18 @@ a.btn-secondary:hover {
 }
 
 .wf-col-library {
-  width: 180px;
+  width: 170px;
 }
 /* Room for "Active v12" and, under it, "v13 not activated". */
 .wf-col-active {
   width: 170px;
 }
 .wf-col-used-by {
-  width: 350px;
+  width: 340px;
 }
+/* Room for "v12 · 27 Oct 2025" (another year's date) without cutting it short. */
 .wf-col-edited {
-  width: 140px;
+  width: 160px;
 }
 .wf-col-actions {
   width: calc(var(--target-min) + 24px);

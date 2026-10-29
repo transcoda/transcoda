@@ -18,7 +18,7 @@ import { useWorkflows } from '../hooks/useWorkflows.ts';
 import { runBlocked, useRunOnFile } from '../jobs/useRunOnFile.tsx';
 import { useTryOnFile } from '../jobs/useTryOnFile.ts';
 import { usePageTitle } from '../lib/pageTitle.ts';
-import { fmtAgo } from '../lib/time.ts';
+import { fmtAgoShort } from '../lib/time.ts';
 
 const CANT_RUN_TITLE = "This version can't run; open the workflow to see why";
 
@@ -571,7 +571,7 @@ export function WorkflowsPage() {
                   )}
                   <td className="wf-cell wf-meta wf-version">
                     <span title={new Date(w.updatedAt).toLocaleString()}>
-                      {`v${w.currentVersion} · ${fmtAgo(w.updatedAt)}`}
+                      {`v${w.currentVersion} · ${fmtAgoShort(w.updatedAt)}`}
                     </span>
                   </td>
                   <td className="wf-cell wf-actions">

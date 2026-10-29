@@ -21,6 +21,13 @@ export function fmtAgo(iso: string, now: Date = new Date()): string {
   return fmtDate(iso);
 }
 
+/** Like `fmtAgo`, but without the year when it is this year ("27 Oct"): a narrow list column. */
+export function fmtAgoShort(iso: string, now: Date = new Date()): string {
+  const s = (now.getTime() - new Date(iso).getTime()) / 1000;
+  if (s < 86400) return fmtAgo(iso, now);
+  return new Date(iso).getFullYear() === now.getFullYear() ? fmtDayMonth(iso) : fmtDate(iso);
+}
+
 /** "saved just now", "saved 2 min ago", "saved 3 h ago" within a day, else "saved 12 Oct". */
 export function fmtAgoLong(iso: string): string {
   const s = (Date.now() - new Date(iso).getTime()) / 1000;
