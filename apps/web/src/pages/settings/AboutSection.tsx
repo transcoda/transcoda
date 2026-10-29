@@ -19,6 +19,9 @@ const FAMILIES: ReadonlyArray<{ label: string; matches(e: string): boolean }> = 
   { label: 'Audio', matches: (e) => ['aac', 'ac3', 'eac3', 'libopus', 'opus'].includes(e) },
 ];
 
+/** ffmpeg found by name on the PATH says nothing the row's label does not: only a real path shows. */
+const pathShown = (path: string) => path.includes('/') || path.includes('\\');
+
 /** Hardware encoders are named after their API (`hevc_nvenc`, `h264_vaapi`). */
 const HARDWARE = /_(nvenc|qsv|vaapi|videotoolbox|amf|v4l2m2m)$/;
 
@@ -58,8 +61,8 @@ function Chips({ label, items }: { label: string; items: string[] }) {
 }
 
 /**
- * About: the Transcoda, Node and ffmpeg versions, ffmpeg's path and what it can encode with, and
- * the database backups and the way to the open-source licences.
+ * About: the Transcoda, Node and ffmpeg versions (ffmpeg's path when it is one), the database
+ * backups, what ffmpeg can encode with (closed) and the way to the open-source licences.
  */
 export function AboutSection() {
   const health = useAsync(() => api.system.health(), []);
@@ -88,7 +91,9 @@ export function AboutSection() {
           {ffmpeg?.available ? (
             <dd>
               <span className="mono">{ffmpeg.version}</span>
-              <span className="about-path mono">{ffmpeg.path}</span>
+              {pathShown(ffmpeg.path) ? (
+                <span className="about-path mono">{ffmpeg.path}</span>
+              ) : null}
             </dd>
           ) : ffmpeg ? (
             <dd>
@@ -96,15 +101,25 @@ export function AboutSection() {
                 <Icon name="alert" size={16} round />
                 {`Not available: ${ffmpeg.error}`}
               </span>
-              <span className="about-path mono">{ffmpeg.path}</span>
+              {pathShown(ffmpeg.path) ? (
+                <span className="about-path mono">{ffmpeg.path}</span>
+              ) : null}
             </dd>
           ) : (
             <dd>{caps.error ? notRead : '…'}</dd>
           )}
         </div>
       </dl>
+      <BackupsPanel />
       {ffmpeg?.available ? (
-        <>
+        // What it encodes with is looked up rarely: the codec summary and the full lists, closed.
+        <details className="about-caps">
+          <summary>
+            <span className="about-caps-chevron" aria-hidden="true">
+              <Icon name="chevron-down" size={16} />
+            </span>
+            Show all encoders
+          </summary>
           <ul className="about-encoders" aria-label="Encoders Transcoda uses">
             {encoderSummary(ffmpeg.encoders, ffmpeg.hwaccels).map((row) => (
               <li key={row.label} className="about-encoders-row">
@@ -113,19 +128,10 @@ export function AboutSection() {
               </li>
             ))}
           </ul>
-          <details className="about-caps">
-            <summary>
-              <span className="about-caps-chevron" aria-hidden="true">
-                <Icon name="chevron-down" size={16} />
-              </span>
-              Show all encoders
-            </summary>
-            <Chips label="Encoders" items={ffmpeg.encoders} />
-            <Chips label="Hardware acceleration" items={ffmpeg.hwaccels} />
-          </details>
-        </>
+          <Chips label="Encoders" items={ffmpeg.encoders} />
+          <Chips label="Hardware acceleration" items={ffmpeg.hwaccels} />
+        </details>
       ) : null}
-      <BackupsPanel />
       <GuardedLink href="/settings/about/licences" className="about-link">
         <span>Open-source licences</span>
         <Icon name="chevron-right" />

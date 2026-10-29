@@ -9,13 +9,25 @@ import { SETTINGS_SECTIONS, type SettingsSection, type SettingsSubPage } from '.
 
 const hrefOf = (s: SettingsSection) => `/settings/${s.id}`;
 
-/** The current section (or its sub-page) under its h2 (the page's h1 is "Settings"). */
-function SectionBody({ section }: { section: SettingsSection | SettingsSubPage }) {
+/**
+ * The current section (or its sub-page) under its h2 (the page's h1 is "Settings"). Beside the
+ * nav the h2 is for screen readers only: the highlighted nav item already names the section. A
+ * sub-page (Licences) is not in the nav, so its h2 shows; on a phone the h2 is the page's title.
+ */
+function SectionBody({
+  section,
+  visibleTitle,
+}: {
+  section: SettingsSection | SettingsSubPage;
+  visibleTitle: boolean;
+}) {
   const id = useId();
   const { Component } = section;
   return (
     <section className="settings-section" aria-labelledby={id}>
-      <h2 id={id}>{section.title}</h2>
+      <h2 id={id} className={visibleTitle ? undefined : 'sr-only'}>
+        {section.title}
+      </h2>
       <Component />
     </section>
   );
@@ -86,7 +98,7 @@ export function SettingsPage({
             <span aria-hidden="true">‹</span> Settings
           </GuardedLink>
         )}
-        <SectionBody section={subPage ?? current} />
+        <SectionBody section={subPage ?? current} visibleTitle />
       </div>
     );
   }
@@ -114,7 +126,7 @@ export function SettingsPage({
             );
           })}
         </nav>
-        <SectionBody section={subPage ?? current} />
+        <SectionBody section={subPage ?? current} visibleTitle={subPage !== undefined} />
       </div>
     </div>
   );

@@ -7,14 +7,13 @@ import { Icon } from '../../components/Icon.tsx';
 import { Loading } from '../../components/Loading.tsx';
 import { useAsync } from '../../hooks/useAsync.ts';
 import { fmtBytes } from '../../lib/bytes.ts';
+import { fmtFull, fmtStamp } from '../../lib/time.ts';
 
 const REASONS: Record<BackupReason, string> = {
   migration: 'Before migration',
   build: 'Build change',
   manual: 'Manual',
 };
-
-const whenFmt = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' });
 
 /**
  * About → Database backups: the files in the config folder's `backups/` (names only, never a
@@ -92,7 +91,9 @@ export function BackupsPanel() {
                 <span className="mono about-backups-name">{b.name}</span>
                 <span className="about-backups-meta">
                   {REASONS[b.reason]} · {fmtBytes(b.size)} ·{' '}
-                  <time dateTime={b.createdAt}>{whenFmt.format(new Date(b.createdAt))}</time>
+                  <time dateTime={b.createdAt} title={fmtFull(b.createdAt)}>
+                    {fmtStamp(b.createdAt, { time: true })}
+                  </time>
                 </span>
               </div>
               <a

@@ -3,7 +3,11 @@ import { api } from '../api/client.ts';
 import { useAsync } from '../hooks/useAsync.ts';
 import { Mark, Wordmark } from './Logo.tsx';
 
-/** Two-panel layout of the setup and sign-in screens (screens/01-setup-and-login). */
+/**
+ * Two-panel layout of the setup and sign-in screens (screens/01-setup-and-login). The brand
+ * panel's footer (version and host) shows beside the form only; on a phone the panel is a short
+ * hero above it, logo and tagline.
+ */
 export function AuthLayout({ children }: { children: ReactNode }) {
   const health = useAsync(() => api.system.health(), []);
   return (

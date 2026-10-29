@@ -45,6 +45,25 @@ describe('AboutSection', () => {
     expect(screen.getByText('/usr/lib/jellyfin-ffmpeg/ffmpeg')).toBeTruthy();
   });
 
+  it('found by name on the PATH, ffmpeg gets no second "ffmpeg" line', async () => {
+    mocks.capabilities.mockResolvedValue({ ...(await mocks.capabilities()), path: 'ffmpeg' });
+    const { container } = render(<AboutSection />);
+    await screen.findByText('8.1.3-Jellyfin');
+    expect(container.querySelector('.about-path')).toBeNull();
+  });
+
+  it('puts the backups right under the versions, then the encoders, then the licences', async () => {
+    const { container } = render(<AboutSection />);
+    await screen.findByText('8.1.3-Jellyfin');
+    const order = [...(container.querySelector('.about')?.children ?? [])].map(
+      (el) => el.className,
+    );
+    expect(order).toEqual(['about-list', 'about-backups', 'about-caps', 'about-link']);
+    // The codec summary sits inside "Show all encoders", not above it.
+    const summary = screen.getByRole('list', { name: 'Encoders Transcoda uses' });
+    expect(summary.closest('details')).toBeTruthy();
+  });
+
   it('sums up the encoders Transcoda uses first, then lists every one behind "Show all encoders"', async () => {
     const { container } = render(<AboutSection />);
     await screen.findByText('8.1.3-Jellyfin');

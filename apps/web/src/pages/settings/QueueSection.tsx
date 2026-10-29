@@ -17,7 +17,13 @@ import {
   useSettingsForm,
   wholeNumberIssue,
 } from './SectionForm.tsx';
-import { ServerValues, SettingFieldset, SettingRow, SettingsGroup } from './SettingRow.tsx';
+import {
+  ServerValues,
+  SettingFieldset,
+  SettingRow,
+  SettingsGroup,
+  shownSource,
+} from './SettingRow.tsx';
 import { useSettings } from './useSettings.ts';
 
 const hours = (n: number) => `${n} ${n === 1 ? 'hour' : 'hours'}`;
@@ -48,7 +54,6 @@ function PausedSwitch() {
         <span id={id} className="setting-label">
           Queue paused
         </span>
-        <span className="setting-tag">Set here</span>
         <button
           type="button"
           role="switch"
@@ -218,7 +223,8 @@ function EngineForm() {
       <SettingFieldset
         label="Encoding device"
         hint="Where video is decoded and encoded. Auto uses a GPU when there is one. CPU only never uses a GPU."
-        source={queue.encodeDevice.source}
+        source={shownSource(queue.encodeDevice)}
+        stackOnPhone
         after={
           missing ? (
             <p role="alert" className="alert alert-warning">
@@ -259,7 +265,7 @@ function EngineForm() {
         <SettingRow
           label="Test encodes kept for"
           hint="Outputs of test-encode dry runs, kept for playing and download. 0 deletes them after measuring."
-          source={queue.testEncodeKeepHours.source}
+          source={shownSource(queue.testEncodeKeepHours)}
           htmlFor={`${id}-keep`}
         >
           <NumberField
@@ -274,7 +280,7 @@ function EngineForm() {
         </SettingRow>
       </Disclosure>
       <FormError message={form.formError} />
-      <SaveRow reason={form.dirty ? null : 'No changes to save'} busy={form.busy} />
+      <SaveRow reason={null} disabled={!form.dirty} busy={form.busy} />
     </form>
   );
 }
@@ -298,9 +304,7 @@ export function QueueSection() {
         <EngineForm />
       </SettingsGroup>
       <ServerValues>
-        <SettingRow label="Lanes" source={{ kind: 'built-in' }}>
-          {`${lanes}, one job each`}
-        </SettingRow>
+        <SettingRow label="Lanes">{`${lanes}, one job each`}</SettingRow>
         <SettingRow
           label="Stall warning"
           hint="A running job without an update for this long fails the deep health check"

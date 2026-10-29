@@ -172,13 +172,19 @@ export function FormError({ message }: { message: string | null }) {
   );
 }
 
-/** The section's one Save: disabled with its reason (`reason` null: enabled). */
+/**
+ * The section's one Save. `reason`: why it is disabled, shown under it; only a reason that names
+ * something to fix is worth showing (convention 12), so `disabled` alone keeps it off without one
+ * (nothing changed yet, fields still empty).
+ */
 export function SaveRow({
   reason,
+  disabled = false,
   busy,
   label = 'Save',
 }: {
   reason: string | null;
+  disabled?: boolean;
   busy: boolean;
   label?: string | undefined;
 }) {
@@ -189,7 +195,7 @@ export function SaveRow({
         <button
           type="submit"
           className="btn btn-primary"
-          disabled={busy || reason !== null}
+          disabled={busy || disabled || reason !== null}
           {...(reason === null ? {} : { 'aria-describedby': id })}
         >
           {label}
