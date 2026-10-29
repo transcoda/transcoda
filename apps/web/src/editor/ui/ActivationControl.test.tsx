@@ -35,12 +35,13 @@ vi.mock('../../api/client.ts', async () => {
   };
 });
 
+import { useRef } from 'react';
 import {
-  ActivationControl,
   activateBlocked,
   activationPill,
   fixErrorsReason,
   hasActivation,
+  useActivation,
 } from './ActivationControl.tsx';
 
 const active3 = {
@@ -66,23 +67,57 @@ const base: WorkflowSummary = {
   updatedAt: '2026-10-16T09:00:00.000Z',
 };
 
-/** The status pill (the toast region is a status too). */
-const pill = () =>
-  screen.getAllByRole('status').find((e) => e.classList.contains('activation-pill')) as HTMLElement;
+type HookProps = Parameters<typeof useActivation>[0];
 
-function renderControl(props: Partial<Parameters<typeof ActivationControl>[0]> = {}) {
-  const onChanged = vi.fn();
-  const view = renderAt(
-    '/',
-    <ActivationControl
-      workflow={{ ...base, active: active3 }}
-      shown={{ version: 6, blocked: null }}
-      readOnly={false}
-      onChanged={onChanged}
-      {...props}
-    />,
+/** The hook's items as plain buttons (the header draws them as menu items), and a stand-in pill. */
+function Harness(props: Omit<HookProps, 'returnFocusTo'>) {
+  const pillRef = useRef<HTMLButtonElement>(null);
+  const { items, dialog } = useActivation({ ...props, returnFocusTo: pillRef });
+  return (
+    <>
+      <button ref={pillRef} type="button">
+        pill
+      </button>
+      {items.map((item) => {
+        const blocked = item.disabled || item.blockedReason !== undefined;
+        return (
+          <button
+            key={item.label}
+            type="button"
+            aria-disabled={blocked || undefined}
+            title={item.blockedReason}
+            onClick={() => {
+              if (!blocked) item.onSelect?.();
+            }}
+          >
+            {item.label}
+          </button>
+        );
+      })}
+      {dialog}
+    </>
   );
-  return { ...view, onChanged };
+}
+
+const pill = () => screen.getByRole('button', { name: 'pill' });
+
+function renderControl(props: Partial<HookProps> = {}) {
+  const onChanged = vi.fn();
+  const all = (p: Partial<HookProps>) => ({
+    workflow: { ...base, active: active3 },
+    shown: { version: 6, blocked: null },
+    readOnly: false,
+    onChanged,
+    ...p,
+  });
+  const view = renderAt('/', <Harness {...all(props)} />);
+  const rerenderWith = (p: Partial<HookProps>) =>
+    view.rerender(
+      <ToastProvider>
+        <Harness {...all(p)} />
+      </ToastProvider>,
+    );
+  return { ...view, onChanged, rerenderWith };
 }
 
 beforeEach(() => {
@@ -96,7 +131,7 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 
-describe('ActivationControl', () => {
+describe('useActivation', () => {
   it('activateBlocked: a LIBRARY_MISSING warning blocks activation with "Pick a library that exists first", after "Save first" and the errors reason', () => {
     const missing: Issue = {
       severity: 'warning',
@@ -139,83 +174,41 @@ describe('ActivationControl', () => {
     }
   });
 
-  it('pill: "Not active" / "Active v3" with a check icon / "Active v3 · can\'t run" with the first active issue as title; a sub-workflow renders nothing', () => {
-    const { rerender, container } = renderControl({ workflow: base });
-    expect(pill().textContent).toBe('Not active');
-    expect(pill().className).toContain('is-off');
-
-    const rerenderWith = (workflow: WorkflowSummary, activeIssue?: string) =>
-      rerender(
-        <ToastProvider>
-          <ActivationControl
-            workflow={workflow}
-            shown={{ version: 6, blocked: null }}
-            {...(activeIssue !== undefined ? { activeIssue } : {})}
-            readOnly={false}
-            onChanged={() => {}}
-          />
-        </ToastProvider>,
-      );
-    rerenderWith({ ...base, active: active3 });
-    const el = pill();
-    expect(el.textContent).toBe('Active v3');
-    expect(el.className).toContain('is-active');
-    expect(el.querySelector('svg')).not.toBeNull();
-
-    rerenderWith({ ...base, active: { ...active3, runnable: false } }, 'Node "Encode" is missing');
-    expect(pill().textContent).toBe("Active v3 · can't run");
-    expect(pill().className).toContain('is-danger');
-    expect(pill().getAttribute('title')).toBe('Node "Encode" is missing');
-    expect(
-      screen.getByRole('status', { name: 'Active v3 · can\'t run: Node "Encode" is missing' }),
-    ).toBeTruthy();
-
-    rerenderWith({ ...base, kind: 'subworkflow' });
-    expect(container.textContent).toBe('');
+  it('a sub-workflow has no activation items; not active has no Deactivate', () => {
+    const { rerenderWith } = renderControl({ workflow: { ...base, kind: 'subworkflow' } });
+    expect(screen.getAllByRole('button').map((b) => b.textContent)).toEqual(['pill']);
     expect(hasActivation({ kind: 'subworkflow' })).toBe(false);
+    rerenderWith({ workflow: base });
+    expect(screen.getAllByRole('button').map((b) => b.textContent)).toEqual([
+      'pill',
+      'Activate v6',
+    ]);
   });
 
-  it('"Activate v6" shows on a non-active shown version; aria-disabled with "Save first" when dirty and "Fix 2 errors before activating" with errors; hidden on the active version, where "Deactivate" shows', () => {
-    const { rerender } = renderControl();
+  it('"Activate v6" shows on a non-active shown version; blocked with "Save first" when dirty and "Fix 2 errors before activating" with errors; hidden on the active version, where "Deactivate" shows', () => {
+    const { rerenderWith } = renderControl();
     expect(
       screen.getByRole('button', { name: 'Activate v6' }).getAttribute('aria-disabled'),
     ).toBeNull();
     expect(screen.getByRole('button', { name: 'Deactivate' })).toBeTruthy();
 
-    const rerenderWith = (shown: Parameters<typeof ActivationControl>[0]['shown']) =>
-      rerender(
-        <ToastProvider>
-          <ActivationControl
-            workflow={{ ...base, active: active3 }}
-            shown={shown}
-            readOnly={false}
-            onChanged={() => {}}
-          />
-        </ToastProvider>,
-      );
-    rerenderWith({ version: 6, blocked: activateBlocked(true, []) });
+    rerenderWith({ shown: { version: 6, blocked: activateBlocked(true, []) } });
     let button = screen.getByRole('button', { name: 'Activate v6' });
     expect(button.getAttribute('aria-disabled')).toBe('true');
     expect(button.getAttribute('title')).toBe('Save first');
-    const describedBy = (b: HTMLElement) =>
-      document.getElementById(b.getAttribute('aria-describedby') ?? '')?.textContent;
-    expect(describedBy(button)).toBe('Save first');
     fireEvent.click(button);
     expect(screen.queryByRole('dialog')).toBeNull();
 
     const error: Issue = { severity: 'error', code: 'TRIGGER_COUNT', message: 'm' };
-    rerenderWith({ version: 6, blocked: activateBlocked(false, [error, error]) });
+    rerenderWith({ shown: { version: 6, blocked: activateBlocked(false, [error, error]) } });
     button = screen.getByRole('button', { name: 'Activate v6' });
     expect(button.getAttribute('title')).toBe('Fix 2 errors before activating');
-    expect(describedBy(button)).toBe('Fix 2 errors before activating');
     expect(fixErrorsReason(1)).toBe('Fix 1 error before activating');
 
-    rerenderWith({ version: 6, blocked: null });
-    expect(
-      screen.getByRole('button', { name: 'Activate v6' }).hasAttribute('aria-describedby'),
-    ).toBe(false);
+    rerenderWith({ shown: { version: 6, blocked: null } });
+    expect(screen.getByRole('button', { name: 'Activate v6' }).hasAttribute('title')).toBe(false);
 
-    rerenderWith({ version: 3, blocked: null });
+    rerenderWith({ shown: { version: 3, blocked: null } });
     expect(screen.queryByRole('button', { name: /^Activate/ })).toBeNull();
     expect(screen.getByRole('button', { name: 'Deactivate' })).toBeTruthy();
   });
@@ -255,14 +248,13 @@ describe('ActivationControl', () => {
 
   it('read-only: no Activate, but Deactivate stays reachable while a version is active', () => {
     renderControl({ readOnly: true, shown: { version: 2, blocked: null } });
-    expect(pill().textContent).toBe('Active v3');
     expect(screen.queryByRole('button', { name: /^Activate/ })).toBeNull();
     expect(screen.getByRole('button', { name: 'Deactivate' })).toBeTruthy();
   });
 
-  it('read-only and not active: pill only', () => {
+  it('read-only and not active: no items', () => {
     renderControl({ readOnly: true, workflow: { ...base, active: null } });
-    expect(screen.queryByRole('button')).toBeNull();
+    expect(screen.getAllByRole('button').map((b) => b.textContent)).toEqual(['pill']);
   });
 
   it('active v3 shown as v6: both "Deactivate" and "Activate v6" are offered; Deactivate calls the API', async () => {

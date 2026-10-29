@@ -69,7 +69,9 @@ describe('IssuesPanel', () => {
     rerender(
       <IssuesPanel issues={[]} catalog={null} graph={chainMainReplace()} onFocus={onFocus} />,
     );
-    expect(container.querySelector('summary')?.textContent).toBe('No issues');
+    // No issues: one muted sentence, not a disclosure with nothing in it.
+    expect(container.querySelector('summary')).toBeNull();
+    expect(container.querySelector('p.issues-none')?.textContent).toBe('No issues');
     expect(screen.queryAllByRole('button')).toHaveLength(0);
   });
 

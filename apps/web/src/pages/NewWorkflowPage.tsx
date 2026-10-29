@@ -2,7 +2,7 @@ import type { WorkflowKind } from '@transcoda/shared';
 import { type FormEvent, useId, useState } from 'react';
 import { Link, useLocation, useSearch } from 'wouter';
 import { api, safe } from '../api/client.ts';
-import { DisabledReason, RequiredMark } from '../components/Form.tsx';
+import { RequiredMark } from '../components/Form.tsx';
 import { Icon } from '../components/Icon.tsx';
 import { usePageTitle } from '../lib/pageTitle.ts';
 
@@ -89,7 +89,8 @@ export function NewWorkflowPage() {
             </label>
           ))}
         </fieldset>
-        {/* Cancel first, the primary last: the order every dialog footer uses. */}
+        {/* Right-aligned, Cancel first and the primary last: the order every dialog footer uses.
+            An empty name needs no helper line: the required Name field above says it. */}
         <div className="form-actions">
           <Link href="/workflows" className="btn btn-secondary">
             Cancel
@@ -98,14 +99,10 @@ export function NewWorkflowPage() {
             type="submit"
             className="btn btn-primary"
             disabled={pending || name.trim() === ''}
-            {...(name.trim() === '' ? { 'aria-describedby': `${id}-reason` } : {})}
           >
             Create and open
           </button>
         </div>
-        {name.trim() === '' ? (
-          <DisabledReason id={`${id}-reason`}>Enter a name</DisabledReason>
-        ) : null}
       </form>
     </div>
   );

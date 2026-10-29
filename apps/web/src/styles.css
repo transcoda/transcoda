@@ -3054,6 +3054,11 @@ a.btn-secondary:hover {
   gap: var(--sp-4);
 }
 
+/* Cancel, then the primary on the right: the order every dialog footer uses. */
+.new-wf-form .form-actions {
+  justify-content: flex-end;
+}
+
 .kind-choice {
   display: flex;
   flex-direction: column;
@@ -3081,27 +3086,22 @@ a.btn-secondary:hover {
   cursor: pointer;
 }
 
+/* Selected: a lime ring and the radio's lime dot, no fill (lime fill is for the primary action). */
 .kind-option:has(input:checked) {
   border-color: var(--accent);
-  background: var(--accent);
-  color: var(--on-accent);
-  font-weight: 700;
+  box-shadow: inset 0 0 0 1px var(--accent);
 }
 
 .kind-option:has(input:focus-visible) {
   box-shadow: var(--focus-ring);
 }
 
+.kind-option input {
+  accent-color: var(--accent);
+}
+
 .kind-option b {
   color: var(--text);
-}
-
-.kind-option:has(input:checked) b {
-  color: inherit;
-}
-
-.kind-option:has(input:checked) input {
-  accent-color: var(--on-accent);
 }
 
 @media (max-width: 1023px) {
@@ -3277,14 +3277,7 @@ a.btn-secondary:hover {
   background: var(--line);
 }
 
-/* Activation: the status pill and the Activate / Deactivate button beside it (colour never alone: icon + word). */
-.activation-actions {
-  display: inline-flex;
-  flex: none;
-  align-items: center;
-  gap: var(--sp-2);
-}
-
+/* Activation: the workflows list's status pill (colour never alone: icon + word). */
 .activation-pill {
   display: inline-flex;
   align-items: center;
@@ -3314,11 +3307,6 @@ a.btn-secondary:hover {
   border: 1.5px solid var(--st-failed);
   background: var(--st-failed-bg);
   color: var(--st-failed-text);
-}
-
-.activation-actions .btn[aria-disabled="true"] {
-  color: var(--edge-untaken);
-  cursor: not-allowed;
 }
 
 .activate-summary {
@@ -4955,6 +4943,19 @@ a.btn-secondary:hover {
   color: var(--text);
 }
 
+/* The shown version is the active one: a lime ring (the Save button keeps the only lime fill). */
+.version-pill-btn.is-active {
+  border-color: var(--accent);
+  color: var(--accent-text);
+}
+
+/* The active version can't run. */
+.version-pill-btn.is-danger {
+  border-color: var(--st-failed);
+  background: var(--st-failed-bg);
+  color: var(--st-failed-text);
+}
+
 /* Versions panel (Task 18): non-modal, under the pill. */
 .version-pill-wrap {
   position: relative;
@@ -5041,25 +5042,37 @@ a.btn-secondary:hover {
   box-shadow: inset 3px 0 0 var(--accent-text);
 }
 
-/* Compact (below 1024 px): the crumb takes what the version pill and the menu leave. */
+/* Compact (below 1024 px): the name and the menu share one row; the version pill is a muted
+   status line below them. */
 .editor-head.is-compact {
-  gap: 8px;
-  padding: 6px 12px;
+  gap: 0 8px;
+  padding: 6px 12px 10px;
 }
 
 .editor-head.is-compact .crumb {
-  flex: 1 1 8rem;
+  flex: 1 1 auto;
 }
 
 .editor-head.is-compact .crumb-name {
   max-width: 100%;
+  min-width: 0;
 }
 
-/* Phone: the name gets the whole first row; the version pill and the actions wrap below it. */
-@media (max-width: 639px) {
-  .editor-head.is-compact .crumb {
-    flex-basis: 100%;
-  }
+.editor-head.is-compact .editor-head-end {
+  flex: none;
+}
+
+.editor-head.is-compact .version-pill-wrap {
+  flex-basis: 100%;
+}
+
+.editor-head.is-compact .version-pill-btn {
+  height: auto;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-family: inherit;
+  font-size: 13px;
 }
 
 .editor-head-end {
@@ -5081,17 +5094,6 @@ a.btn-secondary:hover {
   content: "";
   position: absolute;
   inset: -2px 0;
-}
-
-.save-group {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.editor-head .save-menu-button {
-  width: var(--target-min);
-  padding: 0;
 }
 
 .history-group {
@@ -5195,49 +5197,47 @@ a.btn-secondary:hover {
   padding: 2px 4px 0;
 }
 
-/* Nothing selected: the workflow's own facts instead of an empty column. */
-.inspector-facts {
-  display: grid;
-  gap: var(--sp-2);
-  margin: var(--sp-3) 0 0;
-}
-
-.inspector-facts > div {
-  display: flex;
-  justify-content: space-between;
-  gap: var(--sp-3);
-}
-
-.inspector-facts dt {
-  color: var(--muted);
-}
-
-.inspector-facts dd {
-  margin: 0;
-  font-family: var(--font-mono);
-}
-
 /* ---------- Issues panel (bottom of the inspector column) ---------- */
 .inspector-issues-region {
   flex: none;
   padding: 0 18px var(--sp-3);
 }
 
-.issues-panel {
+.issues-panel,
+.issues-none {
   margin-top: auto;
   border-top: 1px solid var(--line);
   padding-top: var(--sp-3);
+}
+
+/* Nothing selected: the issues list is the whole column, from the top. */
+.inspector-col > .inspector-issues-region:first-child {
+  padding-top: var(--sp-3);
+}
+
+.inspector-col > .inspector-issues-region:first-child :is(.issues-panel, .issues-none) {
+  margin-top: 0;
+  border-top: 0;
+  padding-top: 0;
 }
 
 .issues-summary {
   display: flex;
   align-items: center;
   min-height: var(--target-min);
-  font-family: var(--font-mono);
-  font-size: var(--fs-mono);
+  font-size: 14px;
   font-weight: 600;
   color: var(--muted);
   cursor: pointer;
+}
+
+.issues-none {
+  display: flex;
+  align-items: center;
+  min-height: var(--target-min);
+  margin-bottom: 0;
+  font-size: 14px;
+  color: var(--muted);
 }
 
 .issues-list {
@@ -5654,11 +5654,6 @@ a.btn-secondary:hover {
 .legend-badge.is-unreachable {
   background: var(--line-strong);
   color: var(--text);
-}
-
-.inspector-empty {
-  color: var(--faint);
-  font-size: 14px;
 }
 
 /* ---------- Inspector: header, form, "On the canvas", footer (screen 05; editor/ui/Inspector) ---------- */
