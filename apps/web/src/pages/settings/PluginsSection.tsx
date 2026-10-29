@@ -84,7 +84,7 @@ export function PluginsSection() {
           />
         </SettingRow>
         <FormError message={form.formError} />
-        <SaveRow reason={form.dirty ? null : 'No changes to save'} busy={form.busy} />
+        <SaveRow reason={null} disabled={!form.dirty} busy={form.busy} />
       </form>
       <p>
         <GuardedLink href="/plugins" className="setting-link">

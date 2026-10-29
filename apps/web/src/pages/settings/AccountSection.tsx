@@ -9,9 +9,17 @@ import { SettingRow } from './SettingRow.tsx';
 /** The setup rule (`CredentialsSchema.password`): 12 to 1024 characters. */
 const MIN_PASSWORD = 12;
 
-/** Why Save is still disabled, or null when the three fields are ready to send. */
+/** All three fields have something in them (until then the button is off without a reason). */
+export function passwordFilled(current: string, next: string, repeat: string): boolean {
+  return current !== '' && next !== '' && repeat !== '';
+}
+
+/**
+ * Why the filled-in form cannot be sent yet, or null when it is ready. Empty fields need no
+ * reason (convention 12): the button stays off until they are filled.
+ */
 export function passwordReason(current: string, next: string, repeat: string): string | null {
-  if (current === '' || next === '' || repeat === '') return 'Fill in all three fields';
+  if (!passwordFilled(current, next, repeat)) return null;
   if (next.length < MIN_PASSWORD) {
     return `The new password needs at least ${MIN_PASSWORD} characters`;
   }
@@ -80,10 +88,11 @@ export function AccountSection() {
   const [currentIssue, setCurrentIssue] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const filled = passwordFilled(current, next, repeat);
   const reason = passwordReason(current, next, repeat);
 
   async function save() {
-    if (busy || reason !== null) return;
+    if (busy || !filled || reason !== null) return;
     setBusy(true);
     setCurrentIssue(null);
     setFormError(null);
@@ -111,7 +120,6 @@ export function AccountSection() {
         void save();
       }}
     >
-      <h3 className="settings-group-head">Change password</h3>
       <PasswordField
         id={`${id}-current`}
         label="Current password"
@@ -139,7 +147,7 @@ export function AccountSection() {
         onChange={setRepeat}
       />
       <FormError message={formError} />
-      <SaveRow reason={reason} busy={busy} label="Change password" />
+      <SaveRow reason={reason} disabled={!filled} busy={busy} label="Change password" />
     </form>
   );
 }

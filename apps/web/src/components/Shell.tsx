@@ -1,9 +1,7 @@
 import { RUNNING_JOB_STATES } from '@transcoda/shared';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { useLocation, useRoute } from 'wouter';
-import { api } from '../api/client.ts';
 import { useAuth } from '../auth/useAuth.ts';
-import { useAsync } from '../hooks/useAsync.ts';
 import { useJobsCounts } from '../jobs/useJobsList.ts';
 import { GuardedLink, guardedRun } from '../lib/navigation.tsx';
 import { usePhone } from '../lib/usePhone.ts';
@@ -85,7 +83,6 @@ export function Shell({
 }) {
   const { user, logout, appearance } = useAuth();
   const serverName = appearance.serverName;
-  const health = useAsync(() => api.system.health(), []);
   const [error, setError] = useState<string | null>(null);
   // The TMDB terms ask for a notice wherever its data is used: shown while the plugin is installed.
   const tmdb = useTmdbInstalled();
@@ -214,7 +211,6 @@ export function Shell({
           <Mark size={30} />
           <Wordmark />
         </GuardedLink>
-        {health.data ? <span className="version-pill">v{health.data.version}</span> : null}
         {/* On a phone the name is only in the browser tab's title. */}
         {serverName && !phone ? <span className="server-name">{serverName}</span> : null}
         {phone ? <ActivityButton phone /> : null}

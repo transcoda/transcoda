@@ -1,6 +1,6 @@
 import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
-import { SettingRow } from './SettingRow.tsx';
+import { SettingRow, shownSource } from './SettingRow.tsx';
 
 afterEach(cleanup);
 
@@ -19,6 +19,23 @@ describe('SettingRow', () => {
     expect(screen.getByRole('textbox', { name: 'Server name' })).toBeTruthy();
     expect(screen.getByText('Shown in the top bar')).toBeTruthy();
     expect(screen.getByText('Set here')).toBeTruthy();
+  });
+
+  it('a default needs no tag', () => {
+    const { container } = render(
+      <SettingRow label="Retention" source={{ kind: 'default' }} htmlFor="r">
+        <input id="r" />
+      </SettingRow>,
+    );
+    expect(container.querySelector('.setting-tag')).toBeNull();
+  });
+
+  it('shownSource: the source only while the value differs from the default', () => {
+    const database = { kind: 'database' } as const;
+    expect(shownSource({ value: 7, default: 7, source: database })).toBeUndefined();
+    expect(shownSource({ value: 14, default: 7, source: database })).toBe(database);
+    expect(shownSource({ value: [], default: [], source: database })).toBeUndefined();
+    expect(shownSource({ value: ['b', 'a'], default: [], source: database })).toBe(database);
   });
 
   it('a read-only env value shows the variable in <code> and links to the docs', () => {

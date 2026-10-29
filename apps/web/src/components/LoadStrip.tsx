@@ -1,6 +1,6 @@
 // Percent lines over the last hour: the Jobs page's encoder strip. Moving the pointer over it shows
 // a cursor line and each series' reading at that moment.
-import { useState } from 'react';
+import { type ReactNode, useState } from 'react';
 
 const W = 1000;
 const H = 100;
@@ -45,12 +45,17 @@ export function LoadStrip({
   windowMs,
   intervalMs,
   now,
+  axis = 'quarters',
+  legend,
 }: {
   /** `id` keys a series when names can repeat (two identical cards); it defaults to the name. */
   series: Array<{ id?: string; name: string; color: string; points: Point[] }>;
   windowMs: number;
   intervalMs: number;
   now: Date;
+  /** `ends`: only "-60 min" and "now", with `legend` between them (a half-height card). */
+  axis?: 'quarters' | 'ends';
+  legend?: ReactNode;
 }) {
   /** The pointer's position across the strip, 0 (an hour ago) to 1 (now). */
   const [at, setAt] = useState<number | null>(null);
@@ -76,6 +81,8 @@ export function LoadStrip({
         preserveAspectRatio="none"
         aria-hidden="true"
       >
+        {/* The zero line: an idle encoder (or no reading at all) is a flat line, not a void. */}
+        <line className="load-baseline" x1={0} x2={W} y1={H - 0.5} y2={H - 0.5} />
         {series.map((s, k) =>
           runs(s.points, intervalMs * 3).map((pts, j) => (
             // biome-ignore lint/suspicious/noArrayIndexKey: runs are positional
@@ -114,9 +121,15 @@ export function LoadStrip({
         </div>
       ) : null}
       <div className="load-strip-axis">
-        {LABELS.map((l) => (
-          <span key={l}>{l}</span>
-        ))}
+        {axis === 'ends' ? (
+          <>
+            <span>{LABELS[0]}</span>
+            {legend}
+            <span>{LABELS.at(-1)}</span>
+          </>
+        ) : (
+          LABELS.map((l) => <span key={l}>{l}</span>)
+        )}
       </div>
     </div>
   );

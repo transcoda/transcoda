@@ -142,7 +142,7 @@ describe('JobSteps', () => {
     ).toEqual(['audio #1', 'English', 'no', 'yes']);
   });
 
-  it('an unmet precondition is a note under its row with a link to fix it, and is counted', () => {
+  it('an unmet precondition is a note under its row with a link to fix it; the head counts the steps', () => {
     const { section } = show();
     const note = within(section).getByText(/Playback compatibility wasn't checked/);
     expect(
@@ -150,9 +150,7 @@ describe('JobSteps', () => {
         .getByRole('link', { name: 'Add targets in the workflow' })
         .getAttribute('href'),
     ).toBe('/workflows/w1');
-    expect(section.querySelector('.job-steps-counts')?.textContent).toBe(
-      '1 step changes the file1 no change1 note',
-    );
+    expect(section.querySelector('.section-count')?.textContent).toBe('4 steps');
   });
 
   it("a later attempt's steps are under Retry", () => {
@@ -169,13 +167,27 @@ describe('JobSteps', () => {
     expect(onSelect).toHaveBeenCalledWith({ workflowPath: [], nodeId: 'in' });
   });
 
-  it('nothing traced yet says so, without counts or filter', () => {
-    const { section } = show([]);
-    expect(within(section).getByText('Nothing decided yet.')).toBeTruthy();
-    expect(within(section).queryByRole('radiogroup')).toBeNull();
+  it('the All / Changes pills filter to the steps that change the file', () => {
+    const { section } = show();
+    const all = within(section).getByRole('button', { name: 'All 4' });
+    const changes = within(section).getByRole('button', { name: 'Changes 1' });
+    expect(all.getAttribute('aria-pressed')).toBe('true');
+    fireEvent.click(changes);
+    expect(changes.getAttribute('aria-pressed')).toBe('true');
+    expect(within(section).queryByText('No change')).toBeNull();
+    fireEvent.click(all);
+    expect(within(section).getByText('No change')).toBeTruthy();
   });
 
-  it('a job that failed before any step ran says it stopped before the workflow ran', () => {
+  it('no pills when they would not narrow the list', () => {
+    show(ITEMS.slice(0, 1));
+    expect(document.querySelector('.job-steps-filter')).toBeNull();
+  });
+
+  it('nothing decided (yet, or ever for a failed job): no section at all', () => {
+    renderAt('/jobs/j1', <JobSteps items={[]} context={CTX} selected={null} onSelect={vi.fn()} />);
+    expect(screen.queryByRole('region')).toBeNull();
+    cleanup();
     renderAt(
       '/jobs/j1',
       <JobSteps
@@ -185,9 +197,6 @@ describe('JobSteps', () => {
         onSelect={vi.fn()}
       />,
     );
-    expect(
-      screen.getByText('Stopped before the workflow ran: the result above says why.'),
-    ).toBeTruthy();
-    expect(screen.queryByText('Nothing decided yet.')).toBeNull();
+    expect(screen.queryByRole('region')).toBeNull();
   });
 });

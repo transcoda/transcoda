@@ -43,7 +43,7 @@ describe('jobText', () => {
     expect(detailLine(fx.replaced)).toBe(
       '2.41 GB → 1.62 GB, saved 790 MB · original in recycle folder',
     );
-    expect(detailLine(fx.kept)).toBe('Only 6% smaller, size gate needs 20% · file untouched');
+    expect(detailLine(fx.kept)).toBe('Only 6% smaller, size gate needs 20%');
     expect(detailLine(fx.failed)).toBe(
       'Verification failed: output 4 s shorter · original untouched',
     );
@@ -93,7 +93,7 @@ describe('jobText', () => {
         replacedTo: 'deleted',
       },
     });
-    expect(detailLine(deleted)).toBe('2.41 GB → 1.62 GB, saved 790 MB · original replaced');
+    expect(detailLine(deleted)).toBe('2.41 GB → 1.62 GB, saved 790 MB');
     expect(detailLine(deleted)).not.toMatch(/recycle/);
   });
 
@@ -124,7 +124,7 @@ describe('jobText', () => {
       'Probe failed: no streams · original untouched',
     );
     expect(detailLine(job({ state: 'failed', reason: null }))).toBe('Original untouched');
-    expect(detailLine(job({ state: 'kept_original', reason: null }))).toBe('File untouched');
+    expect(detailLine(job({ state: 'kept_original', reason: null }))).toBe('');
     expect(detailLine(job({ state: 'dry_run', reason: null }))).toBe('Plan ready');
     expect(detailLine(job({ state: 'cancelled' }))).toBe('Cancelled · original untouched');
     expect(detailLine(job({ state: 'already_processed', reason: 'already processed by v7' }))).toBe(
@@ -257,7 +257,7 @@ describe('jobText', () => {
     );
   });
 
-  it('a kept_original job with sourceDamaged reads "Damaged source" with "· file untouched"; a dry run too', () => {
+  it('a kept_original job with sourceDamaged reads "Damaged source" with its reason; a dry run too', () => {
     const reason = 'source is damaged: audio #1 (DTS): Invalid LFE scale factor index';
     const damaged = job({
       ...fx.kept,
@@ -273,7 +273,7 @@ describe('jobText', () => {
     expect(verdictOf(damaged)).toBe('damaged');
     expect(stateWord(damaged)).toBe('Damaged source');
     expect(detailLine(damaged)).toBe(
-      'Source is damaged: audio #1 (DTS): Invalid LFE scale factor index · file untouched',
+      'Source is damaged: audio #1 (DTS): Invalid LFE scale factor index',
     );
     expect(phoneLine(damaged)).toBe(
       'Damaged source · source is damaged: audio #1 (DTS): Invalid LFE scale factor index',

@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { ORPCError } from '@orpc/client';
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import type { Library, WorkflowSummary } from '@transcoda/contract';
@@ -158,16 +160,25 @@ const descriptionOf = (el: HTMLElement) =>
     .join(' ');
 
 describe('LibrariesPage', () => {
-  it('lists libraries with path, recycle setting, hardlink flag and the workflow that feeds each', async () => {
+  it('lists libraries with path, non-default settings and the workflow that feeds each', async () => {
     renderAt('/libraries', <LibrariesPage />);
     expect(screen.getByRole('heading', { level: 1, name: 'Libraries' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'New library' })).toBeTruthy();
 
     const first = await rowOf('Shows');
-    expect(within(first).getByText('/media/shows').className).toContain('mono');
-    expect(within(first).getByText('Default (.transcoda-recycle in the library)')).toBeTruthy();
-    expect(within(first).getByText('No')).toBeTruthy();
-    expect(within(first).getByRole('cell', { name: 'Downsize v3, active' })).toBeTruthy();
+    // The count sits beside the H1 once the list is in.
+    expect(screen.getByRole('heading', { level: 1, name: 'Libraries 2' })).toBeTruthy();
+    // The path: one muted line cut from the left, the whole path as its title.
+    const path = within(first).getByTitle('/media/shows');
+    expect(path.className).toContain('mono');
+    expect(path.className).toContain('lib-path');
+    expect(path.textContent).toBe('\u200e/media/shows\u200e');
+    // Default recycle folder and hardlink setting: nothing printed.
+    expect(within(first).queryByText(/Recycles to/)).toBeNull();
+    expect(within(first).queryByText('Processes hardlinked files')).toBeNull();
+    // Feeds: the workflow's name and the Workflows list's activation pill.
+    expect(within(first).getByRole('cell', { name: 'Downsize Active v3' })).toBeTruthy();
+    expect(within(first).getByText('Active v3').className).toContain('activation-pill is-active');
     // One inline primary and the "…" menu; no other inline row buttons.
     expect(
       within(first)
@@ -176,8 +187,10 @@ describe('LibrariesPage', () => {
     ).toEqual(['Scan Shows now', 'Actions for Shows']);
 
     const second = await rowOf('Movies');
-    expect(within(second).getByText('/media/movies/.trash').className).toContain('mono');
-    expect(within(second).getByText('Yes')).toBeTruthy();
+    // Non-default settings: a note each under the path; a recycle folder in the root is relative.
+    expect(within(second).getByText(/Recycles to/)).toBeTruthy();
+    expect(within(second).getByTitle('.trash').textContent).toBe('\u200e.trash\u200e');
+    expect(within(second).getByText('Processes hardlinked files')).toBeTruthy();
     // Movie cleanup's newest version names Movies but was never activated.
     expect(
       within(second).getByText("Movie cleanup has a Library input but isn't active"),
@@ -192,15 +205,29 @@ describe('LibrariesPage', () => {
       'No active workflow takes files from this library',
     );
     expect(descriptionOf(scanMovies)).toBe('No active workflow takes files from this library');
-    // Column names in sentence case; the header class sets the capitals (L16).
+    // Column names in sentence case; the header class sets the capitals (L16). The recycle folder
+    // and hardlink columns are gone: they only print defaults (convention 11).
     expect(screen.getAllByRole('columnheader').map((h) => h.textContent)).toEqual([
       'Name',
       'Path',
-      'Recycle folder',
-      'Process hardlinked files',
       'Feeds',
       'Actions',
     ]);
+  });
+
+  it('shows a recycle folder outside the root in full, and the pill says when the feeder cannot run', async () => {
+    mocks.libraries.list.mockResolvedValue({
+      libraries: [{ ...shows, recycleFolder: '/trash/shows' }],
+      notices: [],
+    });
+    mocks.workflows.list.mockResolvedValue({
+      workflows: [workflow({ id: 'w1', name: 'Downsize', active: activeV(3, false) })],
+    });
+    renderAt('/libraries', <LibrariesPage />);
+    const row = await rowOf('Shows');
+    expect(within(row).getByTitle('/trash/shows')).toBeTruthy();
+    expect(within(row).queryByText('Processes hardlinked files')).toBeNull();
+    expect(await within(row).findByText("Active v3 · can't run")).toBeTruthy();
   });
 
   it('Feeds says "Add a Library input to a workflow" only when no workflow names the library', async () => {
@@ -282,7 +309,7 @@ describe('LibrariesPage', () => {
       }),
     );
     expect(
-      await within(await rowOf('Movies')).findByRole('cell', { name: 'Movie cleanup v1, active' }),
+      await within(await rowOf('Movies')).findByRole('cell', { name: 'Movie cleanup Active v1' }),
     ).toBeTruthy();
     expect(screen.queryByRole('dialog', { name: 'Activate v1 of Movie cleanup?' })).toBeNull();
     expect(
@@ -319,12 +346,16 @@ describe('LibrariesPage', () => {
     );
   });
 
-  it('wraps a path only after a slash, and a name keeps its words', async () => {
+  it('keeps a path on one line, cut from the left, with the whole path as its title', async () => {
     renderAt('/libraries', <LibrariesPage />);
     const row = await rowOf('Movies');
-    const path = within(row).getByText('/media/movies/.trash');
-    expect([...path.querySelectorAll('wbr')]).toHaveLength(3);
-    expect(path.textContent).toBe('/media/movies/.trash');
+    const path = within(row).getByTitle('/media/movies');
+    expect(path.querySelectorAll('wbr')).toHaveLength(0);
+    expect(path.textContent).toBe('\u200e/media/movies\u200e');
+    const css = readFileSync(join(__dirname, '../styles.css'), 'utf8');
+    expect(css).toMatch(
+      /\.lib-path,\s*\.lib-note-path\s*\{[^}]*white-space:\s*nowrap[^}]*direction:\s*rtl/,
+    );
   });
 
   it('Delete returns focus to the row actions button when cancelled', async () => {
@@ -478,7 +509,7 @@ describe('LibrariesPage', () => {
   it('edits a library without a workflow choice and deletes with confirmation; LIBRARY_BUSY shows the message', async () => {
     renderAt('/libraries', <LibrariesPage />);
     const row = await rowOf('Shows');
-    await within(row).findByText('Downsize v3, active');
+    await within(row).findByRole('cell', { name: 'Downsize Active v3' });
     await pickAction('Shows', 'Edit');
     const dialog = screen.getByRole('dialog', { name: 'Edit Shows' });
     expect((within(dialog).getByRole('textbox', { name: 'Name' }) as HTMLInputElement).value).toBe(

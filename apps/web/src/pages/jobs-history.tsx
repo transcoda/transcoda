@@ -1,5 +1,6 @@
-// The Jobs page's history: saved all time, the last 7 server-local days and the encoder's last
-// hour. Days come from the server in its own time zone, never the browser's.
+// The Jobs page's history: saved all time, and one row of four half-height cards: the last 7
+// server-local days (data saved, files done, video processed) and the encoder's last hour. Days
+// come from the server in its own time zone, never the browser's.
 import type { GpuLoadOutput, JobHistoryOutput } from '@transcoda/contract';
 import { useEffect, useState } from 'react';
 import { api } from '../api/client.ts';
@@ -9,6 +10,7 @@ import { useAsync } from '../hooks/useAsync.ts';
 import { useRefetchOn } from '../hooks/useRefetchOn.ts';
 import { stateChangeTracker } from '../jobs/useJobsList.ts';
 import { fmtBytes } from '../lib/bytes.ts';
+import { fmtStamp } from '../lib/time.ts';
 
 const num = new Intl.NumberFormat('en-US');
 const hours = (seconds: number) => `${num.format(Math.round(seconds / 3600))} h`;
@@ -30,15 +32,16 @@ export function AllTimeTile({ history }: { history: JobHistoryOutput | undefined
   const all = history?.allTime;
   const since =
     all?.since && history
-      ? new Intl.DateTimeFormat('en-GB', {
-          day: 'numeric',
-          month: 'short',
-          timeZone: history.timeZone,
-        }).format(new Date(all.since))
+      ? fmtStamp(all.since, { relative: false, timeZone: history.timeZone })
       : null;
+  const zero = all?.savedBytes === 0;
   return (
     // biome-ignore lint/a11y/useSemanticElements: a labelled figure group, not a form fieldset
-    <div className="stat-tile is-alltime" role="group" aria-label="All time">
+    <div
+      className={zero ? 'stat-tile is-alltime is-zero' : 'stat-tile is-alltime'}
+      role="group"
+      aria-label="All time"
+    >
       <span className="stat-label">Saved all time</span>
       <span className="stat-value">{all ? fmtBytes(all.savedBytes) : '—'}</span>
       {all && since ? (
@@ -50,83 +53,115 @@ export function AllTimeTile({ history }: { history: JobHistoryOutput | undefined
   );
 }
 
-function WeekCard({
+function HistoryCard({
   title,
   total,
   sub,
+  className,
   children,
 }: {
   title: string;
   total: string;
-  sub: string;
-  children: React.ReactNode;
+  sub?: string;
+  className?: string;
+  children?: React.ReactNode;
 }) {
   return (
-    <div className="history-card">
+    // biome-ignore lint/a11y/useSemanticElements: a labelled figure group, not a form fieldset
+    <div
+      className={className ? `history-card ${className}` : 'history-card'}
+      role="group"
+      aria-label={title}
+    >
       <span className="history-card-title">{title}</span>
       <span className="history-card-total">
-        <span>{total}</span> <small>{sub}</small>
+        <span>{total}</span>
+        {sub ? (
+          <>
+            {' '}
+            <small>{sub}</small>
+          </>
+        ) : null}
       </span>
       {children}
     </div>
   );
 }
 
-/** "Last 7 days": data saved, files done (replaced and kept) and hours of video processed. */
-export function JobsHistory({ history }: { history: JobHistoryOutput }) {
-  const d = history.days;
+/** The kept series is neutral grey: "Kept original" is no change (convention 7). */
+const KEPT_COLOR = 'var(--faint)';
+
+/**
+ * One row of four half-height cards: "Last 7 days" (data saved, files done, hours of video
+ * processed) and the encoder's last hour, always shown ("idle" over a flat line when idle). Before
+ * the history loads, its three cards show a dash.
+ */
+export function JobsHistory({ history }: { history: JobHistoryOutput | undefined }) {
+  const d = history?.days ?? [];
   const sum = (f: (day: (typeof d)[number]) => number) => d.reduce((s, day) => s + f(day), 0);
   const replaced = sum((x) => x.replaced);
   const kept = sum((x) => x.kept);
+  const dash = history ? null : '—';
   return (
     <section className="jobs-history" aria-labelledby="jobs-history-title">
-      <h2 id="jobs-history-title">Last 7 days</h2>
+      <h2 id="jobs-history-title" className="sr-only">
+        Last 7 days
+      </h2>
       <div className="history-cards">
-        <WeekCard title="Data saved" total={fmtBytes(sum((x) => x.savedBytes))} sub="this week">
-          <WeekBars
-            label="Data saved"
-            days={d.map((x) => ({ date: x.date, values: [x.savedBytes] }))}
-            colors={['var(--st-replaced)']}
-            parts={['saved']}
-            format={fmtBytes}
-          />
-        </WeekCard>
-        <WeekCard
-          title="Files done"
-          total={num.format(replaced + kept)}
-          sub={`${num.format(replaced)} replaced · ${num.format(kept)} kept`}
+        <HistoryCard
+          title="Data saved"
+          total={dash ?? fmtBytes(sum((x) => x.savedBytes))}
+          {...(history ? { sub: 'this week' } : {})}
         >
-          <WeekBars
-            label="Files done"
-            days={d.map((x) => ({ date: x.date, values: [x.replaced, x.kept] }))}
-            colors={['var(--st-replaced)', 'var(--st-kept)']}
-            parts={['replaced', 'kept original']}
-            format={(v) => num.format(v)}
-          />
-          <div className="history-legend">
-            <span>
-              <i style={{ background: 'var(--st-replaced)' }} />
-              replaced
-            </span>
-            <span>
-              <i style={{ background: 'var(--st-kept)' }} />
-              kept original
-            </span>
-          </div>
-        </WeekCard>
-        <WeekCard
-          title="Hours of video processed"
-          total={hours(sum((x) => x.seconds))}
-          sub="this week"
+          {history ? (
+            <WeekBars
+              label="Data saved"
+              days={d.map((x) => ({ date: x.date, values: [x.savedBytes] }))}
+              colors={['var(--st-replaced)']}
+              parts={['saved']}
+              format={fmtBytes}
+            />
+          ) : null}
+        </HistoryCard>
+        <HistoryCard title="Files done" total={dash ?? num.format(replaced + kept)}>
+          {history ? (
+            <>
+              <WeekBars
+                label="Files done"
+                days={d.map((x) => ({ date: x.date, values: [x.replaced, x.kept] }))}
+                colors={['var(--st-replaced)', KEPT_COLOR]}
+                parts={['replaced', 'kept original']}
+                format={(v) => num.format(v)}
+              />
+              <div className="history-legend">
+                <span>
+                  <i style={{ background: 'var(--st-replaced)' }} />
+                  {`${num.format(replaced)} replaced`}
+                </span>
+                <span>
+                  <i style={{ background: KEPT_COLOR }} />
+                  {`${num.format(kept)} kept`}
+                </span>
+              </div>
+            </>
+          ) : null}
+        </HistoryCard>
+        <HistoryCard
+          title="Video processed"
+          total={dash ?? hours(sum((x) => x.seconds))}
+          {...(history ? { sub: 'this week' } : {})}
         >
-          <WeekBars
-            label="Hours of video processed"
-            days={d.map((x) => ({ date: x.date, values: [x.seconds] }))}
-            colors={['var(--muted)']}
-            parts={['of video']}
-            format={hours}
-          />
-        </WeekCard>
+          {history ? (
+            <WeekBars
+              label="Hours of video processed"
+              days={d.map((x) => ({ date: x.date, values: [x.seconds] }))}
+              colors={['var(--muted)']}
+              parts={['of video']}
+              format={hours}
+            />
+          ) : null}
+        </HistoryCard>
+        <EncoderCard />
       </div>
     </section>
   );
@@ -161,12 +196,15 @@ function useGpuLoad(): GpuLoadOutput | undefined {
   return load;
 }
 
-/** "Encoder · last hour": one NVIDIA GPU shows encoder and decoder, otherwise one line per GPU. */
-export function EncoderStrip() {
+/**
+ * "Encoder · last hour": one NVIDIA GPU shows encoder and decoder, otherwise one line per GPU.
+ * Always shown: "idle" over a flat line while nothing encodes (or the server has no GPU).
+ */
+export function EncoderCard() {
   const load = useGpuLoad();
-  if (!load || load.gpus.length === 0) return null;
+  const gpus = load?.gpus ?? [];
   // An Intel GPU has one video engine for both, so its encoder and decoder readings are the same.
-  const one = load.gpus.length === 1 && load.gpus[0]?.id.startsWith('nvidia:') === true;
+  const one = gpus.length === 1 && gpus[0]?.id.startsWith('nvidia:') === true;
   const palette = ['var(--accent-text)', 'var(--st-kept)', 'var(--st-skipped)', 'var(--st-failed)'];
   const series = one
     ? [
@@ -174,48 +212,48 @@ export function EncoderStrip() {
           id: 'encoder',
           name: 'encoder',
           color: palette[0] as string,
-          points: (load.gpus[0]?.samples ?? []).map((s) => ({ at: s.at, value: s.encoder })),
+          points: (gpus[0]?.samples ?? []).map((s) => ({ at: s.at, value: s.encoder })),
         },
         {
           id: 'decoder',
           name: 'decoder',
           color: palette[1] as string,
-          points: (load.gpus[0]?.samples ?? []).map((s) => ({ at: s.at, value: s.decoder })),
+          points: (gpus[0]?.samples ?? []).map((s) => ({ at: s.at, value: s.decoder })),
         },
       ]
-    : load.gpus.map((g, i) => ({
+    : gpus.map((g, i) => ({
         id: g.id,
-        // The card's name is already in the heading when it is the only one.
-        name: load.gpus.length === 1 ? 'video' : g.name,
+        // The card's name is already under the chart when it is the only one.
+        name: gpus.length === 1 ? 'video' : g.name,
         color: palette[i % palette.length] as string,
         points: g.samples.map((s) => ({ at: s.at, value: s.encoder })),
       }));
-  const current = Math.round(load.gpus[0]?.samples.at(-1)?.encoder ?? 0);
+  const current = Math.round(gpus[0]?.samples.at(-1)?.encoder ?? 0);
+  const total = !load ? '—' : current > 0 ? `now ${current}%` : 'idle';
   return (
-    <section className="encoder-strip" aria-labelledby="encoder-strip-title">
-      <div className="encoder-strip-head">
-        <h2 id="encoder-strip-title">Encoder · last hour</h2>
-        {load.gpus.length === 1 ? (
-          <span className="encoder-strip-gpu">{load.gpus[0]?.name}</span>
-        ) : null}
-        <span className="encoder-strip-now">now {current}%</span>
-      </div>
-      <div className="history-card">
+    <HistoryCard title="Encoder · last hour" total={total} className="encoder-card">
+      <div className="week-bars">
         <LoadStrip
           series={series}
           windowMs={WINDOW_MS}
-          intervalMs={load.intervalMs}
+          intervalMs={load?.intervalMs ?? 5000}
           now={new Date()}
+          axis="ends"
+          legend={
+            series.length > 0 ? (
+              <span className="history-legend encoder-legend">
+                {series.map((s) => (
+                  <span key={s.id}>
+                    <i style={{ background: s.color }} />
+                    {s.name}
+                  </span>
+                ))}
+              </span>
+            ) : null
+          }
         />
-        <div className="history-legend">
-          {series.map((s) => (
-            <span key={s.id}>
-              <i style={{ background: s.color }} />
-              {s.name}
-            </span>
-          ))}
-        </div>
       </div>
-    </section>
+      {gpus.length === 1 ? <span className="encoder-gpu">{gpus[0]?.name}</span> : null}
+    </HistoryCard>
   );
 }

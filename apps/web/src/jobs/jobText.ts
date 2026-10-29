@@ -388,14 +388,15 @@ export function detailLine(job: Job, opts: { queuePaused?: boolean; now?: Date }
       const first = job.problems[0];
       if (first !== undefined) return `done · needs attention: ${first}`;
       const r = job.result;
-      // Never imply an original is gone when it is in the recycle folder (handoff rule).
-      const where =
-        r?.replacedTo === 'recycle' ? 'original in recycle folder' : 'original replaced';
       if (!r || r.beforeBytes === null || r.afterBytes === null) return 'Replaced';
-      return `${fmtBytes(r.beforeBytes)} → ${fmtBytes(r.afterBytes)}, ${fmtSaving(r.beforeBytes, r.afterBytes)} · ${where}`;
+      const sizes = `${fmtBytes(r.beforeBytes)} → ${fmtBytes(r.afterBytes)}, ${fmtSaving(r.beforeBytes, r.afterBytes)}`;
+      // The chip already says "Replaced"; only the recycle folder is worth a word (the original
+      // is not gone), never "original replaced".
+      return r.replacedTo === 'recycle' ? `${sizes} · original in recycle folder` : sizes;
     }
     case 'kept_original':
-      return job.reason ? `${sentence(job.reason)} · file untouched` : 'File untouched';
+      // The "Kept original" chip says the file is untouched; the line only adds why.
+      return job.reason ? sentence(job.reason) : '';
     case 'failed':
       return job.reason ? `${sentence(job.reason)} · original untouched` : 'Original untouched';
     case 'skipped':

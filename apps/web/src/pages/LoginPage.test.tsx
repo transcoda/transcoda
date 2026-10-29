@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -41,6 +43,19 @@ afterEach(() => {
 });
 
 describe('LoginPage', () => {
+  it('names the host once: the brand footer beside the form, the intro line on a phone', () => {
+    const { container } = render(<LoginPage />);
+    const intro = container.querySelector('.auth-host-intro') as HTMLElement;
+    expect(intro.textContent).toBe(`to Transcoda on ${window.location.hostname}`);
+    expect(container.querySelector('.auth-meta')?.textContent).toContain(window.location.host);
+    const css = readFileSync(join(__dirname, '../styles.css'), 'utf8');
+    // Wide: the intro line is hidden (the footer says it). Phone: the footer is hidden.
+    expect(css).toMatch(
+      /@media \(min-width: 900px\) \{\s*\.lead:has\(> \.auth-host-intro\) \{\s*display: none;/,
+    );
+    expect(css).toMatch(/@media \(max-width: 899px\) \{[^@]*\.auth-meta \{\s*display: none;/);
+  });
+
   it('shows an error instead of rejecting when refresh fails after login', async () => {
     mocks.refresh.mockRejectedValue(new Error('boom'));
     render(<LoginPage />);

@@ -418,12 +418,15 @@ describe('JobsPage', () => {
     expect(time.textContent).toBeTruthy();
   });
 
-  it('the job link has one name, "Details for <file>", on finished rows', async () => {
+  it('the row is the link: the file name opens the job, no "Details" links (convention 9)', async () => {
     await renderPage();
-    const link = within(rowOf(fx.dry.fileName)).getByRole('link', {
-      name: `Details for ${fx.dry.fileName}`,
-    });
-    expect(link.textContent).toBe('Details');
+    const row = rowOf(fx.dry.fileName);
+    expect(row.classList.contains('row-link')).toBe(true);
+    const link = within(row).getByRole('link', { name: fx.dry.fileName });
+    expect(link.getAttribute('href')).toBe(`/jobs/${fx.dry.id}`);
+    expect(link.classList.contains('row-link-main')).toBe(true);
+    expect(within(row).queryByText('Details')).toBeNull();
+    expect(within(row).queryByRole('link', { name: /^Details/ })).toBeNull();
   });
 
   it('tags dry-run jobs with a "Dry run" badge in every state; real jobs have none', async () => {
@@ -475,7 +478,8 @@ describe('JobsPage', () => {
     await waitFor(() => expect(screen.getByText('Live')).toBeTruthy());
     // The "Today:" line is gone: its file count lives in the Saved tile.
     expect(screen.queryByTestId('jobs-today')).toBeNull();
-    expect(await screen.findByText('across 63 files')).toBeTruthy();
+    expect(await screen.findByText('41.8 GB')).toBeTruthy();
+    expect(screen.queryByText('across 63 files')).toBeNull();
     // The server's today, not the browser's.
     expect(mocks.stats).toHaveBeenCalledWith({});
 
@@ -486,7 +490,8 @@ describe('JobsPage', () => {
     );
     expect(screen.getByRole('button', { name: 'Replaced 1,902' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Kept original 61' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Paused 0' })).toBeTruthy();
+    // Options at 0 are hidden, except "All" and the current one (convention 15).
+    expect(screen.queryByRole('button', { name: 'Paused 0' })).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Library All libraries' }));
     expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual([
       'All libraries',
@@ -509,9 +514,7 @@ describe('JobsPage', () => {
       within(replaced).getByText('2.41 GB → 1.62 GB, saved 790 MB · original in recycle folder'),
     ).toBeTruthy();
     expect(
-      within(replaced)
-        .getByRole('link', { name: 'Details for Bluey S01E03.mp4' })
-        .getAttribute('href'),
+      within(replaced).getByRole('link', { name: 'Bluey S01E03.mp4' }).getAttribute('href'),
     ).toBe('/jobs/j-bluey3');
     const running = rowOf('Bluey S01E04.mp4');
     expect(running.querySelector('.job-chip')?.textContent).toBe('Encoding');
@@ -598,7 +601,7 @@ describe('JobsPage', () => {
     const tiles = await screen.findByRole('list', { name: 'Today' });
     await waitFor(() =>
       expect([...tiles.querySelectorAll('.stat-tile')].map((t) => t.textContent)).toEqual([
-        'Saved today41.8 GBacross 63 files',
+        'Saved today41.8 GB',
         'Queued37',
         'Failed4',
         'Needs attention3',
@@ -782,7 +785,7 @@ describe('JobsPage', () => {
     await waitFor(() => expect(mocks.list).toHaveBeenCalledTimes(3));
   });
 
-  it('tiles are neutral at zero and tinted only above zero', async () => {
+  it('no tile is ever tinted, at zero or above', async () => {
     mocks.stats.mockResolvedValue({
       files: 0,
       savedBytes: 0,
@@ -802,12 +805,16 @@ describe('JobsPage', () => {
     }
   });
 
-  it('tiles tint when their value is above zero', async () => {
+  it('tiles are never tinted; only a zero that is not good news is dimmed (convention 6)', async () => {
+    mocks.stats.mockResolvedValue({ savedBytes: 0, files: 0, queued: 0, failed: 0 });
     await renderPage();
     const tiles = await screen.findByRole('list', { name: 'Today' });
-    await waitFor(() => expect(tiles.querySelector('.stat-tile.is-saved')).not.toBeNull());
-    expect(tiles.querySelector('.stat-tile.is-failed')).not.toBeNull();
-    expect(tiles.querySelector('.stat-tile.is-attention')).not.toBeNull();
+    await waitFor(() => expect(within(tiles).getByText('0 B')).toBeTruthy());
+    const dimmed = [...tiles.querySelectorAll('.stat-tile')].map((t) =>
+      t.classList.contains('is-zero'),
+    );
+    // Saved and Queued dim at 0; 0 failed and 0 needing attention are good news.
+    expect(dimmed).toEqual([true, true, false, false]);
   });
 
   it('an empty filter result offers "Show all", which clears the filters', async () => {
@@ -864,7 +871,7 @@ describe('JobsPage', () => {
     const tiles = await screen.findByRole('list', { name: 'Today' });
     await waitFor(() =>
       expect([...tiles.querySelectorAll('.stat-tile')].map((t) => t.textContent)).toEqual([
-        'Saved today41.8 GBacross 63 files',
+        'Saved today41.8 GB',
         'Queued37',
         'Failed4',
         'Needs attention3',
@@ -878,6 +885,8 @@ describe('JobsPage', () => {
     expect(within(running).getByText('Checking duration, streams and decode')).toBeTruthy();
     expect(within(running).getAllByRole('button', { name: /^Cancel / })).toHaveLength(2);
     const finished = screen.getByRole('region', { name: 'Finished' });
+    // Sentence-case section heading, not a mono capital label (convention 4).
+    expect(within(finished).getByRole('heading', { level: 2 }).className).toBe('section-h2');
     expect(within(finished).getByText('Replaced · saved 790 MB')).toBeTruthy();
     expect(within(finished).getByText('Kept original · only 6% smaller')).toBeTruthy();
     expect(within(finished).getByText('Failed · original untouched')).toBeTruthy();
@@ -906,7 +915,7 @@ describe('Jobs page stats', () => {
     expect(within(tile).getByText('Saved all time')).toBeTruthy();
     expect(within(tile).getByText('556 GB')).toBeTruthy();
     // 00:08 UTC on the 18th is the evening of the 17th on the server.
-    expect(within(tile).getByText('642 files since 17 Oct')).toBeTruthy();
+    expect(within(tile).getByText('642 files since Oct 17')).toBeTruthy();
   });
 
   it('all time on a fresh install says 0 B and no since line', async () => {
@@ -922,14 +931,16 @@ describe('Jobs page stats', () => {
     expect(screen.getByRole('figure', { name: 'Data saved' })).toBeTruthy();
   });
 
-  it('three 7-day cards with week totals', async () => {
+  it('three half-height 7-day cards with week totals, kept in neutral grey', async () => {
     await renderPage();
     const week = await screen.findByRole('region', { name: 'Last 7 days' });
     expect(within(week).getByRole('figure', { name: 'Data saved' })).toBeTruthy();
     expect(within(week).getByText('554 GB')).toBeTruthy();
     expect(within(week).getByRole('figure', { name: 'Files done' })).toBeTruthy();
     expect(within(week).getByText('1,866')).toBeTruthy();
-    expect(within(week).getByText('636 replaced · 1,230 kept')).toBeTruthy();
+    expect(within(week).getByText('636 replaced')).toBeTruthy();
+    expect(within(week).getByText('1,230 kept')).toBeTruthy();
+    expect(within(week).getByRole('group', { name: 'Video processed' })).toBeTruthy();
     expect(within(week).getByRole('figure', { name: 'Hours of video processed' })).toBeTruthy();
     expect(within(week).getByText('797 h')).toBeTruthy();
     expect(
@@ -943,10 +954,11 @@ describe('Jobs page stats', () => {
     expect(mocks.stats.mock.calls.every((c) => c[0] && !('since' in c[0]))).toBe(true);
   });
 
-  it('hides the encoder strip without GPUs', async () => {
+  it('always shows the encoder card: "idle" without GPUs', async () => {
     await renderPage();
     await waitFor(() => expect(mocks.gpuLoad).toHaveBeenCalled());
-    expect(screen.queryByText('Encoder · last hour')).toBeNull();
+    const card = await screen.findByRole('group', { name: 'Encoder · last hour' });
+    expect(await within(card).findByText('idle')).toBeTruthy();
   });
 
   it('shows one encoder line per GPU and the current value', async () => {
@@ -959,10 +971,10 @@ describe('Jobs page stats', () => {
       ],
     });
     await renderPage();
-    const strip = await screen.findByRole('region', { name: 'Encoder · last hour' });
+    const strip = await screen.findByRole('group', { name: 'Encoder · last hour' });
     expect(within(strip).getByText('RTX 3060')).toBeTruthy();
     expect(within(strip).getByText('RTX 4060')).toBeTruthy();
-    expect(within(strip).getByText('now 97%')).toBeTruthy();
+    expect(await within(strip).findByText('now 97%')).toBeTruthy();
     expect(strip.querySelectorAll('path.load-line')).toHaveLength(2);
   });
 
@@ -972,7 +984,7 @@ describe('Jobs page stats', () => {
       gpus: [{ id: 'nvidia:0', index: 0, name: 'RTX 3060', samples: samples(10, Date.now(), 97) }],
     });
     await renderPage();
-    const strip = await screen.findByRole('region', { name: 'Encoder · last hour' });
+    const strip = await screen.findByRole('group', { name: 'Encoder · last hour' });
     expect(within(strip).getByText('encoder')).toBeTruthy();
     expect(within(strip).getByText('decoder')).toBeTruthy();
     expect(strip.querySelectorAll('path.load-line')).toHaveLength(2);

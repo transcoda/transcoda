@@ -921,6 +921,14 @@ a:hover {
   max-width: 400px;
 }
 
+/* Sign in names the host once: in the brand panel's footer beside the form; under the title on a
+   phone, where that footer is hidden. */
+@media (min-width: 900px) {
+  .lead:has(> .auth-host-intro) {
+    display: none;
+  }
+}
+
 .credentials {
   display: flex;
   flex-direction: column;
@@ -971,6 +979,10 @@ a:hover {
 
   .auth-tagline {
     font-size: 40px;
+  }
+
+  .auth-meta {
+    display: none;
   }
 
   .auth-main {
@@ -1037,16 +1049,6 @@ a:hover {
 
 .brand .wordmark {
   font-size: 20px;
-}
-
-.version-pill {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--faint);
-  padding: 3px 8px;
-  border: 1px solid var(--line-strong);
-  border-radius: var(--r-pill);
 }
 
 .server-name {
@@ -1651,6 +1653,104 @@ a.nav-item.is-active:focus-visible,
   font-size: var(--fs-small);
 }
 
+/* ---------- Shared conventions (UI consistency pass) ----------
+   Headings (conventions 4/5): one section heading (H2) with a muted count, and one muted group
+   label (H3). Sentence case and sans; mono capitals are for table column heads and stat-tile
+   labels only. Use <SectionHeading> / <GroupLabel> from components/Headings.tsx. */
+.section-h2 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 10px;
+  margin: 0;
+  font-family: var(--font-ui);
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--text);
+}
+.section-count {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+}
+/* The explanation under a section heading: its own muted line, never inline. */
+.section-note {
+  margin: 2px 0 0;
+  font-size: var(--fs-small);
+  color: var(--muted);
+}
+.group-h3 {
+  margin: 0;
+  font-family: var(--font-ui);
+  font-size: var(--fs-small);
+  font-weight: 700;
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--muted);
+}
+/* The one muted status line under a page's H1 (convention 1). */
+.head-sub {
+  margin: 2px 0 0;
+  font-size: var(--fs-small);
+  color: var(--muted);
+}
+/* A page header in one row: title block left, actions right (convention 1). */
+.head-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+.head-row > .head-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-left: auto;
+  padding-top: 4px;
+}
+
+/* The row is the link (convention 9): put .row-link on the row and .row-link-main on its one
+   primary link (the name: semibold, never underlined); the link's hit area covers the whole row.
+   Other links and buttons in the row stay clickable above it. Secondary links use .link-muted. */
+.row-link {
+  position: relative;
+  cursor: pointer;
+}
+.row-link:hover {
+  background: var(--raised);
+}
+.row-link-main {
+  color: var(--text);
+  font-weight: 600;
+  text-decoration: none;
+}
+.row-link-main:hover {
+  color: var(--text);
+  text-decoration: none;
+}
+.row-link-main::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+.row-link a:not(.row-link-main),
+.row-link button {
+  position: relative;
+  z-index: 1;
+}
+/* A secondary link (library, workflow, run): muted, underlined on hover only. */
+.link-muted {
+  color: var(--muted);
+  text-decoration: none;
+}
+.link-muted:hover {
+  color: var(--text);
+  text-decoration: underline;
+}
+
 .panel {
   border-radius: var(--r-lg);
   background: var(--surface);
@@ -2150,34 +2250,18 @@ a.nav-item.is-active:focus-visible,
   min-width: 0;
 }
 
-.settings-group > .settings-group-head {
-  margin: 0;
+.settings-group > .group-h3 {
+  margin: 0 0 var(--sp-1);
 }
 
-/* Read-only values: last in a section, on their own inset panel. */
-.settings-readonly {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  padding: var(--sp-4) var(--sp-4) 0;
-  border: 1px solid var(--line);
-  border-radius: var(--r-lg);
-  background: var(--surface);
+/* Read-only values ("Set on the server"): last in a section, closed, "Read-only" on the right. */
+.settings-server {
+  margin-top: var(--sp-4);
+  border-top: 1px solid var(--line);
 }
 
-.settings-readonly-head {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-1);
-}
-
-.settings-readonly-head .settings-group-head,
-.settings-readonly-head .setting-hint {
-  margin: 0;
-}
-
-.settings-readonly > .setting-row:last-child {
-  border-bottom: 0;
+.settings-server .disclosure-meta {
+  margin-left: auto;
 }
 
 /* "Advanced": rarely changed rows, closed by default; it sits in the list of rows like one. */
@@ -2243,6 +2327,21 @@ a.nav-item.is-active:focus-visible,
   flex-direction: row;
   flex-wrap: wrap;
   gap: var(--sp-1) var(--sp-4);
+}
+
+/* Phone: the section name is the page's title (beside the nav it is for screen readers only),
+   and long choices (a GPU's name) take a line each. */
+@media (max-width: 639px) {
+  .settings-section > h2 {
+    font-size: 28px;
+    letter-spacing: -0.02em;
+  }
+
+  .setting-radios-stack {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0;
+  }
 }
 
 .setting-radio {
@@ -2385,9 +2484,20 @@ a.nav-item.is-active:focus-visible,
   max-width: 420px;
 }
 
-.account-form h3 {
-  font-size: var(--fs-body);
+.account-form .setting-row {
+  padding: var(--sp-2) 0;
+  border-bottom: 0;
+}
+
+.account-form > .form-actions {
+  margin-top: var(--sp-3);
+}
+
+/* Recycle: what the recycled originals take now, a value rather than a sentence. */
+.recycle-usage-value {
+  font-size: 20px;
   font-weight: 700;
+  color: var(--text);
 }
 
 /* About */
@@ -2966,6 +3076,11 @@ a.btn-secondary:hover {
   gap: var(--sp-4);
 }
 
+/* Cancel, then the primary on the right: the order every dialog footer uses. */
+.new-wf-form .form-actions {
+  justify-content: flex-end;
+}
+
 .kind-choice {
   display: flex;
   flex-direction: column;
@@ -2993,27 +3108,22 @@ a.btn-secondary:hover {
   cursor: pointer;
 }
 
+/* Selected: a lime ring and the radio's lime dot, no fill (lime fill is for the primary action). */
 .kind-option:has(input:checked) {
   border-color: var(--accent);
-  background: var(--accent);
-  color: var(--on-accent);
-  font-weight: 700;
+  box-shadow: inset 0 0 0 1px var(--accent);
 }
 
 .kind-option:has(input:focus-visible) {
   box-shadow: var(--focus-ring);
 }
 
+.kind-option input {
+  accent-color: var(--accent);
+}
+
 .kind-option b {
   color: var(--text);
-}
-
-.kind-option:has(input:checked) b {
-  color: inherit;
-}
-
-.kind-option:has(input:checked) input {
-  accent-color: var(--on-accent);
 }
 
 @media (max-width: 1023px) {
@@ -3189,14 +3299,7 @@ a.btn-secondary:hover {
   background: var(--line);
 }
 
-/* Activation: the status pill and the Activate / Deactivate button beside it (colour never alone: icon + word). */
-.activation-actions {
-  display: inline-flex;
-  flex: none;
-  align-items: center;
-  gap: var(--sp-2);
-}
-
+/* Activation: the workflows list's status pill (colour never alone: icon + word). */
 .activation-pill {
   display: inline-flex;
   align-items: center;
@@ -3226,11 +3329,6 @@ a.btn-secondary:hover {
   border: 1.5px solid var(--st-failed);
   background: var(--st-failed-bg);
   color: var(--st-failed-text);
-}
-
-.activation-actions .btn[aria-disabled="true"] {
-  color: var(--edge-untaken);
-  cursor: not-allowed;
 }
 
 .activate-summary {
@@ -3334,16 +3432,16 @@ a.btn-secondary:hover {
 }
 
 .chip {
+  /* The one chip size and font (convention 8): the same pill as the Jobs list's state chip. */
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  height: 24px;
-  padding: 0 8px;
+  gap: 6px;
+  height: 28px;
+  padding: 0 10px;
   border-radius: var(--r-pill);
-  border: 1px solid currentColor;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 600;
+  border: 1.5px solid currentColor;
+  font-size: var(--fs-small);
+  font-weight: 700;
   white-space: nowrap;
 }
 
@@ -3360,7 +3458,13 @@ a.btn-secondary:hover {
 }
 
 .chip-outdated {
-  color: var(--kind-condition);
+  color: var(--st-needs-setting);
+}
+
+/* No change (Not active, Kept original, Nothing to do, Skipped): a neutral outline. */
+.chip-neutral {
+  border-color: var(--line-strong);
+  color: var(--muted);
 }
 
 .eyebrow-kind {
@@ -4861,6 +4965,19 @@ a.btn-secondary:hover {
   color: var(--text);
 }
 
+/* The shown version is the active one: a lime ring (the Save button keeps the only lime fill). */
+.version-pill-btn.is-active {
+  border-color: var(--accent);
+  color: var(--accent-text);
+}
+
+/* The active version can't run. */
+.version-pill-btn.is-danger {
+  border-color: var(--st-failed);
+  background: var(--st-failed-bg);
+  color: var(--st-failed-text);
+}
+
 /* Versions panel (Task 18): non-modal, under the pill. */
 .version-pill-wrap {
   position: relative;
@@ -4947,25 +5064,37 @@ a.btn-secondary:hover {
   box-shadow: inset 3px 0 0 var(--accent-text);
 }
 
-/* Compact (below 1024 px): the crumb takes what the version pill and the menu leave. */
+/* Compact (below 1024 px): the name and the menu share one row; the version pill is a muted
+   status line below them. */
 .editor-head.is-compact {
-  gap: 8px;
-  padding: 6px 12px;
+  gap: 0 8px;
+  padding: 6px 12px 10px;
 }
 
 .editor-head.is-compact .crumb {
-  flex: 1 1 8rem;
+  flex: 1 1 auto;
 }
 
 .editor-head.is-compact .crumb-name {
   max-width: 100%;
+  min-width: 0;
 }
 
-/* Phone: the name gets the whole first row; the version pill and the actions wrap below it. */
-@media (max-width: 639px) {
-  .editor-head.is-compact .crumb {
-    flex-basis: 100%;
-  }
+.editor-head.is-compact .editor-head-end {
+  flex: none;
+}
+
+.editor-head.is-compact .version-pill-wrap {
+  flex-basis: 100%;
+}
+
+.editor-head.is-compact .version-pill-btn {
+  height: auto;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-family: inherit;
+  font-size: 13px;
 }
 
 .editor-head-end {
@@ -4987,17 +5116,6 @@ a.btn-secondary:hover {
   content: "";
   position: absolute;
   inset: -2px 0;
-}
-
-.save-group {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.editor-head .save-menu-button {
-  width: var(--target-min);
-  padding: 0;
 }
 
 .history-group {
@@ -5101,49 +5219,47 @@ a.btn-secondary:hover {
   padding: 2px 4px 0;
 }
 
-/* Nothing selected: the workflow's own facts instead of an empty column. */
-.inspector-facts {
-  display: grid;
-  gap: var(--sp-2);
-  margin: var(--sp-3) 0 0;
-}
-
-.inspector-facts > div {
-  display: flex;
-  justify-content: space-between;
-  gap: var(--sp-3);
-}
-
-.inspector-facts dt {
-  color: var(--muted);
-}
-
-.inspector-facts dd {
-  margin: 0;
-  font-family: var(--font-mono);
-}
-
 /* ---------- Issues panel (bottom of the inspector column) ---------- */
 .inspector-issues-region {
   flex: none;
   padding: 0 18px var(--sp-3);
 }
 
-.issues-panel {
+.issues-panel,
+.issues-none {
   margin-top: auto;
   border-top: 1px solid var(--line);
   padding-top: var(--sp-3);
+}
+
+/* Nothing selected: the issues list is the whole column, from the top. */
+.inspector-col > .inspector-issues-region:first-child {
+  padding-top: var(--sp-3);
+}
+
+.inspector-col > .inspector-issues-region:first-child :is(.issues-panel, .issues-none) {
+  margin-top: 0;
+  border-top: 0;
+  padding-top: 0;
 }
 
 .issues-summary {
   display: flex;
   align-items: center;
   min-height: var(--target-min);
-  font-family: var(--font-mono);
-  font-size: var(--fs-mono);
+  font-size: 14px;
   font-weight: 600;
   color: var(--muted);
   cursor: pointer;
+}
+
+.issues-none {
+  display: flex;
+  align-items: center;
+  min-height: var(--target-min);
+  margin-bottom: 0;
+  font-size: 14px;
+  color: var(--muted);
 }
 
 .issues-list {
@@ -5562,11 +5678,6 @@ a.btn-secondary:hover {
   color: var(--text);
 }
 
-.inspector-empty {
-  color: var(--faint);
-  font-size: 14px;
-}
-
 /* ---------- Inspector: header, form, "On the canvas", footer (screen 05; editor/ui/Inspector) ---------- */
 
 .inspector {
@@ -5956,18 +6067,23 @@ a.nav-item.is-active .nav-count {
 .jobs-page {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 12px;
   padding: 28px 32px 48px;
 }
 
 .jobs-head {
+  /* One header row (.head-row): the title block, then the queue actions on the right. */
+  margin-bottom: 4px;
+}
+.jobs-title {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
+  min-width: 0;
+}
+.jobs-title-row {
+  display: flex;
   align-items: center;
   gap: 14px;
-}
-.jobs-retry-failed {
-  margin-left: auto;
 }
 .jobs-head h1 {
   font-size: 32px;
@@ -6033,7 +6149,6 @@ a.nav-item.is-active .nav-count {
 
 .filter-chip:focus-visible,
 .job-name:focus-visible,
-.job-details-link:focus-visible,
 .phone-finished:focus-visible {
   outline: none;
   box-shadow: var(--focus-ring);
@@ -6046,15 +6161,25 @@ a.nav-item.is-active .nav-count {
   overflow-x: auto;
 }
 .job-row {
-  min-width: 900px;
+  min-width: 760px;
   display: grid;
-  grid-template-columns: minmax(0, 1.6fr) 170px minmax(0, 1.4fr) 180px;
+  /* File, state, detail; a fourth column for Pause / Cancel only while a job on the list runs. */
+  grid-template-columns: minmax(0, 1.6fr) 170px minmax(0, 1.4fr);
   align-items: center;
   gap: 16px;
   padding: 14px 20px;
 }
+.job-list.has-actions .job-row {
+  grid-template-columns: minmax(0, 1.6fr) 170px minmax(0, 1.4fr) 180px;
+}
 .job-row + .job-row {
   border-top: 1px solid var(--line);
+}
+.job-row:first-child {
+  border-radius: var(--r-lg) var(--r-lg) 0 0;
+}
+.job-row:last-child {
+  border-radius: 0 0 var(--r-lg) var(--r-lg);
 }
 .job-file {
   min-width: 0;
@@ -6064,7 +6189,7 @@ a.nav-item.is-active .nav-count {
 }
 .job-name {
   color: var(--text);
-  font-weight: 700;
+  font-weight: 600;
   text-decoration: none;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -6073,7 +6198,6 @@ a.nav-item.is-active .nav-count {
 }
 .job-name:hover {
   color: var(--text);
-  text-decoration: underline;
 }
 .job-where {
   font-size: var(--fs-small);
@@ -6088,9 +6212,11 @@ a.nav-item.is-active .nav-count {
   padding: 12px 6px;
   margin: -12px -6px;
   color: var(--muted);
+  text-decoration: none;
 }
 .job-run-link:hover {
   color: var(--text);
+  text-decoration: underline;
 }
 
 .job-chips {
@@ -6116,7 +6242,13 @@ a.nav-item.is-active .nav-count {
   color: var(--st-running-ink);
 }
 .job-chip.is-queued,
-.job-chip.is-paused {
+.job-chip.is-paused,
+.job-chip.is-kept,
+.job-chip.is-noop,
+.job-chip.is-cancelled,
+.job-chip.is-already,
+.job-chip.is-skipped {
+  /* Nothing changed (or not yet): a neutral outline, never a colour that reads as an outcome. */
   background: transparent;
   border-color: var(--line-strong);
   color: var(--muted);
@@ -6126,25 +6258,8 @@ a.nav-item.is-active .nav-count {
   border-color: var(--st-replaced);
   color: var(--st-replaced-ink);
 }
-.job-chip.is-kept {
-  background: var(--st-kept);
-  border-color: var(--st-kept);
-  color: var(--st-kept-ink);
-}
-.job-chip.is-noop,
-.job-chip.is-cancelled,
-.job-chip.is-already {
-  background: var(--st-noop);
-  border-color: var(--st-noop);
-  color: var(--st-noop-ink);
-}
 .job-chip.is-noop svg {
   stroke-dasharray: 3 3;
-}
-.job-chip.is-skipped {
-  background: var(--st-skipped);
-  border-color: var(--st-skipped);
-  color: var(--st-skipped-ink);
 }
 .job-chip.is-failed {
   background: var(--st-failed);
@@ -6173,11 +6288,9 @@ a.nav-item.is-active .nav-count {
 .job-detail-text.is-replaced {
   color: var(--st-replaced-text);
 }
-.job-detail-text.is-kept {
-  color: var(--st-kept-text);
-}
-.job-detail-text.is-skipped {
-  color: var(--st-skipped-text);
+/* Desktop rows: the chip already says "Replaced"; the sizes beside it read as plain text. */
+.job-row .job-detail-text.is-replaced {
+  color: var(--text);
 }
 .job-detail-text.is-failed {
   color: var(--st-failed-text);
@@ -6202,15 +6315,6 @@ a.nav-item.is-active .nav-count {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
-}
-.job-details-link {
-  display: inline-flex;
-  align-items: center;
-  min-height: var(--target-min);
-  padding: 0 4px;
-  font-size: var(--fs-small);
-  color: var(--muted);
-  border-radius: var(--r-sm);
 }
 
 .jobs-empty {
@@ -6282,6 +6386,28 @@ a.nav-item.is-active .nav-count {
 .is-phone .jobs-head {
   gap: 10px;
 }
+.is-phone .jobs-title {
+  flex: 1;
+}
+.is-phone .jobs-title-row {
+  gap: 10px;
+}
+.is-phone .head-actions {
+  padding-top: 2px;
+}
+/* Two or more actions (Retry failed, Cancel all) do not fit beside the title on a phone: they go
+   to their own row under it, so the lanes line keeps the full width. */
+.is-phone .jobs-head:has(.head-actions > :nth-child(2)) {
+  flex-wrap: wrap;
+}
+.is-phone .jobs-head:has(.head-actions > :nth-child(2)) .jobs-title {
+  flex-basis: 100%;
+}
+.is-phone .jobs-head:has(.head-actions > :nth-child(2)) .head-actions {
+  justify-content: flex-start;
+  margin-left: 0;
+  padding-top: 0;
+}
 .is-phone .jobs-head h1 {
   font-size: 26px;
 }
@@ -6306,14 +6432,12 @@ a.nav-item.is-active .nav-count {
 }
 .week-bars-axis {
   stroke: var(--line-strong);
+  vector-effect: non-scaling-stroke;
 }
 .week-bars text {
   font-family: var(--font-mono);
   font-size: 10px;
   fill: var(--faint);
-}
-.week-bars .week-bars-total {
-  fill: var(--muted);
 }
 .week-bars-day.is-hover rect:not(.week-bars-hit) {
   filter: brightness(1.12);
@@ -6369,6 +6493,11 @@ a.nav-item.is-active .nav-count {
   display: block;
   width: 100%;
   height: 80px;
+}
+.load-baseline {
+  stroke: var(--line-strong);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
 }
 .load-line {
   stroke-width: 1.5;
@@ -6458,19 +6587,9 @@ a.nav-item.is-active .nav-count {
   font-size: 24px;
   font-weight: 700;
 }
-.stat-tile.is-saved {
-  background: var(--accent);
-  color: var(--on-accent);
-}
-.stat-tile.is-failed {
-  background: var(--st-failed-bg);
-  color: var(--st-failed-text);
-}
-.stat-tile.is-saved .stat-label,
-.stat-tile.is-failed .stat-label,
-.stat-tile.is-saved .stat-sub,
-.stat-tile.is-failed .stat-sub {
-  color: inherit;
+/* A zero that is not good news (nothing saved, nothing queued) is dimmed, not hidden. */
+.stat-tile.is-zero .stat-value {
+  color: var(--faint);
 }
 /* "Saved all time" sits at the end of the Today row, apart from its list. */
 .stat-row {
@@ -6484,14 +6603,6 @@ a.nav-item.is-active .nav-count {
 .stat-row > .stat-tile.is-alltime {
   flex: 1;
 }
-.stat-tile.is-alltime {
-  background: var(--accent);
-  color: var(--on-accent);
-}
-.stat-tile.is-alltime .stat-label,
-.stat-tile.is-alltime .stat-sub {
-  color: inherit;
-}
 .is-phone .stat-row {
   flex-wrap: wrap;
 }
@@ -6499,26 +6610,27 @@ a.nav-item.is-active .nav-count {
 .is-phone .stat-row > .stat-tile.is-alltime {
   flex: 1 1 100%;
 }
-/* Last 7 days and the encoder's last hour (mockup option A). */
-.jobs-history h2,
-.encoder-strip h2 {
-  margin: 0 0 10px;
-  font-size: var(--fs-body, 15px);
-  font-weight: 700;
+/* Last 7 days and the encoder's last hour: one row of four half-height cards (2 × 2 on a phone),
+   title and total on one line, the chart under them. */
+.jobs-history {
+  display: flex;
+  flex-direction: column;
 }
 .history-cards {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
 }
 .is-phone .history-cards {
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 .history-card {
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 8px;
   min-width: 0;
-  padding: 14px 16px 10px;
+  padding: 8px 12px;
   border-radius: 14px;
   background: var(--raised);
 }
@@ -6527,8 +6639,8 @@ a.nav-item.is-active .nav-count {
   color: var(--muted);
 }
 .history-card-total {
-  margin: 2px 0 8px;
-  font-size: 22px;
+  margin: 0;
+  font-size: 18px;
   font-weight: 700;
 }
 .history-card-total small {
@@ -6539,50 +6651,96 @@ a.nav-item.is-active .nav-count {
   font-weight: 400;
   color: var(--faint);
 }
+.history-card .week-bars {
+  flex: 1 1 100%;
+  margin-top: 6px;
+}
+.history-card .week-bars-svg,
+.history-card .load-strip-svg {
+  display: block;
+  width: 100%;
+  height: 44px;
+}
+.week-days {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  margin-top: 2px;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--faint);
+}
 .history-legend {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
-  margin-top: 6px;
-  font-size: var(--fs-small);
+  gap: 10px;
+  margin-top: 3px;
+  font-family: var(--font-mono);
+  font-size: 10px;
   color: var(--muted);
+}
+.history-card > .history-legend {
+  flex: 1 1 100%;
 }
 .history-legend i {
   display: inline-block;
-  width: 9px;
-  height: 9px;
+  width: 7px;
+  height: 7px;
   margin-right: 5px;
   border-radius: 2px;
 }
-.encoder-strip-head {
-  display: flex;
-  align-items: baseline;
-  gap: 12px;
+.encoder-card .load-strip-axis {
+  align-items: center;
 }
-.encoder-strip-head h2 {
-  margin-right: auto;
+.encoder-card .encoder-legend {
+  margin: 0;
 }
-.encoder-strip-gpu,
-.encoder-strip-now {
-  font-size: var(--fs-small);
+.encoder-gpu {
+  flex: 1 1 100%;
+  margin-top: 3px;
+  font-size: 11px;
   color: var(--muted);
 }
-.encoder-strip-now {
-  font-weight: 700;
-  color: var(--text);
+/* Phone: smaller type; no legends or day names, the GPU's name under the title. */
+.is-phone .history-card {
+  padding: 10px 10px 8px;
+}
+.is-phone .history-card-title {
+  flex: 1 1 100%;
+  overflow: hidden;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.is-phone .history-card-total {
+  font-size: 16px;
+}
+.is-phone .history-card-total small {
+  font-size: 11px;
+}
+.is-phone .history-card .week-bars-svg,
+.is-phone .history-card .load-strip-svg {
+  height: 34px;
+}
+.is-phone .history-card > .history-legend,
+.is-phone .week-days,
+.is-phone .encoder-card .load-strip-axis > span:not(.encoder-legend) {
+  display: none;
+}
+.is-phone .encoder-card .load-strip-axis {
+  justify-content: flex-start;
+}
+.is-phone .encoder-gpu {
+  order: 2;
+  margin: 0;
 }
 .phone-section {
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
-.phone-section h2 {
+.phone-section .section-h2 {
   margin-top: 6px;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  color: var(--faint);
 }
 .phone-card {
   padding: 14px;
@@ -6646,13 +6804,15 @@ a.nav-item.is-active .nav-count {
   background: var(--st-replaced);
   color: var(--st-replaced-ink);
 }
-.phone-finished-icon.is-kept {
-  background: var(--st-kept);
-  color: var(--st-kept-ink);
-}
-.phone-finished-icon.is-skipped {
-  background: var(--st-skipped);
-  color: var(--st-skipped-ink);
+.phone-finished-icon.is-kept,
+.phone-finished-icon.is-noop,
+.phone-finished-icon.is-skipped,
+.phone-finished-icon.is-cancelled,
+.phone-finished-icon.is-already,
+.phone-finished-icon.is-queued {
+  background: transparent;
+  border: 1.5px solid var(--line-strong);
+  color: var(--muted);
 }
 .phone-finished-icon.is-failed {
   background: var(--st-failed);
@@ -6710,8 +6870,68 @@ a.nav-item.is-active .nav-count {
   vertical-align: middle;
 }
 
-.lib-table .lib-cell .mono {
-  overflow-wrap: break-word;
+.lib-table table {
+  table-layout: fixed;
+}
+.lib-table .lib-col-name {
+  width: 24%;
+}
+.lib-table .lib-col-feeds {
+  width: 28%;
+}
+.lib-table .lib-col-actions {
+  width: 170px;
+}
+
+/* The count beside the H1 ("Libraries 1"), like a section heading's count. */
+.lib-h1-count {
+  margin-left: 4px;
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0;
+  color: var(--muted);
+}
+
+/* A path on one muted line, cut from the left ("…/media/movies"); the full path is its title. */
+.lib-path,
+.lib-note-path {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  direction: rtl;
+  text-align: left;
+  font-size: 13px;
+  color: var(--muted);
+}
+.lib-note-path {
+  display: inline-block;
+  vertical-align: bottom;
+  max-width: calc(100% - 7em);
+  font-size: 12px;
+}
+/* A setting that differs from the default, under the path. */
+.lib-note {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* Feeds: the workflow's name and the same activation pill as the Workflows list. */
+.lib-feed {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  color: var(--text);
+}
+.lib-feed .activation-pill {
+  min-height: 24px;
+  padding: 0 9px;
+  font-size: 11px;
 }
 
 .lib-table th:first-child,
@@ -6905,74 +7125,7 @@ a.nav-item.is-active .nav-count {
   font-weight: 500;
 }
 
-/* ---------- Run summary (Task 25): outcome tiles, in = out line, per-file table ---------- */
-
-.outcome-done {
-  --outcome: var(--st-replaced);
-  --outcome-ink: var(--st-replaced-ink);
-}
-.outcome-kept_original {
-  --outcome: var(--st-kept);
-  --outcome-ink: var(--st-kept-ink);
-}
-.outcome-nothing_to_do,
-.outcome-cancelled,
-.outcome-already_processed {
-  --outcome: var(--st-noop);
-  --outcome-ink: var(--st-noop-ink);
-}
-.outcome-skipped {
-  --outcome: var(--st-skipped);
-  --outcome-ink: var(--st-skipped-ink);
-}
-.outcome-failed {
-  --outcome: var(--st-failed);
-  --outcome-ink: var(--st-failed-ink);
-}
-.outcome-queued {
-  --outcome: var(--st-noop);
-  --outcome-ink: var(--st-noop-ink);
-}
-.outcome-in_progress {
-  --outcome: var(--st-running);
-  --outcome-ink: var(--st-running-ink);
-}
-
-.outcome-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  height: 24px;
-  padding: 0 8px;
-  border-radius: var(--r-pill);
-  border: 1px solid var(--outcome);
-  background: var(--outcome);
-  color: var(--outcome-ink);
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 600;
-  white-space: nowrap;
-}
-/* A dry run's would-be verdict: solid amber (the dashed "Dry run" badge sits beside it). */
-.outcome-chip.is-would {
-  --outcome: var(--st-dry);
-  --outcome-ink: var(--st-dry);
-  background: var(--st-dry-bg);
-}
-.outcome-with-tag {
-  display: inline-flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-}
-.outcome-depends {
-  --outcome: var(--st-dry);
-  --outcome-ink: var(--st-dry);
-}
-.run-tiles.is-dry .outcome-done,
-.run-tiles.is-dry .outcome-kept_original {
-  --outcome: var(--st-dry);
-}
+/* ---------- Run summary: header, Jobs-style tiles, per-file table (phone: stacked cards) ---------- */
 
 .run-title-row {
   display: flex;
@@ -6980,59 +7133,18 @@ a.nav-item.is-active .nav-count {
   align-items: center;
   gap: var(--sp-3);
 }
-.run-path {
-  overflow-wrap: anywhere;
-}
 
 .run-counts {
   display: flex;
   flex-direction: column;
   gap: var(--sp-3);
 }
-.run-tiles {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: var(--sp-2);
-  margin: 0;
-  padding: 0;
-  list-style: none;
+.run-stats .stat-tile {
+  flex: 0 1 200px;
 }
-.run-tile {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-1);
-  padding: var(--sp-3);
-  border-radius: var(--r-md);
-  border: 1px solid var(--line);
-  border-left: 4px solid var(--outcome);
-  background: var(--surface);
-}
-.run-tile-word {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
+.run-dry-summary {
+  color: var(--muted);
   font-size: var(--fs-small);
-  font-weight: 500;
-  color: var(--muted);
-}
-.run-tile-n {
-  font-size: var(--fs-h2);
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-}
-.run-tile.is-zero {
-  border-left-color: var(--line);
-}
-.run-tile.is-zero .run-tile-word,
-.run-tile.is-zero .run-tile-n {
-  color: var(--faint);
-}
-
-.run-reconcile {
-  font-family: var(--font-mono);
-  font-size: var(--fs-mono);
-  font-weight: 600;
-  color: var(--muted);
 }
 .run-bytes {
   color: var(--muted);
@@ -7056,7 +7168,6 @@ a.nav-item.is-active .nav-count {
 }
 .run-files table {
   width: 100%;
-  min-width: 640px;
   border-collapse: collapse;
   font-size: 14px;
 }
@@ -7077,10 +7188,30 @@ a.nav-item.is-active .nav-count {
 }
 .run-cell.run-file-name {
   color: var(--text);
-  font-weight: 700;
   overflow-wrap: anywhere;
 }
+.run-cell.run-file-name .job-name {
+  white-space: normal;
+}
+/* Why a file ended as it did, under its name (no Reason column). */
+.run-file-note {
+  display: block;
+  margin-top: 2px;
+  font-size: var(--fs-small);
+  color: var(--muted);
+}
+.run-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.run-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
 .run-cell.run-size {
+  color: var(--muted);
   font-family: var(--font-mono);
   font-size: 12px;
   white-space: nowrap;
@@ -7089,6 +7220,19 @@ a.nav-item.is-active .nav-count {
 @media (max-width: 639px) {
   .run-page {
     padding: 20px 16px 32px;
+  }
+  .run-page .page-head h1 {
+    font-size: 26px;
+  }
+  /* Phone: the saved tile on its own row, the outcomes side by side under it. */
+  .run-stats {
+    flex-wrap: wrap;
+  }
+  .run-stats .stat-tile {
+    flex: 1 1 0;
+  }
+  .run-stats .stat-tile:first-child {
+    flex-basis: 100%;
   }
 }
 
@@ -7772,37 +7916,32 @@ a.nav-item.is-active .nav-count {
 }
 
 .job-head h1 {
+  min-width: 0;
   font-size: 32px;
   font-weight: 700;
   letter-spacing: -0.02em;
   overflow-wrap: anywhere;
 }
 
-.job-head-where {
-  font-family: var(--font-mono);
-  font-size: var(--fs-small);
+/* H1 left, Process again / Dry run again (or Pause / Cancel) right, centred on the title. */
+.job-title-row {
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.job-title-row > .head-actions {
+  padding-top: 0;
+}
+
+/* The one muted meta line: library · workflow · run · when (convention 1). */
+.job-head-meta {
   color: var(--faint);
 }
 
-.job-where-link {
-  color: var(--muted);
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-
-.job-where-link:hover {
-  color: var(--text);
-}
-
-.job-where-link:focus-visible {
+.job-head-meta .link-muted:focus-visible {
   outline: none;
   border-radius: var(--r-sm);
   box-shadow: var(--focus-ring);
-}
-
-.job-head-at {
-  font-size: var(--fs-small);
-  color: var(--muted);
 }
 
 .job-head-chips {
@@ -7838,26 +7977,39 @@ a.nav-item.is-active .nav-count {
   color: var(--muted);
 }
 
-.job-progress-actions {
+/* "Dry run again" / "Process again" on a finished job; the hint for an inactive workflow under them. */
+.job-again {
   display: flex;
-  gap: var(--sp-2);
-  margin-left: auto;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
 }
 
-/* "Process again" / "Dry run again" on a finished job. */
 .job-again-actions {
   display: flex;
   flex-wrap: wrap;
   gap: var(--sp-2);
 }
 
-/* The flow takes the page's full width above the decisions: beside them it was a ~600px column. */
-.trace-layout {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-6);
+/* Phone: the actions go under the meta line, left-aligned (the title row folds away). */
+@media (max-width: 639px) {
+  .job-title-row {
+    display: contents;
+  }
+  .job-title-row > .head-actions {
+    order: 1;
+    justify-content: flex-start;
+    margin: var(--sp-2) 0 0;
+  }
+  .job-again {
+    align-items: flex-start;
+  }
+  .job-progress {
+    order: 2;
+  }
 }
 
+/* The flow, last on the page, full width. */
 .trace-panel {
   overflow: hidden;
 }
@@ -7900,81 +8052,40 @@ a.nav-item.is-active .nav-count {
   overflow: hidden;
 }
 
-/* Screen 06b: heading, dry-run badge, counts and the All steps / Only changes filter on one line. */
+/* Screen 06b: heading with its step count, dry-run badge and the All / Changes pills on one line. */
 .job-steps-head {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 12px;
+  gap: 8px 10px;
   padding: 18px 22px;
   border-bottom: 1px solid var(--line);
-}
-
-.job-steps-head h2 {
-  margin: 0;
-  font-size: 22px;
-  font-weight: 700;
 }
 
 .job-steps-head .badge-dry {
   text-transform: uppercase;
 }
 
-/* Counts as separate pieces: a wrap never splits one of them. */
-.job-steps-counts {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 14px;
-  margin: 0;
-  font-size: 14px;
-  color: var(--muted);
-}
-
-.job-steps-counts b {
-  color: var(--text);
-}
-
-.job-steps-counts b.is-note {
-  color: var(--st-dry);
+/* "6 steps" is words, not a number: sans. */
+.job-steps-head .section-count {
+  font-family: var(--font-ui);
+  font-size: var(--fs-small);
+  font-weight: 500;
+  color: var(--faint);
 }
 
 .job-steps-filter {
-  display: flex;
   margin-left: auto;
-  padding: 3px;
-  border-radius: 10px;
-  background: var(--raised);
 }
 
-.job-steps-filter button {
-  min-height: 32px;
-  padding: 0 12px;
-  border: 0;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--text);
-  font: inherit;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
+.job-steps-filter .filter-chip {
+  height: 32px;
 }
 
-.job-steps-filter button[aria-checked="true"] {
-  background: var(--text);
-  color: var(--bg);
-}
-
-.job-steps-filter button:focus-visible,
 .job-step-main:focus-visible,
 .job-step-more:focus-visible {
   outline: none;
   box-shadow: var(--focus-ring);
-}
-
-.job-steps-empty {
-  margin: 0;
-  padding: 16px 22px;
-  color: var(--muted);
 }
 
 .job-steps-list {
@@ -7983,13 +8094,8 @@ a.nav-item.is-active .nav-count {
   list-style: none;
 }
 
-.job-steps-retry h3 {
+.job-steps-retry .group-h3 {
   margin: 8px 22px 0;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--st-needs-setting);
-  text-transform: uppercase;
 }
 
 /* One row: the kind tile on a rail that joins the rows, then the row's text. */
@@ -8150,16 +8256,19 @@ a.nav-item.is-active .nav-count {
   color: var(--faint);
 }
 
+/* Step badges are one chip family (convention 7): lime for a step that changed the file, red for
+   one that failed, a neutral outline for everything else. */
 .step-badge {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  height: 26px;
+  height: 28px;
   padding: 0 10px;
   border-radius: var(--r-pill);
-  border: 1.5px solid transparent;
-  font-size: 12px;
-  font-weight: 700;
+  border: 1.5px solid var(--line-strong);
+  color: var(--muted);
+  font-size: var(--fs-small);
+  font-weight: 600;
   white-space: nowrap;
 }
 
@@ -8169,28 +8278,10 @@ a.nav-item.is-active .nav-count {
   color: var(--on-accent);
 }
 
-.step-badge.is-same,
+/* A step that never ran: dashed, so it differs from one that ran and changed nothing. */
 .step-badge.is-not-run {
   border-style: dashed;
   border-color: var(--empty-link);
-  color: var(--muted);
-}
-
-.step-badge.is-start {
-  border-color: var(--kind-trigger);
-  color: var(--st-kept-text);
-}
-
-.step-badge.is-check,
-.step-badge.is-finish {
-  border-color: var(--kind-finish);
-  color: var(--finish-text);
-}
-
-.step-badge.is-yes,
-.step-badge.is-no {
-  border-color: var(--kind-condition);
-  color: var(--st-skipped-text);
 }
 
 .step-badge.is-failed {
@@ -8334,6 +8425,7 @@ button.job-step-more:hover {
   }
   .job-steps-filter {
     margin-left: 0;
+    width: 100%;
   }
   .job-step {
     grid-template-columns: 40px minmax(0, 1fr);
@@ -8374,115 +8466,88 @@ button.job-step-more:hover {
   }
 }
 
+/* The job's Result, right under the header: a neutral panel (no coloured slab or edge bar); the
+   outcome's colour is only the icon's softly tinted circle, in the state chip's colours
+   (convention 7, 16): lime replaced, red failed, amber needs attention, neutral left alone. */
 .job-result {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  column-gap: var(--sp-3);
+  row-gap: var(--sp-2);
+  align-items: start;
+  padding: 18px 22px;
+}
+
+.job-result > :not(.job-result-icon, h2) {
+  grid-column: 2;
+}
+
+.job-result-icon {
+  grid-column: 1;
+  grid-row: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--r-pill);
+  background: var(--raised);
+  color: var(--muted);
+}
+
+.job-result.is-ok .job-result-icon {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  color: var(--accent-text);
+}
+
+.job-result.is-error .job-result-icon {
+  background: color-mix(in srgb, var(--st-failed) 18%, transparent);
+  color: var(--st-failed-text);
+}
+
+.job-result.is-warning .job-result-icon {
+  background: var(--st-dry-bg);
+  color: var(--st-dry);
+}
+
+.job-result-head {
+  grid-row: 1;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 18px 24px;
-  padding: 16px 20px;
-}
-
-.job-result.v-replaced {
-  background: var(--accent);
-  color: var(--on-accent);
-  border-color: var(--accent);
-}
-
-/* Kept original: the same blue as the "Kept original" chip, so it never reads as a success. */
-.job-result.v-kept {
-  background: var(--st-kept);
-  color: var(--st-kept-ink);
-  border-color: var(--st-kept);
-}
-
-/* Every other outcome takes its state chip's tokens, so none falls back to a misleading colour.
-   The word and icon always carry the meaning; the colour only backs them. */
-.job-result.v-running {
-  background: var(--st-running);
-  color: var(--st-running-ink);
-  border-color: var(--st-running);
-}
-.job-result.v-queued {
-  background: transparent;
-  color: var(--muted);
-  border-color: var(--line-strong);
-}
-.job-result.v-noop,
-.job-result.v-already,
-.job-result.v-cancelled {
-  background: var(--st-noop);
-  color: var(--st-noop-ink);
-  border-color: var(--st-noop);
-}
-.job-result.v-skipped {
-  background: var(--st-skipped);
-  color: var(--st-skipped-ink);
-  border-color: var(--st-skipped);
-}
-.job-result.v-failed {
-  background: var(--st-failed);
-  color: var(--st-failed-ink);
-  border-color: var(--st-failed);
-}
-/* Dry run: the amber chip tone with its dashed border (nothing was changed). */
-.job-result.v-dry {
-  background: var(--st-dry-bg);
-  color: var(--st-dry);
-  border: 1.5px dashed var(--st-dry);
-}
-/* Needs attention: solid amber, so it differs from the dashed dry run by more than hue. */
-.job-result.v-attention {
-  background: var(--st-dry);
-  color: var(--st-dry-ink);
-  border-color: var(--st-dry);
-}
-
-.job-result-cell {
-  display: flex;
-  flex-direction: column;
-}
-
-.job-result-label {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-}
-
-.job-result-word {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--sp-2);
-  font-size: 22px;
+  gap: 0 var(--sp-3);
+  min-height: 28px;
+  margin: 0;
+  font-size: var(--fs-h2);
   font-weight: 700;
-}
-
-.job-result-size {
-  font-size: 22px;
-  font-weight: 700;
-}
-
-.job-result-action {
-  align-self: flex-start;
-  margin-top: var(--sp-2);
+  line-height: 1.3;
+  overflow-wrap: anywhere;
 }
 
 .job-result-pct {
-  font-size: 30px;
-  font-weight: 800;
-  letter-spacing: -0.03em;
+  color: var(--accent-text);
 }
 
-.job-result-notes {
-  flex: 1 1 240px;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
+.job-result-text {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.job-result-meta {
+  margin: 0;
   font-size: var(--fs-small);
+  color: var(--faint);
+}
+
+.job-result-action {
+  justify-self: start;
+}
+
+.job-result .ffmpeg-raw {
+  margin-top: var(--sp-2);
 }
 
 .job-result-warnings {
-  flex-basis: 100%;
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -8490,6 +8555,7 @@ button.job-step-more:hover {
   padding: 0;
   list-style: none;
   font-size: var(--fs-small);
+  color: var(--muted);
 }
 
 .job-result-warnings li {
@@ -8498,18 +8564,16 @@ button.job-step-more:hover {
   gap: 6px;
 }
 
+.job-result-problems {
+  color: var(--st-dry);
+}
+
 /* Before / after (job page, under the result): the source and the output side by side. */
 .before-after-head {
   display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 4px 16px;
-  padding: 16px 20px 8px;
-}
-
-.before-after-legend {
-  font-size: var(--fs-small);
-  color: var(--muted);
+  flex-direction: column;
+  gap: 2px;
+  padding: 18px 22px 8px;
 }
 
 .ba-table-wrap {
@@ -8705,12 +8769,6 @@ button.job-step-more:hover {
   flex-wrap: wrap;
   align-items: baseline;
   gap: 4px 10px;
-}
-
-.ffmpeg-notes-head h2 {
-  margin: 0;
-  font-size: var(--fs-h2);
-  font-weight: 700;
 }
 
 .ffmpeg-notes-summary {
@@ -9622,11 +9680,6 @@ button.job-step-more:hover {
   background: var(--st-damaged);
   color: var(--st-damaged-ink);
 }
-.job-result.v-damaged {
-  background: var(--st-damaged);
-  color: var(--st-damaged-ink);
-  border-color: var(--st-damaged);
-}
 
 /* Jobs: done with problems (needs attention) */
 .job-chip.is-attention {
@@ -9641,26 +9694,6 @@ button.job-step-more:hover {
   background: var(--st-dry-bg);
   color: var(--st-dry);
   border: 1.5px solid var(--st-dry);
-}
-.stat-tile.is-attention {
-  background: var(--st-dry-bg);
-  color: var(--st-dry);
-}
-.stat-tile.is-attention .stat-label {
-  color: inherit;
-}
-.problem-banner {
-  align-items: flex-start;
-}
-.problem-banner-text ul {
-  margin: 4px 0 0;
-  padding-left: 18px;
-}
-.job-result-problems {
-  color: var(--st-dry);
-}
-.job-result.v-attention .job-result-problems {
-  color: inherit;
 }
 .tc-trace-plug {
   display: inline-flex;
@@ -9945,23 +9978,10 @@ button.job-step-more:hover {
   color: var(--muted);
 }
 
-/* Settings: a group's small heading ("Applies at once", "Set on the server"). */
-.settings-group-head {
-  margin: var(--sp-4) 0 var(--sp-1);
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-.settings-group-head:first-child {
-  margin-top: 0;
-}
-
-/* About: what Transcoda encodes with, before the full list. */
+/* About: what Transcoda encodes with, first in "Show all encoders". */
 .about-encoders {
   list-style: none;
-  margin: var(--sp-3) 0;
+  margin: var(--sp-3) 16px var(--sp-2);
   padding: 0;
   display: grid;
   gap: 6px;
@@ -10051,14 +10071,39 @@ button.job-step-more:hover {
   }
 }
 @media (max-width: 639px) {
-  /* A library's actions (Scan now and the menu) are too wide for the side: a row under the card. */
-  .lib-table .lib-cell.lib-actions {
-    grid-column: 1 / -1;
-    grid-row: auto;
-    margin-top: 6px;
+  /* A library card: the name with Scan now and the menu on its row; schedule, path and feeds
+     under it, without column names. */
+  .lib-table colgroup {
+    display: none;
   }
-  .lib-table tbody tr {
-    grid-template-columns: minmax(0, 1fr);
+  .lib-table .lib-cell {
+    grid-column: 1 / -1;
+  }
+  /* The name cell's parts join the card's grid: the name beside the actions, the run hours on
+     their own line under them. */
+  .lib-table .lib-cell.lib-name {
+    display: contents;
+  }
+  .lib-table .lib-name-text {
+    grid-column: 1;
+    grid-row: 1;
+    align-self: center;
+    min-width: 0;
+    color: var(--text);
+    font-weight: 700;
+  }
+  .lib-table .lib-run-hours {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    margin-top: 0;
+  }
+  .lib-table .lib-cell.lib-actions {
+    grid-column: 2;
+    grid-row: 1;
+    align-self: start;
+  }
+  .lib-table .lib-path {
+    font-size: 12px;
   }
 }
 @media (max-width: 639px) {
@@ -10075,9 +10120,10 @@ button.job-step-more:hover {
   gap: var(--sp-2);
 }
 
-/* A group after another group: a little more air than between rows. */
+/* A group after another group: clearly apart (the pause switch applies at once, the group after
+   it has its own Save). */
 .settings-group + .settings-group {
-  margin-top: var(--sp-4);
+  margin-top: var(--sp-6);
 }
 
 /* Library dialog: the recycle folder and the two switches, under "Advanced". */
