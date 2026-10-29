@@ -51,9 +51,9 @@ More in [`examples/workflows`](examples/workflows).
 
 | | |
 | --- | --- |
-| ![Jobs page with files done, space saved per day and the encoder load graph](docs/images/jobs.png) | ![A dry run on one file: what it would do, the size before and after, and which audio tracks it keeps and drops](docs/images/dry-run.png) |
+| ![Jobs page: space saved, files done and video processed this week, the encoder card, and the replaced files](docs/images/jobs.png) | ![A dry run on one file: what it would do, the size before and after, and which audio tracks it keeps and drops](docs/images/dry-run.png) |
 | **Jobs**: progress, savings per day and encoder load. | **Dry run**: see the plan and the result before anything changes. |
-| ![A job's walk drawn over its workflow](docs/images/job.png) | ![The Plugins page with the official catalog](docs/images/plugins.png) |
+| ![A finished job: why it kept the original, and the file before and after](docs/images/job.png) | ![The Plugins page with the official catalog](docs/images/plugins.png) |
 | **Job detail**: the path each file took. | **Plugins**: signed, sandboxed integrations. |
 
 ## Install
