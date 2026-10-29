@@ -24,6 +24,8 @@ jobs:
       # Sigstore, and the attestations are stored with the repository and in GHCR.
       id-token: write
       attestations: write
+      # The Grype findings for main go to code scanning (Security tab).
+      security-events: write
     timeout-minutes: 45
     outputs:
       tags: ${{ steps.meta.outputs.tags }}
@@ -94,6 +96,22 @@ jobs:
           subject-digest: ${{ steps.build.outputs.digest }}
           sbom-path: sbom.spdx.json
           push-to-registry: true
+      # Known vulnerabilities in main's image, from its SBOM: reported, never blocking (most come
+      # from the base image and wait for its next update). vulnerability-scan.yml repeats this
+      # weekly, for main and the latest release, as new vulnerabilities are published.
+      - id: grype
+        if: github.ref == 'refs/heads/main'
+        uses: anchore/scan-action@27805bf3b4e84b4a5c980df22ed233c00390a439 # v7.4.2
+        with:
+          sbom: sbom.spdx.json
+          fail-build: false
+          only-fixed: true
+          output-format: sarif
+      - if: github.ref == 'refs/heads/main'
+        uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
+        with:
+          sarif_file: ${{ steps.grype.outputs.sarif }}
+          category: grype-main
       # A release also carries both as files (release-assets below).
       - name: Keep the provenance bundle and the SBOM for the release
         if: steps.release.outputs.release == 'true'
