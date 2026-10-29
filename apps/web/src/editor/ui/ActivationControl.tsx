@@ -67,8 +67,9 @@ export function ActivationPill({
 }: {
   active: WorkflowSummary['active'];
   /**
-   * Replaces the visible text (e.g. the workflows list's "v3 · can't run" under its ACTIVE
-   * header); screen readers still get the full wording. The editor header does not pass it.
+   * Replaces the visible text (e.g. the workflows list's "Active v3" for a can't-run version, whose
+   * name has a "can't run" chip); screen readers still get the full wording. The editor header
+   * does not pass it.
    */
   text?: string | undefined;
   ref?: RefObject<HTMLSpanElement | null>;

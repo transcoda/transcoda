@@ -2696,6 +2696,17 @@ a.btn-secondary:hover {
   margin-top: var(--sp-6);
 }
 
+/* The page title with the workflow count beside it (the table's own heading is for screen readers). */
+.wf-title {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.wf-title .wf-count {
+  font-size: 15px;
+}
+
 .wf-section-head {
   display: flex;
   align-items: baseline;
@@ -2712,7 +2723,7 @@ a.btn-secondary:hover {
 }
 
 /* Fits the 1024 px desktop without scrolling, so the row menu is never clipped there. Both
-   tables are fixed-layout with the same widths (the second column is ACTIVE or USED BY). */
+   tables are fixed-layout; USED BY spans LIBRARY + ACTIVE, so LAST EDITED and the menus line up. */
 .wf-table table {
   width: 100%;
   min-width: 720px;
@@ -2721,15 +2732,18 @@ a.btn-secondary:hover {
   font-size: 14px;
 }
 
-/* 190 px: room for a can't-run pill ("v12 · can't run") next to its icon (#34). */
-.wf-col-second {
-  width: 190px;
+.wf-col-library {
+  width: 180px;
 }
-.wf-col-status {
+/* Room for "Active v12" and, under it, "v13 not activated". */
+.wf-col-active {
   width: 170px;
 }
-.wf-col-version {
-  width: 150px;
+.wf-col-used-by {
+  width: 350px;
+}
+.wf-col-edited {
+  width: 140px;
 }
 .wf-col-actions {
   width: calc(var(--target-min) + 24px);
@@ -2792,28 +2806,47 @@ a.btn-secondary:hover {
   }
 }
 
+/* Underlined only on hover and keyboard focus: a column of underlined names is noise. */
 .wf-link {
   color: var(--text);
   font-weight: 700;
   font-size: var(--fs-body);
+  text-decoration: none;
   overflow-wrap: anywhere;
 }
 
-/* Status chips stack, one per line, with a gap (#34). */
-.wf-status {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 4px;
+.wf-link:hover,
+.wf-link:focus-visible {
+  color: var(--text);
+  text-decoration: underline;
 }
 
-/* A fixed-height nowrap chip wider than the cell spilled into its neighbours; here a chip grows
-   instead and wraps its words inside the cell. */
-.wf-status .chip {
+/* A problem chip next to the name grows and wraps its words rather than spill out of the cell. */
+.wf-name-line .chip {
   height: auto;
   min-height: 24px;
   max-width: 100%;
   white-space: normal;
+}
+
+/* A library or used-by list longer than its column is cut short; the title has it all. */
+.wf-library,
+.wf-used-by {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.wf-quiet {
+  color: var(--faint);
+}
+
+/* The active pill with the newer version's "not activated" under it. */
+.wf-active {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
 }
 
 /* The pill may wrap as a fallback (a long version number in a narrow column). */
@@ -3263,37 +3296,36 @@ a.btn-secondary:hover {
   margin: 0;
 }
 
-/* The workflows list's second line under the active version: the newest version when it differs. */
-.wf-active-newest {
-  display: block;
-  color: var(--faint);
-  font-size: var(--fs-small);
-}
-
-/* A chip that is itself the button (no button box around the pill). */
-.chip-button {
-  display: inline-flex;
+/* The workflows list's quiet activation offers: "v6 not activated" under the pill, or "Not
+   active". A text button (24 px tall at least), underlined on hover like a link. */
+.wf-activate,
+.wf-activate-off {
+  min-height: 24px;
   padding: 0;
   border: 0;
-  border-radius: var(--r-pill);
+  border-radius: var(--r-sm);
   background: none;
-  color: inherit;
+  color: var(--muted);
   font: inherit;
+  font-size: var(--fs-small);
+  text-align: left;
+}
+
+.wf-activate-off {
+  display: inline-flex;
+  align-items: center;
+}
+
+.wf-activate {
   cursor: pointer;
 }
 
-/* Brighten rather than recolour, so a toned chip (e.g. "can't run") keeps its colour. */
-.chip-button:hover .chip {
-  filter: brightness(1.2);
+.wf-activate:hover {
+  color: var(--text);
+  text-decoration: underline;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .chip-button .chip {
-    transition: filter 0.12s;
-  }
-}
-
-.chip-button:focus-visible {
+.wf-activate:focus-visible {
   outline: none;
   box-shadow: var(--focus-ring);
 }
@@ -9993,8 +10025,8 @@ button.job-step-more:hover {
 }
 
 /* Phone: the Workflows and Libraries tables become one card per row, like the Jobs page: the name
-   and its actions on top, every other cell under it with its column name (data-label). The header
-   row stays for screen readers only. */
+   and its actions on top, every other cell under it (a library's with its column name, data-label;
+   a workflow's as one meta line, below). The header row stays for screen readers only. */
 @media (max-width: 639px) {
   .wf-table,
   .lib-table {
@@ -10019,7 +10051,6 @@ button.job-step-more:hover {
   .lib-table tbody {
     display: block;
   }
-  .wf-table tbody tr,
   .lib-table tbody tr {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
@@ -10035,19 +10066,70 @@ button.job-step-more:hover {
     display: block;
     padding: 0;
     border: 0;
+  }
+  .lib-table .lib-cell {
     grid-column: 1;
   }
-  .wf-table .wf-cell:last-child,
   .lib-table .lib-cell:last-child {
     grid-column: 2;
     grid-row: 1;
     align-self: start;
   }
-  .wf-table [data-label]::before,
   .lib-table [data-label]::before {
     content: attr(data-label) ": ";
     color: var(--muted);
     font-size: 12px;
+  }
+}
+@media (max-width: 639px) {
+  /* A workflow card: the name (and its problem chips) with the menu on line 1, then one muted meta
+     line, "Shows · Active v1 · v3 · 5 min ago", without column names. */
+  .wf-table tbody tr {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    row-gap: 4px;
+    padding: 12px 16px;
+  }
+  .wf-table .wf-cell.wf-name {
+    flex: 1 1 calc(100% - var(--target-min) - 12px);
+    min-width: 0;
+  }
+  .wf-table .wf-cell.wf-actions {
+    order: 1;
+    margin-left: 12px;
+    align-self: flex-start;
+  }
+  .wf-table .wf-cell.wf-meta {
+    order: 2;
+    min-width: 0;
+    max-width: 100%;
+    color: var(--muted);
+    font-size: 12px;
+  }
+  .wf-table .wf-meta + .wf-meta::before {
+    content: "·";
+    margin-left: 6px;
+    color: var(--faint);
+  }
+  .wf-table .wf-meta,
+  .wf-table .wf-active {
+    display: inline-flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
+  }
+  .wf-table .wf-meta .activation-pill {
+    min-height: 22px;
+    padding: 0 8px;
+    font-size: 11px;
+  }
+  .wf-table .wf-activate,
+  .wf-table .wf-activate-off {
+    font-size: 12px;
+  }
+  .wf-table .wf-version {
+    font-size: 11px;
   }
 }
 @media (max-width: 639px) {

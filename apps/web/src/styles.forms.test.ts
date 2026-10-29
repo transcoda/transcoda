@@ -75,25 +75,21 @@ describe('selected (M8)', () => {
 });
 
 describe('workflows tables and libraries (M6, L4, L9)', () => {
-  it('both tables are fixed-layout with the same column widths', () => {
+  it('both tables are fixed-layout; used-by spans library + active, so the last columns line up', () => {
     expect(rule('.wf-table table')).toMatch(/table-layout:\s*fixed/);
-    for (const col of ['name', 'second', 'status', 'version', 'actions']) {
+    for (const col of ['name', 'library', 'active', 'used-by', 'edited', 'actions']) {
       expect(rule(`.wf-col-${col}`), col).toMatch(/width:/);
     }
+    const px = (col: string) => Number(rule(`.wf-col-${col}`).match(/width:\s*(\d+)px/)?.[1]);
+    expect(px('used-by')).toBe(px('library') + px('active'));
   });
 
-  it("the second column has room for a can't-run pill, which may wrap as a fallback (#34)", () => {
-    expect(rule('.wf-col-second')).toMatch(/width:\s*190px/);
+  it('a pill may wrap as a fallback in its narrow column (#34)', () => {
     expect(rule('.wf-table .activation-pill')).toMatch(/white-space:\s*normal/);
   });
 
-  it('status chips stack in a column with a gap and never overlap (#34)', () => {
-    const status = rule('.wf-status');
-    expect(status).toMatch(/flex-direction:\s*column/);
-    expect(status).toMatch(/align-items:\s*flex-start/);
-    expect(status).toMatch(/gap:\s*4px/);
-    expect(status).not.toMatch(/flex-wrap:\s*wrap/);
-    const chip = rule('.wf-status .chip');
+  it('a problem chip next to a name grows and wraps instead of spilling out (#34)', () => {
+    const chip = rule('.wf-name-line .chip');
     expect(chip).toMatch(/height:\s*auto/);
     expect(chip).toMatch(/min-height:\s*24px/);
     expect(chip).toMatch(/max-width:\s*100%/);
