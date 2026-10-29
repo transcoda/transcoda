@@ -23,7 +23,7 @@ const AFTER_NOTE: Record<AfterSource, string | null> = {
  * probe ("After (not kept)" when a real run threw it away), or the plan: "After (planned)" on a
  * plan-only dry run, "After (from the plan)" for a job whose output probe was not stored. What the output loses (a downmix,
  * a lossy encode, a dropped track…) is amber with an icon and a word, explained to screen readers.
- * On a phone each row stacks Before over After.
+ * The amber legend is there only when a row has a loss. On a phone each row stacks Before over After.
  */
 export function BeforeAfter({ job }: { job: BeforeAfterJob }) {
   const headingId = useId();
@@ -31,18 +31,28 @@ export function BeforeAfter({ job }: { job: BeforeAfterJob }) {
   if (!comparison) return null;
   const header = AFTER_HEADER[comparison.after];
   const note = AFTER_NOTE[comparison.after];
+  // The legend only when a row is amber; where After comes from, whenever it is not the output.
+  const lossy = comparison.rows.some((r) => r.before.losses.length + r.after.losses.length > 0);
   return (
     <section className="panel before-after" aria-labelledby={headingId}>
       <div className="before-after-head">
-        <h2 id={headingId}>Before and after</h2>
-        <p className="before-after-legend">
-          <span className="ba-loss">
-            <Icon name="alert" size={14} round />
-            Amber
-          </span>{' '}
-          marks what the output loses.
-          {note && ` ${note}`}
-        </p>
+        <h2 id={headingId} className="section-h2">
+          Before and after
+        </h2>
+        {(lossy || note) && (
+          <p className="before-after-legend section-note">
+            {lossy && (
+              <>
+                <span className="ba-loss">
+                  <Icon name="alert" size={14} round />
+                  Amber
+                </span>{' '}
+                marks what the output loses.
+              </>
+            )}
+            {note && `${lossy ? ' ' : ''}${note}`}
+          </p>
+        )}
       </div>
       <div className="ba-table-wrap">
         <table className="ba-table" aria-labelledby={headingId}>

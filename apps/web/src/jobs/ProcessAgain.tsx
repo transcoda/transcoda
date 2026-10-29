@@ -20,15 +20,19 @@ type Confirm = { workflow: WorkflowDetail | null; recycle: string | null };
  * first, naming the recycle folder the current file goes to if it is rewritten, and runs the
  * active version (the server's rule for real runs). The dry run plans the active version too when
  * there is one (else the newest) and needs no confirmation. Force is per request: nothing is
- * remembered. A queued file opens its new job; a failure is a toast and the page stays.
+ * remembered. A queued file opens its new job; a failure is a toast and the page stays. "Dry run
+ * again" comes first, "Process again" on the right; `primary` makes it the lime primary.
  */
 export function ProcessAgain({
   job,
   summary = null,
+  primary = false,
 }: {
   job: JobDetail;
   /** The job's workflow from the page's list (null while it loads): its `active` decides Process again. */
   summary?: Pick<WorkflowSummary, 'active'> | null;
+  /** Process again is the page's primary action (a failed job: running it again is what's next). */
+  primary?: boolean;
 }) {
   const toast = useToast();
   const [, navigate] = useLocation();
@@ -96,35 +100,37 @@ export function ProcessAgain({
 
   return (
     <>
-      <div className="job-again-actions">
-        <button
-          type="button"
-          className="btn btn-sm btn-secondary"
-          disabled={busy || loading}
-          aria-busy={loading || undefined}
-          {...(inactive ? { 'aria-disabled': true, 'aria-describedby': hintId } : {})}
-          onClick={() => {
-            if (!inactive) void openConfirm();
-          }}
-        >
-          <Icon name="play" size={14} />
-          Process again
-        </button>
-        <button
-          type="button"
-          className="btn btn-sm btn-ghost"
-          disabled={busy}
-          onClick={() => void queue(true)}
-        >
-          <Icon name="eye" size={14} />
-          Dry run again
-        </button>
+      <div className="job-again">
+        <div className="job-again-actions">
+          <button
+            type="button"
+            className={`btn btn-sm ${primary ? 'btn-secondary' : 'btn-ghost'}`}
+            disabled={busy}
+            onClick={() => void queue(true)}
+          >
+            <Icon name="eye" size={14} />
+            Dry run again
+          </button>
+          <button
+            type="button"
+            className={`btn btn-sm ${primary ? 'btn-primary' : 'btn-secondary'}`}
+            disabled={busy || loading}
+            aria-busy={loading || undefined}
+            {...(inactive ? { 'aria-disabled': true, 'aria-describedby': hintId } : {})}
+            onClick={() => {
+              if (!inactive) void openConfirm();
+            }}
+          >
+            <Icon name="play" size={14} />
+            Process again
+          </button>
+        </div>
+        {inactive ? (
+          <span id={hintId} className="field-hint">
+            Activate a version to run for real
+          </span>
+        ) : null}
       </div>
-      {inactive ? (
-        <span id={hintId} className="field-hint">
-          Activate a version to run for real
-        </span>
-      ) : null}
       {loading ? (
         <span className="sr-only" role="status">
           Checking {job.workflowName} and the library

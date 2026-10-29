@@ -34,11 +34,12 @@ import { useEvents } from '../hooks/useEvents.ts';
 import { useRefetchOn } from '../hooks/useRefetchOn.ts';
 import { useWorkflows } from '../hooks/useWorkflows.ts';
 import { BeforeAfter } from '../jobs/BeforeAfter.tsx';
-import { FfmpegNotes } from '../jobs/FfmpegNotes.tsx';
+import { FfmpegNotes, RawOutput, useJobLog } from '../jobs/FfmpegNotes.tsx';
 import { JobPlanSection } from '../jobs/JobPlanSection.tsx';
 import { JobResult } from '../jobs/JobResult.tsx';
 import { JobStateChip } from '../jobs/JobStateChip.tsx';
 import { JobSteps } from '../jobs/JobSteps.tsx';
+import { jobWhenLine } from '../jobs/jobOutcome.ts';
 import {
   activityLine,
   dependsOnSizeText,
@@ -54,7 +55,6 @@ import { TestOutputPanel } from '../jobs/TestOutputPanel.tsx';
 import { useQueue } from '../jobs/useQueue.ts';
 import { useNodeParam } from '../jobs/useTryOnFile.ts';
 import { usePageTitle } from '../lib/pageTitle.ts';
-import { jobTimesLine } from '../lib/time.ts';
 
 type Live = Pick<JobDetail, 'state' | 'paused' | 'progress' | 'lane' | 'problems' | 'reason'>;
 
@@ -142,9 +142,12 @@ export function JobPage() {
 }
 
 /**
- * The header (file, where, the node it is at, state chip, progress, Pause/Resume/Cancel), the
- * workflow drawn with the job's trace, full width above what each step does (screen 06b), the
- * result, and the notes from ffmpeg with its command and raw log collapsed below them. Live: a `job.trace` for this job, or a `job.changed` that moves its state, refetches
+ * One layout for every outcome: the header (crumb, state chip, file name with Process again /
+ * Dry run again or Pause / Cancel on the right, one muted meta line, progress while active), the
+ * Result right under it (its command, raw error and log collapsed inside), then Before and after,
+ * what each step did (screen 06b), notes from ffmpeg when there are any, and the workflow drawn
+ * with the job's trace last. Empty sections are not shown. Live: a `job.trace` for this job, or a
+ * `job.changed` that moves its state, refetches
  * (coalesced); progress and the current node from `job.changed` are applied in place. A failed
  * refetch keeps the last state on screen with a note.
  */
@@ -195,6 +198,8 @@ function JobView({ id }: { id: string }) {
     setSelected(node ? { workflowPath: [], nodeId: node } : null);
   }, [node]);
   const [expanded, setExpanded] = useState<string[]>([]);
+  // The ffmpeg log, read once for the notes and the raw output (both follow the job's state).
+  const jobLog = useJobLog(id, data?.state ?? null);
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -307,6 +312,12 @@ function JobView({ id }: { id: string }) {
         }`
       : null;
 
+  const showResult = Boolean(job.result) || !active;
+  const failed = job.state === 'failed';
+  const raw = (
+    <RawOutput job={job} jobLog={jobLog} error={failed ? (job.reason?.trim() ?? null) : null} />
+  );
+
   return (
     <div className="page job-page">
       {error ? (
@@ -315,26 +326,12 @@ function JobView({ id }: { id: string }) {
           {`Could not refresh: ${describeError(error).message} — showing the last state.`}
         </p>
       ) : null}
-      {job.problems.length > 0 ? (
-        <section className="alert alert-warning problem-banner" role="alert">
-          <Icon name="alert" size={16} round />
-          <div className="problem-banner-text">
-            <b>Finished with a problem</b>
-            <ul>
-              {job.problems.map((p) => (
-                <li key={p}>{p}</li>
-              ))}
-            </ul>
-          </div>
-        </section>
-      ) : null}
       <header className="job-head">
         <nav aria-label="Breadcrumb" className="job-crumbs">
           <Link href="/jobs" className="job-crumb-link">
             Jobs
           </Link>
           <span aria-hidden="true">/</span>
-          <span>{job.fileName}</span>
         </nav>
         <div className="job-head-chips">
           <JobStateChip job={job} />
@@ -346,34 +343,74 @@ function JobView({ id }: { id: string }) {
             </span>
           )}
         </div>
-        <h1>{job.fileName}</h1>
-        <p className="mono job-head-where">
-          <Link href="/libraries" className="job-where-link">
+        <div className="head-row job-title-row">
+          <h1>{job.fileName}</h1>
+          <div className="head-actions">
+            {!active && (
+              <ProcessAgain
+                job={job}
+                summary={workflows?.find((w) => w.id === job.workflowId) ?? null}
+                primary={failed}
+              />
+            )}
+            {active && (
+              <>
+                {job.paused ? (
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-ghost"
+                    disabled={busy}
+                    onClick={() => void control('resume')}
+                  >
+                    <Icon name="play" size={14} />
+                    Resume
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-ghost"
+                    disabled={busy}
+                    onClick={() => void control('pause')}
+                  >
+                    <Icon name="pause" size={14} />
+                    Pause
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="btn btn-sm btn-danger-outline"
+                  disabled={busy}
+                  onClick={() => setConfirmCancel(true)}
+                >
+                  Cancel
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+        <p className="head-sub job-head-meta">
+          <Link href="/libraries" className="link-muted">
             {job.libraryName}
           </Link>
           {' · '}
           <Link
             href={`/workflows/${job.workflowId}?version=${job.workflowVersion}`}
-            className="job-where-link"
+            className="link-muted"
           >
             {`${job.workflowName} v${job.workflowVersion}`}
           </Link>
           {' · '}
-          <Link href={`/runs/${job.runId}`} className="job-where-link">
+          <Link href={`/runs/${job.runId}`} className="link-muted">
             Run
           </Link>
+          {` · ${jobWhenLine(job, !active)}`}
+          {job.encodedOn && (
+            <>
+              {' · '}
+              <span>{`${active ? 'Encoding' : 'Encoded'} on ${job.encodedOn}`}</span>
+            </>
+          )}
         </p>
-        <p className="job-head-times">{jobTimesLine(job)}</p>
-        {job.encodedOn && (
-          <p className="job-head-at">{`${active ? 'Encoding' : 'Encoded'} on ${job.encodedOn}`}</p>
-        )}
-        {atText && <p className="job-head-at">{`At: ${atText}`}</p>}
-        {!active && (
-          <ProcessAgain
-            job={job}
-            summary={workflows?.find((w) => w.id === job.workflowId) ?? null}
-          />
-        )}
         {active && (
           <div className="job-progress">
             {running && (
@@ -390,85 +427,51 @@ function JobView({ id }: { id: string }) {
             )}
             {detail && <span className="job-progress-detail">{detail}</span>}
             {job.state === 'queued' && <QueuedDetail job={job} />}
-            <div className="job-progress-actions">
-              {job.paused ? (
-                <button
-                  type="button"
-                  className="btn btn-sm btn-ghost"
-                  disabled={busy}
-                  onClick={() => void control('resume')}
-                >
-                  <Icon name="play" size={14} />
-                  Resume
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  className="btn btn-sm btn-ghost"
-                  disabled={busy}
-                  onClick={() => void control('pause')}
-                >
-                  <Icon name="pause" size={14} />
-                  Pause
-                </button>
-              )}
-              <button
-                type="button"
-                className="btn btn-sm btn-danger-outline"
-                disabled={busy}
-                onClick={() => setConfirmCancel(true)}
-              >
-                Cancel
-              </button>
-            </div>
+            {atText && <span className="job-progress-detail job-head-at">{`At: ${atText}`}</span>}
           </div>
         )}
       </header>
 
-      <JobPlanSection job={job} />
-
-      <div className="trace-layout">
-        <section className="panel trace-panel" aria-label="Workflow trace">
-          {job.graph ? (
-            <SubworkflowsContext.Provider value={workflows}>
-              <TraceCanvas
-                graph={job.graph}
-                source={source}
-                catalog={catalog}
-                selected={selected}
-                onSelect={select}
-                expanded={expanded}
-                onExpand={setExpanded}
-                subgraphs={subgraphs}
-                names={names}
-                activity={activity}
-                progress={running ? percent : null}
-                paused={job.paused}
-              />
-            </SubworkflowsContext.Provider>
-          ) : (
-            <p className="trace-child-note">
-              The workflow version this job ran can no longer be read.
-            </p>
-          )}
-        </section>
-        {stepContext && (
-          <JobSteps
-            items={items}
-            context={stepContext}
-            selected={selected}
-            onSelect={select}
-            reveal={node}
-          />
-        )}
-      </div>
-
-      {(job.result || !active) && (
-        <JobResult job={job} testEncodeAction={<TestEncodeFile job={job} />} />
+      {showResult && (
+        <JobResult job={job} testEncodeAction={<TestEncodeFile job={job} />} raw={raw} />
       )}
+      <JobPlanSection job={job} />
       {!active && <BeforeAfter job={job} />}
       {job.testEncode && !active && <TestOutputPanel job={job} onChanged={reload} />}
-      <FfmpegNotes job={job} />
+      {stepContext && (
+        <JobSteps
+          items={items}
+          context={stepContext}
+          selected={selected}
+          onSelect={select}
+          reveal={node}
+        />
+      )}
+      <FfmpegNotes job={job} jobLog={jobLog} raw={!showResult} />
+      <section className="panel trace-panel" aria-label="Workflow trace">
+        {job.graph ? (
+          <SubworkflowsContext.Provider value={workflows}>
+            <TraceCanvas
+              graph={job.graph}
+              source={source}
+              catalog={catalog}
+              selected={selected}
+              onSelect={select}
+              expanded={expanded}
+              onExpand={setExpanded}
+              subgraphs={subgraphs}
+              names={names}
+              activity={activity}
+              progress={running ? percent : null}
+              paused={job.paused}
+            />
+          </SubworkflowsContext.Provider>
+        ) : (
+          <p className="trace-child-note">
+            The workflow version this job ran can no longer be read.
+          </p>
+        )}
+      </section>
 
       <Dialog
         open={confirmCancel}

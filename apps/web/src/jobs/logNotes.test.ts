@@ -77,7 +77,7 @@ describe('shownLog', () => {
     expect(shownLog(log)).toBe(
       [
         'start',
-        `${NUMA} [3 times, see the note above]`,
+        `${NUMA} [3 times, see Notes from ffmpeg]`,
         'frame=1',
         'dup [3 times in a row]',
         'end',
@@ -95,9 +95,12 @@ describe('shownLog', () => {
       '',
     ].join('\n');
     expect(shownLog(log)).toBe(
-      ['start', `${NUMA} [4,123 times, see the note above]`, 'dup [2 times in a row]', 'end'].join(
-        '\n',
-      ),
+      [
+        'start',
+        `${NUMA} [4,123 times, see Notes from ffmpeg]`,
+        'dup [2 times in a row]',
+        'end',
+      ].join('\n'),
     );
     expect(logLineCount(log)).toBe(4127);
     expect(ffmpegNotes(log, null)[0]?.text).toContain('printed this 4,123 times');
@@ -106,7 +109,7 @@ describe('shownLog', () => {
   it('a flood counted from part of the log says at least', () => {
     const log = ['start', `${NUMA} [transcoda: at least 900 times]`, ''].join('\n');
     expect(shownLog(log)).toBe(
-      ['start', `${NUMA} [at least 900 times, see the note above]`].join('\n'),
+      ['start', `${NUMA} [at least 900 times, see Notes from ffmpeg]`].join('\n'),
     );
     expect(ffmpegNotes(log, null)[0]?.text).toContain('printed this at least 900 times');
   });

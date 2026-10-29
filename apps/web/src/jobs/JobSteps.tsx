@@ -1,4 +1,4 @@
-import { type KeyboardEvent, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Link } from 'wouter';
 import { Icon, type IconName } from '../components/Icon.tsx';
 import type { NodeRef } from '../editor/trace/TraceCanvas.tsx';
@@ -12,7 +12,6 @@ import {
   type StepDetail,
   stepsHeading,
   steps as stepsOf,
-  stepsSummary,
 } from './steps.ts';
 
 function samePath(a: readonly string[], b: readonly string[]): boolean {
@@ -208,33 +207,38 @@ function Row({
   );
 }
 
-/** "All steps" / "Only changes": a segmented radio group with arrow keys and one tab stop. */
-function Filter({ only, onChange }: { only: boolean; onChange(only: boolean): void }) {
+const num = new Intl.NumberFormat('en-US');
+
+/**
+ * "All 6" / "Changes 1": the pill filter every list uses (convention 15), shown only when it
+ * would narrow the list.
+ */
+function Filter({
+  only,
+  total,
+  changes,
+  onChange,
+}: {
+  only: boolean;
+  total: number;
+  changes: number;
+  onChange(only: boolean): void;
+}) {
   const options = [
-    { value: false, label: 'All steps' },
-    { value: true, label: 'Only changes' },
+    { value: false, label: 'All', n: total },
+    { value: true, label: 'Changes', n: changes },
   ];
-  function onKeyDown(e: KeyboardEvent<HTMLButtonElement>) {
-    if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) return;
-    e.preventDefault();
-    onChange(!only);
-    const group = e.currentTarget.parentElement;
-    group?.querySelectorAll<HTMLButtonElement>('[role="radio"]')[only ? 0 : 1]?.focus();
-  }
   return (
-    <div role="radiogroup" aria-label="Show steps" className="job-steps-filter">
+    <div className="filter-chips job-steps-filter">
       {options.map((o) => (
-        // biome-ignore lint/a11y/useSemanticElements: a segmented control of buttons with a roving tab stop and arrow keys.
         <button
           key={o.label}
           type="button"
-          role="radio"
-          aria-checked={o.value === only}
-          tabIndex={o.value === only ? 0 : -1}
+          className="filter-chip"
+          aria-pressed={o.value === only}
           onClick={() => onChange(o.value)}
-          onKeyDown={onKeyDown}
         >
-          {o.label}
+          {o.label} <span className="mono">{num.format(o.n)}</span>
         </button>
       ))}
     </div>
@@ -245,8 +249,9 @@ function Filter({ only, onChange }: { only: boolean; onChange(only: boolean): vo
  * Screen 06b "What the workflow would do": one row per node in run order, the node's kind and name,
  * one sentence of what it does (did, in a real run that wrote) and a badge; rows with more behind
  * them expand with the chevron. Notes (an unmet precondition, a target warning) sit under their
- * row. The header counts the steps that change the file, those that do not and the notes, and
- * filters to the changes. A later attempt's steps are grouped under "Retry". Clicking a row
+ * row. The header counts the steps; the "All / Changes" pills filter to the steps that change the
+ * file when that would narrow the list. Nothing decided yet: no section. A later attempt's steps
+ * are grouped under "Retry". Clicking a row
  * selects its node on the canvas; `reveal` (the `?node=` id the page was opened with) scrolls the
  * selected row into view once it is listed.
  */
@@ -269,8 +274,10 @@ export function JobSteps({
   const all = useMemo(() => stepsOf(items, context), [items, context]);
   const past = pastOf(context);
   const heading = stepsHeading(context);
-  const counts = stepsSummary(all);
-  const shown = onlyChanges ? all.filter((s) => s.badge !== 'same' && s.badge !== 'not-run') : all;
+  // "Changes": the steps that changed (or would change) the file.
+  const isChange = (s: Step) => s.badge === 'change';
+  const changes = all.filter(isChange).length;
+  const shown = onlyChanges ? all.filter(isChange) : all;
   const revealing =
     reveal !== null && items.some((d) => d.nodeId === reveal && d.workflowPath.length === 0)
       ? reveal
@@ -288,53 +295,38 @@ export function JobSteps({
       ))}
     </ol>
   );
+  // Nothing decided (yet): no empty section (the result says why a failed job never ran).
+  if (all.length === 0) return null;
   return (
     <section ref={section} className="panel job-steps" aria-labelledby={headingId}>
       <div className="job-steps-head">
-        <h2 id={headingId}>{heading}</h2>
+        <h2 id={headingId} className="section-h2">
+          {heading}
+        </h2>
+        <span className="section-count">{`${num.format(all.length)} ${
+          all.length === 1 ? 'step' : 'steps'
+        }`}</span>
         {context.dryRun && <span className="badge badge-dry">Dry run</span>}
-        {all.length > 0 && (
-          <p className="job-steps-counts">
-            <span>
-              <b>{counts.changing}</b>
-              {` ${counts.changing === 1 ? 'step' : 'steps'} ${
-                past ? 'changed' : counts.changing === 1 ? 'changes' : 'change'
-              } the file`}
-            </span>
-            <span>
-              <b>{counts.unchanged}</b> no change
-            </span>
-            {counts.notes > 0 && (
-              <span>
-                <b className="is-note">{counts.notes}</b>
-                {` ${counts.notes === 1 ? 'note' : 'notes'}`}
-              </span>
-            )}
-          </p>
+        {changes > 0 && changes < all.length && (
+          <Filter
+            only={onlyChanges}
+            total={all.length}
+            changes={changes}
+            onChange={setOnlyChanges}
+          />
         )}
-        {all.length > 0 && <Filter only={onlyChanges} onChange={setOnlyChanges} />}
       </div>
-      {all.length === 0 ? (
-        <p className="job-steps-empty">
-          {context.state === 'failed'
-            ? 'Stopped before the workflow ran: the result above says why.'
-            : 'Nothing decided yet.'}
-        </p>
-      ) : shown.length === 0 ? (
-        <p className="job-steps-empty">No step changes the file.</p>
-      ) : (
-        attempts.map((attempt) => {
-          const group = shown.filter((s) => s.decision.attempt === attempt);
-          if (attempt === first) return <div key={attempt}>{list(group, heading)}</div>;
-          const label = retryHeading(attempt);
-          return (
-            <div key={attempt} className="job-steps-retry">
-              <h3>{label}</h3>
-              {list(group, label)}
-            </div>
-          );
-        })
-      )}
+      {attempts.map((attempt) => {
+        const group = shown.filter((s) => s.decision.attempt === attempt);
+        if (attempt === first) return <div key={attempt}>{list(group, heading)}</div>;
+        const label = retryHeading(attempt);
+        return (
+          <div key={attempt} className="job-steps-retry">
+            <h3 className="group-h3">{label}</h3>
+            {list(group, label)}
+          </div>
+        );
+      })}
     </section>
   );
 }

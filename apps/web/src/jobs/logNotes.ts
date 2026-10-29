@@ -139,7 +139,7 @@ export function shownLog(log: string): string {
       flush();
       out.push(
         numa > 1 || atLeast
-          ? `${line.trim()} [${atLeast}${numa.toLocaleString('en')} times, see the note above]`
+          ? `${line.trim()} [${atLeast}${numa.toLocaleString('en')} times, see Notes from ffmpeg]`
           : line,
       );
       continue;
