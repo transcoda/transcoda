@@ -65,7 +65,7 @@ jobs:
       # Signed build provenance (SLSA) for the pushed image: who built it, from which commit and
       # workflow. Keyless (Sigstore); pushed to GHCR next to the image, where the cleanup keeps it
       # with its image. Anyone can check it:
-      #   gh attestation verify oci://ghcr.io/transcoda/transcoda:<tag> --owner transcoda
+      #   gh attestation verify oci://ghcr.io/transcoda/transcoda:<tag> --repo transcoda/transcoda
       - id: provenance
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:

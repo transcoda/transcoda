@@ -15,8 +15,8 @@ Fixes go into the newest release only: update to the latest `0.x` release to get
 Every image in `ghcr.io/transcoda/transcoda` built by this repository's Docker workflow has a signed build provenance (which commit and workflow built it) and an SBOM, both signed keylessly through Sigstore with the workflow's identity and stored next to the image:
 
 ```sh
-gh attestation verify oci://ghcr.io/transcoda/transcoda:<tag> --owner transcoda
-gh attestation verify oci://ghcr.io/transcoda/transcoda:<tag> --owner transcoda \
+gh attestation verify oci://ghcr.io/transcoda/transcoda:<tag> --repo transcoda/transcoda
+gh attestation verify oci://ghcr.io/transcoda/transcoda:<tag> --repo transcoda/transcoda \
   --predicate-type https://spdx.dev/Document/v2.3
 ```
 
