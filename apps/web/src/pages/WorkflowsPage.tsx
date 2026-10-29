@@ -107,7 +107,7 @@ function ProblemChips({ w }: { w: WorkflowSummary }) {
         </StatusChip>
       ) : null}
       {w.usesOutdatedSubworkflow ? (
-        <StatusChip tone="outdated" icon="workflow">
+        <StatusChip tone="warning" icon="workflow">
           Outdated sub-workflow
         </StatusChip>
       ) : null}

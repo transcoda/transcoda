@@ -3392,10 +3392,6 @@ a.btn-secondary:hover {
   color: var(--st-needs-setting);
 }
 
-.chip-outdated {
-  color: var(--kind-condition);
-}
-
 .eyebrow-kind {
   font-family: var(--font-mono);
   font-size: 10px;

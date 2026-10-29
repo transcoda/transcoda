@@ -12,7 +12,7 @@ export function StatusChip({
   srText,
   srId,
 }: {
-  tone: 'ok' | 'error' | 'warning' | 'outdated';
+  tone: 'ok' | 'error' | 'warning';
   icon: IconName;
   children: string;
   title?: string;

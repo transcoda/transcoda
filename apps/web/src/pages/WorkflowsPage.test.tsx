@@ -377,7 +377,9 @@ describe('WorkflowsPage', () => {
     renderAt('/', <WorkflowsPage />);
     await screen.findByRole('link', { name: 'One' });
     expect(within(rowOf('One')).getByText('1 error')).toBeTruthy();
-    expect(within(rowOf('Two')).getByText('Outdated sub-workflow')).toBeTruthy();
+    const outdated = within(rowOf('Two')).getByText('Outdated sub-workflow');
+    // Amber like the can't-run chip, not a colour of its own.
+    expect(outdated.className).toBe('chip chip-warning');
     expect(within(rowOf('Two')).getAllByText(/./, { selector: '.chip' })).toHaveLength(1);
   });
 
