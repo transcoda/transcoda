@@ -121,6 +121,14 @@ describe('AboutSection', () => {
   });
 
   describe('a newer release', () => {
+    // The dates read "Nov 2" only within their own year.
+    beforeEach(() => {
+      vi.useFakeTimers({ toFake: ['Date'], now: new Date('2026-11-05T12:00:00Z') });
+    });
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
     const update = {
       version: '1.6.0',
       url: 'https://github.com/transcoda/transcoda/releases/tag/v1.6.0',

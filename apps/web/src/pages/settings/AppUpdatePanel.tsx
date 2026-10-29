@@ -25,9 +25,9 @@ function Release({ release }: { release: ReleaseNotes }) {
     <li className="app-update-release">
       <h4>
         <span className="mono">{release.version}</span>
-        {/* Dates are YYYY-MM-DD: read at noon UTC so no time zone moves them a day. */}
+        {/* Dates are YYYY-MM-DD: shown in UTC, so no time zone moves them a day. */}
         <span className="app-update-date">
-          {fmtStamp(`${release.date}T12:00:00Z`, { relative: false })}
+          {fmtStamp(`${release.date}T12:00:00Z`, { relative: false, timeZone: 'UTC' })}
         </span>
       </h4>
       {GROUPS.map(({ type, label }) => {
