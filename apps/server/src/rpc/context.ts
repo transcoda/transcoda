@@ -13,6 +13,7 @@ import type { Logger } from '../logger.ts';
 import type { NodeRegistry } from '../nodes/registry.ts';
 import type { PluginService } from '../plugins/service.ts';
 import type { SettingsDeps } from '../settings/service.ts';
+import type { AppUpdateChecker } from '../updates/app-update.ts';
 import type { WorkflowService } from '../workflows/service.ts';
 
 export type AuthContext =
@@ -40,6 +41,8 @@ export interface AppDeps {
   capabilities: () => Capabilities;
   /** NVENC/NVDEC load over the last hour; started by bootstrap, stopped at close. */
   gpuLoad: GpuLoadSampler;
+  /** Whether a newer release exists; started by bootstrap, stopped at close. */
+  appUpdate: AppUpdateChecker;
   /** The app's logger (handlers never pass secrets to it). */
   log: Logger;
   /** Clock shared by the services (injectable for tests). */

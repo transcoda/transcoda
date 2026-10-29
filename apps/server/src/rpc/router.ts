@@ -19,6 +19,7 @@ export function createRouter() {
       health: system.health,
       capabilities: system.capabilities,
       gpuLoad: system.gpuLoad,
+      update: system.update,
       licences: system.licences,
       backups: {
         list: system.backupsList,

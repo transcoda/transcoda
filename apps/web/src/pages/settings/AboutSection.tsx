@@ -1,8 +1,10 @@
 import { api } from '../../api/client.ts';
 import { Icon } from '../../components/Icon.tsx';
 import { Loading } from '../../components/Loading.tsx';
+import { useAppUpdate } from '../../hooks/useAppUpdate.ts';
 import { useAsync } from '../../hooks/useAsync.ts';
 import { GuardedLink } from '../../lib/navigation.tsx';
+import { AppUpdatePanel } from './AppUpdatePanel.tsx';
 import { BackupsPanel } from './BackupsPanel.tsx';
 import { useSettings } from './useSettings.ts';
 
@@ -61,13 +63,14 @@ function Chips({ label, items }: { label: string; items: string[] }) {
 }
 
 /**
- * About: the Transcoda, Node and ffmpeg versions (ffmpeg's path when it is one), the database
+ * About: a newer release first (what it brings and how to update), then the Transcoda, Node and ffmpeg versions (ffmpeg's path when it is one), the database
  * backups, what ffmpeg can encode with (closed) and the way to the open-source licences.
  */
 export function AboutSection() {
   const health = useAsync(() => api.system.health(), []);
   const caps = useAsync(() => api.system.capabilities(), []);
   const settings = useSettings();
+  const appUpdate = useAppUpdate();
 
   if (health.loading && caps.loading && !settings.data && !settings.error) return <Loading />;
 
@@ -77,6 +80,7 @@ export function AboutSection() {
 
   return (
     <div className="about">
+      {appUpdate?.update ? <AppUpdatePanel status={appUpdate} /> : null}
       <dl className="about-list">
         <div className="about-row">
           <dt>Transcoda</dt>
