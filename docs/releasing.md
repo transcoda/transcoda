@@ -26,6 +26,8 @@ The plugin SDK (`packages/sdk`) and each official plugin in [transcoda-plugins](
 
 A pre-release tag (`v0.3.0-rc.1`) publishes only its own version tag, never `latest` or `0.3`.
 
+Every pushed image (releases and `main`) gets a signed build provenance and an SBOM attestation, stored in GHCR next to it; on a release tag the Docker workflow also attaches both to the GitHub Release (`transcoda-v<version>.sigstore.json`, `transcoda-v<version>.spdx.json`). How to check them is in [`SECURITY.md`](../SECURITY.md#verifying-the-image).
+
 ## Schedule
 
 - **A minor release every four weeks**, from whatever is merged and ready. A feature that isn't ready waits for the next one; a release doesn't wait for a feature.

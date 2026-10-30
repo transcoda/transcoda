@@ -20,11 +20,21 @@ jobs:
     permissions:
       contents: read
       packages: write
+      # Keyless signing of the attestations: the OIDC token is this workflow's identity for
+      # Sigstore, and the attestations are stored with the repository and in GHCR.
+      id-token: write
+      attestations: write
     timeout-minutes: 45
     outputs:
       tags: ${{ steps.meta.outputs.tags }}
+      release: ${{ steps.release.outputs.release }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # A GitHub Release exists only for the tags release.yml runs on (v[0-9]*); this builds on
+      # any v* tag, so the release files are kept only for those.
+      - id: release
+        run: |
+          if [[ "$GITHUB_REF" =~ ^refs/tags/v[0-9] ]]; then echo release=true; else echo release=false; fi >> "$GITHUB_OUTPUT"
       - uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
       - uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
@@ -44,7 +54,8 @@ jobs:
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') && !contains(github.ref_name, '-') }}
-      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+      - id: build
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: .
           file: docker/Dockerfile
@@ -54,7 +65,80 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          # BuildKit's own provenance would add an unsigned unknown/unknown manifest per arch;
+          # the signed attestation below replaces it.
           provenance: false
+      # Signed build provenance (SLSA) for the pushed image: who built it, from which commit and
+      # workflow. Keyless (Sigstore); pushed to GHCR next to the image, where the cleanup keeps it
+      # with its image. Anyone can check it:
+      #   gh attestation verify oci://ghcr.io/transcoda/transcoda:<tag> --repo transcoda/transcoda
+      - id: provenance
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-name: ghcr.io/transcoda/transcoda
+          subject-digest: ${{ steps.build.outputs.digest }}
+          push-to-registry: true
+      # The image's packages as SPDX (read from the amd64 image; both arches install the same
+      # packages), attested the same way.
+      - uses: anchore/sbom-action@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
+        with:
+          image: ghcr.io/transcoda/transcoda@${{ steps.build.outputs.digest }}
+          format: spdx-json
+          output-file: sbom.spdx.json
+          upload-artifact: false
+          upload-release-assets: false
+          dependency-snapshot: false
+      - uses: actions/attest-sbom@c604332985a26aa8cf1bdc465b92731239ec6b9e # v4.1.0
+        with:
+          subject-name: ghcr.io/transcoda/transcoda
+          subject-digest: ${{ steps.build.outputs.digest }}
+          sbom-path: sbom.spdx.json
+          push-to-registry: true
+      # A release also carries both as files (release-assets below).
+      - name: Keep the provenance bundle and the SBOM for the release
+        if: steps.release.outputs.release == 'true'
+        env:
+          BUNDLE: ${{ steps.provenance.outputs.bundle-path }}
+        run: |
+          set -eu
+          mkdir release-assets
+          cp "$BUNDLE" "release-assets/transcoda-$GITHUB_REF_NAME.sigstore.json"
+          cp sbom.spdx.json "release-assets/transcoda-$GITHUB_REF_NAME.spdx.json"
+      - if: steps.release.outputs.release == 'true'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-assets
+          path: release-assets/
+          retention-days: 1
+
+  # On a release tag (v[0-9]*): the image's signed provenance bundle and its SBOM go on the GitHub Release
+  # too, for people who verify offline (cosign or sigstore-python read the bundle) and for
+  # Scorecard's Signed-Releases check. release.yml creates the release from the same tag; it takes
+  # seconds against the image's minutes, but this waits for it all the same.
+  release-assets:
+    needs: image
+    if: needs.image.outputs.release == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release-assets
+          path: release-assets
+      - name: Attach them to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -eu
+          for _ in $(seq 1 30); do
+            if gh release view "$TAG" >/dev/null 2>&1; then break; fi
+            sleep 10
+          done
+          gh release upload "$TAG" release-assets/* --clobber
 
   # Runs after the push, so the image is already published when this runs: a failure is a red
   # workflow on an existing tag. Accepted; building to a local tag per arch first would double
