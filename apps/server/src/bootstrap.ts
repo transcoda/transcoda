@@ -113,6 +113,8 @@ export async function createDeps(
   }
   // NVENC/NVDEC load for the Jobs page; does nothing without NVIDIA GPUs.
   deps.gpuLoad.start();
+  // Asks GitHub for a newer release a minute after start, then every 6 h (off with TRANSCODA_UPDATE_CHECK=false).
+  deps.appUpdate.start();
   const timer = setInterval(() => {
     try {
       deps.sessions.purgeExpired();
@@ -135,6 +137,7 @@ export async function createDeps(
     ...deps,
     close() {
       deps.gpuLoad.stop();
+      deps.appUpdate.stop();
       clearInterval(timer);
       clearInterval(testOutputTimer);
       if (db.open) db.close();

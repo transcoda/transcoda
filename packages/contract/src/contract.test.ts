@@ -245,6 +245,7 @@ describe('contract', () => {
       'health',
       'capabilities',
       'gpuLoad',
+      'update',
       'licences',
       'backups',
     ]);

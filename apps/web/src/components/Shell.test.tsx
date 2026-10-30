@@ -7,10 +7,14 @@ const appearance = vi.hoisted(() => ({
 }));
 const jobsList = vi.hoisted(() => vi.fn());
 const pluginsList = vi.hoisted(() => vi.fn());
+const appUpdate = vi.hoisted(() => vi.fn());
 const events = vi.hoisted(() => ({ subscribe: vi.fn() }));
 vi.mock('../api/client.ts', () => ({
   api: {
-    system: { health: vi.fn().mockResolvedValue({ status: 'ok', version: '1.2.3' }) },
+    system: {
+      health: vi.fn().mockResolvedValue({ status: 'ok', version: '1.2.3' }),
+      update: appUpdate,
+    },
     jobs: { list: jobsList, get: vi.fn() },
     plugins: { list: pluginsList },
     events,
@@ -27,6 +31,7 @@ vi.mock('../auth/useAuth.ts', () => ({
   useAuth: () => ({ user: { username: 'admin' }, logout, appearance: appearance.current }),
 }));
 
+import { resetAppUpdate } from '../hooks/useAppUpdate.ts';
 import { EventsProvider } from '../hooks/useEvents.ts';
 import { setBeforeNavigate } from '../lib/navigation.tsx';
 import { resetPluginsNav } from '../plugins/usePluginsNav.ts';
@@ -36,8 +41,26 @@ import { plugin } from '../test/fixtures/plugins.ts';
 import { renderAt } from '../test/render.tsx';
 import { Shell } from './Shell.tsx';
 
+const NO_UPDATE = { current: '1.2.3', checking: true, checkedAt: null, update: null };
+const withAppUpdate = (version: string | null) =>
+  appUpdate.mockResolvedValue({
+    ...NO_UPDATE,
+    update:
+      version === null
+        ? null
+        : {
+            version,
+            url: 'https://x/r',
+            changelogUrl: 'https://x/c',
+            releases: [],
+            olderReleases: 0,
+          },
+  });
+
 beforeEach(() => {
   resetPluginsNav();
+  resetAppUpdate();
+  appUpdate.mockReset().mockResolvedValue(NO_UPDATE);
   pluginsList.mockReset().mockResolvedValue({ plugins: [] });
   jobsList.mockReset().mockResolvedValue({ jobs: [], counts: counts() });
 });
@@ -200,6 +223,48 @@ describe('Shell', () => {
         await screen.findByRole(
           'link',
           { name: 'Plugins, 3 updates available' },
+          { timeout: 3000 },
+        ),
+      ).toBeTruthy();
+    });
+  });
+
+  describe('Transcoda update badge', () => {
+    it('a newer release: a 1 on Settings, and the link opens About', async () => {
+      withAppUpdate('1.3.0');
+      render(<Shell>x</Shell>);
+      const nav = screen.getByRole('navigation', { name: 'Main' });
+      const link = await within(nav).findByRole('link', {
+        name: 'Settings, 1 Transcoda update available',
+      });
+      expect(link.querySelector('.nav-count')?.textContent).toBe('1');
+      expect(link.getAttribute('href')).toBe('/settings/about');
+    });
+
+    it('no newer release (or no answer): no badge, the link opens Settings', async () => {
+      render(<Shell>x</Shell>);
+      const nav = screen.getByRole('navigation', { name: 'Main' });
+      await waitFor(() => expect(appUpdate).toHaveBeenCalled());
+      const link = within(nav).getByRole('link', { name: 'Settings' });
+      expect(link.getAttribute('href')).toBe('/settings');
+      expect(link.querySelector('.nav-count')).toBeNull();
+    });
+
+    it('appears live when app.update arrives', async () => {
+      const fake = fakeEventSource();
+      events.subscribe.mockReset().mockImplementation(fake.subscribe);
+      render(
+        <EventsProvider>
+          <Shell>x</Shell>
+        </EventsProvider>,
+      );
+      await waitFor(() => expect(fake.streams).toHaveLength(1));
+      withAppUpdate('1.3.0');
+      await act(async () => fake.last().push({ type: 'app.update', version: '1.3.0' }));
+      expect(
+        await screen.findByRole(
+          'link',
+          { name: 'Settings, 1 Transcoda update available' },
           { timeout: 3000 },
         ),
       ).toBeTruthy();

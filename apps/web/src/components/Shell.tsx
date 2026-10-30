@@ -2,6 +2,7 @@ import { RUNNING_JOB_STATES } from '@transcoda/shared';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { useLocation, useRoute } from 'wouter';
 import { useAuth } from '../auth/useAuth.ts';
+import { useAppUpdate } from '../hooks/useAppUpdate.ts';
 import { useJobsCounts } from '../jobs/useJobsList.ts';
 import { GuardedLink, guardedRun } from '../lib/navigation.tsx';
 import { usePhone } from '../lib/usePhone.ts';
@@ -89,6 +90,8 @@ export function Shell({
   const [error, setError] = useState<string | null>(null);
   // The TMDB terms ask for a notice wherever its data is used: shown while the plugin is installed.
   const { tmdb, updates } = usePluginsNav();
+  // A newer Transcoda release: a 1 on Settings, and the link lands on About where the notes are.
+  const appUpdate = useAppUpdate()?.update ?? null;
   const jobCounts = useJobsCounts();
   const running = jobCounts ? RUNNING_JOB_STATES.reduce((n, s) => n + jobCounts[s], 0) : 0;
   const phone = usePhone();
@@ -150,7 +153,14 @@ export function Shell({
         Plugins
       </NavLink>
       <hr className="nav-sep" />
-      <NavLink href="/settings" icon="settings" rail={rail} section="/settings/*">
+      <NavLink
+        href={appUpdate ? '/settings/about' : '/settings'}
+        icon="settings"
+        rail={rail}
+        section="/settings/*"
+        count={appUpdate ? 1 : 0}
+        countLabel="Transcoda update available"
+      >
         Settings
       </NavLink>
     </>

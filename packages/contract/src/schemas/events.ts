@@ -37,6 +37,8 @@ export const EngineEventSchema = z.discriminatedUnion('type', [
     lanes: QueueStatusSchema.shape.lanes,
     encodeSlots: QueueStatusSchema.shape.encodeSlots,
   }),
+  /** The background update check found a newer release (or the running one caught up: null). */
+  z.object({ type: z.literal('app.update'), version: z.string().nullable() }),
   z.object({
     type: z.literal('plugins.changed'),
     name: z.string(),

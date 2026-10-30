@@ -1,4 +1,4 @@
-import { cleanup, render, screen, within } from '@testing-library/react';
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
@@ -6,21 +6,30 @@ const mocks = vi.hoisted(() => ({
   capabilities: vi.fn(),
   get: vi.fn(),
   backups: vi.fn(),
+  update: vi.fn(),
 }));
 vi.mock('../../api/client.ts', () => ({
   api: {
     system: {
       health: mocks.health,
       capabilities: mocks.capabilities,
+      update: mocks.update,
       backups: { list: mocks.backups, create: vi.fn() },
     },
     settings: { get: mocks.get },
   },
 }));
 
+import { resetAppUpdate } from '../../hooks/useAppUpdate.ts';
+import { renderAt } from '../../test/render.tsx';
 import { AboutSection } from './AboutSection.tsx';
+import { UPDATE_COMMAND } from './AppUpdatePanel.tsx';
+
+const NO_UPDATE = { current: '1.4.0', checking: true, checkedAt: null, update: null };
 
 beforeEach(() => {
+  resetAppUpdate();
+  mocks.update.mockReset().mockResolvedValue(NO_UPDATE);
   mocks.backups.mockReset().mockResolvedValue({ backups: [], keep: 5 });
   mocks.health.mockReset().mockResolvedValue({ status: 'ok', version: '1.4.0' });
   mocks.get.mockReset().mockResolvedValue({ about: { version: '1.4.0', node: 'v24.22.0' } });
@@ -109,5 +118,80 @@ describe('AboutSection', () => {
     render(<AboutSection />);
     expect(await screen.findByText('1.4.0')).toBeTruthy();
     expect(await screen.findByText('Could not be read')).toBeTruthy();
+  });
+
+  describe('a newer release', () => {
+    // The dates read "Nov 2" only within their own year.
+    beforeEach(() => {
+      vi.useFakeTimers({ toFake: ['Date'], now: new Date('2026-11-05T12:00:00Z') });
+    });
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    const update = {
+      version: '1.6.0',
+      url: 'https://github.com/transcoda/transcoda/releases/tag/v1.6.0',
+      changelogUrl: 'https://github.com/transcoda/transcoda/blob/main/CHANGELOG.md',
+      releases: [
+        {
+          version: '1.6.0',
+          date: '2026-11-02',
+          entries: [
+            { type: 'fixed', text: 'Dry runs no longer hang.' },
+            { type: 'breaking', text: 'Set TRANSCODA_X again after updating.' },
+            { type: 'new', text: 'A new node.' },
+          ],
+        },
+        { version: '1.5.0', date: '2026-10-20', entries: [{ type: 'improved', text: 'Faster.' }] },
+      ],
+      olderReleases: 2,
+    };
+
+    it('comes first, with the running version, the release link and the command to copy', async () => {
+      mocks.update.mockResolvedValue({ ...NO_UPDATE, update });
+      const { container } = renderAt('/settings/about', <AboutSection />);
+      const panel = await screen.findByRole('region', { name: 'Transcoda 1.6.0 is available' });
+      expect(container.querySelector('.about')?.firstElementChild).toBe(panel);
+      expect(within(panel).getByText(/You have 1\.4\.0/)).toBeTruthy();
+      expect(
+        within(panel).getByRole('link', { name: 'Release on GitHub' }).getAttribute('href'),
+      ).toBe(update.url);
+      expect(within(panel).getByText(UPDATE_COMMAND)).toBeTruthy();
+      expect(within(panel).getByRole('button', { name: 'Copy' })).toBeTruthy();
+    });
+
+    it('lists the notes per version, newest first, with what to change before updating first', async () => {
+      mocks.update.mockResolvedValue({ ...NO_UPDATE, update });
+      renderAt('/settings/about', <AboutSection />);
+      const panel = await screen.findByRole('region', { name: 'Transcoda 1.6.0 is available' });
+      const versions = within(panel).getAllByRole('heading', { level: 4 });
+      expect(versions.map((h) => h.textContent)).toEqual(['1.6.0Nov 2', '1.5.0Oct 20']);
+      const labels = [...(versions[0]?.parentElement?.querySelectorAll('.group-h3') ?? [])];
+      expect(labels.map((l) => l.textContent)).toEqual(['Before you update', 'New', 'Fixed']);
+      expect(within(panel).getByText('Set TRANSCODA_X again after updating.')).toBeTruthy();
+      expect(within(panel).getByText(/2 older versions since yours/)).toBeTruthy();
+      expect(
+        within(panel).getByRole('link', { name: 'full changelog on GitHub' }).getAttribute('href'),
+      ).toBe(update.changelogUrl);
+    });
+
+    it("without readable notes: the notice and the command, no What's new", async () => {
+      mocks.update.mockResolvedValue({
+        ...NO_UPDATE,
+        update: { ...update, releases: [], olderReleases: 0 },
+      });
+      renderAt('/settings/about', <AboutSection />);
+      const panel = await screen.findByRole('region', { name: 'Transcoda 1.6.0 is available' });
+      expect(within(panel).getByText(UPDATE_COMMAND)).toBeTruthy();
+      expect(within(panel).queryByText("What's new")).toBeNull();
+    });
+  });
+
+  it('no newer release: no notice', async () => {
+    renderAt('/settings/about', <AboutSection />);
+    await screen.findByText('8.1.3-Jellyfin');
+    await waitFor(() => expect(mocks.update).toHaveBeenCalled());
+    expect(screen.queryByRole('region', { name: /is available/ })).toBeNull();
   });
 });
