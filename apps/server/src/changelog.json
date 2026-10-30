@@ -1,5 +1,19 @@
 [
   {
+    "version": "0.2.1",
+    "date": "2026-10-29",
+    "entries": [
+      {
+        "type": "fixed",
+        "text": "After an update, the browser now loads the new version of Transcoda right away instead of sometimes running the previous one from its cache until a hard reload."
+      },
+      {
+        "type": "fixed",
+        "text": "Security fixes in two libraries the server uses to read requests (body-parser and fast-uri)."
+      }
+    ]
+  },
+  {
     "version": "0.2.0",
     "date": "2026-10-26",
     "entries": [
