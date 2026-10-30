@@ -1895,7 +1895,7 @@ Approved plan: `docs/plans/2026-10-21-dryrun-depends-on-size.md` (local).
 ## 2026-10-26 Node 24.22.1
 
 - **Why.** Node 24.22.1 (2026-10-20) and 26.12.1 are security releases. The image used the floating `node:24.22-bookworm-slim` tag, so a cached build could still carry 24.22.0.
-- **Rule.** Every Node pin names the exact patch: the image's `ARG NODE_IMAGE` and the entrypoint test image are `node:24.22.1-bookworm-slim`, `.node-version` is `24.22.1` (CI and the release-note check read it), and `engines` is `>=24.22.1`. Rebuild deployed images with `--pull`.
+- **Rule.** Every Node pin names the exact patch: the image's `ARG NODE_IMAGE` is `node:24.22.1-bookworm-slim` (since 2026-11-01 with its digest), and the entrypoint checks in CI read that same value, `.node-version` is `24.22.1` (CI and the release-note check read it), and `engines` is `>=24.22.1`. Rebuild deployed images with `--pull`.
 - **Not yet 26.** Node 26 is not LTS yet; moving to it is a separate change with a sandbox re-check (`sandbox-expectations.ts` is verified per Node release).
 
 ## 2026-10-26 Intel GPUs and GPU order

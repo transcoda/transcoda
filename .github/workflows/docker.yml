@@ -217,15 +217,17 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      # Keep the node image in sync with NODE_IMAGE in docker/Dockerfile.
+      # In the image's base: NODE_IMAGE from docker/Dockerfile (tag and digest).
       - name: Entrypoint checks (base image, real setpriv)
         run: |
           set -eu
+          node_image=$(sed -n 's/^ARG NODE_IMAGE=//p' docker/Dockerfile)
+          test -n "$node_image"
           docker run --rm --cap-drop ALL --cap-add CHOWN --cap-add DAC_OVERRIDE --cap-add FOWNER \
             --cap-add FSETID --cap-add SETUID --cap-add SETGID --cap-add SETPCAP --cap-add KILL \
             --security-opt no-new-privileges:true -v "$PWD/docker:/t:ro" \
             -e TRANSCODA_CONFIG_DIR=/tmp/cfg -e TRANSCODA_TRANSCODE_DIR=/tmp/tc \
-            -e TRANSCODA_PLUGIN_RUN_DIR=/tmp/run node:24.22.1-bookworm-slim sh /t/entrypoint.test.sh
+            -e TRANSCODA_PLUGIN_RUN_DIR=/tmp/run "$node_image" sh /t/entrypoint.test.sh
       - name: Start the shipped compose file
         env:
           TAGS: ${{ needs.image.outputs.tags }}
