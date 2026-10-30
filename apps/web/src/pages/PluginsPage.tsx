@@ -7,12 +7,13 @@ import { type KeyboardEvent, useEffect, useId, useRef, useState } from 'react';
 import { useSearch } from 'wouter';
 import { api, safe } from '../api/client.ts';
 import { describeError } from '../api/errors.ts';
+import { SectionHeading } from '../components/Headings.tsx';
 import { Icon } from '../components/Icon.tsx';
 import { Loading } from '../components/Loading.tsx';
 import { useToast } from '../components/Toast.tsx';
 import { useCatalog } from '../hooks/useCatalog.ts';
 import { usePageTitle } from '../lib/pageTitle.ts';
-import { fmtAgo } from '../lib/time.ts';
+import { fmtStamp } from '../lib/time.ts';
 import {
   BLOCKLIST_UNAVAILABLE,
   CATALOG_UNAVAILABLE,
@@ -107,7 +108,8 @@ const ARROW_STEP: Readonly<Record<string, number>> = {
   ArrowUp: -1,
 };
 
-/** All / Installed / Updates: one tab stop, arrow keys move the choice. */
+/** All / Installed / Updates: one tab stop, arrow keys move the choice. A tab with nothing in it is
+ * left out (unless it is the one shown). */
 function ShowSwitch({
   value,
   counts,
@@ -117,11 +119,13 @@ function ShowSwitch({
   counts: { installed: number; updates: number };
   onChange(v: Show): void;
 }) {
-  const options: Array<{ id: Show; label: string; count: number | null }> = [
-    { id: 'all', label: 'All', count: null },
-    { id: 'installed', label: 'Installed', count: counts.installed },
-    { id: 'updates', label: 'Updates', count: counts.updates },
-  ];
+  const options = (
+    [
+      { id: 'all', label: 'All', count: null },
+      { id: 'installed', label: 'Installed', count: counts.installed },
+      { id: 'updates', label: 'Updates', count: counts.updates },
+    ] satisfies Array<{ id: Show; label: string; count: number | null }>
+  ).filter((o) => o.count !== 0 || o.id === value);
   function onKeyDown(e: KeyboardEvent<HTMLButtonElement>, index: number) {
     const step = ARROW_STEP[e.key];
     if (step === undefined) return;
@@ -159,7 +163,7 @@ function ShowSwitch({
   );
 }
 
-/** The catalog's state as separate items that wrap whole: source, when checked, blocked, Refresh. */
+/** The catalog's state as separate items that wrap whole: source, when checked, blocked (when any), Refresh. */
 function CatalogStatus({
   catalogs,
   blocked,
@@ -176,13 +180,13 @@ function CatalogStatus({
   const checked = checking
     ? 'checking now'
     : official?.fetchedAt
-      ? `checked ${fmtAgo(official.fetchedAt)}`
+      ? `checked ${fmtStamp(official.fetchedAt)}`
       : null;
   return (
     <div className="plugins-source">
       {official ? (
-        <span className="plugins-source-badge" title={official.catalogUrl}>
-          <Icon name="check" size={11} strokeWidth={2.8} round />
+        <span className="plugins-source-item plugins-source-official" title={official.catalogUrl}>
+          <Icon name="check" size={13} strokeWidth={2.6} />
           Official catalog
         </span>
       ) : null}
@@ -192,7 +196,7 @@ function CatalogStatus({
         </span>
       ) : null}
       {checked ? <span className="plugins-source-item">{checked}</span> : null}
-      {blocked !== null ? (
+      {blocked !== null && blocked > 0 ? (
         <span className="plugins-source-item">{`${blocked} blocked`}</span>
       ) : null}
       <button
@@ -489,7 +493,9 @@ export function PluginsPage() {
       {plugins && (plugins.length > 0 || show !== 'all' || !needed) ? (
         <section className="plugins-section" aria-labelledby="plugins-installed">
           <div className="plugins-section-head">
-            <h2 id="plugins-installed">{show === 'updates' ? 'Updates' : 'Installed'}</h2>
+            <SectionHeading id="plugins-installed" count={rows.length > 0 ? rows.length : null}>
+              {show === 'updates' ? 'Updates' : 'Installed'}
+            </SectionHeading>
             {show === 'updates' && (updates.length >= 2 || updatingAll) ? (
               <button
                 type="button"

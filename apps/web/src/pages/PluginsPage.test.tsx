@@ -115,7 +115,7 @@ async function open() {
   return v;
 }
 
-const installed = () => screen.getByRole('region', { name: 'Installed' });
+const installed = () => screen.getByRole('region', { name: /^Installed ?[0-9,]*$/ });
 /** An installed row: titled from the catalog ("Example"), or by name while no catalog lists it. */
 const row = (title: string | RegExp = /^example$/i) =>
   within(installed()).getByRole('article', { name: title });
@@ -582,7 +582,7 @@ describe('PluginsPage plugins your workflows need', () => {
       ).toBeTruthy(),
     );
     expect(card.textContent).toContain('TV cleanup uses Jellyfin and Sonarr.');
-    expect(screen.queryByRole('region', { name: 'Installed' })).toBeNull();
+    expect(screen.queryByRole('region', { name: /^Installed ?[0-9,]*$/ })).toBeNull();
   });
 
   it('installs them one confirmation dialog after the other; Cancel stops', async () => {
@@ -631,6 +631,38 @@ describe('PluginsPage toolbar', () => {
     await waitFor(() => expect(mocks.plugins.catalog).toHaveBeenCalledWith({ refresh: true }));
   });
 
+  it('leaves out a blocked count of 0', async () => {
+    const out = catalogOutput();
+    out.blocklist.entries = 0;
+    mocks.plugins.catalog.mockResolvedValue(out);
+    await open();
+    const source = screen.getByText('Official catalog').closest('.plugins-source') as HTMLElement;
+    expect(within(source).queryByText(/blocked/)).toBeNull();
+  });
+
+  it('leaves out a tab with nothing in it: no Updates while every plugin is up to date', async () => {
+    mocks.plugins.list.mockResolvedValue(listOf([plugin()]));
+    await open();
+    const show = screen.getByRole('radiogroup', { name: 'Show' });
+    expect(within(show).getByRole('radio', { name: 'Installed 1' })).toBeTruthy();
+    expect(within(show).queryByRole('radio', { name: /Updates/ })).toBeNull();
+  });
+
+  it('keeps the Updates tab open when a link asks for it, even with nothing to update', async () => {
+    mocks.plugins.list.mockResolvedValue(listOf([plugin()]));
+    renderAt(
+      '/plugins?show=updates',
+      <EventsProvider>
+        <PluginsPage />
+      </EventsProvider>,
+    );
+    expect(await screen.findByText('Every installed plugin is up to date.')).toBeTruthy();
+    const show = screen.getByRole('radiogroup', { name: 'Show' });
+    expect(
+      within(show).getByRole('radio', { name: 'Updates 0' }).getAttribute('aria-checked'),
+    ).toBe('true');
+  });
+
   it('search narrows the installed rows and the catalog cards', async () => {
     mocks.plugins.catalog.mockResolvedValue(
       catalogWith(
@@ -665,7 +697,7 @@ describe('PluginsPage toolbar', () => {
     expect(screen.queryByRole('region', { name: 'Other' })).toBeNull();
 
     fireEvent.click(within(show).getByRole('radio', { name: 'Updates 1' }));
-    const updates = screen.getByRole('region', { name: 'Updates' });
+    const updates = screen.getByRole('region', { name: /^Updates ?[0-9,]*$/ });
     expect(
       within(updates)
         .getAllByRole('article')
@@ -683,7 +715,7 @@ describe('PluginsPage updates', () => {
       plugin({ name: 'radarr', updateAvailable: '3.0.0' }),
       plugin({ name: 'jellyfin', updateAvailable: '4.0.0' }),
     ]);
-  const updatesRegion = () => screen.findByRole('region', { name: 'Updates' });
+  const updatesRegion = () => screen.findByRole('region', { name: /^Updates ?[0-9,]*$/ });
 
   it('?show=updates opens the Updates tab', async () => {
     mocks.plugins.list.mockResolvedValue(three());

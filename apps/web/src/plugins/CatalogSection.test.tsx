@@ -125,6 +125,21 @@ describe('CatalogGroups', () => {
     expect(screen.queryByRole('button', { name: /2\.0\.0/ })).toBeNull();
   });
 
+  it("shows a plugin's id only when its title doesn't already say it", () => {
+    show([
+      catalog({
+        plugins: [
+          entry({ name: 'example', title: 'Example' }),
+          entry({ name: 'tmdb-lookup', title: 'TMDB' }),
+        ],
+      }),
+    ]);
+    const same = screen.getByRole('article', { name: 'Example' });
+    expect(within(same).queryByText('example')).toBeNull();
+    const differs = screen.getByRole('article', { name: 'TMDB' });
+    expect(within(differs).getByText('tmdb-lookup')).toBeTruthy();
+  });
+
   it('an installed plugin says Installed instead of offering Install', () => {
     show([catalog()]);
     const card = screen.getByRole('article', { name: 'Jellyfin' });

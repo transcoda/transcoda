@@ -9157,19 +9157,11 @@ button.job-step-more:hover {
 .plugins-source-item {
   white-space: nowrap;
 }
-.plugins-source-badge {
+.plugins-source-official {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 3px 8px;
-  border-radius: var(--r-pill);
-  border: 1px solid var(--accent-text);
-  color: var(--accent-text);
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  white-space: nowrap;
+  gap: 5px;
+  color: var(--muted);
 }
 
 /* The plugins workflows need: amber outline on the raised surface. */
@@ -9218,10 +9210,6 @@ button.job-step-more:hover {
   flex-direction: column;
   gap: 10px;
 }
-.plugins-section h2 {
-  font-size: var(--fs-h2);
-  font-weight: 700;
-}
 /* The section's name with Update all beside it (on the Updates tab). */
 .plugins-section-head {
   display: flex;
@@ -9229,16 +9217,6 @@ button.job-step-more:hover {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-}
-.plugins-group-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 10px;
-}
-.plugins-group-head span {
-  font-size: 14px;
-  color: var(--faint);
 }
 
 /* The 40px tile: the plugin's own icon (an image) or its monogram. */
@@ -9304,11 +9282,9 @@ button.job-step-more:hover {
   color: var(--faint);
 }
 .plugin-row-update {
-  font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--fs-small);
   font-weight: 600;
   color: var(--st-kept-text);
-  text-transform: uppercase;
 }
 .plugin-row-used {
   font-size: var(--fs-small);
@@ -9319,32 +9295,9 @@ button.job-step-more:hover {
   color: var(--st-failed-text);
   overflow-wrap: anywhere;
 }
+/* The row's state: the shared StatusChip; this span only places it. */
 .plugin-status {
   display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  height: 28px;
-  padding: 0 10px;
-  border-radius: var(--r-pill);
-  font-size: var(--fs-small);
-  font-weight: 700;
-  white-space: nowrap;
-}
-.plugin-status.is-ok {
-  background: var(--ok-bg);
-  color: var(--accent-text);
-}
-.plugin-status.is-error {
-  background: var(--st-failed-bg);
-  color: var(--st-failed-text);
-}
-.plugin-status.is-warning {
-  background: var(--st-dry-bg);
-  color: var(--st-dry);
-}
-.plugin-status.is-neutral {
-  background: var(--line);
-  color: var(--muted);
 }
 .plugin-row-actions {
   display: flex;
@@ -9683,14 +9636,6 @@ button.job-step-more:hover {
   padding: 0 16px;
   border-radius: 10px;
   font-size: 14px;
-}
-.catalog-card-installed {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  font-size: var(--fs-small);
-  font-weight: 600;
-  color: var(--accent-text);
 }
 .catalog-card-text {
   margin: 0;
