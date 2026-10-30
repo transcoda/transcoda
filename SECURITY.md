@@ -22,6 +22,10 @@ gh attestation verify oci://ghcr.io/transcoda/transcoda:<tag> --repo transcoda/t
 
 Each GitHub Release also carries the provenance bundle (`transcoda-v<version>.sigstore.json`) and the SBOM (`transcoda-v<version>.spdx.json`) as files. Releases before 0.3.0 have neither.
 
+## Known vulnerabilities in the image
+
+[Grype](https://github.com/anchore/grype) scans every build of `main`, then scans `main` and the latest release again every week, so vulnerabilities published after a build are found too. Vulnerabilities that have a fix show up in the repository's code scanning alerts. Most come from the base image and are fixed when it updates.
+
 ## Scope
 
 In scope:

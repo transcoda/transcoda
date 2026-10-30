@@ -111,6 +111,20 @@ jobs:
           path: release-assets/
           retention-days: 1
 
+  # Known vulnerabilities in main's new image, from its signed SBOM, into code scanning. A job of
+  # its own: a failed scan (Grype's install, its database, the upload) stays a red job here and
+  # never fails the image job or skips the checks below. vulnerability-scan.yml repeats it weekly.
+  vulnerabilities:
+    needs: image
+    if: github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      attestations: read
+      security-events: write
+    uses: ./.github/workflows/vulnerability-scan.yml
+    with:
+      targets: '["main"]'
+
   # On a release tag (v[0-9]*): the image's signed provenance bundle and its SBOM go on the GitHub Release
   # too, for people who verify offline (cosign or sigstore-python read the bundle) and for
   # Scorecard's Signed-Releases check. release.yml creates the release from the same tag; it takes
