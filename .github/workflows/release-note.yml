@@ -12,4 +12,4 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: transcoda/.github/actions/release-note@784e49e74a14c822b9b11abac94b748950e06950 # pre-release: transcoda/.github#1 head, moves to v1.0.0 once tagged
+      - uses: transcoda/.github/actions/release-note@82943f154f47d0c67751fe842278e7f4b889dca9 # v1.0.0
