@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1
+# syntax=docker/dockerfile:1@sha256:4edf897a3ffa55b89f906fc8cc78afdb3f1834cc9c7083565e611a8a7d5fe99e
 # Build from the repo root: docker build -f docker/Dockerfile -t transcoda:dev .
 
 # Pinned by digest (multi-arch index) next to its tag; Renovate updates both together.
