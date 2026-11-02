@@ -1,5 +1,6 @@
 import { useId } from 'react';
-import { Icon } from '../components/Icon.tsx';
+import { StatusChip } from '../components/Chips.tsx';
+import { SectionHeading } from '../components/Headings.tsx';
 import type { Entry, Target, Version } from './InstallDialog.tsx';
 import { NodeChips, PluginTile } from './PluginTile.tsx';
 import {
@@ -133,15 +134,17 @@ function CatalogCardView({
           <div className="catalog-card-name">
             <h3 id={`${id}-title`}>{entry.title}</h3>
             <span className="catalog-card-ids">
-              <span className="mono">{entry.name}</span>
+              {/* The id only when the title doesn't already say it ("tmdb" under "TMDB" doesn't). */}
+              {entry.name === entry.title.toLowerCase() ? null : (
+                <span className="mono">{entry.name}</span>
+              )}
               {shownVersion ? <span className="mono">{shownVersion}</span> : null}
             </span>
           </div>
           {entry.installed !== null ? (
-            <span className="catalog-card-installed">
-              <Icon name="check" size={13} strokeWidth={2.8} round />
+            <StatusChip tone="ok" icon="check">
               Installed
-            </span>
+            </StatusChip>
           ) : (
             // Secondary on the card: the install dialog holds the one primary action.
             <button
@@ -188,10 +191,9 @@ export function CatalogGroups({
     <>
       {groups.map(({ group, cards }) => (
         <section key={group.id} className="plugins-section" aria-labelledby={`group-${group.id}`}>
-          <div className="plugins-group-head">
-            <h2 id={`group-${group.id}`}>{group.title}</h2>
-            <span>{group.sub}</span>
-          </div>
+          <SectionHeading id={`group-${group.id}`} note={group.sub}>
+            {group.title}
+          </SectionHeading>
           <ul className="catalog-grid">
             {cards.map((card) => (
               <CatalogCardView

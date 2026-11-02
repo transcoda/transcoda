@@ -1,6 +1,7 @@
 import type { PluginDetail, PluginSummary, PluginUpdateCheckOutput } from '@transcoda/contract';
 import { useEffect, useId, useRef, useState } from 'react';
 import { api, safe } from '../api/client.ts';
+import { StatusChip } from '../components/Chips.tsx';
 import { Dialog } from '../components/Dialog.tsx';
 import { Icon, type IconName } from '../components/Icon.tsx';
 import { useToast } from '../components/Toast.tsx';
@@ -255,9 +256,10 @@ export function PluginRow({
             <span className="plugin-row-used">{usedByText(plugin.usedBy)}</span>
             {reason ? <span className="plugin-row-reason">{reason}</span> : null}
           </div>
-          <span className={`plugin-status is-${status.tone}`}>
-            <Icon name={STATUS_ICON[status.tone]} size={13} strokeWidth={2.6} round />
-            {status.label}
+          <span className="plugin-status">
+            <StatusChip tone={status.tone} icon={STATUS_ICON[status.tone]}>
+              {status.label}
+            </StatusChip>
           </span>
           <div className="plugin-row-actions">
             {update ? (
