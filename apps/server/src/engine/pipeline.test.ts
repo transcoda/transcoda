@@ -4595,7 +4595,8 @@ describe('core:embed-sidecar-subtitles in the pipeline', () => {
     expect(await nodeFsOps.exists(recycled('a.de.srt'))).toBe(false);
 
     sourceProbe = withGerman();
-    const again = await queue(file(), wf);
+    // Forced: the file is now this version's output, which a plain scan marks already_processed.
+    const again = await queue(file(), wf, { force: true });
     const job = await settled(again);
     expect(job).toMatchObject({ state: 'nothing_to_do' });
     expect(listTrace(t.db, again).find((e) => e.nodeId === 'es')?.reason).toBe(
@@ -5462,9 +5463,12 @@ describe('pipeline: Already processed', () => {
     const pad = (n: number) => String(n).padStart(2, '0');
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
   };
-  /** A dry run of `workflowId` on the file: the port Already processed took. */
+  /**
+   * A dry run of `workflowId` on the file: the port Already processed took. Forced, so the queue
+   * doesn't mark a file this version wrote `already_processed` before the node sees it.
+   */
   const portFor = async (workflowId: string, path = file()) => {
-    const id = await queue(path, workflowId, { dryRun: true });
+    const id = await queue(path, workflowId, { dryRun: true, force: true });
     await settled(id);
     return traceOf(id, 'ap')[0]?.[1];
   };

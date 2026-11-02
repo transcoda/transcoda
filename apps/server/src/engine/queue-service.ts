@@ -192,7 +192,7 @@ export class QueueService {
   /**
    * Queues a file (one job) or a folder (one job per media file under it) as one run, pinned to
    * the workflow's current version. Files that cannot be processed now are `skipped` with the
-   * reason; files this version already finished are `already_processed` unless `force`. A real
+   * reason; files this version already finished, or wrote, are `already_processed` unless `force`. A real
    * run that names no workflow (the library's feeder decides: "Scan now", an automatic scan) is a
    * `library` run, held to the library's run hours; anything else is `manual` and starts at once.
    */
@@ -307,12 +307,26 @@ export class QueueService {
           state = 'skipped';
           reason = c.skip;
         } else {
+          const key = fingerprintKey(c.fp);
           const prior = input.force
             ? null
-            : findFinalRealResult(db, fingerprintKey(c.fp), workflowId, workflow.version);
+            : findFinalRealResult(db, key, workflowId, workflow.version);
+          // A file this version wrote (a replacement, scanned again) needs no second pass either.
+          const wrote =
+            input.force || prior
+              ? null
+              : findProcessedResult(db, {
+                  by: 'fingerprint',
+                  key,
+                  workflowId,
+                  workflowVersion: workflow.version,
+                });
           if (prior) {
             state = 'already_processed';
             reason = alreadyProcessedReason(prior);
+          } else if (wrote?.matched === 'output') {
+            state = 'already_processed';
+            reason = alreadyProcessedReason(wrote, 'output');
           }
           // Recorded for an already-processed file too: the run summary shows its size.
           const file = upsertFile(
