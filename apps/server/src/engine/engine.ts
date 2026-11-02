@@ -185,8 +185,14 @@ export class EngineService {
       fs: deps.fs,
       ...(deps.settleMinutes !== undefined ? { settleMinutes: deps.settleMinutes } : {}),
       onQueued: () => this.scheduler.tick(),
+      onLibrariesChanged: () => this.catchUp.syncWatchers(),
     });
-    this.catchUp = new LibraryCatchUp({ db: deps.db, queue: this.queue, log: deps.log });
+    this.catchUp = new LibraryCatchUp({
+      db: deps.db,
+      queue: this.queue,
+      log: deps.log,
+      ...(deps.settleMinutes !== undefined ? { settleMinutes: deps.settleMinutes } : {}),
+    });
   }
 
   /**

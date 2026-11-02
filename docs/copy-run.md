@@ -138,7 +138,7 @@ LIB=$(tcd -X POST $TCD/api/v1/libraries -d '{
 }' | jq -r .id)
 ```
 
-A library has no workflow setting. A workflow takes files from a library through its Library input: to have "Scan now" and requests without a `workflowId` use Save space, replace its first node with a Library input (`core:input-library`) whose `libraryId` is `$LIB`, save, and activate that version in the UI. Only one active workflow can feed a library; the requests below name the workflow, so this step is optional for the copy run.
+A library has no workflow setting. A workflow takes files from a library through its Library input: to have "Scan now" and requests without a `workflowId` use Save space, replace its first node with a Library input (`core:input-library`) whose `libraryId` is `$LIB`, save, and activate that version in the UI. Only one active workflow can feed a library; the requests below name the workflow, so this step is optional for the copy run. Once a version feeding the library is active, Transcoda also queues new files in it on its own: a minute after start and every 15 minutes, and sooner when the folder is watched (`watchFolder`, on by default; a share written by another machine over NFS or SMB sends no notice and waits for the 15-minute check).
 
 `path` must exist and be a directory inside the container; a path that overlaps another library is refused. The recycle folder is set on the library: `.transcoda-recycle` (relative, so `/media/.transcoda-recycle`) is also what you get when you leave it out, and recycling cannot be switched off. Two more library options matter for this run:
 

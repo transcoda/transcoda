@@ -633,6 +633,33 @@ describe('QueueService libraries', () => {
     });
   });
 
+  it('watchFolder defaults to true, is set on create and patched on update; changes tell the watchers', async () => {
+    const changed = vi.fn<() => void>();
+    const watched = new QueueService({
+      db,
+      workflows,
+      events,
+      now: () => new Date(),
+      fs: nodeFsOps,
+      onQueued,
+      onLibrariesChanged: changed,
+    });
+    expect(lib.watchFolder).toBe(true);
+    const other = join(base, 'movies');
+    await mkdir(other);
+    const created = await watched.createLibrary({ name: 'M', path: other, watchFolder: false });
+    expect(created).toMatchObject({ watchFolder: false });
+    expect(changed).toHaveBeenCalledTimes(1);
+    expect(watched.updateLibrary(lib.id, { watchFolder: false })).toMatchObject({
+      watchFolder: false,
+    });
+    expect(findLibrary(db, lib.id)?.watchFolder).toBe(false);
+    expect(changed).toHaveBeenCalledTimes(2);
+    if (!('id' in created)) throw new Error('library not created');
+    expect(watched.deleteLibrary(created.id)).toBe('ok');
+    expect(changed).toHaveBeenCalledTimes(3);
+  });
+
   it('run hours: none by default, set on create, patched on update and cleared; a change ticks the scheduler', async () => {
     const night = {
       enabled: true,

@@ -60,8 +60,8 @@ function TailPath({ path, className }: { path: string; className: string }) {
 
 /**
  * The settings that differ from the default, one muted line each (convention 11): a recycle
- * folder other than `<root>/.transcoda-recycle` (inside the root it is shown relative to it), and
- * processing hardlinked files. Nothing when both are default.
+ * folder other than `<root>/.transcoda-recycle` (inside the root it is shown relative to it),
+ * processing hardlinked files, and a folder that is not watched. Nothing when all are default.
  */
 function NonDefaultNotes({ library }: { library: Library }) {
   const notes: ReactNode[] = [];
@@ -80,6 +80,13 @@ function NonDefaultNotes({ library }: { library: Library }) {
     notes.push(
       <span key="hardlinked" className="lib-note">
         Processes hardlinked files
+      </span>,
+    );
+  }
+  if (!library.watchFolder) {
+    notes.push(
+      <span key="watch" className="lib-note">
+        Not watched: new files are found every 15 minutes
       </span>,
     );
   }
@@ -140,6 +147,11 @@ const HARDLINK_HINT =
   'Off: files with more than one hard link (a download still seeding, say) are skipped. ' +
   'On: they are processed, which breaks the link, so both copies use disk space.';
 
+const WATCH_HINT =
+  'Transcoda checks every library with an active workflow for new files every 15 minutes. ' +
+  'On: a new file in the folder starts that check as soon as it has finished copying. ' +
+  'A network share (NFS, SMB) that another machine writes to sends no notice, so it waits for the 15-minute check.';
+
 const FULL_DECODE_HINT =
   'Off: a new file is checked at its start, its end and about ten spots before it replaces the ' +
   'original. On: the whole file is decoded, which catches more but takes about as long as playing it.';
@@ -172,6 +184,7 @@ function LibraryDialog({
   const [recycle, setRecycle] = useState(library?.recycleFolder ?? '');
   const [hardlinked, setHardlinked] = useState(library?.processHardlinked ?? false);
   const [fullDecode, setFullDecode] = useState(library?.verifyFullDecode ?? false);
+  const [watching, setWatching] = useState(library?.watchFolder ?? true);
   const [runHours, setRunHours] = useState(library?.runHours ?? DEFAULT_RUN_HOURS);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [failure, setFailure] = useState<string | null>(null);
@@ -228,6 +241,7 @@ function LibraryDialog({
       recycleFolder: customRecycle ? recycle.trim() : null,
       processHardlinked: hardlinked,
       verifyFullDecode: fullDecode,
+      watchFolder: watching,
       // Sent once set: a library that never had run hours and still has none sends nothing.
       ...(library?.runHours != null || runHours.enabled ? { runHours } : {}),
     };
@@ -264,7 +278,7 @@ function LibraryDialog({
   const reasonId = `${id}-reason`;
   // Advanced: how many of its options are off their default. A library being edited that has some
   // opens with it open, so its own choices are in view.
-  const changed = [customRecycle, hardlinked, fullDecode].filter(Boolean).length;
+  const changed = [customRecycle, hardlinked, fullDecode, !watching].filter(Boolean).length;
   return (
     <Dialog
       open={open}
@@ -408,6 +422,12 @@ function LibraryDialog({
               </span>
             ) : null}
           </fieldset>
+          <SwitchRow
+            label="Watch the folder for new files"
+            hint={WATCH_HINT}
+            checked={watching}
+            onChange={setWatching}
+          />
           <SwitchRow
             label="Process hardlinked files"
             hint={HARDLINK_HINT}

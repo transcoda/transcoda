@@ -132,10 +132,15 @@ export interface LibraryInput {
   verifyFullDecode?: boolean;
   /** Default none: automatic jobs start at any time. */
   runHours?: RunHours | null;
+  /** Default true: new files in the folder start its catch-up scan early. */
+  watchFolder?: boolean;
 }
 
 export type LibraryPatch = Partial<
-  Pick<LibraryRow, 'name' | 'recycleFolder' | 'processHardlinked' | 'verifyFullDecode' | 'runHours'>
+  Pick<
+    LibraryRow,
+    'name' | 'recycleFolder' | 'processHardlinked' | 'verifyFullDecode' | 'runHours' | 'watchFolder'
+  >
 >;
 
 export interface QueueServiceDeps {
@@ -148,6 +153,8 @@ export interface QueueServiceDeps {
   settleMinutes?: number;
   /** Called once per queued run and after a change to a library's run hours (the scheduler's tick). */
   onQueued(): void;
+  /** Called after a library is created, changed or deleted (the catch-up's watchers follow it). */
+  onLibrariesChanged?(): void;
 }
 
 /** One file of a run before it is written: its skip reason, or its fingerprint. */
@@ -392,7 +399,7 @@ export class QueueService {
         if (isWithin(real, root) || isWithin(root, real)) return { kind: 'overlaps', other };
       }
     }
-    return insertLibrary(
+    const created = insertLibrary(
       this.db,
       {
         id: randomUUID(),
@@ -402,9 +409,12 @@ export class QueueService {
         processHardlinked: input.processHardlinked ?? false,
         verifyFullDecode: input.verifyFullDecode ?? false,
         runHours: input.runHours ?? null,
+        watchFolder: input.watchFolder ?? true,
       },
       this.deps.now(),
     );
+    this.deps.onLibrariesChanged?.();
+    return created;
   }
 
   /** Patches a live library; null when it is missing or deleted. */
@@ -424,6 +434,7 @@ export class QueueService {
     const updated = updateLibrary(this.db, id, next, this.deps.now());
     // New run hours may let held jobs start now, or move the scheduler's wake-up.
     if (updated && patch.runHours !== undefined) this.deps.onQueued();
+    if (updated) this.deps.onLibrariesChanged?.();
     return updated;
   }
 
@@ -474,7 +485,9 @@ export class QueueService {
       .prepare(`SELECT 1 FROM jobs WHERE library_id = ? AND state IN (${ACTIVE_SQL}) LIMIT 1`)
       .get(id);
     if (active !== undefined) return 'busy';
-    return softDeleteLibrary(this.db, id, this.deps.now()) ? 'ok' : 'not-found';
+    if (!softDeleteLibrary(this.db, id, this.deps.now())) return 'not-found';
+    this.deps.onLibrariesChanged?.();
+    return 'ok';
   }
 
   /** A run with its counts and every file; null when unknown. */
