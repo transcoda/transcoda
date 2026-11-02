@@ -42,6 +42,11 @@ export const LibrarySchema = z.object({
    * start at once; a job already running when the window closes finishes.
    */
   runHours: RunHoursSchema.nullable(),
+  /**
+   * New files in the folder start the catch-up scan early (it still runs every 15 minutes). A share
+   * written by another machine (NFS, SMB) sends no events, so it relies on the timed scan.
+   */
+  watchFolder: z.boolean(),
   feeds: LibraryFeedsSchema,
   namedByInactive: LibraryNamedByInactiveSchema,
   createdAt: z.iso.datetime(),
@@ -73,6 +78,8 @@ export const LibraryCreateInputSchema = z.object({
   processHardlinked: z.boolean().optional(),
   verifyFullDecode: z.boolean().optional(),
   runHours: RunHoursSchema.nullable().optional(),
+  /** Default true. */
+  watchFolder: z.boolean().optional(),
   defaultWorkflowId: RemovedDefaultWorkflowSchema,
 });
 /** The root path cannot change; create another library instead. */
@@ -85,6 +92,8 @@ export const LibraryUpdateInputSchema = z.object({
   verifyFullDecode: z.boolean().optional(),
   /** null: no restriction. */
   runHours: RunHoursSchema.nullable().optional(),
+  /** Default true. */
+  watchFolder: z.boolean().optional(),
   defaultWorkflowId: RemovedDefaultWorkflowSchema,
 });
 export const LibraryBrowseInputSchema = z.object({

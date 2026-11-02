@@ -10,7 +10,7 @@ import { createTestDb } from '../db/test-db.ts';
 import type { Logger } from '../logger.ts';
 import { WorkflowService } from '../workflows/service.ts';
 import { chain, node, testRegistry } from '../workflows/test-helpers.ts';
-import { CATCH_UP_BY, LibraryCatchUp } from './catch-up.ts';
+import { CATCH_UP_BY, LibraryCatchUp, type WatchFn } from './catch-up.ts';
 import { EngineEvents } from './events.ts';
 import { fingerprintKey, fingerprintOf } from './fingerprint.ts';
 import { tempDir } from './fixtures.ts';
@@ -270,5 +270,155 @@ describe('LibraryCatchUp.start', () => {
     await vi.advanceTimersByTimeAsync(10);
     expect(spy).toHaveBeenCalledTimes(2);
     timed.stop();
+  });
+});
+
+/** A fake `watch`: records each watcher so a test can send it events or errors. */
+function fakeWatch() {
+  const open: { root: string; change(name: string | null): void; fail(err: Error): void }[] = [];
+  let closed = 0;
+  const watch: WatchFn = (root, onChange, onError) => {
+    const w = { root, change: onChange, fail: onError };
+    open.push(w);
+    return {
+      close() {
+        closed++;
+        open.splice(open.indexOf(w), 1);
+      },
+    };
+  };
+  return { watch, open, closed: () => closed };
+}
+
+describe('LibraryCatchUp watching', () => {
+  const fakeTimers = () =>
+    vi.useFakeTimers({ toFake: ['setTimeout', 'setInterval', 'clearTimeout', 'clearInterval'] });
+
+  it('watches each fed library with watching on; not one nobody feeds or one switched off', async () => {
+    const shows = join(base, 'shows');
+    const docs = join(base, 'docs');
+    await mkdir(shows);
+    await mkdir(docs);
+    const s = await queue.createLibrary({ name: 'Shows', path: shows });
+    const d = await queue.createLibrary({ name: 'Docs', path: docs, watchFolder: false });
+    if (!('id' in s) || !('id' in d)) throw new Error('library not created');
+    feed(d.id, true);
+    const fake = fakeWatch();
+    const watched = new LibraryCatchUp({ db, queue, log, watch: fake.watch });
+    watched.syncWatchers();
+    expect(fake.open.map((w) => w.root)).toEqual([root]);
+
+    // Switching it off (or the feed going away) closes the watcher at the next sync.
+    queue.updateLibrary(lib.id, { watchFolder: false });
+    watched.syncWatchers();
+    expect(fake.open).toEqual([]);
+    expect(fake.closed()).toBe(1);
+    watched.stop();
+  });
+
+  it('a burst of events gives one scan of that library, after the settle window', async () => {
+    const fake = fakeWatch();
+    const watched = new LibraryCatchUp({
+      db,
+      queue,
+      log,
+      watch: fake.watch,
+      settleMinutes: 3,
+      quietMs: 10_000,
+    });
+    const queueNew = vi.spyOn(queue, 'queueNew');
+    fakeTimers();
+    watched.syncWatchers();
+    const [w] = fake.open;
+    if (!w) throw new Error('not watched');
+    for (let i = 0; i < 20; i++) w.change(`New ${i}.mkv`);
+    await vi.advanceTimersByTimeAsync(3 * 60_000);
+    w.change('New 20.mkv');
+    // Quiet for the settle window plus the quiet time after the last event: then one scan.
+    await vi.advanceTimersByTimeAsync(3 * 60_000 + 9_999);
+    expect(queueNew).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(1);
+    expect(queueNew).toHaveBeenCalledTimes(1);
+    expect(queueNew).toHaveBeenCalledWith(root, CATCH_UP_BY);
+    await vi.advanceTimersByTimeAsync(60 * 60_000);
+    expect(queueNew).toHaveBeenCalledTimes(1);
+    watched.stop();
+  });
+
+  it("ignores events in the recycle folder and Transcoda's own temp files", async () => {
+    const fake = fakeWatch();
+    const watched = new LibraryCatchUp({ db, queue, log, watch: fake.watch, settleMinutes: 0 });
+    const queueNew = vi.spyOn(queue, 'queueNew');
+    fakeTimers();
+    watched.syncWatchers();
+    const [w] = fake.open;
+    w?.change('.transcoda-recycle/Old.mkv');
+    w?.change('.transcoda-recycle');
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(queueNew).not.toHaveBeenCalled();
+    watched.stop();
+  });
+
+  it('a watcher that cannot start is logged once; the timed scan still finds the file', async () => {
+    const watch: WatchFn = () => {
+      throw Object.assign(new Error('ENOSPC: System limit for number of file watchers reached'), {
+        code: 'ENOSPC',
+      });
+    };
+    const watched = new LibraryCatchUp({ db, queue, log, watch });
+    expect(() => watched.syncWatchers()).not.toThrow();
+    watched.syncWatchers();
+    const warnings = vi.mocked(log.warn).mock.calls.filter(([m]) => String(m).includes('watch'));
+    expect(warnings).toHaveLength(1);
+    expect(String(warnings[0]?.[0])).toContain('Movies');
+
+    const added = await settled(join(root, 'New.mkv'));
+    await watched.scanAll();
+    const [run] = listRuns(db, { limit: 1 });
+    expect(jobPaths(run?.id ?? '')).toEqual([added]);
+    watched.stop();
+  });
+
+  it('a watcher that errors later is closed and logged once; nothing throws', async () => {
+    const fake = fakeWatch();
+    const watched = new LibraryCatchUp({ db, queue, log, watch: fake.watch });
+    watched.syncWatchers();
+    const [w] = fake.open;
+    expect(() => w?.fail(new Error('EIO: watched folder went away'))).not.toThrow();
+    expect(fake.open).toEqual([]);
+    watched.syncWatchers();
+    expect(fake.open).toEqual([]);
+    const warnings = vi.mocked(log.warn).mock.calls.filter(([m]) => String(m).includes('watch'));
+    expect(warnings).toHaveLength(1);
+    watched.stop();
+  });
+
+  it('a file the watcher never reported is still queued by the timed scan', async () => {
+    const fake = fakeWatch();
+    const watched = new LibraryCatchUp({ db, queue, log, watch: fake.watch });
+    watched.syncWatchers();
+    const added = await settled(join(root, 'Missed.mkv'));
+    await watched.scanAll();
+    const [run] = listRuns(db, { limit: 1 });
+    expect(jobPaths(run?.id ?? '')).toEqual([added]);
+    watched.stop();
+  });
+
+  it('with the real fs.watch, a file copied into a subfolder is queued without the timed scan', async () => {
+    await mkdir(join(root, 'Film (2024)'));
+    const watched = new LibraryCatchUp({ db, queue, log, settleMinutes: 0, quietMs: 50 });
+    watched.syncWatchers();
+    // Give the watcher a moment to attach before writing.
+    await new Promise((r) => setTimeout(r, 200));
+    // A finished copy: older than the queue's settle window.
+    const added = await settled(join(root, 'Film (2024)', 'Film.mkv'));
+    await vi.waitFor(
+      () => {
+        const [run] = listRuns(db, { limit: 1 });
+        expect(jobPaths(run?.id ?? '')).toEqual([added]);
+      },
+      { timeout: 5000, interval: 50 },
+    );
+    watched.stop();
   });
 });

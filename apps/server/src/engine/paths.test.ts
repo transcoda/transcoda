@@ -199,6 +199,7 @@ describe('skipReasonFor', () => {
     name: 'l1',
     path: '/lib',
     runHours: null,
+    watchFolder: true,
     recycleFolder: null,
     processHardlinked: false,
     verifyFullDecode: false,

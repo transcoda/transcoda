@@ -33,7 +33,7 @@ Transcoda gives you a visual editor to build the fix once, shows you exactly wha
 - **Uses your GPU.** NVIDIA (NVENC), Intel (Quick Sync, VA-API) and AMD encoders are detected and used automatically, with a software fallback if a hardware encode fails.
 - **Watch it work.** The Jobs page shows what's running, how much space you've saved each day and how busy the encoder is. Each job draws the path the file took through the workflow.
 - **Works with your stack.** Official plugins for Sonarr, Radarr, Jellyfin, Bazarr, Seerr, TMDB, ntfy and Discord: branch on a show's original language, rescan after a file changes, get a push when a job is done. Plugins are signed and run sandboxed. [More plugins →](https://github.com/transcoda/transcoda-plugins)
-- **Automate it.** Scan a library in one click and let the queue run only in the hours you choose, or start a workflow from a webhook. A REST API (`/api/v1`, OpenAPI at `/api/openapi.json`) and an [MCP server](docs/mcp.md) let scripts and AI assistants check jobs and build workflows; activating a workflow always stays with a person.
+- **Automate it.** New files in a library are queued on their own: Transcoda watches the folder and checks it every 15 minutes (a network share that another machine writes to sends no notice, so it waits for that check). Scan a library in one click, let the queue run only in the hours you choose, or start a workflow from a webhook. A REST API (`/api/v1`, OpenAPI at `/api/openapi.json`) and an [MCP server](docs/mcp.md) let scripts and AI assistants check jobs and build workflows; activating a workflow always stays with a person.
 
 ## Start from an example
 

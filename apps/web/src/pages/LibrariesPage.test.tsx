@@ -38,6 +38,7 @@ function library(over: Partial<Library>): Library {
     processHardlinked: false,
     verifyFullDecode: false,
     runHours: null,
+    watchFolder: true,
     feeds: null,
     namedByInactive: [],
     createdAt: at,
@@ -81,6 +82,7 @@ const movies = library({
   path: '/media/movies',
   recycleFolder: '/media/movies/.trash',
   processHardlinked: true,
+  watchFolder: false,
   namedByInactive: [{ workflowId: 'w2', name: 'Movie cleanup', version: 1 }],
 });
 
@@ -176,6 +178,7 @@ describe('LibrariesPage', () => {
     // Default recycle folder and hardlink setting: nothing printed.
     expect(within(first).queryByText(/Recycles to/)).toBeNull();
     expect(within(first).queryByText('Processes hardlinked files')).toBeNull();
+    expect(within(first).queryByText(/Not watched/)).toBeNull();
     // Feeds: the workflow's name and the Workflows list's activation pill.
     expect(within(first).getByRole('cell', { name: 'Downsize Active v3' })).toBeTruthy();
     expect(within(first).getByText('Active v3').className).toContain('activation-pill is-active');
@@ -191,6 +194,9 @@ describe('LibrariesPage', () => {
     expect(within(second).getByText(/Recycles to/)).toBeTruthy();
     expect(within(second).getByTitle('.trash').textContent).toBe('\u200e.trash\u200e');
     expect(within(second).getByText('Processes hardlinked files')).toBeTruthy();
+    expect(
+      within(second).getByText('Not watched: new files are found every 15 minutes'),
+    ).toBeTruthy();
     // Movie cleanup's newest version names Movies but was never activated.
     expect(
       within(second).getByText("Movie cleanup has a Library input but isn't active"),
@@ -459,6 +465,7 @@ describe('LibrariesPage', () => {
       recycleFolder: null,
       processHardlinked: false,
       verifyFullDecode: false,
+      watchFolder: true,
     });
 
     // The recycle folder and the two switches sit under Advanced, closed on a new library.
@@ -492,6 +499,12 @@ describe('LibrariesPage', () => {
     fireEvent.click(
       within(dialog).getByRole('switch', { name: 'Verify by decoding the whole file (slower)' }),
     );
+    // Watching is on by default; its hint says a network share relies on the 15-minute check.
+    const watching = within(dialog).getByRole('switch', { name: 'Watch the folder for new files' });
+    expect(watching.getAttribute('aria-checked')).toBe('true');
+    const watchHint = document.getElementById(watching.getAttribute('aria-describedby') ?? '');
+    expect(watchHint?.textContent).toMatch(/NFS, SMB/);
+    fireEvent.click(watching);
     mocks.libraries.create.mockResolvedValueOnce(library({ id: 'l3', name: 'Fixtures' }));
     fireEvent.click(within(dialog).getByRole('button', { name: 'Create library' }));
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
@@ -501,6 +514,7 @@ describe('LibrariesPage', () => {
       recycleFolder: '.trash',
       processHardlinked: true,
       verifyFullDecode: true,
+      watchFolder: false,
     });
     expect(await screen.findByText('Library Fixtures created')).toBeTruthy();
     await waitFor(() => expect(mocks.libraries.list).toHaveBeenCalledTimes(2));
@@ -540,6 +554,7 @@ describe('LibrariesPage', () => {
       recycleFolder: null,
       processHardlinked: false,
       verifyFullDecode: false,
+      watchFolder: true,
     });
     await waitFor(() => expect(mocks.libraries.list).toHaveBeenCalledTimes(2));
 

@@ -11,6 +11,8 @@ export interface LibraryRow {
   verifyFullDecode: boolean;
   /** When its automatic jobs may start; null: never set (no restriction). */
   runHours: RunHours | null;
+  /** New files in its folder start its catch-up scan early (engine/catch-up.ts). */
+  watchFolder: boolean;
   createdAt: string;
   updatedAt: string;
   deletedAt: string | null;
@@ -24,6 +26,7 @@ interface DbLibrary {
   process_hardlinked: number;
   verify_full_decode: number;
   run_hours: string | null;
+  watch_folder: number;
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
@@ -51,6 +54,7 @@ const toLibrary = (r: DbLibrary): LibraryRow => ({
   processHardlinked: r.process_hardlinked !== 0,
   verifyFullDecode: r.verify_full_decode !== 0,
   runHours: parseRunHours(r.run_hours),
+  watchFolder: r.watch_folder !== 0,
   createdAt: r.created_at,
   updatedAt: r.updated_at,
   deletedAt: r.deleted_at,
@@ -58,11 +62,12 @@ const toLibrary = (r: DbLibrary): LibraryRow => ({
 
 export type LibraryInsert = Omit<
   LibraryRow,
-  'createdAt' | 'updatedAt' | 'deletedAt' | 'verifyFullDecode' | 'runHours'
-> & { verifyFullDecode?: boolean; runHours?: RunHours | null };
+  'createdAt' | 'updatedAt' | 'deletedAt' | 'verifyFullDecode' | 'runHours' | 'watchFolder'
+> & { verifyFullDecode?: boolean; runHours?: RunHours | null; watchFolder?: boolean };
 
 /**
- * Inserts a library (`verifyFullDecode` defaults to false, `runHours` to none); its path is stored
+ * Inserts a library (`verifyFullDecode` defaults to false, `runHours` to none, `watchFolder` to
+ * true); its path is stored
  * without a trailing slash.
  */
 export function insertLibrary(db: Database, input: LibraryInsert, now: Date): LibraryRow {
@@ -70,9 +75,10 @@ export function insertLibrary(db: Database, input: LibraryInsert, now: Date): Li
   const path = trimSlash(input.path);
   const verifyFullDecode = input.verifyFullDecode ?? false;
   const runHours = input.runHours ?? null;
+  const watchFolder = input.watchFolder ?? true;
   db.prepare(
     `INSERT INTO libraries (id, name, path, recycle_folder, process_hardlinked, verify_full_decode,
-       run_hours, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       run_hours, watch_folder, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     input.id,
     input.name,
@@ -81,6 +87,7 @@ export function insertLibrary(db: Database, input: LibraryInsert, now: Date): Li
     input.processHardlinked ? 1 : 0,
     verifyFullDecode ? 1 : 0,
     runHours === null ? null : JSON.stringify(runHours),
+    watchFolder ? 1 : 0,
     ts,
     ts,
   );
@@ -89,6 +96,7 @@ export function insertLibrary(db: Database, input: LibraryInsert, now: Date): Li
     path,
     verifyFullDecode,
     runHours,
+    watchFolder,
     createdAt: ts,
     updatedAt: ts,
     deletedAt: null,
@@ -116,7 +124,12 @@ export function updateLibrary(
   patch: Partial<
     Pick<
       LibraryRow,
-      'name' | 'recycleFolder' | 'processHardlinked' | 'verifyFullDecode' | 'runHours'
+      | 'name'
+      | 'recycleFolder'
+      | 'processHardlinked'
+      | 'verifyFullDecode'
+      | 'runHours'
+      | 'watchFolder'
     >
   >,
   now: Date,
@@ -142,6 +155,10 @@ export function updateLibrary(
   if (patch.runHours !== undefined) {
     sets.push('run_hours = ?');
     values.push(patch.runHours === null ? null : JSON.stringify(patch.runHours));
+  }
+  if (patch.watchFolder !== undefined) {
+    sets.push('watch_folder = ?');
+    values.push(patch.watchFolder ? 1 : 0);
   }
   const info = db
     .prepare(`UPDATE libraries SET ${sets.join(', ')} WHERE id = ? AND deleted_at IS NULL`)
