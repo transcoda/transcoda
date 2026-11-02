@@ -106,6 +106,8 @@ export async function createDeps(
   // starts so the problem can be seen (`engine.startError`, the log) and fixed.
   try {
     await deps.engine.start();
+    // New files in fed libraries: a scan a minute after start, then every 15 min.
+    deps.engine.catchUp.start();
   } catch (err) {
     log.error(
       `engine did not start: ${err instanceof Error ? err.message : 'unknown error'}; no jobs will run`,
@@ -138,6 +140,7 @@ export async function createDeps(
     close() {
       deps.gpuLoad.stop();
       deps.appUpdate.stop();
+      deps.engine.catchUp.stop();
       clearInterval(timer);
       clearInterval(testOutputTimer);
       if (db.open) db.close();

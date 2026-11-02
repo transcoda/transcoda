@@ -13,7 +13,9 @@ import {
 import type { Database } from '../db/open.ts';
 import {
   alreadyProcessedReason,
+  fileSeen,
   findFinalRealResult,
+  findProcessedResult,
   hasReplaceJournal,
   insertJob,
   type JobRow,
@@ -76,6 +78,9 @@ export type QueueResult =
   | { kind: 'version-missing' }
   | { kind: 'workflow-invalid'; issues: Issue[] }
   | { kind: 'no-feeding-workflow' };
+
+/** The catch-up scan found no file to queue: nothing was written. */
+export type NothingNew = { kind: 'nothing-new' };
 
 export interface RunSummary {
   run: RunRow;
@@ -192,6 +197,22 @@ export class QueueService {
    * `library` run, held to the library's run hours; anything else is `manual` and starts at once.
    */
   async queue(input: QueueInput): Promise<QueueResult> {
+    const r = await this.queueRun(input, false);
+    if (r.kind === 'nothing-new') throw new Error('nothing-new outside a catch-up scan');
+    return r;
+  }
+
+  /**
+   * The catch-up scan of a library root: a real run through its feeder of the files it has not seen
+   * as they are now (see `fileSeen`) that the feeder never finished at any version. Skipped files
+   * (still growing, hardlinked, …) are left out to be looked at again next time, and nothing is
+   * written when no file is left. A library whose feeder has no active version is never dry-run.
+   */
+  async queueNew(path: string, createdBy: string): Promise<QueueResult | NothingNew> {
+    return this.queueRun({ path, dryRun: false, force: false, priority: 0, createdBy }, true);
+  }
+
+  private async queueRun(input: QueueInput, newOnly: boolean): Promise<QueueResult | NothingNew> {
     const check = await checkPath(this.db, input.path, this.fs);
     if (!check.ok) return { kind: 'path-rejected', reason: check.reason };
     const { library, realPath } = check;
@@ -244,6 +265,23 @@ export class QueueService {
     const written = db.transaction(() => {
       const workflow = this.resolveWorkflow(workflowId, input.dryRun, input.workflowVersion);
       if (workflow.kind !== 'ok') return workflow;
+      if (newOnly) {
+        if (workflow.dryRun) return { kind: 'no-feeding-workflow' as const };
+        // Another feeder took the library while it was listed: leave its files to the next scan.
+        if (findFeeder(db, library.id)?.workflowId !== workflowId) {
+          return { kind: 'nothing-new' as const };
+        }
+        const fresh = candidates.filter((c) => {
+          if (c.skip !== null) return false;
+          const key = fingerprintKey(c.fp);
+          if (fileSeen(db, c.path, key)) return false;
+          // Its output (this feeder replaced it) or a source the feeder finished at any version.
+          const by = { by: 'fingerprint' as const, key, workflowId, workflowVersion: null };
+          return findProcessedResult(db, by) === null;
+        });
+        if (fresh.length === 0) return { kind: 'nothing-new' as const };
+        candidates.splice(0, candidates.length, ...fresh);
+      }
       const run = insertRun(
         db,
         {

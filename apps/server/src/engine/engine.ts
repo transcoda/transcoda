@@ -47,6 +47,7 @@ import type { PluginHooksRunner } from '../plugins/hooks.ts';
 import type { PluginRestartGate } from '../plugins/restart-gate.ts';
 import { graphUpgrade, type WorkflowService } from '../workflows/service.ts';
 import { migratePinned } from '../workflows/validate.ts';
+import { LibraryCatchUp } from './catch-up.ts';
 import { contentHash } from './content-hash.ts';
 import { EngineEvents } from './events.ts';
 import { fingerprintKey } from './fingerprint.ts';
@@ -116,6 +117,8 @@ export class EngineService {
   readonly pipeline: Pipeline;
   readonly scheduler: Scheduler;
   readonly queue: QueueService;
+  /** Queues the files that appear in fed libraries; started by bootstrap once the engine runs. */
+  readonly catchUp: LibraryCatchUp;
   /** The replaces waiting for free space now (C4; the deep health's `queue` check). */
   readonly spaceWaits = new SpaceWaits();
   /** Kept test-encode outputs: retention, sweeps and the scratch-space guard. */
@@ -183,6 +186,7 @@ export class EngineService {
       ...(deps.settleMinutes !== undefined ? { settleMinutes: deps.settleMinutes } : {}),
       onQueued: () => this.scheduler.tick(),
     });
+    this.catchUp = new LibraryCatchUp({ db: deps.db, queue: this.queue, log: deps.log });
   }
 
   /**
@@ -226,6 +230,7 @@ export class EngineService {
 
   /** Stops every job (processes killed, nothing written) and waits for the executors. */
   async stop(): Promise<void> {
+    this.catchUp.stop();
     await this.scheduler.stop();
   }
 

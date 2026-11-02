@@ -1055,6 +1055,21 @@ export function upsertFile(
   return toFile(r);
 }
 
+/**
+ * True when the file at `path` is known as it is now: a `files` row with this fingerprint (queued,
+ * dry-run or probed before), or a job of that path still active. The catch-up scan leaves it alone.
+ */
+export function fileSeen(db: Database, path: string, fingerprint: string): boolean {
+  const row = db
+    .prepare(
+      `SELECT 1 FROM files WHERE path = @path AND fingerprint = @fp
+       UNION ALL SELECT 1 FROM jobs WHERE path = @path AND state IN (${ACTIVE_SQL})
+       LIMIT 1`,
+    )
+    .get({ path, fp: fingerprint });
+  return row !== undefined;
+}
+
 // ---- recycled ----
 
 /**
