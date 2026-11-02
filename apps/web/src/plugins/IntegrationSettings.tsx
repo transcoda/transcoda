@@ -329,6 +329,7 @@ export function IntegrationSettings({
       <PathMappingsField
         key={def.key}
         plugin={name}
+        service={title}
         def={def}
         value={values[def.key]}
         onChange={(v) => change(def.key, v)}

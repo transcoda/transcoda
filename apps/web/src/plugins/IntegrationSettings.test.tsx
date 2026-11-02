@@ -184,12 +184,15 @@ describe('IntegrationSettings', () => {
     await open();
     fireEvent.click(screen.getByRole('button', { name: 'Advanced' }));
     fireEvent.click(screen.getByRole('button', { name: 'Add mapping' }));
-    fireEvent.change(screen.getByLabelText('Remote path 1'), { target: { value: '/shows' } });
-    fireEvent.change(screen.getByLabelText('Local path 1'), { target: { value: '/data/shows' } });
+    const first = within(screen.getByRole('group', { name: 'Mapping 1' }));
+    fireEvent.change(first.getByLabelText('Path in service'), { target: { value: '/shows' } });
+    fireEvent.change(first.getByLabelText('Path in Transcoda'), {
+      target: { value: '/data/shows' },
+    });
     fireEvent.click(screen.getByRole('button', { name: 'Add mapping' }));
-    expect(screen.getByLabelText('Remote path 2')).toBeTruthy();
+    expect(screen.getByRole('group', { name: 'Mapping 2' })).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Remove mapping 2' }));
-    expect(screen.queryByLabelText('Remote path 2')).toBeNull();
+    expect(screen.queryByRole('group', { name: 'Mapping 2' })).toBeNull();
 
     mocks.plugins.testMapping.mockResolvedValue({
       ok: true,
