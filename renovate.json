@@ -8,6 +8,7 @@
   "internalChecksFilter": "strict",
   "rangeStrategy": "pin",
   "labels": ["dependencies", "no user-facing change"],
+  "reviewers": ["jhadenfeldt"],
   "osvVulnerabilityAlerts": true,
   "lockFileMaintenance": {
     "enabled": true,
