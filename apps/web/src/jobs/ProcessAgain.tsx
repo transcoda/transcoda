@@ -22,6 +22,11 @@ type Confirm = { workflow: WorkflowDetail | null; recycle: string | null };
  * there is one (else the newest) and needs no confirmation. Force is per request: nothing is
  * remembered. A queued file opens its new job; a failure is a toast and the page stays. "Dry run
  * again" comes first, "Process again" on the right; `primary` makes it the lime primary.
+ *
+ * With no active version a re-run can only be a dry run, so "Process again" is not offered at all:
+ * "Dry run again" is the one action, with a hint to activate a version. When that only shows once
+ * the button is pressed (the page's workflow list had not loaded), the button goes the same way
+ * and a toast says why; it never opens a dialog for a dry run under the name Process again.
  */
 export function ProcessAgain({
   job,
@@ -39,9 +44,11 @@ export function ProcessAgain({
   const [confirm, setConfirm] = useState<Confirm | null>(null);
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
+  // Found by the workflow loaded for the dialog: nothing is active (the list said otherwise or had not loaded).
+  const [noActive, setNoActive] = useState(false);
   const hintId = useId();
-  // With no active version a real run would only be another dry run: say so instead of offering it.
-  const inactive = summary !== null && summary.active === null;
+  // With no active version a real run would only be another dry run: offer Dry run again alone.
+  const inactive = noActive || (summary !== null && summary.active === null);
 
   /** Loads the workflow and the library together, so the dialog opens with its final text. */
   async function openConfirm() {
@@ -51,8 +58,14 @@ export function ProcessAgain({
       safe(api.libraries.get({ id: job.libraryId })),
     ]);
     setLoading(false);
+    const loaded = workflow[0] ? null : workflow[1];
+    if (loaded !== null && loaded.active === null) {
+      setNoActive(true);
+      toast.info(`${loaded.name} has no active version: use Dry run again`);
+      return;
+    }
     setConfirm({
-      workflow: workflow[0] ? null : workflow[1],
+      workflow: loaded,
       recycle: library[0] ? null : recycleFolderOf(library[1]),
     });
   }
@@ -95,7 +108,6 @@ export function ProcessAgain({
   }
 
   const workflow = confirm?.workflow ?? null;
-  const dry = workflow !== null && workflow.active === null;
   const blocked = workflow?.active != null && !workflow.active.runnable;
 
   return (
@@ -104,26 +116,26 @@ export function ProcessAgain({
         <div className="job-again-actions">
           <button
             type="button"
-            className={`btn btn-sm ${primary ? 'btn-secondary' : 'btn-ghost'}`}
+            className={`btn btn-sm ${primary || inactive ? 'btn-secondary' : 'btn-ghost'}`}
             disabled={busy}
+            {...(inactive ? { 'aria-describedby': hintId } : {})}
             onClick={() => void queue(true)}
           >
             <Icon name="eye" size={14} />
             Dry run again
           </button>
-          <button
-            type="button"
-            className={`btn btn-sm ${primary ? 'btn-primary' : 'btn-secondary'}`}
-            disabled={busy || loading}
-            aria-busy={loading || undefined}
-            {...(inactive ? { 'aria-disabled': true, 'aria-describedby': hintId } : {})}
-            onClick={() => {
-              if (!inactive) void openConfirm();
-            }}
-          >
-            <Icon name="play" size={14} />
-            Process again
-          </button>
+          {inactive ? null : (
+            <button
+              type="button"
+              className={`btn btn-sm ${primary ? 'btn-primary' : 'btn-secondary'}`}
+              disabled={busy || loading}
+              aria-busy={loading || undefined}
+              onClick={() => void openConfirm()}
+            >
+              <Icon name="play" size={14} />
+              Process again
+            </button>
+          )}
         </div>
         {inactive ? (
           <span id={hintId} className="field-hint">
@@ -138,7 +150,7 @@ export function ProcessAgain({
       ) : null}
       <Dialog
         open={confirm !== null}
-        title={`${dry ? 'Dry run' : 'Process'} ${job.fileName} again?`}
+        title={`Process ${job.fileName} again?`}
         onClose={() => setConfirm(null)}
         footer={
           <>
@@ -156,17 +168,15 @@ export function ProcessAgain({
               disabled={blocked}
               onClick={() => {
                 setConfirm(null);
-                void queue(dry);
+                void queue(false);
               }}
             >
-              {dry ? 'Start dry run' : 'Process again'}
+              Process again
             </button>
           </>
         }
       >
-        {dry && workflow ? (
-          <p>{`${workflow.name} has no active version, so this is a dry run of v${workflow.version}; nothing on disk changes.`}</p>
-        ) : blocked && workflow?.active ? (
+        {blocked && workflow?.active ? (
           <p>{`${workflow.name} v${workflow.active.version} is active but can't run, so this file can't be processed again. Activate a version that runs first.`}</p>
         ) : (
           <p>

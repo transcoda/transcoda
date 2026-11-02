@@ -146,10 +146,10 @@ describe('jobText', () => {
     expect(
       reasonOf({
         state: 'already_processed',
-        reason: `already done on ${at}; this file is the original from before then (moved back from the recycle folder?); run with force to process it again`,
+        reason: `already done on ${at}; this file is the original from before then (moved back from the recycle folder?); use Process again to run it anyway`,
       }),
     ).toBe(
-      `Processed on ${day}: replaced; this file is the original from before then (moved back from the recycle folder?); run with force to process it again`,
+      `Processed on ${day}: replaced; this file is the original from before then (moved back from the recycle folder?); use Process again to run it anyway`,
     );
     // Anything else is the engine's own words.
     expect(reasonOf({ state: 'already_processed', reason: 'already processed by v7' })).toBe(
