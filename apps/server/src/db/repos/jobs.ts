@@ -841,10 +841,10 @@ export function alreadyProcessedReason(
 ): string {
   const base = `already ${prior.outcome} on ${prior.createdAt}`;
   if (matched === 'output') {
-    return `${base}; this file is what that job wrote; run with force to process it again`;
+    return `${base}; this file is what that job wrote; use Process again to run it anyway`;
   }
   return prior.outcome === 'done'
-    ? `${base}; this file is the original from before then (moved back from the recycle folder?); run with force to process it again`
+    ? `${base}; this file is the original from before then (moved back from the recycle folder?); use Process again to run it anyway`
     : base;
 }
 

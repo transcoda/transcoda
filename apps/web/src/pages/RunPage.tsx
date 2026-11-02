@@ -27,6 +27,7 @@ import {
   outcomeWord,
   RunCounts,
 } from '../jobs/RunCounts.tsx';
+import { RunProcessAgain } from '../jobs/RunProcessAgain.tsx';
 import { useQueue } from '../jobs/useQueue.ts';
 import { fmtBytes } from '../lib/bytes.ts';
 import { usePageTitle } from '../lib/pageTitle.ts';
@@ -216,10 +217,17 @@ function RunBody({ detail }: { detail: RunDetail }) {
         <span aria-hidden="true">/</span>
       </nav>
       <div className="page-head">
-        <div className="run-title-row">
-          <h1>{`${detail.workflowName} v${run.workflowVersion}`}</h1>
-          {run.dryRun ? <DryRunBadge testEncode={run.testEncode} /> : null}
-          {counts.in_progress > 0 && !paused ? <LiveDot /> : null}
+        <div className="head-row run-head-row">
+          <div className="run-title-row">
+            <h1>{`${detail.workflowName} v${run.workflowVersion}`}</h1>
+            {run.dryRun ? <DryRunBadge testEncode={run.testEncode} /> : null}
+            {counts.in_progress > 0 && !paused ? <LiveDot /> : null}
+          </div>
+          {counts.already_processed > 0 ? (
+            <div className="head-actions">
+              <RunProcessAgain detail={detail} />
+            </div>
+          ) : null}
         </div>
         <p className="head-sub">
           {'Run on '}
