@@ -3,7 +3,6 @@
   "extends": ["config:recommended", ":pinAllExceptPeerDependencies", ":semanticCommits"],
   "enabledManagers": ["npm", "nodenv", "dockerfile", "github-actions", "custom.regex"],
   "timezone": "America/New_York",
-  "schedule": ["* 17-23 * * 1-5", "* * * * 0,6"],
   "minimumReleaseAge": "3 days",
   "minimumReleaseAgeBehaviour": "timestamp-optional",
   "internalChecksFilter": "strict",
