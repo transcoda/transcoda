@@ -413,6 +413,28 @@ describe('LibraryCatchUp watching', () => {
     watched.stop();
   });
 
+  it('a changed recycle folder applies to the running watcher', async () => {
+    await mkdir(join(root, 'Trash'));
+    queue.updateLibrary(lib.id, { recycleFolder: 'Trash' });
+    const fake = fakeWatch();
+    const watched = new LibraryCatchUp({ db, queue, log, watch: fake.watch, settleMinutes: 0 });
+    const queueNew = vi.spyOn(queue, 'queueNew');
+    fakeTimers();
+    watched.syncWatchers();
+    fake.open[0]?.change('Trash/Old.mkv');
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(queueNew).not.toHaveBeenCalled();
+
+    // Back to the default recycle folder: Trash is part of the library again.
+    queue.updateLibrary(lib.id, { recycleFolder: null });
+    watched.syncWatchers();
+    expect(fake.open).toHaveLength(1);
+    fake.open[0]?.change('Trash/New.mkv');
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(queueNew).toHaveBeenCalledTimes(1);
+    watched.stop();
+  });
+
   it('a watcher that cannot start is logged once; the timed scan still finds the file', async () => {
     const watch: WatchFn = () => {
       throw Object.assign(new Error('ENOSPC: System limit for number of file watchers reached'), {

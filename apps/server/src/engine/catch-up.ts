@@ -66,6 +66,8 @@ export class LibraryCatchUp {
   /** Scans run one at a time: the timed scan and the watchers' early ones. */
   private chain: Promise<unknown> = Promise.resolve();
   private readonly watchers = new Map<string, { close(): void }>();
+  /** The recycle folder each watcher filters by; a changed one replaces the watcher. */
+  private readonly watchedRecycle = new Map<string, string | null>();
   /** Libraries whose watcher failed (logged once): left to the timed scan until restart. */
   private readonly failed = new Set<string>();
   private readonly early = new Map<string, ReturnType<typeof setTimeout>>();
@@ -136,7 +138,8 @@ export class LibraryCatchUp {
       wanted.set(library.id, library);
     }
     for (const id of [...this.watchers.keys()]) {
-      if (!wanted.has(id)) this.unwatch(id);
+      const library = wanted.get(id);
+      if (!library || library.recycleFolder !== this.watchedRecycle.get(id)) this.unwatch(id);
     }
     for (const library of wanted.values()) {
       if (!this.watchers.has(library.id)) this.watchLibrary(library);
@@ -154,6 +157,7 @@ export class LibraryCatchUp {
         library.id,
         watch(library.path, onChange, (err) => this.watchFailed(library, err)),
       );
+      this.watchedRecycle.set(library.id, library.recycleFolder);
     } catch (err) {
       this.watchFailed(library, err);
     }
@@ -174,6 +178,7 @@ export class LibraryCatchUp {
   private unwatch(id: string): void {
     const w = this.watchers.get(id);
     this.watchers.delete(id);
+    this.watchedRecycle.delete(id);
     try {
       w?.close();
     } catch {
