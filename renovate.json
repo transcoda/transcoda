@@ -9,6 +9,9 @@
   "rangeStrategy": "pin",
   "labels": ["dependencies", "no user-facing change"],
   "reviewers": ["jhadenfeldt"],
+  "semanticCommitType": "Dependencies",
+  "semanticCommitScope": null,
+  "prBodyTemplate": "{{{header}}}{{{table}}}{{{warnings}}}{{{notes}}}{{{changelogs}}}{{{controls}}}",
   "osvVulnerabilityAlerts": true,
   "lockFileMaintenance": {
     "enabled": true,
@@ -20,23 +23,18 @@
       "description": "SHA-pinned actions in one PR; Renovate rewrites the SHA and the version comment.",
       "matchManagers": ["github-actions"],
       "groupName": "GitHub Actions",
-      "semanticCommitType": "chore",
-      "semanticCommitScope": "ci",
+      "semanticCommitType": "CI",
       "addLabels": ["github_actions"]
     },
     {
       "description": "npm minor and patch updates in one PR; majors one by one.",
       "matchManagers": ["npm"],
       "matchUpdateTypes": ["minor", "patch"],
-      "groupName": "npm non-major",
-      "semanticCommitType": "chore",
-      "semanticCommitScope": "deps"
+      "groupName": "npm non-major"
     },
     {
       "matchManagers": ["npm"],
-      "matchUpdateTypes": ["major"],
-      "semanticCommitType": "chore",
-      "semanticCommitScope": "deps"
+      "matchUpdateTypes": ["major"]
     },
     {
       "description": "Our own SDK is published from this repo's CI with provenance: no release-age wait (as in pnpm's minimumReleaseAgeExclude).",
@@ -46,9 +44,7 @@
     {
       "description": "Node.js: the base image, .node-version, engines and @types/node move together on the LTS line CI and the image run; majors by hand.",
       "matchPackageNames": ["node", "@types/node"],
-      "groupName": "Node.js",
-      "semanticCommitType": "chore",
-      "semanticCommitScope": "node"
+      "groupName": "Node.js"
     },
     {
       "matchPackageNames": ["node", "@types/node"],
@@ -63,8 +59,7 @@
     {
       "description": "ffmpeg in the image changes what users run: its PR needs a release note, so it doesn't get the no-change label.",
       "matchPackageNames": ["jellyfin-ffmpeg8"],
-      "semanticCommitType": "feat",
-      "semanticCommitScope": "ffmpeg",
+      "semanticCommitType": "ffmpeg",
       "labels": ["dependencies"]
     }
   ],
