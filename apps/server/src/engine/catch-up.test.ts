@@ -236,6 +236,60 @@ describe('LibraryCatchUp.scanAll', () => {
   });
 });
 
+describe('LibraryCatchUp review fixes', () => {
+  it('queues nothing when the library gets another feeder while its folder is being listed', async () => {
+    await settled(join(root, 'New.mkv'));
+    const otherRoot = join(base, 'shows');
+    await mkdir(otherRoot);
+    const other = await queue.createLibrary({ name: 'Shows', path: otherRoot });
+    if (!('id' in other)) throw new Error('library not created');
+    // While the scan lists Movies, its workflow is moved to feed Shows instead.
+    const racing = new QueueService({
+      db,
+      workflows,
+      events: new EngineEvents(),
+      now: () => new Date(),
+      fs: {
+        ...nodeFsOps,
+        readdir: async (p) => {
+          db.prepare('UPDATE workflows SET active_library_id = ? WHERE id = ?').run(
+            other.id,
+            flowId,
+          );
+          return nodeFsOps.readdir(p);
+        },
+      },
+      settleMinutes: 3,
+      onQueued: vi.fn(),
+    });
+    expect((await racing.queueNew(root, CATCH_UP_BY)).kind).toBe('nothing-new');
+    expect(listRuns(db, { limit: 10 })).toHaveLength(0);
+  });
+
+  it('a library whose scan hangs (a share that stopped answering) does not hold up the others', async () => {
+    const otherRoot = join(base, 'shows');
+    await mkdir(otherRoot);
+    const other = await queue.createLibrary({ name: 'Shows', path: otherRoot });
+    if (!('id' in other)) throw new Error('library not created');
+    feed(other.id, true);
+    const queueNew = vi.fn<QueueService['queueNew']>((path) =>
+      path === root ? new Promise(() => {}) : Promise.resolve({ kind: 'nothing-new' }),
+    );
+    const stuck = new LibraryCatchUp({ db, queue: { queueNew }, log, scanTimeoutMs: 1000 });
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+
+    const first = stuck.scanAll();
+    await vi.advanceTimersByTimeAsync(1000);
+    await expect(first).resolves.toBe(0);
+    expect(queueNew.mock.calls.map(([p]) => p)).toEqual([root, otherRoot]);
+    expect(log.warn).toHaveBeenCalledWith(expect.stringContaining('Movies'));
+
+    // The next scan leaves the hung library alone (no second stuck call) and scans the rest.
+    await stuck.scanAll();
+    expect(queueNew.mock.calls.map(([p]) => p)).toEqual([root, otherRoot, otherRoot]);
+  });
+});
+
 describe('LibraryCatchUp.start', () => {
   it('scans shortly after start and then on every interval until stopped', async () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'setInterval', 'clearTimeout', 'clearInterval'] });
