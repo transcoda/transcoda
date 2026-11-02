@@ -10,6 +10,12 @@ function rule(source: string, selector: string): string {
   return source.match(new RegExp(`(?:^|\\n)${esc}\\s*\\{([^}]*)\\}`))?.[1] ?? '';
 }
 
+describe('editor canvas controls (#45)', () => {
+  it("our stroked icons are not filled by React Flow's control style (no blank square)", () => {
+    expect(rule(css, '.canvas .react-flow__controls-button svg.icon')).toMatch(/fill:\s*none/);
+  });
+});
+
 describe('shell css (UI review H1, M15, L10, L15)', () => {
   it('keeps the top bar and the side nav in view on long pages', () => {
     expect(rule(css, '.topbar')).toMatch(/position:\s*sticky/);

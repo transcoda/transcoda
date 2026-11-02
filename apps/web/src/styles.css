@@ -1456,6 +1456,12 @@ a.nav-item.is-active:focus-visible,
   max-height: 14px;
 }
 
+/* Our stroked icons (Tidy up, minimap): React Flow fills every control svg, which drew them as
+   solid blocks. */
+.canvas .react-flow__controls-button svg.icon {
+  fill: none;
+}
+
 /* "Tidy up" on a read-only or empty canvas. */
 .canvas .react-flow__controls-button:disabled,
 .canvas .react-flow__controls-button:disabled:hover {
