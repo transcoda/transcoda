@@ -10,7 +10,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@orpc/contract": "1.15.7",
+    "@orpc/contract": "1.16.1",
     "@transcoda/sdk": "workspace:*",
     "@transcoda/shared": "workspace:*",
     "zod": "4.6.7"

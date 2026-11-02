@@ -7,6 +7,20 @@ afterEach(cleanup);
 
 const toggle = () => screen.getByRole('button', { name: /Advanced/ });
 
+function RevealHost() {
+  const [bad, setBad] = useState(false);
+  return (
+    <>
+      <button type="button" onClick={() => setBad(true)}>
+        Break
+      </button>
+      <Disclosure title="Advanced" reveal={bad}>
+        <p>Inside</p>
+      </Disclosure>
+    </>
+  );
+}
+
 describe('Disclosure', () => {
   it('is a button with aria-expanded over a region it controls, closed by default', () => {
     render(
@@ -33,20 +47,7 @@ describe('Disclosure', () => {
   });
 
   it('opens on its own when reveal turns true (a field inside has a problem)', () => {
-    function Host() {
-      const [bad, setBad] = useState(false);
-      return (
-        <>
-          <button type="button" onClick={() => setBad(true)}>
-            Break
-          </button>
-          <Disclosure title="Advanced" reveal={bad}>
-            <p>Inside</p>
-          </Disclosure>
-        </>
-      );
-    }
-    render(<Host />);
+    render(<RevealHost />);
     expect(screen.queryByText('Inside')).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Break' }));
     expect(toggle().getAttribute('aria-expanded')).toBe('true');

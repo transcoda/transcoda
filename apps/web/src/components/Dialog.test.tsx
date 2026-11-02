@@ -5,6 +5,38 @@ import { Dialog } from './Dialog.tsx';
 
 afterEach(cleanup);
 
+function ReturnFocusHarness({ open, asRef }: { open: boolean; asRef: boolean }) {
+  const menu = useRef<HTMLButtonElement>(null);
+  return (
+    <>
+      <button type="button" ref={menu}>
+        Actions
+      </button>
+      {/* The menu item that opened the dialog is gone once it is open. */}
+      {open ? null : <button type="button">Delete item</button>}
+      <Dialog
+        open={open}
+        title="Delete?"
+        onClose={() => {}}
+        returnFocusTo={asRef ? menu : (menu.current ?? null)}
+      >
+        <button type="button">Cancel</button>
+      </Dialog>
+    </>
+  );
+}
+
+function OpenerHarness({ open }: { open: boolean }) {
+  return (
+    <>
+      <button type="button">Open</button>
+      <Dialog open={open} title="Rename" onClose={() => {}}>
+        <input aria-label="Name" />
+      </Dialog>
+    </>
+  );
+}
+
 describe('Dialog', () => {
   it('renders as a modal dialog with the title as its accessible name and closes on Escape', () => {
     const onClose = vi.fn();
@@ -69,32 +101,12 @@ describe('Dialog', () => {
   });
 
   it('returns focus to returnFocusTo (element or ref) instead of an opener that unmounted', () => {
-    function Harness({ open, asRef }: { open: boolean; asRef: boolean }) {
-      const menu = useRef<HTMLButtonElement>(null);
-      return (
-        <>
-          <button type="button" ref={menu}>
-            Actions
-          </button>
-          {/* The menu item that opened the dialog is gone once it is open. */}
-          {open ? null : <button type="button">Delete item</button>}
-          <Dialog
-            open={open}
-            title="Delete?"
-            onClose={() => {}}
-            returnFocusTo={asRef ? menu : (menu.current ?? null)}
-          >
-            <button type="button">Cancel</button>
-          </Dialog>
-        </>
-      );
-    }
     for (const asRef of [true, false]) {
-      const { rerender, unmount } = render(<Harness open={false} asRef={asRef} />);
+      const { rerender, unmount } = render(<ReturnFocusHarness open={false} asRef={asRef} />);
       screen.getByRole('button', { name: 'Delete item' }).focus();
-      rerender(<Harness open asRef={asRef} />);
+      rerender(<ReturnFocusHarness open asRef={asRef} />);
       expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Cancel' }));
-      rerender(<Harness open={false} asRef={asRef} />);
+      rerender(<ReturnFocusHarness open={false} asRef={asRef} />);
       expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Actions' }));
       unmount();
     }
@@ -128,22 +140,12 @@ describe('Dialog', () => {
   });
 
   it('returns focus to the opener when it closes', () => {
-    function Harness({ open }: { open: boolean }) {
-      return (
-        <>
-          <button type="button">Open</button>
-          <Dialog open={open} title="Rename" onClose={() => {}}>
-            <input aria-label="Name" />
-          </Dialog>
-        </>
-      );
-    }
-    const { rerender } = render(<Harness open={false} />);
+    const { rerender } = render(<OpenerHarness open={false} />);
     const opener = screen.getByRole('button', { name: 'Open' });
     opener.focus();
-    rerender(<Harness open />);
+    rerender(<OpenerHarness open />);
     expect(document.activeElement).toBe(screen.getByRole('textbox', { name: 'Name' }));
-    rerender(<Harness open={false} />);
+    rerender(<OpenerHarness open={false} />);
     expect(document.activeElement).toBe(opener);
   });
 });
