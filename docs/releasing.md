@@ -53,7 +53,7 @@ You need maintainer rights. Every step except the tag runs through a normal pull
 
    This turns the notes in `.changes/` into a `CHANGELOG.md` section and the in-app "What's new" list (`apps/server/src/changelog.json`), deletes the notes, and sets the version in the app's `package.json` files. It refuses a version that isn't newer than the current one. Details in [`.changes/README.md`](../.changes/README.md).
 
-3. **Open the release pull request** titled `release: 0.2.0`, with the `no user-facing change` label (the notes it removes are the release). Check `CHANGELOG.md` reads well, then squash-merge it.
+3. **Open the release pull request** titled `Release: 0.2.0`, with the `no user-facing change` label (the notes it removes are the release). Check `CHANGELOG.md` reads well, then squash-merge it.
 4. **Tag the merge commit** on `main` and push the tag:
 
    ```sh
