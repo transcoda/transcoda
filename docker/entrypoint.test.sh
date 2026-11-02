@@ -4,7 +4,8 @@
 #     --cap-add FSETID --cap-add SETUID --cap-add SETGID --cap-add SETPCAP --cap-add KILL \
 #     --security-opt no-new-privileges:true -v "$PWD/docker:/t:ro" \
 #     -e TRANSCODA_CONFIG_DIR=/tmp/cfg -e TRANSCODA_TRANSCODE_DIR=/tmp/tc \
-#     -e TRANSCODA_PLUGIN_RUN_DIR=/tmp/run node:24.22.1-bookworm-slim sh /t/entrypoint.test.sh
+#     -e TRANSCODA_PLUGIN_RUN_DIR=/tmp/run "$(sed -n 's/^ARG NODE_IMAGE=//p' docker/Dockerfile)" \
+#     sh /t/entrypoint.test.sh
 set -u
 
 EP="${ENTRYPOINT_UNDER_TEST:-/t/entrypoint.sh}"

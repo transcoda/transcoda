@@ -203,7 +203,7 @@ app.use('/api/v1/*', async (c, next) => {
 
 ## Task 21: Docker image, entrypoint, compose example
 
-- **Base image (pinned):** `node:24.22.1-bookworm-slim` (Node 24.22.1; exact patch tag since 2026-10-26, see "Node 24.22.1" below). Set as `ARG NODE_IMAGE` and used by all three stages.
+- **Base image (pinned):** `node:24.22.1-bookworm-slim` (Node 24.22.1; exact patch tag since 2026-10-26, see "Node 24.22.1" below). Set as `ARG NODE_IMAGE` and used by all three stages. Since 2026-11-01 also pinned by digest (`node:24.22.1-bookworm-slim@sha256:…`, the multi-arch index) for Scorecard's Pinned-Dependencies check; Renovate (`pinDigests`) updates the tag and the digest together.
 - **ffmpeg (pinned):** `jellyfin-ffmpeg8=8.1.3-1-bookworm` from `https://repo.jellyfin.org/debian` (suite `bookworm`, component `main`, key `jellyfin_team.gpg.key` dearmored to `/usr/share/keyrings/jellyfin.gpg`); newest 8.1.x on 2026-10-16. Overridable with `--build-arg JELLYFIN_FFMPEG_VERSION`. Startup log reports `ffmpeg: 8.1.3-Jellyfin`.
 - **Image size:** `transcoda:dev` (linux/arm64) is 426 MB uncompressed (base image 249 MB, ffmpeg + libraries ~165 MB, app 13 MB). Target < 450 MB met for arm64. **linux/amd64 is 552 MB (over target):** jellyfin-ffmpeg8 on amd64 installs 215 MB (vs ~92 MB on arm64) because it bundles the VAAPI/QSV/Vulkan stack (iHD, i965, radeonsi drivers 68 MB, libmfx*, Vulkan ICDs); plus libicu72 (36 MB, pulled by libxml2). These are what make Intel/AMD hardware transcoding work, so they are kept. Compressed (`docker save | gzip -6`): arm64 147 MB, amd64 184 MB. The amd64 build was verified locally under emulation (starts, `ffmpeg: 8.1.3-Jellyfin`, health ok, node runs as `transcoda`, stop 0.2 s).
 - **pnpm deploy (Decision):** pnpm 12.6.0 runs `pnpm deploy --prod --filter @transcoda/server /deploy` without `--legacy` and without `inject-workspace-packages`; the deps stage copies only the manifests and the lockfile. The workspace packages end up as (manifest-only) injected copies; they are unused at runtime because the bundle inlines them.
@@ -1895,7 +1895,7 @@ Approved plan: `docs/plans/2026-10-21-dryrun-depends-on-size.md` (local).
 ## 2026-10-26 Node 24.22.1
 
 - **Why.** Node 24.22.1 (2026-10-20) and 26.12.1 are security releases. The image used the floating `node:24.22-bookworm-slim` tag, so a cached build could still carry 24.22.0.
-- **Rule.** Every Node pin names the exact patch: the image's `ARG NODE_IMAGE` and the entrypoint test image are `node:24.22.1-bookworm-slim`, `.node-version` is `24.22.1` (CI and the release-note check read it), and `engines` is `>=24.22.1`. Rebuild deployed images with `--pull`.
+- **Rule.** Every Node pin names the exact patch: the image's `ARG NODE_IMAGE` is `node:24.22.1-bookworm-slim` (since 2026-11-01 with its digest), and the entrypoint checks in CI read that same value, `.node-version` is `24.22.1` (CI and the release-note check read it), and `engines` is `>=24.22.1`. Rebuild deployed images with `--pull`.
 - **Not yet 26.** Node 26 is not LTS yet; moving to it is a separate change with a sandbox re-check (`sandbox-expectations.ts` is verified per Node release).
 
 ## 2026-10-26 Intel GPUs and GPU order
