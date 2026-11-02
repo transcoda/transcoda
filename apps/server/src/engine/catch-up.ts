@@ -17,6 +17,11 @@ export const CATCH_UP_BY = 'system:catch-up';
 /** The first scan waits for the start-up work to settle. */
 export const CATCH_UP_FIRST_DELAY_MS = 60 * 1000;
 export const CATCH_UP_INTERVAL_MS = 15 * 60 * 1000;
+/**
+ * How long one library's scan may take before the others go on without it: far above a large
+ * library on a slow share. File system calls cannot be cancelled, so the scan itself runs on.
+ */
+export const CATCH_UP_SCAN_TIMEOUT_MS = 30 * 60 * 1000;
 /** After the settle window, how long a watched folder must stay quiet before its scan. */
 export const WATCH_QUIET_MS = 10 * 1000;
 
@@ -45,6 +50,7 @@ export interface CatchUpDeps {
   log: Logger;
   firstDelayMs?: number;
   intervalMs?: number;
+  scanTimeoutMs?: number;
   /** A new file counts as still growing this long after its last write (default SETTLE_MINUTES). */
   settleMinutes?: number;
   quietMs?: number;
@@ -55,6 +61,8 @@ export class LibraryCatchUp {
   private first: ReturnType<typeof setTimeout> | null = null;
   private timer: ReturnType<typeof setInterval> | null = null;
   private running = false;
+  /** Libraries whose scan has not ended (a hung share): not scanned again until it does. */
+  private readonly unfinished = new Set<string>();
   /** Scans run one at a time: the timed scan and the watchers' early ones. */
   private chain: Promise<unknown> = Promise.resolve();
   private readonly watchers = new Map<string, { close(): void }>();
@@ -66,7 +74,8 @@ export class LibraryCatchUp {
 
   /**
    * Scans every live library that an active version feeds; returns how many files it queued. A
-   * library that cannot be scanned (an unmounted share) is logged and the others go on.
+   * library that cannot be scanned (an unmounted share) is logged and the others go on, also when
+   * its scan hangs past the timeout; that library is skipped until its scan ends.
    */
   async scanAll(): Promise<number> {
     let total = 0;
@@ -76,9 +85,26 @@ export class LibraryCatchUp {
 
   private async scanLibrary(library: LibraryRow): Promise<number> {
     const { db, queue, log } = this.deps;
-    if (findFeeder(db, library.id) === null) return 0;
+    if (findFeeder(db, library.id) === null || this.unfinished.has(library.id)) return 0;
+    this.unfinished.add(library.id);
+    const scan = queue
+      .queueNew(library.path, CATCH_UP_BY)
+      .finally(() => this.unfinished.delete(library.id));
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const timeout = new Promise<'timeout'>((resolve) => {
+      timer = setTimeout(
+        () => resolve('timeout'),
+        this.deps.scanTimeoutMs ?? CATCH_UP_SCAN_TIMEOUT_MS,
+      );
+    });
     try {
-      const r = await queue.queueNew(library.path, CATCH_UP_BY);
+      const r = await Promise.race([scan, timeout]);
+      if (r === 'timeout') {
+        log.warn(`library ${library.name}: the scan is not answering; it is skipped until it ends`);
+        // A late failure has nobody waiting for it.
+        scan.catch(() => {});
+        return 0;
+      }
       if (r.kind === 'queued') {
         log.info(`library ${library.name}: queued ${r.jobs.length} new file(s)`);
         return r.jobs.length;
@@ -91,6 +117,8 @@ export class LibraryCatchUp {
     } catch (err) {
       const reason = err instanceof Error ? err.message : 'unknown error';
       log.warn(`library ${library.name} was not scanned: ${reason}`);
+    } finally {
+      clearTimeout(timer);
     }
     return 0;
   }

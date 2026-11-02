@@ -274,6 +274,10 @@ export class QueueService {
       if (workflow.kind !== 'ok') return workflow;
       if (newOnly) {
         if (workflow.dryRun) return { kind: 'no-feeding-workflow' as const };
+        // Another feeder took the library while it was listed: leave its files to the next scan.
+        if (findFeeder(db, library.id)?.workflowId !== workflowId) {
+          return { kind: 'nothing-new' as const };
+        }
         const fresh = candidates.filter((c) => {
           if (c.skip !== null) return false;
           const key = fingerprintKey(c.fp);
