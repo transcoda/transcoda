@@ -12,15 +12,4 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          fetch-depth: 0
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version-file: .node-version
-      - name: Check for a release note
-        env:
-          BASE: ${{ github.event.pull_request.base.sha }}
-          HEAD: ${{ github.event.pull_request.head.sha }}
-          LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
-        run: node scripts/check-release-note.mjs "$BASE" "$HEAD" "$LABELS"
+      - uses: transcoda/.github/actions/release-note@784e49e74a14c822b9b11abac94b748950e06950 # v1.0.0
