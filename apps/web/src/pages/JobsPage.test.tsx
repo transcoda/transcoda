@@ -368,6 +368,15 @@ describe('JobsPage', () => {
     ).toBeTruthy();
   });
 
+  it('a failed row clamps its reason to two lines, the whole line on hover (#44)', async () => {
+    await renderPage();
+    const detail = within(rowOf(fx.failed.fileName)).getByText(
+      'Verification failed: output 4 s shorter · original untouched',
+    );
+    expect(detail.classList.contains('job-detail-clamp')).toBe(true);
+    expect(detail.getAttribute('title')).toBe(detail.textContent);
+  });
+
   it('a finished dry run shows its would-be verdict with the Dry run badge beside it', async () => {
     await renderPage();
     const row = rowOf(fx.dry.fileName);

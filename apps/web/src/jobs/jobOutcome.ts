@@ -2,7 +2,7 @@
 // tone (the state chip's colour, as a softly tinted icon circle) and the one time line.
 import type { JobState } from '@transcoda/shared';
 import { fmtDuration, fmtStamp } from '../lib/time.ts';
-import { sentence, type Verdict } from './jobText.ts';
+import { probeClause, sentence, type Verdict } from './jobText.ts';
 
 /** The Result card's tone: the chip system's colours (lime, neutral, red, amber). */
 export type ResultTone = 'ok' | 'neutral' | 'error' | 'warning';
@@ -29,41 +29,8 @@ export interface FailureCause {
   text: string | null;
 }
 
-/** `[matroska,webm @ 0x90903c000] ` before an ffmpeg/ffprobe message. */
-const DEMUXER_PREFIX = /^\[[^\]]* @ 0x[0-9a-f]+\]\s*/i;
-
-/** ffprobe's own messages, said as what they mean for the file. */
-const PROBE_WORDS: ReadonlyArray<[RegExp, string]> = [
-  [/^invalid data found when processing input$/i, 'ffprobe found invalid data in the file'],
-  [/^no such file or directory$/i, 'the file is no longer there'],
-  [/^permission denied$/i, "Transcoda isn't allowed to read the file"],
-  [/^ffprobe was not found$/i, 'ffprobe was not found on the server'],
-];
-
-/**
- * ffprobe's error as one clause: the last message in plain words, earlier ones in brackets
- * ("ffprobe found invalid data in the file (EBML header parsing failed)"). Older reasons carry
- * node's "Command failed: <command line>" and the file's path; both are left out here (the raw
- * error stays available beside the cause).
- */
-function probeClause(detail: string): string {
-  const messages = detail
-    .split('\n')
-    .map((l) => l.trim())
-    .filter((l) => l !== '' && !l.startsWith('Command failed:'))
-    .map((l) =>
-      l
-        .replace(DEMUXER_PREFIX, '')
-        .replace(/^\/\S*:\s+/, '')
-        .trim(),
-    )
-    .filter((l) => l !== '');
-  const last = messages.at(-1);
-  if (last === undefined) return 'ffprobe could not read it';
-  const words = PROBE_WORDS.find(([re]) => re.test(last))?.[1] ?? last;
-  const extra = messages.slice(0, -1);
-  return extra.length > 0 ? `${words} (${extra.join('; ')})` : words;
-}
+/** The engine's reason for a failed probe: "The file couldn't be read: <clause>" (#44). */
+const UNREADABLE = /^the file couldn't be read(?::\s*|\s*\((.*)\)$)/i;
 
 /**
  * Reason prefixes the engine writes, with the cause each one means. The text after the prefix is
@@ -104,6 +71,16 @@ const asSentence = (s: string) => capital(s).replace(/\.?$/, '.');
 export function failureCause(reason: string | null): FailureCause {
   const raw = reason?.trim() ?? '';
   if (raw === '') return { headline: 'The job failed', text: null };
+  const unreadable = UNREADABLE.exec(raw);
+  if (unreadable) {
+    // "…: it isn't a valid video file (ffprobe: …)" or "… (ffprobe: …)" without a meaning.
+    const clause = unreadable[1] ?? raw.slice(unreadable[0].length);
+    return {
+      headline: 'The file could not be read',
+      text: `${capital(clause.trim())}, so the workflow never started.`,
+    };
+  }
+  // Reasons stored before #44: "probe failed: <ffprobe's message>".
   const probe = /^probe failed:\s*/i.exec(raw);
   if (probe) {
     const clause = probeClause(raw.slice(probe[0].length));

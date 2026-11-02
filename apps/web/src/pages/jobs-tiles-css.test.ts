@@ -12,6 +12,15 @@ function rule(selector: string): string {
 
 const PRESSED_TILE = '.stat-tile:has(> .stat-tile-button[aria-pressed="true"])';
 
+describe('Jobs row detail (#44)', () => {
+  it('is clamped to two lines and breaks a long word', () => {
+    const clamp = rule('.job-detail-clamp');
+    expect(clamp).toMatch(/-webkit-line-clamp:\s*2/);
+    expect(clamp).toMatch(/overflow:\s*hidden/);
+    expect(clamp).toMatch(/overflow-wrap:\s*anywhere/);
+  });
+});
+
 describe('Jobs stat tiles (#31)', () => {
   it('the button fills the stretched tile, so no tinted band shows under it', () => {
     expect(rule('.stat-tile.is-button')).toMatch(/display:\s*flex/);

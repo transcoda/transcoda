@@ -330,6 +330,37 @@ export function probeFailure(err: unknown, path: string): string {
   return last.length > 200 ? `${last.slice(0, 199)}…` : last;
 }
 
+/** ffprobe's own last message, said as what it means for the file. */
+const PROBE_MEANING: ReadonlyArray<[RegExp, string]> = [
+  [/^invalid data found when processing input$/i, "it isn't a valid video file"],
+  [/^no such file or directory$/i, 'it is no longer there'],
+  [/^permission denied$/i, "Transcoda isn't allowed to read it"],
+];
+
+/**
+ * A failed probe as a job's reason, one plain sentence: "The file couldn't be read: it isn't a
+ * valid video file (ffprobe: Invalid data found when processing input)". ffprobe's message stays
+ * in brackets; the command line and the path never appear (they go to the job log, see
+ * {@link probeLog}).
+ */
+export function probeReason(err: unknown, path: string): string {
+  const detail = probeFailure(err, path);
+  const head = "The file couldn't be read";
+  // A timeout or a missing ffprobe is already said in words.
+  if (/^ffprobe (took too long|was not found)/.test(detail)) return `${head}: ${detail}`;
+  const meaning = PROBE_MEANING.find(([re]) => re.test(detail))?.[1];
+  return meaning ? `${head}: ${meaning} (ffprobe: ${detail})` : `${head} (ffprobe: ${detail})`;
+}
+
+/** What a failed probe leaves in the job log: the command line and everything ffprobe said. */
+export function probeLog(err: unknown): string {
+  const e = (typeof err === 'object' && err !== null ? err : {}) as { stderr?: unknown };
+  const raw = err instanceof Error ? err.message : String(err);
+  const stderr = typeof e.stderr === 'string' ? e.stderr.trim() : '';
+  const text = stderr !== '' && !raw.includes(stderr) ? `${raw}\n${stderr}` : raw;
+  return `Probe failed\n${text.trimEnd()}\n`;
+}
+
 export async function probeFile(
   path: string,
   opts: { ffprobePath: string; exec?: Exec; signal?: AbortSignal },

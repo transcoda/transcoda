@@ -2,7 +2,15 @@ import { readFileSync } from 'node:fs';
 import { isPicture } from '@transcoda/shared';
 import { describe, expect, it } from 'vitest';
 import { fixturePath, fixturesAvailable, toolPaths } from './fixtures.ts';
-import { jobProbeOf, languageOf, parseProbe, probeFailure, probeFile } from './probe.ts';
+import {
+  jobProbeOf,
+  languageOf,
+  parseProbe,
+  probeFailure,
+  probeFile,
+  probeLog,
+  probeReason,
+} from './probe.ts';
 
 const tigger: unknown = JSON.parse(
   readFileSync(new URL('./fixtures/ffprobe-tigger-pooh.json', import.meta.url), 'utf8'),
@@ -353,6 +361,47 @@ describe('probeFailure', () => {
   it('never returns more than one short line', () => {
     const long = 'x'.repeat(500);
     expect(probeFailure(execError(`${long}\n`), path).length).toBeLessThanOrEqual(200);
+  });
+});
+
+describe('probeReason and probeLog (#44)', () => {
+  const path = '/media/movies/Broken (2020)/broken-file.mkv';
+  const command = `ffprobe -v error -show_format -show_streams -show_chapters -of json ${path}`;
+  const execError = (stderr: string) =>
+    Object.assign(new Error(`Command failed: ${command}\n${stderr}`), { code: 1, stderr });
+  const corrupt = execError(
+    `[matroska,webm @ 0x90903c000] EBML header parsing failed\n${path}: Invalid data found when processing input\n`,
+  );
+
+  it('says a failed probe as one plain sentence, ffprobe in brackets, without command or path', () => {
+    expect(probeReason(corrupt, path)).toBe(
+      "The file couldn't be read: it isn't a valid video file (ffprobe: Invalid data found when processing input)",
+    );
+    expect(probeReason(execError(`${path}: No such file or directory\n`), path)).toBe(
+      "The file couldn't be read: it is no longer there (ffprobe: No such file or directory)",
+    );
+    expect(probeReason(execError(`${path}: Permission denied\n`), path)).toBe(
+      "The file couldn't be read: Transcoda isn't allowed to read it (ffprobe: Permission denied)",
+    );
+    expect(probeReason(execError('Something odd\n'), path)).toBe(
+      "The file couldn't be read (ffprobe: Something odd)",
+    );
+    expect(
+      probeReason(Object.assign(new Error('x'), { killed: true, signal: 'SIGTERM' }), path),
+    ).toBe("The file couldn't be read: ffprobe took too long and was stopped");
+  });
+
+  it('keeps the command line and all of ffprobe output for the job log', () => {
+    const log = probeLog(corrupt);
+    expect(log).toContain(command);
+    expect(log).toContain('[matroska,webm @ 0x90903c000] EBML header parsing failed');
+    expect(log).toContain(`${path}: Invalid data found when processing input`);
+    // The stderr is part of the message here: said once, not twice.
+    expect(log.split('EBML header parsing failed')).toHaveLength(2);
+    // A stderr the message leaves out is added.
+    expect(probeLog(Object.assign(new Error('spawn failed'), { stderr: 'boom' }))).toBe(
+      'Probe failed\nspawn failed\nboom\n',
+    );
   });
 });
 

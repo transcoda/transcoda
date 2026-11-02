@@ -9,6 +9,23 @@ describe('failureCause', () => {
     });
   });
 
+  it("today's probe reason (#44): the clause after the headline, as a sentence", () => {
+    expect(
+      failureCause(
+        "The file couldn't be read: it isn't a valid video file (ffprobe: Invalid data found when processing input)",
+      ),
+    ).toEqual({
+      headline: 'The file could not be read',
+      text: "It isn't a valid video file (ffprobe: Invalid data found when processing input), so the workflow never started.",
+    });
+    expect(failureCause("The file couldn't be read (ffprobe: Something odd)").text).toBe(
+      'ffprobe: Something odd, so the workflow never started.',
+    );
+    expect(
+      failureCause("The file couldn't be read: ffprobe took too long and was stopped").text,
+    ).toBe('ffprobe took too long and was stopped, so the workflow never started.');
+  });
+
   it('an older probe reason drops the command line and the path, and keeps the demuxer message', () => {
     const reason = [
       'probe failed: Command failed: ffprobe -v error -show_format -of json /media/movies/broken.mkv',

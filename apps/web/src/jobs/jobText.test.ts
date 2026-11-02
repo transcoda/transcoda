@@ -120,8 +120,22 @@ describe('jobText', () => {
     expect(detailLine(job({ state: 'encoding', progress: { ...p, etaSeconds: 4980 } }))).toBe(
       '42% · 118 fps · ETA 1 h 23 min',
     );
+    // A probe failure stored before #44 reads in today's words, without command or path.
     expect(detailLine(job({ state: 'failed', reason: 'probe failed: no streams' }))).toBe(
-      'Probe failed: no streams · original untouched',
+      "The file couldn't be read: no streams · original untouched",
+    );
+    const raw = [
+      'probe failed: Command failed: ffprobe -v error -show_format -of json /media/Broken (2020)/b.mkv',
+      '[matroska,webm @ 0x90903c000] EBML header parsing failed',
+      '/media/Broken (2020)/b.mkv: Invalid data found when processing input',
+    ].join('\n');
+    expect(detailLine(job({ state: 'failed', reason: raw }))).toBe(
+      "The file couldn't be read: ffprobe found invalid data in the file (EBML header parsing failed) · original untouched",
+    );
+    const today =
+      "The file couldn't be read: it isn't a valid video file (ffprobe: Invalid data found when processing input)";
+    expect(detailLine(job({ state: 'failed', reason: today }))).toBe(
+      `${today} · original untouched`,
     );
     expect(detailLine(job({ state: 'failed', reason: null }))).toBe('Original untouched');
     expect(detailLine(job({ state: 'kept_original', reason: null }))).toBe('');
