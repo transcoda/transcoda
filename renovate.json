@@ -20,6 +20,11 @@
   },
   "packageRules": [
     {
+      "description": "House-style titles: config:recommended sets chore/fix per package, so override it here; later rules set CI and FFmpeg.",
+      "matchPackageNames": ["*"],
+      "semanticCommitType": "Dependencies"
+    },
+    {
       "description": "SHA-pinned actions in one PR; Renovate rewrites the SHA and the version comment.",
       "matchManagers": ["github-actions"],
       "groupName": "GitHub Actions",
@@ -59,7 +64,7 @@
     {
       "description": "ffmpeg in the image changes what users run: its PR needs a release note, so it doesn't get the no-change label.",
       "matchPackageNames": ["jellyfin-ffmpeg8"],
-      "semanticCommitType": "ffmpeg",
+      "semanticCommitType": "FFmpeg",
       "labels": ["dependencies"]
     }
   ],
