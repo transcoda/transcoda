@@ -352,6 +352,20 @@ export function runHoursWait(hold: NonNullable<Job['heldByRunHours']>, now: Date
 }
 
 /**
+ * Why a queued job does not start, in the Jobs list's words: "Paused" (the job itself), "Queue
+ * paused" (the whole queue); null when it is not queued or simply waits its turn. The run page says
+ * the same.
+ */
+export function queuedWait(
+  job: { state: JobState; paused: boolean },
+  queuePaused: boolean,
+): string | null {
+  if (job.state !== 'queued') return null;
+  if (job.paused) return 'Paused';
+  return queuePaused ? 'Queue paused' : null;
+}
+
+/**
  * The line under the progress bar (screen 07's detail column). `queuePaused`: the whole queue is
  * paused, so a queued job is not waiting for a lane but for the queue. A job its library's run
  * hours hold back says when it can start (`now` for tests).
@@ -381,9 +395,9 @@ export function detailLine(job: Job, opts: { queuePaused?: boolean; now?: Date }
     case 'deciding':
       return RUNNING_DETAIL[job.state];
     case 'queued':
-      if (job.paused) return 'Paused';
-      if (opts.queuePaused) return 'Queue paused';
-      return held ? sentence(held) : 'Waiting for a lane';
+      return (
+        queuedWait(job, opts.queuePaused ?? false) ?? (held ? sentence(held) : 'Waiting for a lane')
+      );
     case 'done': {
       const first = job.problems[0];
       if (first !== undefined) return `done · needs attention: ${first}`;

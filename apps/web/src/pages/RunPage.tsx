@@ -15,6 +15,7 @@ import { DryRunBadge, VERDICT_ICON } from '../jobs/JobStateChip.tsx';
 import {
   dependsWord,
   estimatePercent,
+  queuedWait,
   reasonOf,
   sentence,
   testEncodeLine,
@@ -59,11 +60,14 @@ function measuredLine(f: RunFile): string | null {
 }
 
 /**
- * The muted line under a file's name: why it ended as it did, when there is more to say than its
- * chip. A test-encode's measured outcome, a dry run's plan, otherwise the reason. A replaced file's
+ * The muted line under a file's name: why it waits or ended as it did, when there is more to say
+ * than its chip. A test-encode's measured outcome, a dry run's plan, otherwise the reason. A replaced file's
  * sizes say it all; a nothing-to-do file without its own reason has nothing to add.
  */
-function noteText(f: RunFile, testEncode: boolean): string | null {
+function noteText(f: RunFile, testEncode: boolean, queuePaused: boolean): string | null {
+  // A queued file says why it waits, as the Jobs list does ("Queue paused").
+  const wait = queuedWait(f, queuePaused);
+  if (wait) return wait;
   const measured = testEncode ? measuredLine(f) : null;
   if (measured) return measured;
   if (f.state === 'dry_run' && f.planSummary) return sentence(f.planSummary);
@@ -108,6 +112,7 @@ function FileChip({ f, run }: { f: RunFile; run: RunDetail['run'] }) {
       outcome={outcomeOf(f.state)}
       dryRun={run.dryRun}
       testEncode={run.testEncode}
+      paused={f.paused}
       word={dependsWord({ ...f, dryRun: run.dryRun })}
       estimate={
         f.dependsOnSize
@@ -132,7 +137,15 @@ function VersionNote({ f, run }: { f: RunFile; run: RunDetail['run'] }) {
 }
 
 /** Desktop: File / Outcome / Size; the row is the link to the job. */
-function FilesTable({ files, run }: { files: RunFile[]; run: RunDetail['run'] }) {
+function FilesTable({
+  files,
+  run,
+  queuePaused,
+}: {
+  files: RunFile[];
+  run: RunDetail['run'];
+  queuePaused: boolean;
+}) {
   return (
     <section className="panel run-files">
       <table aria-label="Files">
@@ -145,7 +158,7 @@ function FilesTable({ files, run }: { files: RunFile[]; run: RunDetail['run'] })
         </thead>
         <tbody>
           {files.map((f) => {
-            const note = noteText(f, run.testEncode);
+            const note = noteText(f, run.testEncode, queuePaused);
             return (
               <tr key={f.jobId} className="row-link">
                 <td className="run-cell run-file-name">
@@ -173,7 +186,15 @@ function FilesTable({ files, run }: { files: RunFile[]; run: RunDetail['run'] })
 }
 
 /** Phone: the Jobs phone list's stacked cards (icon, name, "Replaced · 4.37 GB → 1.00 GB"). */
-function FilesCards({ files, run }: { files: RunFile[]; run: RunDetail['run'] }) {
+function FilesCards({
+  files,
+  run,
+  queuePaused,
+}: {
+  files: RunFile[];
+  run: RunDetail['run'];
+  queuePaused: boolean;
+}) {
   return (
     <div className="run-cards">
       {files.map((f) => {
@@ -181,6 +202,9 @@ function FilesCards({ files, run }: { files: RunFile[]; run: RunDetail['run'] })
         const verdict = outcomeVerdict(outcome, run.dryRun);
         const word = dependsWord({ ...f, dryRun: run.dryRun }) ?? outcomeWord(outcome, run.dryRun);
         const size = sizeText(f, run.testEncode);
+        // "Queued · Queue paused", "In progress · Paused": the Jobs list's words for a wait.
+        const wait = queuedWait(f, queuePaused) ?? (f.paused ? 'Paused' : null);
+        const text = [word, wait, size === '—' ? null : size].filter(Boolean).join(' · ');
         return (
           <Link key={f.jobId} href={`/jobs/${f.jobId}`} className="phone-finished">
             <span className={`phone-finished-icon is-${verdict}`}>
@@ -191,9 +215,7 @@ function FilesCards({ files, run }: { files: RunFile[]; run: RunDetail['run'] })
                 {f.fileName}
                 <VersionNote f={f} run={run} />
               </b>
-              <span className={`job-detail-text is-${verdict}`}>
-                {size === '—' ? word : `${word} · ${size}`}
-              </span>
+              <span className={`job-detail-text is-${verdict}`}>{text}</span>
             </span>
           </Link>
         );
@@ -256,7 +278,11 @@ function RunBody({ detail }: { detail: RunDetail }) {
         <SectionHeading id="run-files-title" count={files.length}>
           Files
         </SectionHeading>
-        {phone ? <FilesCards files={files} run={run} /> : <FilesTable files={files} run={run} />}
+        {phone ? (
+          <FilesCards files={files} run={run} queuePaused={paused} />
+        ) : (
+          <FilesTable files={files} run={run} queuePaused={paused} />
+        )}
       </section>
     </>
   );

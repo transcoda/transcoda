@@ -64,6 +64,8 @@ export const RunDetailSchema = RunSummarySchema.extend({
       planSummary: z.string().nullable(),
       /** A plan-only dry run decided by its size gate after encoding; null otherwise. */
       dependsOnSize: z.object({ minSavingPercent: z.number() }).nullable(),
+      /** The job itself is paused; the queue's own pause is `queue.status`. */
+      paused: z.boolean(),
     }),
   ),
 });
