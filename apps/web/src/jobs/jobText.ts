@@ -251,7 +251,8 @@ export function probeClause(detail: string): string {
     .map((l) =>
       l
         .replace(DEMUXER_PREFIX, '')
-        .replace(/^\/[^:]*:\s+/, '')
+        // The path may itself hold ": " ("/media/Film: The Movie.mkv: Invalid data …").
+        .replace(/^\/.*:\s+/, '')
         .trim(),
     )
     .filter((l) => l !== '');

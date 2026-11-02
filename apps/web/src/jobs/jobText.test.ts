@@ -132,6 +132,13 @@ describe('jobText', () => {
     expect(detailLine(job({ state: 'failed', reason: raw }))).toBe(
       "The file couldn't be read: ffprobe found invalid data in the file (EBML header parsing failed) · original untouched",
     );
+    const colon = [
+      'probe failed: Command failed: ffprobe -v error -show_format -of json /media/Film: The Movie.mkv',
+      '/media/Film: The Movie.mkv: Invalid data found when processing input',
+    ].join('\n');
+    expect(detailLine(job({ state: 'failed', reason: colon }))).toBe(
+      "The file couldn't be read: ffprobe found invalid data in the file · original untouched",
+    );
     const today =
       "The file couldn't be read: it isn't a valid video file (ffprobe: Invalid data found when processing input)";
     expect(detailLine(job({ state: 'failed', reason: today }))).toBe(

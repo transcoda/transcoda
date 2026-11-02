@@ -676,6 +676,8 @@ export class Pipeline implements JobExecutor {
       // job log and the server log.
       this.deps.log.warn({ msg: 'probe failed', job: job.id, error: message(err) });
       const logPath = await this.writeProbeLog(job, err);
+      // A cancel or shutdown during the log write wins over the failure.
+      this.stopIfAborted(ctl);
       this.finish(job, ctl, 'failed', { reason: probeReason(err, realPath) }, { fp, logPath });
       return { final: true };
     }
