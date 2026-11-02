@@ -27,6 +27,26 @@ function Probe({ onEvent, onReconnect }: { onEvent(e: EngineEvent): void; onReco
   return <p data-testid="status">{useStreamStatus()}</p>;
 }
 
+function Listener({ fn }: { fn(): void }) {
+  useOnReconnect(fn);
+  return null;
+}
+
+function Thrower() {
+  useEvents(() => {
+    throw new Error('listener bug');
+  }, []);
+  useOnReconnect(() => {
+    throw new Error('reconnect bug');
+  });
+  return null;
+}
+
+function Seen({ fn }: { fn(e: EngineEvent): void }) {
+  useEvents(fn, []);
+  return null;
+}
+
 function mount() {
   const onEvent = vi.fn();
   const onReconnect = vi.fn();
@@ -76,10 +96,6 @@ describe('EventsProvider', () => {
   it('a listener added after the stream is live is not called on that first connect', async () => {
     const early = vi.fn();
     const late = vi.fn();
-    function Listener({ fn }: { fn(): void }) {
-      useOnReconnect(fn);
-      return null;
-    }
     const view = render(
       <EventsProvider>
         <Listener fn={early} />
@@ -103,23 +119,10 @@ describe('EventsProvider', () => {
   it('a throwing listener does not keep the event from the others or drop the stream', async () => {
     const error = vi.spyOn(console, 'error').mockImplementation(() => {});
     const seen = vi.fn();
-    function Thrower() {
-      useEvents(() => {
-        throw new Error('listener bug');
-      }, []);
-      useOnReconnect(() => {
-        throw new Error('reconnect bug');
-      });
-      return null;
-    }
-    function Seen() {
-      useEvents(seen, []);
-      return null;
-    }
     render(
       <EventsProvider>
         <Thrower />
-        <Seen />
+        <Seen fn={seen} />
       </EventsProvider>,
     );
     await flush();
