@@ -832,10 +832,17 @@ export function hasReplaceJournal(db: Database, jobId: string): boolean {
 /**
  * The reason of an `already_processed` job. A `done` result's fingerprint is the original's (the
  * replacement has its own), so a match means that original is back, moved out of the recycle
- * folder by hand (C5): the job says so and how to process it again.
+ * folder by hand (C5): the job says so and how to process it again. A file that matches a job's
+ * written output (`matched: 'output'`) is that job's replacement, scanned again.
  */
-export function alreadyProcessedReason(prior: { outcome: JobState; createdAt: string }): string {
+export function alreadyProcessedReason(
+  prior: { outcome: JobState; createdAt: string },
+  matched: 'source' | 'output' = 'source',
+): string {
   const base = `already ${prior.outcome} on ${prior.createdAt}`;
+  if (matched === 'output') {
+    return `${base}; this file is what that job wrote; run with force to process it again`;
+  }
   return prior.outcome === 'done'
     ? `${base}; this file is the original from before then (moved back from the recycle folder?); run with force to process it again`
     : base;

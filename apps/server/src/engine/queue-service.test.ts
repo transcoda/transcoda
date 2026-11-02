@@ -310,6 +310,36 @@ describe('QueueService.queue', () => {
     expect(forced.jobs.map((j) => j.state)).toEqual(['queued', 'queued']);
   });
 
+  it('history: a file this version wrote is already_processed; force queues it again', async () => {
+    const a = await settled(join(root, 'Show', 'a.mkv'));
+    const out = await settled(join(root, 'Show', 'b.mkv'));
+    const outFp = fingerprintKey(await fingerprintOf(out));
+    const writeOut = async (workflowVersion: number) => {
+      const job = (await queued(a)).jobs[0];
+      if (!job) throw new Error('no job for a.mkv');
+      updateJob(db, job.id, { state: 'done' }, new Date());
+      doneResult(job.id, 'gone-original', { outputFingerprint: outFp, workflowVersion });
+    };
+
+    // Another version's output is not this version's: the file is queued.
+    await writeOut(1);
+    expect((await queued(out)).jobs.map((j) => j.state)).toEqual(['queued']);
+
+    await writeOut(2);
+    const second = await queued(join(root, 'Show'));
+    expect(second.jobs.map((j) => [j.path.slice(root.length + 1), j.state, j.reason])).toEqual([
+      ['Show/a.mkv', 'queued', null],
+      [
+        'Show/b.mkv',
+        'already_processed',
+        'already done on 2026-10-01T10:00:00.000Z; this file is what that job wrote; run with force to process it again',
+      ],
+    ]);
+
+    const forced = await queued(out, { force: true });
+    expect(forced.jobs.map((j) => j.state)).toEqual(['queued']);
+  });
+
   it('history: a failed result is final, a dry-run result never is, another version never is', async () => {
     const a = await settled(join(root, 'Show', 'a.mkv'));
     const fp = fingerprintKey(await fingerprintOf(a));
