@@ -65,6 +65,8 @@ export class LibraryCatchUp {
   private readonly unfinished = new Set<string>();
   /** Scans run one at a time: the timed scan and the watchers' early ones. */
   private chain: Promise<unknown> = Promise.resolve();
+  /** Bumped by stop(): a scan still waiting in the chain from before it does not run. */
+  private generation = 0;
   private readonly watchers = new Map<string, { close(): void }>();
   /** The recycle folder each watcher filters by; a changed one replaces the watcher. */
   private readonly watchedRecycle = new Map<string, string | null>();
@@ -225,6 +227,7 @@ export class LibraryCatchUp {
   }
 
   stop(): void {
+    this.generation++;
     if (this.first !== null) clearTimeout(this.first);
     if (this.timer !== null) clearInterval(this.timer);
     this.first = null;
@@ -234,8 +237,9 @@ export class LibraryCatchUp {
     this.early.clear();
   }
 
-  private serial<T>(scan: () => Promise<T>): Promise<T> {
-    const next = this.chain.then(scan);
+  private serial(scan: () => Promise<number>): Promise<number> {
+    const generation = this.generation;
+    const next = this.chain.then(() => (generation === this.generation ? scan() : 0));
     this.chain = next.catch(() => {});
     return next;
   }

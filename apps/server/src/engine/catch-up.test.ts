@@ -469,6 +469,37 @@ describe('LibraryCatchUp watching', () => {
     watched.stop();
   });
 
+  it('a watcher scan still waiting behind another scan does not run after stop', async () => {
+    const fake = fakeWatch();
+    const watched = new LibraryCatchUp({
+      db,
+      queue,
+      log,
+      watch: fake.watch,
+      firstDelayMs: 0,
+      settleMinutes: 0,
+      quietMs: 10,
+    });
+    let release: () => void = () => {};
+    const queueNew = vi.spyOn(queue, 'queueNew').mockImplementation(
+      () =>
+        new Promise((res) => {
+          release = () => res({ kind: 'nothing-new' });
+        }),
+    );
+    fakeTimers();
+    watched.start();
+    // The timed scan is running; an event schedules an early scan, which waits behind it.
+    await vi.advanceTimersByTimeAsync(0);
+    expect(queueNew).toHaveBeenCalledTimes(1);
+    fake.open[0]?.change('New.mkv');
+    await vi.advanceTimersByTimeAsync(10);
+    watched.stop();
+    release();
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(queueNew).toHaveBeenCalledTimes(1);
+  });
+
   it('a file the watcher never reported is still queued by the timed scan', async () => {
     const fake = fakeWatch();
     const watched = new LibraryCatchUp({ db, queue, log, watch: fake.watch });

@@ -278,7 +278,7 @@ function LibraryDialog({
   const reasonId = `${id}-reason`;
   // Advanced: how many of its options are off their default. A library being edited that has some
   // opens with it open, so its own choices are in view.
-  const changed = [customRecycle, hardlinked, fullDecode].filter(Boolean).length;
+  const changed = [customRecycle, hardlinked, fullDecode, !watching].filter(Boolean).length;
   return (
     <Dialog
       open={open}

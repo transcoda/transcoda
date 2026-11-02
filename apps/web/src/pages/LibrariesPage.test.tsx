@@ -505,6 +505,8 @@ describe('LibrariesPage', () => {
     const watchHint = document.getElementById(watching.getAttribute('aria-describedby') ?? '');
     expect(watchHint?.textContent).toMatch(/NFS, SMB/);
     fireEvent.click(watching);
+    // Watching off counts as changed too: recycle folder, both switches and watching.
+    expect(advanced.textContent).toContain('4 changed');
     mocks.libraries.create.mockResolvedValueOnce(library({ id: 'l3', name: 'Fixtures' }));
     fireEvent.click(within(dialog).getByRole('button', { name: 'Create library' }));
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
@@ -621,6 +623,10 @@ describe('LibrariesPage', () => {
     renderAt('/libraries', <LibrariesPage />);
     await pickAction('Movies', 'Edit');
     const dialog = screen.getByRole('dialog', { name: 'Edit Movies' });
+    // Custom recycle folder, hardlinked files and watching off: three settings off their default.
+    expect(within(dialog).getByRole('button', { name: /^Advanced/ }).textContent).toContain(
+      '3 changed',
+    );
     expect(
       (within(dialog).getByRole('radio', { name: 'Custom path' }) as HTMLInputElement).checked,
     ).toBe(true);

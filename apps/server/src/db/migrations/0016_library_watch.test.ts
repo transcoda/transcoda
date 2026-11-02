@@ -33,4 +33,14 @@ describe('migration 0016', () => {
       db.prepare("UPDATE libraries SET watch_folder = 2 WHERE id = 'l1'").run(),
     ).toThrow();
   });
+
+  it("indexes jobs by path and state for the catch-up scan's active-job lookup", () => {
+    migrate(db, migrations, { backupDir: path.join(dir, 'backups') });
+    const plan = db
+      .prepare(
+        "EXPLAIN QUERY PLAN SELECT 1 FROM jobs WHERE path = ? AND state IN ('queued', 'running')",
+      )
+      .all('/media/a.mkv') as { detail: string }[];
+    expect(plan.map((p) => p.detail).join('\n')).toContain('jobs_path_state');
+  });
 });

@@ -92,7 +92,7 @@ export const LibraryUpdateInputSchema = z.object({
   verifyFullDecode: z.boolean().optional(),
   /** null: no restriction. */
   runHours: RunHoursSchema.nullable().optional(),
-  /** Default true. */
+  /** Absent: unchanged. */
   watchFolder: z.boolean().optional(),
   defaultWorkflowId: RemovedDefaultWorkflowSchema,
 });
