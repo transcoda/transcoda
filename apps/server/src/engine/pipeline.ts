@@ -91,7 +91,7 @@ import { ClobberRefused, errorCode, type FsOps, renameNoClobber } from './fs-ops
 import { loadWorkflowForJob } from './load-workflow.ts';
 import { checkPath, isWithin, MAX_SIDECAR_BYTES, SETTLE_MINUTES, skipReasonFor } from './paths.ts';
 import { finishRunContext, jobUrl } from './plugin-context.ts';
-import { jobProbeOf, probeFailure, probeFile } from './probe.ts';
+import { jobProbeOf, probeFile, probeLog, probeReason } from './probe.ts';
 import type { ProcessSpawner } from './process.ts';
 import type { ProgressSample } from './progress.ts';
 import { toJobProgress, toVerifyProgress, type VerifyProgress } from './progress.ts';
@@ -672,15 +672,13 @@ export class Pipeline implements JobExecutor {
       });
     } catch (err) {
       this.stopIfAborted(ctl);
-      // The job keeps ffprobe's own reason; the whole error (command and stderr) goes to the log.
+      // The job's reason is one plain sentence; the whole error (command and stderr) goes to the
+      // job log and the server log.
       this.deps.log.warn({ msg: 'probe failed', job: job.id, error: message(err) });
-      this.finish(
-        job,
-        ctl,
-        'failed',
-        { reason: `probe failed: ${probeFailure(err, realPath)}` },
-        { fp },
-      );
+      const logPath = await this.writeProbeLog(job, err);
+      // A cancel or shutdown during the log write wins over the failure.
+      this.stopIfAborted(ctl);
+      this.finish(job, ctl, 'failed', { reason: probeReason(err, realPath) }, { fp, logPath });
       return { final: true };
     }
     this.stopIfAborted(ctl);
@@ -2254,6 +2252,23 @@ export class Pipeline implements JobExecutor {
     this.update(job, ctl, { walkPath: f.path });
     this.finish(job, ctl, 'failed', { reason }, { fp });
     return { final: true };
+  }
+
+  /**
+   * Writes a failed probe's command line and output to the attempt's job log; its path, or null
+   * when the log cannot be written (the server log still has the error).
+   */
+  private async writeProbeLog(job: JobRow, err: unknown): Promise<string | null> {
+    const { fs, config, log } = this.deps;
+    const path = logPathFor(config, job);
+    try {
+      await fs.mkdir(dirname(path));
+      await fs.writeText(path, probeLog(err));
+      return path;
+    } catch (e) {
+      log.warn({ msg: 'probe log not written', job: job.id, error: message(e) });
+      return null;
+    }
   }
 
   /**

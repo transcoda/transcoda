@@ -291,6 +291,19 @@ function CancelAll({
   );
 }
 
+/**
+ * The row's detail line, clamped to two lines so a long reason cannot stretch the row; the whole
+ * line is its tooltip (and stays in the text for screen readers).
+ */
+function DetailText({ job, queuePaused }: { job: Job; queuePaused: boolean }) {
+  const text = detailLine(job, { queuePaused });
+  return (
+    <span className={`job-detail-text job-detail-clamp is-${verdictOf(job)}`} title={text}>
+      {text}
+    </span>
+  );
+}
+
 function JobRow({
   job,
   controls,
@@ -345,9 +358,7 @@ function JobRow({
       </div>
       <div className="job-detail">
         {percent !== null ? <JobProgress job={job} percent={percent} /> : null}
-        <span className={`job-detail-text is-${verdictOf(job)}`}>
-          {detailLine(job, { queuePaused })}
-        </span>
+        <DetailText job={job} queuePaused={queuePaused} />
       </div>
       {withActions ? (
         <div className="job-actions">

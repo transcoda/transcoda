@@ -120,8 +120,45 @@ describe('jobText', () => {
     expect(detailLine(job({ state: 'encoding', progress: { ...p, etaSeconds: 4980 } }))).toBe(
       '42% · 118 fps · ETA 1 h 23 min',
     );
+    // A probe failure stored before #44 reads in today's words, without command or path.
     expect(detailLine(job({ state: 'failed', reason: 'probe failed: no streams' }))).toBe(
-      'Probe failed: no streams · original untouched',
+      "The file couldn't be read: no streams · original untouched",
+    );
+    const raw = [
+      'probe failed: Command failed: ffprobe -v error -show_format -of json /media/Broken (2020)/b.mkv',
+      '[matroska,webm @ 0x90903c000] EBML header parsing failed',
+      '/media/Broken (2020)/b.mkv: Invalid data found when processing input',
+    ].join('\n');
+    expect(detailLine(job({ state: 'failed', reason: raw }))).toBe(
+      "The file couldn't be read: ffprobe found invalid data in the file (EBML header parsing failed) · original untouched",
+    );
+    const colon = [
+      'probe failed: Command failed: ffprobe -v error -show_format -of json /media/Film: The Movie.mkv',
+      '/media/Film: The Movie.mkv: Invalid data found when processing input',
+    ].join('\n');
+    expect(detailLine(job({ state: 'failed', reason: colon }))).toBe(
+      "The file couldn't be read: ffprobe found invalid data in the file · original untouched",
+    );
+    const inMessage = [
+      'probe failed: Command failed: ffprobe -v error -show_format -of json /media/Film: The Movie.mkv',
+      '/media/Film: The Movie.mkv: Invalid data: stream header',
+    ].join('\n');
+    expect(detailLine(job({ state: 'failed', reason: inMessage }))).toBe(
+      "The file couldn't be read: Invalid data: stream header · original untouched",
+    );
+    // A long dump keeps two earlier messages; the job log has the rest.
+    const many = ['probe failed: a', 'b', 'c', 'd', 'Invalid data found when processing input'];
+    expect(detailLine(job({ state: 'failed', reason: many.join('\n') }))).toBe(
+      "The file couldn't be read: ffprobe found invalid data in the file (a; b; …) · original untouched",
+    );
+    // Without the command line, the path ends at the file's extension.
+    expect(
+      detailLine(job({ state: 'failed', reason: 'probe failed: /media/a.mkv: Invalid data: x' })),
+    ).toBe("The file couldn't be read: Invalid data: x · original untouched");
+    const today =
+      "The file couldn't be read: it isn't a valid video file (ffprobe: Invalid data found when processing input)";
+    expect(detailLine(job({ state: 'failed', reason: today }))).toBe(
+      `${today} · original untouched`,
     );
     expect(detailLine(job({ state: 'failed', reason: null }))).toBe('Original untouched');
     expect(detailLine(job({ state: 'kept_original', reason: null }))).toBe('');

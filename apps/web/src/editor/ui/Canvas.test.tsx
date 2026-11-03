@@ -49,6 +49,38 @@ describe('Canvas', () => {
     expect(map()).not.toBeNull();
   });
 
+  it('below 768 px the minimap starts hidden, so it never covers a phone canvas (#45)', async () => {
+    const real = window.matchMedia;
+    window.matchMedia = (query: string) =>
+      ({
+        matches: query === '(max-width: 767px)',
+        media: query,
+        onchange: null,
+        addEventListener() {},
+        removeEventListener() {},
+        addListener() {},
+        removeListener() {},
+        dispatchEvent: () => false,
+      }) as MediaQueryList;
+    try {
+      await renderCanvas(vi.fn(() => true));
+      expect(document.querySelector('.react-flow__minimap')).toBeNull();
+      expect(
+        screen.getByRole('button', { name: 'Show minimap' }).getAttribute('aria-pressed'),
+      ).toBe('false');
+    } finally {
+      window.matchMedia = real;
+    }
+  });
+
+  it('draws the Tidy up and minimap buttons with their outlined icons (#45)', async () => {
+    await renderCanvas(vi.fn(() => true));
+    for (const name of ['Tidy up', 'Hide minimap']) {
+      const svg = screen.getByRole('button', { name }).querySelector('svg');
+      expect(svg?.classList.contains('icon')).toBe(true);
+    }
+  });
+
   // `keep` sits at x 280; an arrow key nudges the selected node (React Flow, 5 px).
   it('a refused move puts the card back where the graph has it', async () => {
     const apply = vi.fn(() => false);

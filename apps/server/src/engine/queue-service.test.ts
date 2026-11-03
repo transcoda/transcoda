@@ -190,6 +190,12 @@ describe('QueueService.queue', () => {
     const summary = svc.runSummary(r.run.id);
     expect(summary?.counts).toMatchObject({ total: 5, queued: 3, in_progress: 0, skipped: 2 });
     expect(summary).toMatchObject({ workflowName: 'Shrink', libraryName: 'TV' });
+    // A job paused on its own says so in the run, like the Jobs list (#43).
+    expect(summary?.files.every((f) => f.paused === false)).toBe(true);
+    const first = r.jobs.find((j) => j.state === 'queued');
+    if (!first) throw new Error('no queued job');
+    updateJob(db, first.id, { paused: true }, new Date());
+    expect(svc.runSummary(r.run.id)?.files.find((f) => f.jobId === first.id)?.paused).toBe(true);
     expect(published.filter((e) => e.type === 'run.changed')).toEqual([
       { type: 'run.changed', runId: r.run.id },
     ]);
@@ -891,6 +897,7 @@ describe('QueueService runs', () => {
         estimatedBytes: null,
         planSummary: null,
         dependsOnSize: null,
+        paused: false,
       },
       {
         jobId: expect.any(String),
@@ -905,6 +912,7 @@ describe('QueueService runs', () => {
         estimatedBytes: null,
         planSummary: null,
         dependsOnSize: null,
+        paused: false,
       },
     ]);
     expect(detail?.counts).toMatchObject({ total: 2, done: 1, skipped: 1, beforeBytes: 1000 });

@@ -29,6 +29,8 @@ export interface FsOps {
   canRead(p: string): Promise<void>;
   /** Creates `p` empty, or empties it. */
   truncate(p: string): Promise<void>;
+  /** Creates or replaces `p` with `text` (a job log written in one go). */
+  writeText(p: string, text: string): Promise<void>;
   /**
    * Copies a regular file of at most `maxBytes` to a new `dst` (exclusive). Opens `src` with
    * O_NOFOLLOW and checks the open handle, so a symlink or a swap after a check cannot redirect
@@ -75,6 +77,7 @@ export const nodeFsOps: FsOps = {
   },
   canRead: (p) => fsp.access(p, fsp.constants.R_OK),
   truncate: (p) => fsp.writeFile(p, ''),
+  writeText: (p, text) => fsp.writeFile(p, text),
   copyRegular: async (src, dst, maxBytes) => {
     let input: fsp.FileHandle;
     try {

@@ -5542,3 +5542,47 @@ describe('pipeline: Already processed', () => {
     expect(await portFor(check, copy)).toBe('else');
   });
 });
+
+describe('pipeline: a failed probe (#44)', () => {
+  it('fails with one plain sentence; the command line and ffprobe output go to the job log', async () => {
+    const path = file();
+    const command = `ffprobe -v error -show_format -show_streams -show_chapters -of json ${path}`;
+    const stderr = `[matroska,webm @ 0x90903c000] EBML header parsing failed\n${path}: Invalid data found when processing input\n`;
+    const exec: Exec = async (f, args) => {
+      if (args.includes('-show_format') && args.at(-1) === path) {
+        throw Object.assign(new Error(`Command failed: ${command}\n${stderr}`), {
+          code: 1,
+          stderr,
+        });
+      }
+      return fakeExec(f, args);
+    };
+    await t.deps.engine.stop();
+    spawner = new TestSpawner();
+    t = createTestApp({
+      config: { configDir, transcodeDir },
+      capabilities: caps,
+      spawner,
+      fsOps,
+      exec,
+    });
+    const created = await t.deps.engine.queue.createLibrary({ name: 'Lib', path: root });
+    expect('kind' in created).toBe(false);
+    const id = await queue(path, encodeAnd(replaceNode()));
+    await t.deps.engine.start();
+    const job = await settled(id);
+    expect(job).toMatchObject({
+      state: 'failed',
+      reason:
+        "The file couldn't be read: it isn't a valid video file (ffprobe: Invalid data found when processing input)",
+    });
+    expect(job.reason).not.toContain(path);
+    expect(spawner.calls).toHaveLength(0);
+    const log = await t.deps.engine.jobLog(id);
+    expect(log).toContain(command);
+    expect(log).toContain('EBML header parsing failed');
+    expect(findJobResult(t.db, id)?.logPath).toBe(
+      join(configDir, 'logs', 'jobs', `${id}.attempt-1.log`),
+    );
+  });
+});

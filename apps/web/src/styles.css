@@ -1456,6 +1456,12 @@ a.nav-item.is-active:focus-visible,
   max-height: 14px;
 }
 
+/* Our stroked icons (Tidy up, minimap): React Flow fills every control svg, which drew them as
+   solid blocks. */
+.canvas .react-flow__controls-button svg.icon {
+  fill: none;
+}
+
 /* "Tidy up" on a read-only or empty canvas. */
 .canvas .react-flow__controls-button:disabled,
 .canvas .react-flow__controls-button:disabled:hover {
@@ -6430,6 +6436,15 @@ a.nav-item.is-active .nav-count {
   font-size: var(--fs-small);
   color: var(--muted);
 }
+/* A Jobs row's detail: at most two lines, so a long reason never stretches the row (#44). */
+.job-detail-clamp {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
 .job-detail-text.is-queued {
   color: var(--faint);
 }
@@ -9435,24 +9450,49 @@ button.job-step-more:hover {
   flex-direction: column;
   gap: 8px;
 }
-.plugin-mappings-table {
-  width: 100%;
-  border-collapse: collapse;
+.plugin-mappings-empty {
+  margin: 0;
+  font-size: 14px;
+  color: var(--muted);
 }
-.plugin-mappings-head {
-  text-align: left;
+/* One mapping: its two labelled paths, its buttons, then its test answer, stacked (#46). */
+.plugin-mapping {
+  margin: 0;
+  min-width: 0;
+  padding: var(--sp-3) var(--sp-4) var(--sp-4);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.plugin-mapping-title {
+  padding: 0 4px;
   font-family: var(--font-mono);
   font-size: 10px;
   font-weight: 600;
   color: var(--faint);
-  padding: 0 6px 4px 0;
 }
-.plugin-mappings-cell {
-  padding: 3px 6px 3px 0;
-  vertical-align: top;
+/* Side by side where there is room; each path takes the full width on a phone. */
+.plugin-mapping-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+  gap: 10px var(--sp-4);
 }
-.plugin-mappings-actions {
-  white-space: nowrap;
+.plugin-mapping-fields .input {
+  width: 100%;
+  min-width: 0;
+}
+.plugin-mapping-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.plugin-mapping-remove {
+  margin-left: auto;
+}
+.plugin-mappings-add {
+  align-self: flex-start;
 }
 /* Path mappings take the whole width of the settings grid. */
 .plugin-settings-fields > .plugin-mappings {
@@ -9761,15 +9801,6 @@ button.job-step-more:hover {
   }
   .catalog-add {
     padding: 14px 16px;
-  }
-  .plugin-mappings-table thead {
-    display: none;
-  }
-  .plugin-mappings-table tr {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    padding-bottom: 10px;
   }
 }
 

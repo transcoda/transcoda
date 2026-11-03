@@ -226,14 +226,62 @@ export const sentence = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
  */
 const ALREADY = /^already ([a-z_]+) on ([^\s;]+)(?:; (.+))?$/;
 
+/** `[matroska,webm @ 0x90903c000] ` before an ffmpeg/ffprobe message. */
+const DEMUXER_PREFIX = /^\[[^\]]* @ 0x[0-9a-f]+\]\s*/i;
+
+/** ffprobe's own messages, said as what they mean for the file. */
+const PROBE_WORDS: ReadonlyArray<[RegExp, string]> = [
+  [/^invalid data found when processing input$/i, 'ffprobe found invalid data in the file'],
+  [/^no such file or directory$/i, 'the file is no longer there'],
+  [/^permission denied$/i, "Transcoda isn't allowed to read the file"],
+  [/^ffprobe was not found$/i, 'ffprobe was not found on the server'],
+];
+
+/**
+ * ffprobe's error as one clause: the last message in plain words, earlier ones in brackets
+ * ("ffprobe found invalid data in the file (EBML header parsing failed)"). Reasons stored before
+ * #44 ("probe failed: …") may carry node's "Command failed: <command line>" and the file's path;
+ * both are left out here (the job log keeps the raw error).
+ */
+export function probeClause(detail: string): string {
+  const lines = detail.split('\n').map((l) => l.trim());
+  // The command line ends with the file's path, so an exact prefix can be removed even when the
+  // path or the message holds ": " ("/media/Film: The Movie.mkv: Invalid data: …").
+  const path = lines.find((l) => l.startsWith('Command failed:'))?.match(/ -of json (\/.+)$/)?.[1];
+  const stripPath = (l: string) =>
+    path !== undefined && l.startsWith(`${path}: `)
+      ? l.slice(path.length + 2)
+      : l.replace(/^\/.*?\.[a-z0-9]{2,4}:\s+/i, '');
+  const messages = lines
+    .filter((l) => l !== '' && !l.startsWith('Command failed:'))
+    .map((l) => stripPath(l.replace(DEMUXER_PREFIX, '')).trim())
+    .filter((l) => l !== '');
+  const last = messages.at(-1);
+  if (last === undefined) return 'ffprobe could not read it';
+  const words = PROBE_WORDS.find(([re]) => re.test(last))?.[1] ?? last;
+  // At most two earlier messages, so a long ffprobe dump stays a short reason (the log has it all).
+  const extra = messages.slice(0, -1);
+  const shown = extra.length > 2 ? [...extra.slice(0, 2), '…'] : extra;
+  return shown.length > 0 ? `${words} (${shown.join('; ')})` : words;
+}
+
+/** A reason stored before #44: "probe failed: <ffprobe's message, maybe the whole command>". */
+const LEGACY_PROBE = /^probe failed:\s*/i;
+
 /**
  * A job's reason in words: the queue's "already nothing_to_do on 2026-10-17T04:18:10.386Z"
  * becomes "Processed on 17 Oct 2026: nothing to do", and a nothing-to-do job without a reason (jobs
- * from before the engine said "already as planned") "Already complies with every rule". Anything
- * else is the engine's reason as it is (null when there is none); screens print it with `sentence`.
+ * from before the engine said "already as planned") "Already complies with every rule". An older
+ * probe failure ("probe failed: Command failed: ffprobe …") reads as today's "The file couldn't be
+ * read: …". Anything else is the engine's reason as it is (null when there is none); screens print
+ * it with `sentence`.
  */
 export function reasonOf(job: Pick<Job, 'state' | 'reason'>): string | null {
   const { state, reason } = job;
+  const legacy = reason ? LEGACY_PROBE.exec(reason) : null;
+  if (reason && legacy) {
+    return `The file couldn't be read: ${probeClause(reason.slice(legacy[0].length))}`;
+  }
   // One wording on every page: the engine's "already as planned" says the same thing.
   if (state === 'nothing_to_do' && (!reason || reason === 'already as planned')) {
     return 'Already complies with every rule';
@@ -352,6 +400,20 @@ export function runHoursWait(hold: NonNullable<Job['heldByRunHours']>, now: Date
 }
 
 /**
+ * Why a queued job does not start, in the Jobs list's words: "Paused" (the job itself), "Queue
+ * paused" (the whole queue); null when it is not queued or simply waits its turn. The run page says
+ * the same.
+ */
+export function queuedWait(
+  job: { state: JobState; paused: boolean },
+  queuePaused: boolean,
+): string | null {
+  if (job.state !== 'queued') return null;
+  if (job.paused) return 'Paused';
+  return queuePaused ? 'Queue paused' : null;
+}
+
+/**
  * The line under the progress bar (screen 07's detail column). `queuePaused`: the whole queue is
  * paused, so a queued job is not waiting for a lane but for the queue. A job its library's run
  * hours hold back says when it can start (`now` for tests).
@@ -381,9 +443,9 @@ export function detailLine(job: Job, opts: { queuePaused?: boolean; now?: Date }
     case 'deciding':
       return RUNNING_DETAIL[job.state];
     case 'queued':
-      if (job.paused) return 'Paused';
-      if (opts.queuePaused) return 'Queue paused';
-      return held ? sentence(held) : 'Waiting for a lane';
+      return (
+        queuedWait(job, opts.queuePaused ?? false) ?? (held ? sentence(held) : 'Waiting for a lane')
+      );
     case 'done': {
       const first = job.problems[0];
       if (first !== undefined) return `done · needs attention: ${first}`;
@@ -397,8 +459,10 @@ export function detailLine(job: Job, opts: { queuePaused?: boolean; now?: Date }
     case 'kept_original':
       // The "Kept original" chip says the file is untouched; the line only adds why.
       return job.reason ? sentence(job.reason) : '';
-    case 'failed':
-      return job.reason ? `${sentence(job.reason)} · original untouched` : 'Original untouched';
+    case 'failed': {
+      const reason = reasonOf(job);
+      return reason ? `${sentence(reason)} · original untouched` : 'Original untouched';
+    }
     case 'skipped':
       return job.reason ? sentence(job.reason) : 'Skipped';
     case 'nothing_to_do':

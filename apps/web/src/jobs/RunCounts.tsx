@@ -3,7 +3,7 @@ import { type JobState, RUN_OUTCOME_KEYS } from '@transcoda/shared';
 import { Icon, type IconName } from '../components/Icon.tsx';
 import { StatTile } from '../components/StatTile.tsx';
 import { fmtBytes } from '../lib/bytes.ts';
-import { DryRunBadge, VERDICT_ICON } from './JobStateChip.tsx';
+import { DryRunBadge, PausedChip, VERDICT_ICON } from './JobStateChip.tsx';
 import type { Verdict } from './jobText.ts';
 
 export type OutcomeKey = (typeof RUN_OUTCOME_KEYS)[number];
@@ -93,6 +93,7 @@ export function OutcomeChip({
   estimate = null,
   word = null,
   testEncode = false,
+  paused = false,
 }: {
   outcome: OutcomeKey;
   dryRun?: boolean;
@@ -102,6 +103,8 @@ export function OutcomeChip({
   word?: string | null;
   /** The run test-encoded: the badge says "Test encode". */
   testEncode?: boolean;
+  /** The job itself is paused: the Jobs list's second "Paused" chip. */
+  paused?: boolean;
 }) {
   const verdict = outcomeVerdict(outcome, dryRun);
   const text = word ?? outcomeWord(outcome, dryRun);
@@ -112,6 +115,7 @@ export function OutcomeChip({
         {estimate ? `${text} · ${estimate}` : text}
       </span>
       {dryRun ? <DryRunBadge testEncode={testEncode} /> : null}
+      {paused ? <PausedChip /> : null}
     </span>
   );
 }

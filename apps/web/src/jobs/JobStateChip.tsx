@@ -31,6 +31,16 @@ export function DryRunBadge({ testEncode = false }: { testEncode?: boolean }) {
   );
 }
 
+/** The second chip of a job that is itself paused (its state chip stays). */
+export function PausedChip() {
+  return (
+    <span className="job-chip is-paused">
+      <Icon name="pause" size={13} strokeWidth={2.6} />
+      Paused
+    </span>
+  );
+}
+
 /**
  * The state chip of screen 07: icon + word, coloured from the `--st-*` tokens (`.job-chip.is-*`).
  * A dry run is a tag, not an outcome: the chip says what would have happened ("Would replace") and
@@ -46,12 +56,7 @@ export function JobStateChip({ job }: { job: Job }) {
         {[stateWord(job), estimateTag(job)].filter(Boolean).join(' · ')}
       </span>
       {job.dryRun ? <DryRunBadge testEncode={job.testEncode === true} /> : null}
-      {job.paused ? (
-        <span className="job-chip is-paused">
-          <Icon name="pause" size={13} strokeWidth={2.6} />
-          Paused
-        </span>
-      ) : null}
+      {job.paused ? <PausedChip /> : null}
     </span>
   );
 }

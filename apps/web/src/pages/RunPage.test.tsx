@@ -64,6 +64,7 @@ function file(
     estimatedBytes: null,
     planSummary: null,
     dependsOnSize: null,
+    paused: false,
     ...extra,
   };
 }
@@ -418,10 +419,37 @@ describe('RunPage', () => {
     const table = within(await screen.findByRole('table', { name: 'Files' }));
     expect(table.getAllByText('Queued')).toHaveLength(4);
     expect(table.queryAllByText('In progress')).toHaveLength(0);
-    expect(await screen.findByText(/Queue paused/)).toBeTruthy();
+    expect(await screen.findByText(/^Queue paused — /)).toBeTruthy();
     expect(screen.queryByText('Live')).toBeNull();
     const tiles = within(screen.getByRole('list', { name: 'Outcomes' }));
     expect(tiles.getByText('Queued').closest('li')?.textContent).toContain('4');
+    // Each queued row says why it waits, in the Jobs list's words (#43).
+    expect(table.getAllByText('Queue paused')).toHaveLength(4);
+  });
+
+  it('a job paused on its own: the Paused chip and "Paused" note, as on the Jobs list (#43)', async () => {
+    const run = liveRun();
+    run.files = run.files.map((f) =>
+      f.jobId === 'j3' ? { ...f, paused: true } : f.jobId === 'j2' ? { ...f, paused: true } : f,
+    );
+    mocks.get.mockResolvedValue(run);
+    renderAt(
+      '/runs/r1',
+      <EventsProvider>
+        <Route path="/runs/:id" component={RunPage} />
+      </EventsProvider>,
+    );
+    const table = within(await screen.findByRole('table', { name: 'Files' }));
+    const row = (name: string) =>
+      within(table.getByRole('link', { name }).closest('tr') as HTMLElement);
+    // A paused queued job: the chip stays "Queued", a second chip and the note say "Paused".
+    expect(row('Bluey S01E03.mkv').getByText('Queued')).toBeTruthy();
+    expect(row('Bluey S01E03.mkv').getAllByText('Paused')).toHaveLength(2);
+    // A paused running job keeps "In progress" with the Paused chip.
+    expect(row('Bluey S01E02.mkv').getByText('In progress')).toBeTruthy();
+    expect(row('Bluey S01E02.mkv').getByText('Paused')).toBeTruthy();
+    // The queue itself runs: no "Queue paused" anywhere.
+    expect(screen.queryByText(/Queue paused/)).toBeNull();
   });
 
   it('refetches on job.changed of this run', async () => {

@@ -105,6 +105,8 @@ export interface RunFile {
   planSummary: string | null;
   /** A plan-only dry run decided by its size gate after encoding (#41); null otherwise. */
   dependsOnSize: { minSavingPercent: number } | null;
+  /** The job itself is paused (a final job never is); the queue's own pause is not included. */
+  paused: boolean;
 }
 
 export interface RunDetail extends RunSummary {
@@ -595,13 +597,14 @@ export class QueueService {
              CASE WHEN j.state = 'already_processed' THEN f.size_bytes END) AS beforeBytes,
            r.after_bytes AS afterBytes, r.replaced_to AS replacedTo,
            j.workflow_version AS workflowVersion, j.dry_run AS dryRun,
-           r.estimated_bytes AS estimatedBytes, r.plan AS plan
+           r.estimated_bytes AS estimatedBytes, r.plan AS plan, j.paused AS paused
          FROM jobs j LEFT JOIN job_results r ON r.job_id = j.id
            LEFT JOIN files f ON f.id = j.file_id
          WHERE j.run_id = ? ORDER BY j.rowid`,
       )
-      .all(runId) as (Omit<RunFile, 'fileName' | 'planSummary' | 'dependsOnSize'> & {
+      .all(runId) as (Omit<RunFile, 'fileName' | 'planSummary' | 'dependsOnSize' | 'paused'> & {
       dryRun: number;
+      paused: number;
       plan: string | null;
     })[];
     return {
@@ -622,6 +625,7 @@ export class QueueService {
           estimatedBytes: r.dryRun !== 0 ? r.estimatedBytes : null,
           planSummary: plan ? planSummary(plan) : null,
           dependsOnSize: r.state === 'dry_run' ? (plan?.dependsOnSize ?? null) : null,
+          paused: r.paused !== 0,
         };
       }),
     };

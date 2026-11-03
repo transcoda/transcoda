@@ -56,6 +56,7 @@ function file(
     estimatedBytes: null,
     planSummary: null,
     dependsOnSize: null,
+    paused: false,
   };
 }
 
