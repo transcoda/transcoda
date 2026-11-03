@@ -37,3 +37,18 @@ export function useQueue(): Queue {
     set: setLive,
   };
 }
+
+/**
+ * The job is stopped by a queue pause: the queue is paused and the job holds a lane (the encode
+ * lane, a GPU's slot or the quick lane). A job that gave its encode slot up, or is still preparing,
+ * goes on working.
+ */
+export function frozenByQueue(status: QueueState | null, jobId: string): boolean {
+  if (!status?.paused) return false;
+  const { encode, quick } = status.lanes;
+  return (
+    encode === jobId ||
+    quick === jobId ||
+    (status.encodeSlots ?? []).some((slot) => slot.jobId === jobId)
+  );
+}
