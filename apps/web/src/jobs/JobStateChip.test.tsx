@@ -27,6 +27,28 @@ describe('JobStateChip', () => {
     }
   });
 
+  it('a working job turns its icon; a planned or paused one shows a still icon', () => {
+    const chipOf = (j: Parameters<typeof JobStateChip>[0]['job']) => {
+      const { container } = render(<JobStateChip job={j} />);
+      const chip = container.querySelector('.job-chip') as HTMLElement;
+      const out = {
+        word: chip.textContent,
+        working: chip.classList.contains('is-working'),
+        icon: chip.querySelector('svg')?.getAttribute('data-icon'),
+      };
+      cleanup();
+      return out;
+    };
+    expect(chipOf(fx.running)).toEqual({ word: 'Encoding', working: true, icon: 'state-running' });
+    expect(chipOf(job({ ...fx.running, state: 'building', lane: 'encode' }))).toEqual({
+      word: 'Planned',
+      working: false,
+      icon: 'state-planned',
+    });
+    expect(chipOf(job({ ...fx.running, paused: true })).working).toBe(false);
+    expect(chipOf(fx.queued).working).toBe(false);
+  });
+
   it('a damaged job gets the is-damaged chip with the alert icon', () => {
     const damaged = job({
       ...fx.kept,

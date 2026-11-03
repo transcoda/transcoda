@@ -5,15 +5,22 @@ import type { Queue } from './useQueue.ts';
 
 export const QUEUE_PAUSED_TEXT = 'Queue paused — running jobs are frozen, nothing new starts';
 
+export interface LaneHolder {
+  /** "Encode lane", "Quick lane", or a GPU slot's label ("GPU 0 · RTX 3060"). */
+  label: string;
+  /** The job's file name, "busy" when it is not on the page, or "idle". */
+  holder: string;
+}
+
 /**
- * Who holds the lanes ("Encode lane: idle · Quick lane: idle"; each GPU's slot by name on a
- * multi-GPU server), or null before the queue status loads. `fileNameOf` names a lane's job from
- * the page's list ("busy" when it is not on the page).
+ * Who holds the lanes (the encode lane, or each GPU's slot by name on a multi-GPU server, then the
+ * quick lane), or null before the queue status loads. `fileNameOf` names a lane's job from the
+ * page's list ("busy" when it is not on the page).
  */
-export function queueLanesText(
+export function queueLanes(
   status: Queue['status'],
   fileNameOf: (jobId: string) => string | null,
-): string | null {
+): LaneHolder[] | null {
   if (!status) return null;
   const lane = (id: string | null) => (id ? (fileNameOf(id) ?? 'busy') : 'idle');
   // One slot reads as the encode lane; several (one per GPU) each by name. An older server
@@ -21,26 +28,43 @@ export function queueLanesText(
   const slots = status.encodeSlots ?? [];
   const encode =
     slots.length > 1
-      ? slots.map((s) => `${s.label}: ${lane(s.jobId)}`).join(' · ')
-      : `Encode lane: ${lane(status.lanes.encode ?? null)}`;
-  return `${encode} · Quick lane: ${lane(status.lanes.quick)}`;
+      ? slots.map((s) => ({ label: s.label, holder: lane(s.jobId) }))
+      : [{ label: 'Encode lane', holder: lane(status.lanes.encode ?? null) }];
+  return [...encode, { label: 'Quick lane', holder: lane(status.lanes.quick) }];
 }
 
-/** The lanes as the muted status line under a page's H1. */
+/** The lanes in one line: "Encode lane: idle · Quick lane: idle". */
+export function queueLanesText(
+  status: Queue['status'],
+  fileNameOf: (jobId: string) => string | null,
+): string | null {
+  const lanes = queueLanes(status, fileNameOf);
+  return lanes ? lanes.map((l) => `${l.label}: ${l.holder}`).join(' · ') : null;
+}
+
+/**
+ * The lanes under a page's H1, one row per lane: the lane's name, then its file name, cut short
+ * with an ellipsis when it doesn't fit (the whole name on hover).
+ */
 export function QueueLanes({
   queue,
   fileNameOf,
-  className = 'head-sub',
 }: {
   queue: Queue;
   fileNameOf(jobId: string): string | null;
-  className?: string;
 }) {
-  const text = queueLanesText(queue.status, fileNameOf);
-  return text ? (
-    <p className={className} data-testid="lanes">
-      {text}
-    </p>
+  const lanes = queueLanes(queue.status, fileNameOf);
+  return lanes ? (
+    <dl className="head-sub lanes" data-testid="lanes">
+      {lanes.map((l) => (
+        <div className="lane" key={l.label}>
+          <dt>{l.label}</dt>
+          <dd className={l.holder === 'idle' ? 'is-idle' : undefined} title={l.holder}>
+            {l.holder}
+          </dd>
+        </div>
+      ))}
+    </dl>
   ) : null;
 }
 
