@@ -2,7 +2,7 @@ import { mkdir, readFile, realpath, rm, symlink, writeFile } from 'node:fs/promi
 import { join } from 'node:path';
 import type { BuildModel } from '@transcoda/sdk';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { RecycledRow } from '../db/repos/jobs.ts';
+import type { RecycledInsert } from '../db/repos/jobs.ts';
 import type { Logger } from '../logger.ts';
 import { modelFromProbe } from './build-model.ts';
 import { tempDir } from './fixtures.ts';
@@ -13,7 +13,7 @@ import { probeOf, withSidecar } from './test-helpers.ts';
 let base: string;
 let root: string;
 let recycle: string;
-let rows: RecycledRow[];
+let rows: RecycledInsert[];
 let fs: FsOps;
 const log: Logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn() };
 const NOW = new Date('2026-10-18T20:00:00.000Z');
