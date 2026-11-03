@@ -53,12 +53,13 @@ export function PausedChip() {
  * A dry run is a tag, not an outcome: the chip says what would have happened ("Would replace") and
  * the dashed "Dry run" badge sits beside it. A paused job gets a second "Paused" chip; its state
  * stays. A planned job waiting for its lane gets the hourglass; a job that is working (and not
- * paused) turns its icon (`.is-working`; it stays still when reduced motion is asked for).
+ * paused, nor frozen by a paused queue) turns its icon (`.is-working`; it stays still when
+ * reduced motion is asked for).
  */
-export function JobStateChip({ job }: { job: Job }) {
+export function JobStateChip({ job, queuePaused = false }: { job: Job; queuePaused?: boolean }) {
   const verdict = verdictOf(job);
   const planned = isWaitingForLane(job);
-  const working = verdict === 'running' && !planned && !job.paused;
+  const working = verdict === 'running' && !planned && !job.paused && !queuePaused;
   return (
     <span className="job-chips">
       <span className={`job-chip is-${verdict}${working ? ' is-working' : ''}`}>

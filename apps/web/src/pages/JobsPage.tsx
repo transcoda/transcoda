@@ -354,7 +354,7 @@ function JobRow({
         </span>
       </div>
       <div>
-        <JobStateChip job={job} />
+        <JobStateChip job={job} queuePaused={queuePaused} />
       </div>
       <div className="job-detail">
         {percent !== null ? <JobProgress job={job} percent={percent} /> : null}
@@ -616,7 +616,9 @@ export function JobsPage() {
                     {percent !== null ? <span className="mono">{percent}%</span> : null}
                   </div>
                   {percent !== null ? <JobProgress job={job} percent={percent} /> : null}
-                  {job.paused || job.dryRun ? <JobStateChip job={job} /> : null}
+                  {job.paused || job.dryRun ? (
+                    <JobStateChip job={job} queuePaused={queuePaused} />
+                  ) : null}
                   <span className="phone-card-line">{phoneRunningLine(job)}</span>
                   <div className="phone-card-actions">
                     <JobActions job={job} controls={controls} block />

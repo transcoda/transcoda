@@ -46,6 +46,10 @@ describe('JobStateChip', () => {
       icon: 'state-planned',
     });
     expect(chipOf(job({ ...fx.running, paused: true })).working).toBe(false);
+    // A paused queue freezes the lane holders without pausing each job.
+    const { container } = render(<JobStateChip job={fx.running} queuePaused />);
+    expect(container.querySelector('.job-chip')?.classList.contains('is-working')).toBe(false);
+    cleanup();
     expect(chipOf(fx.queued).working).toBe(false);
   });
 
