@@ -40,6 +40,27 @@ describe('JobResult', () => {
     expect(container.querySelector('.job-result')?.classList.contains('is-ok')).toBe(true);
   });
 
+  it("a restored job says the original is back and Transcoda's version is in the recycle folder", () => {
+    const { container } = render(
+      <JobResult
+        job={{
+          state: 'done',
+          dryRun: false,
+          reason: null,
+          result: DONE,
+          restore: {
+            restoredAt: '2026-11-03T08:30:00.000Z',
+            restoredBy: 'jan',
+            outputPath: '/media/.transcoda-recycle/a.mkv.1',
+          },
+        }}
+      />,
+    );
+    expect(container.querySelector('.job-result-meta')?.textContent).toBe(
+      "Original restored; Transcoda's version in recycle folder",
+    );
+  });
+
   it('a kept original leads with its reason and is neutral, never blue or green', () => {
     const { container } = render(
       <JobResult
