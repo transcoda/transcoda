@@ -448,6 +448,22 @@ describe('the recycle folder page (engine)', () => {
     expect(await nodeFsOps.exists(f)).toBe(true);
   });
 
+  it('an unreachable recycle folder (share not mounted) keeps every row: Delete refuses, Empty skips, prune keeps', async () => {
+    const a = await entry('a', 100, daysAgo(30));
+    await rm(bin, { recursive: true, force: true });
+    expect(await deleteRecycledEntry(db, nodeFsOps, a, log)).toEqual({
+      kind: 'refused',
+      reason: "The library's folder can't be reached (is the share mounted?).",
+    });
+    expect(await emptyRecycle(db, roomy, 'l1', daysAgo(0), log)).toEqual({
+      removed: 0,
+      bytes: 0,
+      skipped: 1,
+    });
+    await pruneRecycle(db, roomy, { retentionDays: 7, maxFreePercent: 25, now, log });
+    expect(listRecycled(db).map((x) => x.path)).toEqual([a]);
+  });
+
   // Review Focus 5
   it('empty removes only rows recycled at or before the confirmed time', async () => {
     const older = await entry('older', 100, daysAgo(2));

@@ -296,7 +296,7 @@ function EntryActions({ entry, onChanged }: { entry: RecycledEntry; onChanged():
 
 /**
  * Empty folder: deletes every entry of the library recycled up to the newest one listed (what the
- * person saw when confirming), skipping any whose job is still writing.
+ * person saw when confirming), skipping any whose job is busy or whose folder can't be reached.
  */
 function EmptyFolder({ library, onChanged }: { library: Library; onChanged(): void }) {
   const toast = useToast();
@@ -320,8 +320,8 @@ function EmptyFolder({ library, onChanged }: { library: Library; onChanged(): vo
       toast.info(
         `Deleted ${files(out.removed)}; ${out.skipped} ${
           out.skipped === 1
-            ? 'was skipped because its job is still writing'
-            : 'were skipped because their jobs are still writing'
+            ? "was skipped (its job is busy or its folder can't be reached)"
+            : "were skipped (their jobs are busy or their folder can't be reached)"
         }`,
       );
     } else {

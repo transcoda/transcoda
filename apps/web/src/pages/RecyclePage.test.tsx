@@ -265,7 +265,9 @@ describe('RecyclePage actions', () => {
       }),
     );
     expect(
-      await screen.findByText('Deleted 2 files; 1 was skipped because its job is still writing'),
+      await screen.findByText(
+        "Deleted 2 files; 1 was skipped (its job is busy or its folder can't be reached)",
+      ),
     ).toBeTruthy();
     await waitFor(() => expect(mocks.recycle.list).toHaveBeenCalledTimes(2));
   });

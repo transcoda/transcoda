@@ -9,7 +9,7 @@ import {
   type RecycledInsert,
   type RecycledRow,
 } from '../db/repos/jobs.ts';
-import type { LibraryRow } from '../db/repos/libraries.ts';
+import { findLibrary, type LibraryRow } from '../db/repos/libraries.ts';
 import type { Logger } from '../logger.ts';
 import { errorCode, type FsOps } from './fs-ops.ts';
 
@@ -36,10 +36,27 @@ export function defaultRecycleFolder(libraryRoot: string): string {
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+/** A library's recycle folder, absolute. */
+export function recycleFolderFor(library: LibraryRow): string {
+  return resolve(library.path, library.recycleFolder ?? defaultRecycleFolder(library.path));
+}
+
+/**
+ * Whether a recycle entry's folder can be reached: its library's recycle folder exists (an
+ * unmounted share leaves an empty mount point, so the library root alone proves nothing). Without
+ * its library, the file's own folder.
+ */
+async function recycleFolderReachable(db: Database, fs: FsOps, row: RecycledRow): Promise<boolean> {
+  const library = findLibrary(db, row.libraryId);
+  return fs.exists(library ? recycleFolderFor(library) : dirname(row.path));
+}
+
 /**
  * Unlinks a recycle entry's file and drops its row; returns the bytes freed: 0 when the file was
  * already gone, null (row kept) while the job has a replace or restore journal (that file may be
- * the only copy) or when the unlink failed (logged). The only way Transcoda removes a recycled file.
+ * the only copy), when the unlink failed (logged) or when the recycle folder can't be reached (a
+ * missing file there means an unmounted share, not a removed file). The only way Transcoda removes
+ * a recycled file.
  */
 export async function removeRecycledRow(
   db: Database,
@@ -58,6 +75,10 @@ export async function removeRecycledRow(
         path: row.path,
         code: errorCode(err),
       });
+      return null;
+    }
+    if (!(await recycleFolderReachable(db, fs, row))) {
+      log.warn({ msg: "a recycle folder can't be reached; its entry is kept", path: row.path });
       return null;
     }
     freed = 0;
@@ -84,7 +105,7 @@ export async function recycleView(
   library: LibraryRow,
   opts: { retentionDays: number },
 ): Promise<RecycleView> {
-  const folder = resolve(library.path, library.recycleFolder ?? defaultRecycleFolder(library.path));
+  const folder = recycleFolderFor(library);
   const rows = listRecycled(db, library.id);
   let freeBytes: number | null = null;
   for (const p of [folder, library.path]) {
@@ -122,12 +143,19 @@ export async function deleteRecycledEntry(
   if (row === null) return { kind: 'not-found' };
   const freed = await removeRecycledRow(db, fs, row, log);
   if (freed === null) {
-    return hasFileJournal(db, row.jobId)
-      ? {
-          kind: 'refused',
-          reason: "A replace or restore of this file's job is in progress; try again in a moment.",
-        }
-      : { kind: 'refused', reason: "The file couldn't be removed; see the server log." };
+    if (hasFileJournal(db, row.jobId)) {
+      return {
+        kind: 'refused',
+        reason: "A replace or restore of this file's job is in progress; try again in a moment.",
+      };
+    }
+    if (!(await recycleFolderReachable(db, fs, row))) {
+      return {
+        kind: 'refused',
+        reason: "The library's folder can't be reached (is the share mounted?).",
+      };
+    }
+    return { kind: 'refused', reason: "The file couldn't be removed; see the server log." };
   }
   return { kind: 'deleted', bytes: freed };
 }
