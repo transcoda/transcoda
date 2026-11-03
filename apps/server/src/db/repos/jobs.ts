@@ -1247,6 +1247,18 @@ export function recycledTotals(db: Database): { files: number; bytes: number } {
   return { files: r.files, bytes: r.bytes };
 }
 
+/** Files and bytes in the recycle index per library, by library id. */
+export function recycledTotalsByLibrary(
+  db: Database,
+): { libraryId: string; files: number; bytes: number }[] {
+  return db
+    .prepare(
+      `SELECT library_id AS libraryId, COUNT(*) AS files, COALESCE(SUM(size_bytes), 0) AS bytes
+       FROM recycled GROUP BY library_id ORDER BY library_id`,
+    )
+    .all() as { libraryId: string; files: number; bytes: number }[];
+}
+
 export function deleteRecycled(db: Database, path: string): boolean {
   return db.prepare('DELETE FROM recycled WHERE path = ?').run(path).changes > 0;
 }
