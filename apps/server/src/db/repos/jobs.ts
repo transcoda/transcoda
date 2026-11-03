@@ -720,8 +720,12 @@ export function countDependsOnSize(
   return row.n;
 }
 
+/** A restore still in effect for the result row `alias`: its file is the original again, so it saved nothing. */
+const ACTIVE_RESTORE_SQL = (alias: string): string =>
+  `SELECT 1 FROM restores x WHERE x.job_id = ${alias}.job_id AND x.undone_at IS NULL`;
+
 /**
- * Dashboard numbers: `files` (done results), `savedBytes` (before − after of those) over results
+ * Dashboard numbers: `files` (done results), `savedBytes` (before − after of those, unless restored) over results
  * created at or after `since`; `problems`: results with problems created at or after `since`; `failed`: jobs in state `failed` that finished at or after `since`
  * (a job the sweep failed has no result row); `queued` and `running` are current.
  */
@@ -740,7 +744,7 @@ export function jobStats(
     .prepare(
       `SELECT
          COALESCE(SUM(outcome = 'done'), 0) AS files,
-         COALESCE(SUM(CASE WHEN outcome = 'done'
+         COALESCE(SUM(CASE WHEN outcome = 'done' AND NOT EXISTS (${ACTIVE_RESTORE_SQL('job_results')})
            THEN COALESCE(before_bytes, 0) - COALESCE(after_bytes, 0) ELSE 0 END), 0) AS savedBytes,
          (SELECT COUNT(*) FROM jobs WHERE state = 'failed' AND finished_at >= ?) AS failed,
          COALESCE(SUM(json_array_length(problems_json) > 0), 0) AS problems
@@ -774,7 +778,7 @@ export interface DayTotals {
 export function jobHistory(db: Database, bounds: string[]): DayTotals[] {
   const stmt = db.prepare(
     `SELECT
-       COALESCE(SUM(CASE WHEN r.outcome = 'done'
+       COALESCE(SUM(CASE WHEN r.outcome = 'done' AND NOT EXISTS (${ACTIVE_RESTORE_SQL('r')})
          THEN COALESCE(r.before_bytes, 0) - COALESCE(r.after_bytes, 0) ELSE 0 END), 0) AS savedBytes,
        COALESCE(SUM(r.outcome = 'done'), 0) AS replaced,
        COALESCE(SUM(r.outcome = 'kept_original'), 0) AS kept,
@@ -805,7 +809,7 @@ export function allTimeSaved(db: Database): {
   return db
     .prepare(
       `SELECT
-         COALESCE(SUM(CASE WHEN outcome = 'done'
+         COALESCE(SUM(CASE WHEN outcome = 'done' AND NOT EXISTS (${ACTIVE_RESTORE_SQL('job_results')})
            THEN COALESCE(before_bytes, 0) - COALESCE(after_bytes, 0) ELSE 0 END), 0) AS savedBytes,
          COALESCE(SUM(outcome = 'done'), 0) AS files,
          MIN(created_at) AS since

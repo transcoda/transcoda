@@ -730,6 +730,27 @@ describe('job history', () => {
     expect(day?.seconds).toBe(0);
   });
 
+  // Review Focus 4
+  it('space saved flips with restore and undo', () => {
+    const t = '2026-10-24T12:00:00.000Z';
+    finished('j1', t, { beforeBytes: 1000, afterBytes: 300 });
+    expect(allTimeSaved(db).savedBytes).toBe(700);
+    insertRestore(db, {
+      id: 'rs1',
+      jobId: 'j1',
+      restoredAt: t,
+      restoredBy: 'u1',
+      sidecarPaths: [],
+    });
+    expect(allTimeSaved(db)).toMatchObject({ savedBytes: 0, files: 1 });
+    expect(jobStats(db, bounds[0] as string)).toMatchObject({ savedBytes: 0, files: 1 });
+    expect(jobHistory(db, bounds)[1]).toMatchObject({ savedBytes: 0, replaced: 1 });
+    markRestoreUndone(db, 'rs1', t, 'u1');
+    expect(allTimeSaved(db).savedBytes).toBe(700);
+    expect(jobStats(db, bounds[0] as string).savedBytes).toBe(700);
+    expect(jobHistory(db, bounds)[1]?.savedBytes).toBe(700);
+  });
+
   it('allTimeSaved on an empty database', () => {
     expect(allTimeSaved(db)).toEqual({ savedBytes: 0, files: 0, since: null });
   });
