@@ -86,6 +86,8 @@ function job(over: Partial<JobDetail> = {}): JobDetail {
     testEncode: false,
     testOutput: null,
     testOutputNote: null,
+    recycled: null,
+    restore: null,
     fileName: 'Bluey S01E03.mp4',
     filePath: '/media/Shows/Bluey/Season 01/Bluey S01E03.mp4',
     libraryId: 'l1',

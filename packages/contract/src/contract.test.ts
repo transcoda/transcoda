@@ -340,6 +340,16 @@ describe('contract', () => {
     expect(Object.keys(contract.events)).toEqual(['subscribe']);
   });
 
+  it('exposes the recycle router', () => {
+    expect(Object.keys(contract.recycle)).toEqual(['restore']);
+    expect(contract.recycle.restore['~orpc'].route).toMatchObject({
+      method: 'POST',
+      path: '/recycle/restore',
+    });
+    expect(contract.recycle.restore['~orpc'].route.description).toMatch(
+      /^A person's session only\./,
+    );
+  });
   it('exposes the plugins router', () => {
     expect(Object.keys(contract)).toContain('plugins');
     expect(Object.keys(contract.plugins)).toEqual([

@@ -42,6 +42,8 @@ const detail: JobDetail = {
   testEncode: false,
   testOutput: null,
   testOutputNote: null,
+  recycled: null,
+  restore: null,
   fileName: 'a.mkv',
   filePath: '/lib/a.mkv',
   libraryId: 'l1',
