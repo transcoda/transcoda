@@ -10424,9 +10424,17 @@ button.job-step-more:hover {
 }
 .recycle-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   justify-content: flex-end;
 }
 .recycle-empty-action {
   margin-top: 4px;
+}
+/* The size stays on one line; the file name keeps room to read, the buttons may wrap. */
+.recycle-table td:nth-child(2) {
+  white-space: nowrap;
+}
+.recycle-table td:first-child {
+  min-width: 14em;
 }
