@@ -1135,6 +1135,16 @@ describe('QueueService.retryFailed', () => {
     expect(onQueued).toHaveBeenCalledTimes(1);
   });
 
+  it('a job skipped because this one held the file does not count as newer: the failed job is retried', async () => {
+    const a = await settled(join(root, 'Show', 'a.mkv'));
+    const first = (await queued(a)).jobs[0];
+    if (!first) throw new Error('no job');
+    expect((await queued(a)).jobs[0]?.reason).toBe('already queued in another run');
+    updateJob(db, first.id, { state: 'failed', reason: 'ffmpeg exited 1' }, new Date());
+    expect(svc.retryFailed()).toEqual({ retried: 1 });
+    expect(findJob(db, first.id)?.state).toBe('queued');
+  });
+
   it('a retried job starts with no failed GPUs', async () => {
     const run = await queued(await settled(join(root, 'Show', 'a.mkv')));
     const id = run.jobs[0]?.id ?? '';

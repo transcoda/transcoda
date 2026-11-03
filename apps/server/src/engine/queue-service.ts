@@ -165,6 +165,8 @@ type Candidate =
   | { path: string; skip: null; fp: Fingerprint };
 
 const ACTIVE_SQL = ACTIVE_JOB_STATES.map((s) => `'${s}'`).join(',');
+/** The reason of a real job skipped because another real job still held its file. */
+export const HELD_BY_ANOTHER_RUN = 'already queued in another run';
 const DENIED = new Set(['EACCES', 'EPERM']);
 
 async function realpathOrNull(fs: FsOps, p: string): Promise<string | null> {
@@ -416,7 +418,7 @@ export class QueueService {
           // Two real jobs never work on one file at once (the history check below only sees
           // finished jobs); a forced run waits for the other job too.
           state = 'skipped';
-          reason = 'already queued in another run';
+          reason = HELD_BY_ANOTHER_RUN;
         } else {
           const key = fingerprintKey(c.fp);
           // Never re-run a file any version of this workflow processed (a dry run keeps its own
@@ -536,17 +538,19 @@ export class QueueService {
   /**
    * "Retry failed": every failed real job whose file has no newer job goes back to the queue in its
    * own run, as one more attempt (its own log, every GPU again), on the version active when it
-   * starts. A job left with a replace journal is not touched: the startup sweep settles it. Wakes
-   * the scheduler.
+   * starts. A job left with a replace journal is not touched: the startup sweep settles it. A job
+   * skipped only because the failed one still held the file doesn't count as newer. Wakes the
+   * scheduler.
    */
   retryFailed(): { retried: number } {
     const rows = this.db
       .prepare(
         `SELECT j.id, j.attempt FROM jobs j
          WHERE j.state = 'failed' AND j.dry_run = 0
-           AND NOT EXISTS (SELECT 1 FROM jobs n WHERE n.path = j.path AND n.queued_at > j.queued_at)`,
+           AND NOT EXISTS (SELECT 1 FROM jobs n WHERE n.path = j.path AND n.queued_at > j.queued_at
+             AND NOT (n.state = 'skipped' AND n.reason = ?))`,
       )
-      .all() as { id: string; attempt: number }[];
+      .all(HELD_BY_ANOTHER_RUN) as { id: string; attempt: number }[];
     const now = this.deps.now();
     let retried = 0;
     for (const { id, attempt } of rows) {
