@@ -221,10 +221,10 @@ export function testEncodeLine(
 export const sentence = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 /**
- * The queue's reason for an already-processed file: `already <outcome> on <ISO time>`, optionally
- * followed by `; <more>` (a restored original's force hint, C5).
+ * The queue's reason for an already-processed file: `already <outcome> by v<N> on <ISO time>`
+ * (reasons stored before 0.4.0 have no version), optionally followed by `; <more>`.
  */
-const ALREADY = /^already ([a-z_]+) on ([^\s;]+)(?:; (.+))?$/;
+const ALREADY = /^already ([a-z_]+)(?: by v(\d+))? on ([^\s;]+)(?:; (.+))?$/;
 
 /** `[matroska,webm @ 0x90903c000] ` before an ffmpeg/ffprobe message. */
 const DEMUXER_PREFIX = /^\[[^\]]* @ 0x[0-9a-f]+\]\s*/i;
@@ -293,10 +293,11 @@ export function reasonOf(job: Pick<Job, 'state' | 'reason'>): string | null {
   if (state === 'already_processed' && reason) {
     const m = ALREADY.exec(reason);
     const outcome = m?.[1] as JobState | undefined;
-    const at = m?.[2];
-    const more = m?.[3] ? `; ${m[3]}` : '';
+    const by = m?.[2] ? ` by v${m[2]}` : '';
+    const at = m?.[3];
+    const more = m?.[4] ? `; ${m[4]}` : '';
     if (outcome && at && JOB_STATES.includes(outcome) && !Number.isNaN(Date.parse(at))) {
-      return `Processed on ${fmtDate(at)}: ${stateWord({ state: outcome }).toLowerCase()}${more}`;
+      return `Processed${by} on ${fmtDate(at)}: ${stateWord({ state: outcome }).toLowerCase()}${more}`;
     }
   }
   return reason;
