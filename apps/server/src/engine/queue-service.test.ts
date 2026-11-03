@@ -1139,7 +1139,12 @@ describe('QueueService.retryFailed', () => {
     const a = await settled(join(root, 'Show', 'a.mkv'));
     const first = (await queued(a)).jobs[0];
     if (!first) throw new Error('no job');
-    expect((await queued(a)).jobs[0]?.reason).toBe('already queued in another run');
+    const skipped = (await queued(a)).jobs[0];
+    expect(skipped?.reason).toBe('already queued in another run');
+    // The skipped job is strictly newer, as the retry check compares.
+    const at = db.prepare('UPDATE jobs SET queued_at = ? WHERE id = ?');
+    at.run('2026-10-01T10:00:00.000Z', first.id);
+    at.run('2026-10-01T10:00:01.000Z', skipped?.id ?? '');
     updateJob(db, first.id, { state: 'failed', reason: 'ffmpeg exited 1' }, new Date());
     expect(svc.retryFailed()).toEqual({ retried: 1 });
     expect(findJob(db, first.id)?.state).toBe('queued');
