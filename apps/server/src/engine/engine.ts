@@ -302,7 +302,16 @@ export class EngineService {
   /** Restores a recycled original, or undoes a restore (`engine/restore.ts`). */
   restoreRecycled(input: { path: string; userId: string }): Promise<RestoreResult> {
     const { db, fs, log } = this.deps;
-    return restoreRecycled({ db, fs, now: () => this.deps.now(), log }, input);
+    return restoreRecycled(
+      {
+        db,
+        fs,
+        now: () => this.deps.now(),
+        log,
+        retentionDays: this.recycleSettings().retentionDays,
+      },
+      input,
+    );
   }
 
   /**

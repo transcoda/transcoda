@@ -31,6 +31,8 @@ export interface RestoreDeps {
   fs: FsOps;
   now(): Date;
   log: Logger;
+  /** The recycle folder's retention, to name the cleanup date when an original is gone. */
+  retentionDays?: number;
 }
 
 export type RestoreResult =
@@ -52,12 +54,12 @@ const REASON = {
     "The file at this path isn't the one the job wrote (another program changed or moved it), so restoring could lose that change.",
   changedSinceRestore:
     "This file changed after the restore (another program wrote it), so putting Transcoda's version back could lose that change.",
-  originalGone: 'The original is no longer in the recycle folder (removed by hand).',
-  outputGone: "Transcoda's version is no longer in the recycle folder (removed by hand).",
   originalSize: 'The file in the recycle folder is not the original any more (its size changed).',
   outputSize:
     "The file in the recycle folder is not Transcoda's version any more (its size changed).",
   undone: 'This restore was undone already.',
+  notFromRestore:
+    "This file was set aside when a restore stopped part-way, so there's no restore to undo. Move it back by hand or delete it.",
   noFolder: "Transcoda can't tell which recycle folder this file is in.",
   inFlight: 'This file is already being restored.',
   raced:
@@ -168,7 +170,7 @@ export async function restoreRecycled(
   }
   const direction = row.kind === 'restored-output' ? 'undo' : 'restore';
   const restoreId = direction === 'undo' ? row.restoreId : randomUUID();
-  if (restoreId === null) return { kind: 'refused', reason: REASON.undone };
+  if (restoreId === null) return { kind: 'refused', reason: REASON.notFromRestore };
 
   // One file operation per job: claimed before the disk checks, so a second restore of this job
   // is refused while this one checks and moves.
@@ -302,6 +304,23 @@ export async function restoreRecycled(
   };
 }
 
+/**
+ * Why the recycled copy is gone: removed by hand, or, once its cleanup date has passed, maybe by
+ * the cleanup on that date.
+ */
+function goneReason(deps: RestoreDeps, row: RecycledRow, direction: 'restore' | 'undo'): string {
+  const what = direction === 'restore' ? 'The original' : "Transcoda's version";
+  const due =
+    deps.retentionDays === undefined
+      ? null
+      : new Date(Date.parse(row.recycledAt) + deps.retentionDays * 86_400_000);
+  const when =
+    due !== null && due.getTime() <= deps.now().getTime()
+      ? `removed on ${due.toISOString().slice(0, 10)} or by hand`
+      : 'removed by hand';
+  return `${what} is no longer in the recycle folder (${when}).`;
+}
+
 /** Checks the files on disk and plans the moves; throws {@link Refused} with the reason. */
 async function planMoves(
   deps: RestoreDeps,
@@ -337,7 +356,7 @@ async function planMoves(
   const copy = await statOrNull(fs, row.path);
   if (copy === null) {
     deleteRecycled(db, row.path);
-    throw new Refused(direction === 'restore' ? REASON.originalGone : REASON.outputGone);
+    throw new Refused(goneReason(deps, row, direction));
   }
   if (copy.size !== row.sizeBytes) {
     throw new Refused(direction === 'restore' ? REASON.originalSize : REASON.outputSize);

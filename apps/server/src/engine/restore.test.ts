@@ -253,6 +253,34 @@ describe('restoreRecycled', () => {
     expect(findRecycled(db, `${bin}/Show/a.mkv`)).toBeNull();
   });
 
+  it('a missing original past its cleanup date names that date', async () => {
+    await unlink(`${bin}/Show/a.mkv`);
+    const later = { ...deps, retentionDays: 7, now: () => new Date('2026-03-09T12:00:00.000Z') };
+    expect(await restoreRecycled(later, input())).toEqual({
+      kind: 'refused',
+      reason: 'The original is no longer in the recycle folder (removed on 2026-03-08 or by hand).',
+    });
+  });
+
+  it('a file set aside by a restore that stopped part-way has no restore to undo, and says so', async () => {
+    await writeFile(`${bin}/Show/a.mkv.1`, randomBytes(300));
+    insertRecycled(db, {
+      path: `${bin}/Show/a.mkv.1`,
+      libraryId: 'l1',
+      jobId: 'j1',
+      sizeBytes: 300,
+      recycledAt: now.toISOString(),
+      kind: 'restored-output',
+      originalPath: `${root}/Show/a.mkv`,
+      restoreId: null,
+    });
+    expect(await restoreRecycled(deps, { path: `${bin}/Show/a.mkv.1`, userId: 'u1' })).toEqual({
+      kind: 'refused',
+      reason:
+        "This file was set aside when a restore stopped part-way, so there's no restore to undo. Move it back by hand or delete it.",
+    });
+  });
+
   it('refuses when the recycled copy has another size', async () => {
     await writeFile(`${bin}/Show/a.mkv`, randomBytes(999));
     expect(await restoreRecycled(deps, input())).toEqual({
