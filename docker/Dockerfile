@@ -41,7 +41,7 @@ RUN pnpm deploy --prod --filter @transcoda/server /deploy \
 
 # 3. Runtime image.
 FROM ${NODE_IMAGE} AS runtime
-ARG JELLYFIN_FFMPEG_VERSION=8.1.3-1-bookworm
+ARG JELLYFIN_FFMPEG_VERSION=8.1.3-2-bookworm
 LABEL org.opencontainers.image.title="Transcoda" \
       org.opencontainers.image.description="Node-based ffmpeg workflow runner" \
       org.opencontainers.image.source="https://github.com/transcoda/transcoda" \
