@@ -206,6 +206,26 @@ describe('RecyclePage actions', () => {
     await waitFor(() => expect(mocks.recycle.list).toHaveBeenCalledTimes(3));
   });
 
+  it('an undo that left a changed subtitle file in place says so', async () => {
+    mocks.recycle.restore.mockResolvedValue({
+      jobId: 'j2',
+      direction: 'undone',
+      notRestored: ['b.de.srt (changed since the restore, left in place)'],
+    });
+    await open();
+    await screen.findByText(BIN);
+    fireEvent.click(
+      within(rowOf('Show/b.mkv')).getByRole('button', { name: "Put Transcoda's version back" }),
+    );
+    const dialog = await screen.findByRole('dialog', { name: "Put Transcoda's version back?" });
+    fireEvent.click(within(dialog).getByRole('button', { name: "Put Transcoda's version back" }));
+    expect(
+      await screen.findByText(
+        "Transcoda's version is back; b.de.srt (changed since the restore, left in place)",
+      ),
+    ).toBeTruthy();
+  });
+
   it('Delete asks first and is permanent', async () => {
     mocks.recycle.delete.mockResolvedValue({ bytes: 1000 });
     await open();

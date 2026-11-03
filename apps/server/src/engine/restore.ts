@@ -247,6 +247,9 @@ export async function restoreRecycled(
         restoredAt: at,
         restoredBy: input.userId,
         sidecarPaths: movedSidecars.map((s) => s.move.to),
+        sidecarKeys: Object.fromEntries(
+          movedSidecars.flatMap((s) => (s.move.key ? [[s.move.to, s.move.key]] : [])),
+        ),
       });
       insertRecycled(db, {
         path: outputMove.to,
@@ -367,12 +370,20 @@ async function planMoves(
       const name = basename(s.originalPath ?? s.path);
       if (s.originalPath === null) {
         notRestored.push(`${name} (its place wasn't recorded)`);
-      } else if (!(await fs.exists(s.path))) {
+        continue;
+      }
+      const st = await statOrNull(fs, s.path);
+      if (st === null) {
         notRestored.push(`${name} (gone from the recycle folder)`);
       } else if (await fs.exists(s.originalPath)) {
         notRestored.push(`${name} (its place is taken)`);
       } else {
-        const move: RestoreMove = { from: s.path, to: s.originalPath, role: 'sidecar' };
+        const move: RestoreMove = {
+          from: s.path,
+          to: s.originalPath,
+          role: 'sidecar',
+          key: keyOf(st),
+        };
         moves.push(move);
         sidecars.push({ move, row: s, sizeBytes: s.sizeBytes });
       }
@@ -381,6 +392,11 @@ async function planMoves(
     for (const p of (restore as NonNullable<typeof restore>).sidecarPaths) {
       const st = await statOrNull(fs, p, 'lstat');
       if (st === null || !st.isFile()) continue;
+      const was = (restore as NonNullable<typeof restore>).sidecarKeys[p];
+      if (was !== undefined && keyOf(st) !== was) {
+        notRestored.push(`${basename(p)} (changed since the restore, left in place)`);
+        continue;
+      }
       const move: RestoreMove = {
         from: p,
         to: await firstFree(fs, folder, root, p, taken),

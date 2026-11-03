@@ -9,6 +9,11 @@ export interface RestoreRow {
   restoredBy: string;
   /** The subtitle files the restore brought back with the original. */
   sidecarPaths: string[];
+  /**
+   * Each brought-back subtitle file's fingerprint key at the restore, by path, so an undo can
+   * leave one another program changed since. Empty for restores recorded before this was kept.
+   */
+  sidecarKeys: Record<string, string>;
   undoneAt: string | null;
   undoneBy: string | null;
 }
@@ -23,21 +28,39 @@ interface DbRestore {
   undone_by: string | null;
 }
 
+/** `sidecar_paths` holds `{paths, keys}`; a plain array of paths is the first form, without keys. */
+function parseSidecars(json: string): Pick<RestoreRow, 'sidecarPaths' | 'sidecarKeys'> {
+  const v = JSON.parse(json) as string[] | { paths: string[]; keys: Record<string, string> };
+  return Array.isArray(v)
+    ? { sidecarPaths: v, sidecarKeys: {} }
+    : { sidecarPaths: v.paths, sidecarKeys: v.keys };
+}
+
 const toRestore = (r: DbRestore): RestoreRow => ({
   id: r.id,
   jobId: r.job_id,
   restoredAt: r.restored_at,
   restoredBy: r.restored_by,
-  sidecarPaths: JSON.parse(r.sidecar_paths) as string[],
+  ...parseSidecars(r.sidecar_paths),
   undoneAt: r.undone_at,
   undoneBy: r.undone_by,
 });
 
-export function insertRestore(db: Database, row: Omit<RestoreRow, 'undoneAt' | 'undoneBy'>): void {
+export function insertRestore(
+  db: Database,
+  row: Omit<RestoreRow, 'undoneAt' | 'undoneBy' | 'sidecarKeys'> &
+    Partial<Pick<RestoreRow, 'sidecarKeys'>>,
+): void {
   db.prepare(
     `INSERT INTO restores (id, job_id, restored_at, restored_by, sidecar_paths)
      VALUES (?, ?, ?, ?, ?)`,
-  ).run(row.id, row.jobId, row.restoredAt, row.restoredBy, JSON.stringify(row.sidecarPaths));
+  ).run(
+    row.id,
+    row.jobId,
+    row.restoredAt,
+    row.restoredBy,
+    JSON.stringify({ paths: row.sidecarPaths, keys: row.sidecarKeys ?? {} }),
+  );
 }
 
 /** The job's restore that is still in effect (not undone), or null. */

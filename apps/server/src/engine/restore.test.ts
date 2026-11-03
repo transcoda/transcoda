@@ -223,6 +223,18 @@ describe('restoreRecycled', () => {
     expect(findJob(db, 'j1')?.restoreJournal).toBeNull();
   });
 
+  it('undo leaves a subtitle file that changed since the restore where it is and says so', async () => {
+    await restoreRecycled(deps, input());
+    await writeFile(`${root}/Show/a.de.srt`, 'edited subs');
+    const r = await restoreRecycled(deps, { path: `${bin}/Show/a.mkv.1`, userId: 'u2' });
+    expect(r).toMatchObject({
+      kind: 'undone',
+      notRestored: ['a.de.srt (changed since the restore, left in place)'],
+    });
+    expect(await size(`${root}/Show/a.de.srt`)).toBe(11);
+    expect(findRecycled(db, `${bin}/Show/a.de.srt`)).toBeNull();
+  });
+
   it('refuses when the file at the path is not the output', async () => {
     await writeFile(`${root}/Show/a.mkv`, randomBytes(500));
     expect(await restoreRecycled(deps, input())).toEqual({

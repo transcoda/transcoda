@@ -48,10 +48,14 @@ export function RestoreButton({
       return;
     }
     const done = restore ? 'Original restored' : "Transcoda's version is back";
+    // An undo's list explains itself ("… (changed since the restore, left in place)").
+    const skipped = out.notRestored.join(', ');
     toast.success(
-      out.notRestored.length > 0
-        ? `${done}; not brought back: ${out.notRestored.join(', ')}`
-        : done,
+      out.notRestored.length === 0
+        ? done
+        : restore
+          ? `${done}; not brought back: ${skipped}`
+          : `${done}; ${skipped}`,
     );
     onDone(out);
   }
