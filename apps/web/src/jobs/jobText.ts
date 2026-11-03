@@ -259,8 +259,10 @@ export function probeClause(detail: string): string {
   const last = messages.at(-1);
   if (last === undefined) return 'ffprobe could not read it';
   const words = PROBE_WORDS.find(([re]) => re.test(last))?.[1] ?? last;
+  // At most two earlier messages, so a long ffprobe dump stays a short reason (the log has it all).
   const extra = messages.slice(0, -1);
-  return extra.length > 0 ? `${words} (${extra.join('; ')})` : words;
+  const shown = extra.length > 2 ? [...extra.slice(0, 2), '…'] : extra;
+  return shown.length > 0 ? `${words} (${shown.join('; ')})` : words;
 }
 
 /** A reason stored before #44: "probe failed: <ffprobe's message, maybe the whole command>". */

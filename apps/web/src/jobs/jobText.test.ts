@@ -146,6 +146,11 @@ describe('jobText', () => {
     expect(detailLine(job({ state: 'failed', reason: inMessage }))).toBe(
       "The file couldn't be read: Invalid data: stream header · original untouched",
     );
+    // A long dump keeps two earlier messages; the job log has the rest.
+    const many = ['probe failed: a', 'b', 'c', 'd', 'Invalid data found when processing input'];
+    expect(detailLine(job({ state: 'failed', reason: many.join('\n') }))).toBe(
+      "The file couldn't be read: ffprobe found invalid data in the file (a; b; …) · original untouched",
+    );
     // Without the command line, the path ends at the file's extension.
     expect(
       detailLine(job({ state: 'failed', reason: 'probe failed: /media/a.mkv: Invalid data: x' })),
