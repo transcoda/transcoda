@@ -139,6 +139,17 @@ describe('jobText', () => {
     expect(detailLine(job({ state: 'failed', reason: colon }))).toBe(
       "The file couldn't be read: ffprobe found invalid data in the file · original untouched",
     );
+    const inMessage = [
+      'probe failed: Command failed: ffprobe -v error -show_format -of json /media/Film: The Movie.mkv',
+      '/media/Film: The Movie.mkv: Invalid data: stream header',
+    ].join('\n');
+    expect(detailLine(job({ state: 'failed', reason: inMessage }))).toBe(
+      "The file couldn't be read: Invalid data: stream header · original untouched",
+    );
+    // Without the command line, the path ends at the file's extension.
+    expect(
+      detailLine(job({ state: 'failed', reason: 'probe failed: /media/a.mkv: Invalid data: x' })),
+    ).toBe("The file couldn't be read: Invalid data: x · original untouched");
     const today =
       "The file couldn't be read: it isn't a valid video file (ffprobe: Invalid data found when processing input)";
     expect(detailLine(job({ state: 'failed', reason: today }))).toBe(

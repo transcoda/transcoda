@@ -244,17 +244,17 @@ const PROBE_WORDS: ReadonlyArray<[RegExp, string]> = [
  * both are left out here (the job log keeps the raw error).
  */
 export function probeClause(detail: string): string {
-  const messages = detail
-    .split('\n')
-    .map((l) => l.trim())
+  const lines = detail.split('\n').map((l) => l.trim());
+  // The command line ends with the file's path, so an exact prefix can be removed even when the
+  // path or the message holds ": " ("/media/Film: The Movie.mkv: Invalid data: …").
+  const path = lines.find((l) => l.startsWith('Command failed:'))?.match(/ -of json (\/.+)$/)?.[1];
+  const stripPath = (l: string) =>
+    path !== undefined && l.startsWith(`${path}: `)
+      ? l.slice(path.length + 2)
+      : l.replace(/^\/.*?\.[a-z0-9]{2,4}:\s+/i, '');
+  const messages = lines
     .filter((l) => l !== '' && !l.startsWith('Command failed:'))
-    .map((l) =>
-      l
-        .replace(DEMUXER_PREFIX, '')
-        // The path may itself hold ": " ("/media/Film: The Movie.mkv: Invalid data …").
-        .replace(/^\/.*:\s+/, '')
-        .trim(),
-    )
+    .map((l) => stripPath(l.replace(DEMUXER_PREFIX, '')).trim())
     .filter((l) => l !== '');
   const last = messages.at(-1);
   if (last === undefined) return 'ffprobe could not read it';
