@@ -9,3 +9,6 @@ export const RecycleRestoreOutputSchema = z.object({
   /** Subtitle files that stayed where they were, each as `<name> (<why>)`. */
   notRestored: z.array(z.string()),
 });
+
+export type RecycleRestoreInput = z.infer<typeof RecycleRestoreInputSchema>;
+export type RecycleRestoreOutput = z.infer<typeof RecycleRestoreOutputSchema>;
