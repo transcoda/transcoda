@@ -1490,11 +1490,27 @@ describe('pipeline', () => {
     expect(await settled(id)).toMatchObject({
       state: 'already_processed',
       reason:
-        'already done on 2026-10-01T10:00:00.000Z; this file is the original from before then (moved back from the recycle folder?); use Process again to run it anyway',
+        'already done by v3 on 2026-10-01T10:00:00.000Z; this file is the original from before then (moved back from the recycle folder?); use Process again to run it anyway',
       workflowVersion: 3,
     });
     expect(findJobResult(t.db, id)).toMatchObject({
       outcome: 'already_processed',
+      workflowVersion: 3,
+    });
+    expect(spawner.calls).toEqual([]);
+  });
+
+  it('a job re-pinned to v3 on start is already_processed when v2 processed the file', async () => {
+    const wf = v2Workflow();
+    const id = await queue(file(), wf);
+    savedV3(wf);
+    expect(t.deps.workflows.activate(wf, 3, 'u').kind).toBe('ok');
+    await priorDone(wf, id, 2);
+    await t.deps.engine.start();
+    expect(await settled(id)).toMatchObject({
+      state: 'already_processed',
+      reason:
+        'already done by v2 on 2026-10-01T10:00:00.000Z; this file is the original from before then (moved back from the recycle folder?); use Process again to run it anyway',
       workflowVersion: 3,
     });
     expect(spawner.calls).toEqual([]);

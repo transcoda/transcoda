@@ -172,14 +172,6 @@ export interface RecycledRow {
   recycledAt: string;
 }
 
-/** Outcomes that make a later run of the same file and workflow version `already_processed`. */
-export const FINAL_RESULT_OUTCOMES: readonly JobState[] = [
-  'done',
-  'nothing_to_do',
-  'kept_original',
-  'failed',
-];
-
 export type JobInsert = Pick<
   JobRow,
   | 'id'
@@ -829,49 +821,68 @@ export function hasReplaceJournal(db: Database, jobId: string): boolean {
 
 // ---- results ----
 
-/**
- * The reason of an `already_processed` job. A `done` result's fingerprint is the original's (the
- * replacement has its own), so a match means that original is back, moved out of the recycle
- * folder by hand (C5): the job says so and how to process it again. A file that matches a job's
- * written output (`matched: 'output'`) is that job's replacement, scanned again.
- */
-export function alreadyProcessedReason(
-  prior: { outcome: JobState; createdAt: string },
-  matched: 'source' | 'output' = 'source',
-): string {
-  const base = `already ${prior.outcome} on ${prior.createdAt}`;
-  if (matched === 'output') {
-    return `${base}; this file is what that job wrote; use Process again to run it anyway`;
-  }
-  return prior.outcome === 'done'
-    ? `${base}; this file is the original from before then (moved back from the recycle folder?); use Process again to run it anyway`
-    : base;
+/** A real job's result that makes a newly queued file `already_processed` (see `findPriorRun`). */
+export interface PriorRun {
+  outcome: JobState;
+  workflowVersion: number;
+  createdAt: string;
+  /** The file was that job's source, or it is the file the job wrote. */
+  matched: 'source' | 'output';
 }
 
-const FINAL_RESULT_SQL = FINAL_RESULT_OUTCOMES.map((s) => `'${s}'`).join(',');
+/**
+ * The reason of an `already_processed` job, naming the version. A `done` result's fingerprint is
+ * the original's (the replacement has its own), so a source match means that original is back,
+ * moved out of the recycle folder by hand (C5); an output match is that job's replacement, scanned
+ * again. Every reason points to Process again.
+ */
+export function alreadyProcessedReason(prior: PriorRun): string {
+  const base = `already ${prior.outcome} by v${prior.workflowVersion} on ${prior.createdAt}`;
+  const what =
+    prior.matched === 'output'
+      ? '; this file is what that job wrote'
+      : prior.outcome === 'done'
+        ? '; this file is the original from before then (moved back from the recycle folder?)'
+        : '';
+  return `${base}${what}; use Process again to run it anyway`;
+}
 
 /**
- * The newest final result of a real (not dry-run) job for this file and workflow version. A dry
- * run never makes a file `already_processed`, whatever its outcome.
+ * Why a newly queued file needs no run: the newest result of a real job of `workflowId` that
+ * processed it (`done`, `nothing_to_do`, `kept_original`) at any version, as its source or its
+ * output; failing that, the newest `failed` result at `workflowVersion` (a newer version still
+ * tries a file an older one failed on). `sameVersion` limits the processed match to
+ * `workflowVersion` too, for dry runs (a preview of a version keeps its own history). Dry-run
+ * results never count.
  */
-export function findFinalRealResult(
+export function findPriorRun(
   db: Database,
-  fingerprint: string,
+  key: string,
   workflowId: string,
   workflowVersion: number,
-): { outcome: JobState; createdAt: string } | null {
-  const r = db
+  opts: { sameVersion?: boolean } = {},
+): PriorRun | null {
+  const processed = findProcessedResult(db, {
+    by: 'fingerprint',
+    key,
+    workflowId,
+    workflowVersion: opts.sameVersion ? workflowVersion : null,
+  });
+  if (processed) {
+    const { outcome, workflowVersion: v, createdAt, matched } = processed;
+    return { outcome, workflowVersion: v, createdAt, matched };
+  }
+  const failed = db
     .prepare(
-      `SELECT r.outcome AS outcome, r.created_at AS createdAt FROM job_results r
-       JOIN jobs j ON j.id = r.job_id
+      `SELECT r.created_at AS createdAt FROM job_results r JOIN jobs j ON j.id = r.job_id
        WHERE r.fingerprint = ? AND r.workflow_id = ? AND r.workflow_version = ?
-         AND r.outcome IN (${FINAL_RESULT_SQL}) AND j.dry_run = 0
+         AND r.outcome = 'failed' AND j.dry_run = 0
        ORDER BY r.created_at DESC, r.rowid DESC LIMIT 1`,
     )
-    .get(fingerprint, workflowId, workflowVersion) as
-    | { outcome: JobState; createdAt: string }
-    | undefined;
-  return r ?? null;
+    .get(key, workflowId, workflowVersion) as { createdAt: string } | undefined;
+  return failed
+    ? { outcome: 'failed', workflowVersion, createdAt: failed.createdAt, matched: 'source' }
+    : null;
 }
 
 /** Outcomes that count as "already processed" for the Already processed node (not `failed`). */

@@ -294,7 +294,7 @@ describe('QueueService.queue', () => {
         'Show/a.mkv',
         'already_processed',
         // C5: a `done` result's fingerprint is the original's, so a match is that original, back.
-        'already done on 2026-10-01T10:00:00.000Z; this file is the original from before then (moved back from the recycle folder?); use Process again to run it anyway',
+        'already done by v2 on 2026-10-01T10:00:00.000Z; this file is the original from before then (moved back from the recycle folder?); use Process again to run it anyway',
       ],
       ['Show/b.mkv', 'queued', null],
     ]);
@@ -316,29 +316,23 @@ describe('QueueService.queue', () => {
     expect(forced.jobs.map((j) => j.state)).toEqual(['queued', 'queued']);
   });
 
-  it('history: a file this version wrote is already_processed; force queues it again', async () => {
+  it('history: a file any version wrote is already_processed; force queues it again', async () => {
     const a = await settled(join(root, 'Show', 'a.mkv'));
     const out = await settled(join(root, 'Show', 'b.mkv'));
+    const job = (await queued(a)).jobs[0];
+    if (!job) throw new Error('no job for a.mkv');
+    updateJob(db, job.id, { state: 'done' }, new Date());
     const outFp = fingerprintKey(await fingerprintOf(out));
-    const writeOut = async (workflowVersion: number) => {
-      const job = (await queued(a)).jobs[0];
-      if (!job) throw new Error('no job for a.mkv');
-      updateJob(db, job.id, { state: 'done' }, new Date());
-      doneResult(job.id, 'gone-original', { outputFingerprint: outFp, workflowVersion });
-    };
+    // Written by v1; the active version is v2.
+    doneResult(job.id, 'gone-original', { outputFingerprint: outFp, workflowVersion: 1 });
 
-    // Another version's output is not this version's: the file is queued.
-    await writeOut(1);
-    expect((await queued(out)).jobs.map((j) => j.state)).toEqual(['queued']);
-
-    await writeOut(2);
     const second = await queued(join(root, 'Show'));
     expect(second.jobs.map((j) => [j.path.slice(root.length + 1), j.state, j.reason])).toEqual([
       ['Show/a.mkv', 'queued', null],
       [
         'Show/b.mkv',
         'already_processed',
-        'already done on 2026-10-01T10:00:00.000Z; this file is what that job wrote; use Process again to run it anyway',
+        'already done by v1 on 2026-10-01T10:00:00.000Z; this file is what that job wrote; use Process again to run it anyway',
       ],
     ]);
 
@@ -401,6 +395,43 @@ describe('QueueService.queue', () => {
     });
   });
 
+  it("history: Scan now after a new version leaves the old version's files alone; a newer version still tries a file an older one failed", async () => {
+    const a = await settled(join(root, 'Show', 'a.mkv'));
+    const b = await settled(join(root, 'Show', 'b.mkv'));
+    const first = await queued(join(root, 'Show'));
+    for (const j of first.jobs) {
+      const failed = j.path === b;
+      updateJob(db, j.id, { state: failed ? 'failed' : 'done' }, new Date());
+      doneResult(j.id, fingerprintKey(await fingerprintOf(j.path)), {
+        workflowVersion: 1,
+        ...(failed ? { outcome: 'failed' as const } : {}),
+      });
+    }
+    const run = await queued(join(root, 'Show'));
+    expect(run.jobs.map((j) => [j.path.slice(root.length + 1), j.state, j.reason])).toEqual([
+      [
+        'Show/a.mkv',
+        'already_processed',
+        'already done by v1 on 2026-10-01T10:00:00.000Z; this file is the original from before then (moved back from the recycle folder?); use Process again to run it anyway',
+      ],
+      ['Show/b.mkv', 'queued', null],
+    ]);
+    expect(a).toBeTruthy();
+  });
+
+  it('history: a dry run keeps the version-specific check', async () => {
+    const a = await settled(join(root, 'Show', 'a.mkv'));
+    const job = (await queued(a)).jobs[0];
+    if (!job) throw new Error('no job');
+    updateJob(db, job.id, { state: 'done' }, new Date());
+    doneResult(job.id, fingerprintKey(await fingerprintOf(a)));
+    // Done by v2; v3 is a newer draft. Previewing v3 plans the file, previewing v2 does not.
+    saveMore(flowId, 1);
+    const preview = (v: number) => queued(a, { dryRun: true, workflowVersion: v });
+    expect((await preview(3)).jobs.map((j) => j.state)).toEqual(['queued']);
+    expect((await preview(2)).jobs.map((j) => j.state)).toEqual(['already_processed']);
+  });
+
   it('history: a failed result is final, a dry-run result never is, another version never is', async () => {
     const a = await settled(join(root, 'Show', 'a.mkv'));
     const fp = fingerprintKey(await fingerprintOf(a));
@@ -424,7 +455,10 @@ describe('QueueService.queue', () => {
     updateJob(db, thirdJob.id, { state: 'failed' }, new Date());
     doneResult(thirdJob.id, fp, { outcome: 'failed', createdAt: '2026-10-02T00:00:00.000Z' });
     expect((await queued(a)).jobs.map((j) => [j.state, j.reason])).toEqual([
-      ['already_processed', 'already failed on 2026-10-02T00:00:00.000Z'],
+      [
+        'already_processed',
+        'already failed by v2 on 2026-10-02T00:00:00.000Z; use Process again to run it anyway',
+      ],
     ]);
   });
 
@@ -564,7 +598,7 @@ describe('QueueService.queue', () => {
     expect(onQueued).toHaveBeenCalledTimes(2);
   });
 
-  it('history keys on the resolved version: a v2 result does not block a real run after v3 is activated', async () => {
+  it('history spans versions: a v2 result makes the file already_processed after v3 is activated', async () => {
     const a = await settled(join(root, 'Show', 'a.mkv'));
     const first = await queued(a);
     const job = first.jobs[0];
@@ -576,7 +610,8 @@ describe('QueueService.queue', () => {
     expect(workflows.activate(flowId, 3, 'u').kind).toBe('ok');
     const next = await queued(a);
     expect(next.run.workflowVersion).toBe(3);
-    expect(next.jobs.map((j) => [j.state, j.workflowVersion])).toEqual([['queued', 3]]);
+    expect(next.jobs.map((j) => [j.state, j.workflowVersion])).toEqual([['already_processed', 3]]);
+    expect(next.jobs[0]?.reason).toMatch(/^already done by v2 on /);
   });
 
   it("run files carry each job's workflow version", async () => {

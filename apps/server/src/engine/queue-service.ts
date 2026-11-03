@@ -14,7 +14,7 @@ import type { Database } from '../db/open.ts';
 import {
   alreadyProcessedReason,
   fileSeen,
-  findFinalRealResult,
+  findPriorRun,
   findProcessedResult,
   hasReplaceJournal,
   insertJob,
@@ -411,25 +411,16 @@ export class QueueService {
           reason = c.skip;
         } else {
           const key = fingerprintKey(c.fp);
+          // Never re-run a file any version of this workflow processed (a dry run keeps its own
+          // version's history); Process again (`force`) overrides.
           const prior = input.force
             ? null
-            : findFinalRealResult(db, key, workflowId, workflow.version);
-          // A file this version wrote (a replacement, scanned again) needs no second pass either.
-          const wrote =
-            input.force || prior
-              ? null
-              : findProcessedResult(db, {
-                  by: 'fingerprint',
-                  key,
-                  workflowId,
-                  workflowVersion: workflow.version,
-                });
+            : findPriorRun(db, key, workflowId, workflow.version, {
+                sameVersion: workflow.dryRun,
+              });
           if (prior) {
             state = 'already_processed';
             reason = alreadyProcessedReason(prior);
-          } else if (wrote?.matched === 'output') {
-            state = 'already_processed';
-            reason = alreadyProcessedReason(wrote, 'output');
           }
           // Recorded for an already-processed file too: the run summary shows its size.
           const file = upsertFile(
