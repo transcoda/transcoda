@@ -92,6 +92,11 @@ export const JobSchema = z.object({
       replacedTo: ReplacedToSchema.nullable(),
       /** The original was kept because the source is damaged: the UI says "Damaged source". */
       sourceDamaged: z.boolean().default(false),
+      /**
+       * The recycled original was put back (a restore not undone): the output is not in place.
+       * The jobs list always sends it; other places that build a result may leave it out.
+       */
+      restored: z.boolean().optional(),
     })
     .nullable(),
   /**

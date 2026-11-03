@@ -43,6 +43,12 @@ describe('jobText', () => {
     expect(detailLine(fx.replaced)).toBe(
       '2.41 GB → 1.62 GB, saved 790 MB · original in recycle folder',
     );
+    expect(
+      detailLine({
+        ...fx.replaced,
+        result: fx.replaced.result && { ...fx.replaced.result, restored: true },
+      }),
+    ).toBe('2.41 GB → 1.62 GB, saved 790 MB · original restored');
     expect(detailLine(fx.kept)).toBe('Only 6% smaller, size gate needs 20%');
     expect(detailLine(fx.failed)).toBe(
       'Verification failed: output 4 s shorter · original untouched',

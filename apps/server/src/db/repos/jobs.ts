@@ -97,6 +97,8 @@ export interface JobListRow extends JobRow {
     replacedTo: 'recycle' | 'deleted' | null;
     /** The original was kept because the source is damaged ("Damaged source"). */
     sourceDamaged: boolean;
+    /** A restore of the original is in effect (not undone). */
+    restored: boolean;
   } | null;
   /** The result's problems (empty when none or no result). */
   problems: string[];
@@ -284,6 +286,7 @@ interface DbJobList extends DbJob {
   r_after_bytes: number | null;
   r_replaced_to: 'recycle' | 'deleted' | null;
   r_source_damaged: number | null;
+  r_restored: number;
   r_problems_json: string | null;
   r_estimated_bytes: number | null;
   r_plan: string | null;
@@ -534,6 +537,7 @@ const LIST_SELECT = `SELECT j.*, l.name AS library_name, w.name AS workflow_name
     r.replaced_to AS r_replaced_to, r.source_damaged AS r_source_damaged,
     r.problems_json AS r_problems_json,
     r.estimated_bytes AS r_estimated_bytes, r.plan AS r_plan,
+    EXISTS (SELECT 1 FROM restores x WHERE x.job_id = j.id AND x.undone_at IS NULL) AS r_restored,
     (SELECT source FROM runs WHERE runs.id = j.run_id) AS run_source
   FROM jobs j
   LEFT JOIN libraries l ON l.id = j.library_id
@@ -557,6 +561,7 @@ const toListRow = (r: DbJobList): JobListRow => {
             afterBytes: r.r_after_bytes,
             replacedTo: r.r_replaced_to,
             sourceDamaged: r.r_source_damaged === 1,
+            restored: r.r_restored === 1,
           },
     problems: r.r_problems_json === null ? [] : (JSON.parse(r.r_problems_json) as string[]),
     estimatedBytes: r.dry_run !== 0 ? r.r_estimated_bytes : null,

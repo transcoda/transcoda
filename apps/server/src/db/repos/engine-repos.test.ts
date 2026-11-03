@@ -659,6 +659,23 @@ describe('jobs', () => {
     expect(hasActiveJobAt(db, '/media/tv/other.mkv')).toBe(false);
   });
 
+  it('listJobs: a job whose original is restored says so until the restore is undone', () => {
+    job('rs');
+    updateJob(db, 'rs', { state: 'done' }, now);
+    insertJobResult(db, result('rs'));
+    expect(listJobs(db, {})[0]?.result).toMatchObject({ restored: false });
+    insertRestore(db, {
+      id: 'rs1',
+      jobId: 'rs',
+      restoredAt: now.toISOString(),
+      restoredBy: 'u1',
+      sidecarPaths: [],
+    });
+    expect(listJobs(db, {})[0]?.result).toMatchObject({ restored: true });
+    markRestoreUndone(db, 'rs1', now.toISOString(), 'u1');
+    expect(listJobs(db, {})[0]?.result).toMatchObject({ restored: false });
+  });
+
   it('restores: insert, find the active one, mark it undone', () => {
     job('s');
     insertRestore(db, {
