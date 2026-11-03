@@ -167,6 +167,28 @@ describe('pruneRecycle', () => {
     );
   }
 
+  it('a row whose job has a restore journal is never pruned', async () => {
+    inFlight('restoring.mkv', false);
+    updateJob(
+      db,
+      'restoring.mkv',
+      {
+        restoreJournal: {
+          direction: 'restore',
+          restoreId: 's1',
+          libraryRoot: root,
+          moves: [{ from: join(root, 'restoring.mkv'), to: join(bin, 'x'), role: 'output' }],
+          next: 0,
+        },
+      },
+      now,
+    );
+    const kept = await recycled('restoring.mkv', 500, daysAgo(30));
+    const r = await pruneRecycle(db, roomy, { retentionDays: 7, maxFreePercent: 25, now, log });
+    expect(r).toEqual({ removed: 0, bytes: 0 });
+    expect(listRecycled(db).map((x) => x.path)).toEqual([kept]);
+  });
+
   it('never removes the recycled original of a job whose replace is in flight (retention or cap)', async () => {
     inFlight('old-inflight.mkv');
     const kept = await recycled('old-inflight.mkv', 500, daysAgo(30));

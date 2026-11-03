@@ -411,6 +411,8 @@ async function settleJournal(
             jobId: job.id,
             sizeBytes: j.fingerprint.sizeBytes,
             recycledAt: now.toISOString(),
+            kind: 'original',
+            originalPath: job.path,
           },
           log,
         );

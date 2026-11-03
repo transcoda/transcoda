@@ -2,9 +2,10 @@ import { dirname, join } from 'node:path';
 import type { Database } from '../db/open.ts';
 import {
   deleteRecycled,
-  hasReplaceJournal,
+  hasFileJournal,
   insertRecycled,
   listRecycled,
+  type RecycledInsert,
   type RecycledRow,
 } from '../db/repos/jobs.ts';
 import type { Logger } from '../logger.ts';
@@ -14,7 +15,7 @@ import { errorCode, type FsOps } from './fs-ops.ts';
  * Records a recycled original (`insertRecycled`) and logs when that replaced a stale row: one whose
  * original had been moved back out of the recycle folder by hand (C5).
  */
-export function recordRecycledRow(db: Database, row: RecycledRow, log: Logger): void {
+export function recordRecycledRow(db: Database, row: RecycledInsert, log: Logger): void {
   const stale = insertRecycled(db, row);
   if (stale && stale.jobId !== row.jobId) {
     log.warn({
@@ -52,7 +53,7 @@ export async function pruneRecycle(
   let removed = 0;
   let bytes = 0;
   /** Unlinks the file and drops the row; returns the bytes freed (null when it could not). */
-  const inFlight = (row: RecycledRow): boolean => hasReplaceJournal(db, row.jobId);
+  const inFlight = (row: RecycledRow): boolean => hasFileJournal(db, row.jobId);
   const remove = async (row: RecycledRow): Promise<number | null> => {
     if (inFlight(row)) return null;
     let freed = row.sizeBytes;

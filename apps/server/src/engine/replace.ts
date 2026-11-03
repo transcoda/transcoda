@@ -1,7 +1,7 @@
 import type { Stats } from 'node:fs';
 import { basename, dirname, isAbsolute, join, relative } from 'node:path';
 import { type Database, durably } from '../db/open.ts';
-import { type RecycledRow, type ReplaceJournal, updateJob } from '../db/repos/jobs.ts';
+import { type RecycledInsert, type ReplaceJournal, updateJob } from '../db/repos/jobs.ts';
 import type { Logger } from '../logger.ts';
 import { type Fingerprint, sameFingerprint } from './fingerprint.ts';
 import { errorCode, type FsOps, renameNoClobber, syncDir, syncDirs, syncFile } from './fs-ops.ts';
@@ -30,7 +30,7 @@ export interface ReplaceDeps {
   /** Synchronous SQLite write of the *intent*, completed before the action it names starts. */
   journal(j: ReplaceJournal | null): void;
   /** Records the recycled original (the `recycled` index), right after it is moved there. */
-  recordRecycled(row: RecycledRow): void;
+  recordRecycled(row: RecycledInsert): void;
   /**
    * Called while the original's filesystem lacks room; resolves when it is worth re-checking.
    * Gets the replace's `signal`; the replace stops waiting on abort whether or not it listens.
@@ -339,6 +339,8 @@ export async function replaceOriginal(
         jobId,
         sizeBytes: origStat.size,
         recycledAt: deps.now().toISOString(),
+        kind: 'original',
+        originalPath,
       });
     }
 

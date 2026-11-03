@@ -71,6 +71,8 @@ describe('recycleSidecars', () => {
         jobId: 'job1',
         sizeBytes: 5,
         recycledAt: NOW.toISOString(),
+        kind: 'sidecar',
+        originalPath: join(root, 'Show', 'a.de.srt'),
       },
     ]);
   });
