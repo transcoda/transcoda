@@ -213,7 +213,7 @@ export async function startupSweep(db: Database, deps: SweepDeps): Promise<Sweep
     journaledIds.add(job.id);
     let outcome: 'rolled-back' | 'conflict';
     try {
-      outcome = await rollBackRestore({ db, fs, now: deps.now, log }, job);
+      outcome = (await rollBackRestore({ db, fs, now: deps.now, log }, job)).outcome;
     } catch (err) {
       log.error({ msg: 'could not roll back a restore', job: job.id, error: message(err) });
       outcome = 'conflict';

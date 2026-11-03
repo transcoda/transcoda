@@ -190,6 +190,11 @@ export interface RestoreMove {
   from: string;
   to: string;
   role: 'output' | 'original' | 'sidecar';
+  /**
+   * The fingerprint key of the file at `from` when the move was planned, so a rollback can tell
+   * Transcoda's file from one another program put there meanwhile. Absent in older journals.
+   */
+  key?: string;
 }
 
 /**

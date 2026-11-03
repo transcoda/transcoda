@@ -325,6 +325,56 @@ describe('restoreRecycled', () => {
     expect(findActiveRestore(db, 'j1')).toBeNull();
   });
 
+  it('another program writing the file between the moves: the restore stops, keeps both files and never wedges the job', async () => {
+    const foreign = randomBytes(77);
+    const fs = {
+      ...nodeFsOps,
+      unlink: async (p: string) => {
+        await nodeFsOps.unlink(p);
+        if (p === `${root}/Show/a.mkv`) await writeFile(p, foreign);
+      },
+    };
+    const r = await restoreRecycled({ ...deps, fs }, input());
+    expect(r).toEqual({
+      kind: 'failed',
+      reason:
+        'Restoring stopped because another program wrote to the same place meanwhile. Nothing was lost; the recycle folder holds both versions.',
+    });
+    expect(await size(`${root}/Show/a.mkv`)).toBe(77);
+    expect(await size(`${bin}/Show/a.mkv`)).toBe(1000);
+    expect(await size(`${bin}/Show/a.mkv.1`)).toBe(300);
+    expect(findJob(db, 'j1')?.restoreJournal).toBeNull();
+    expect(findRecycled(db, `${bin}/Show/a.mkv.1`)).toMatchObject({
+      kind: 'restored-output',
+      sizeBytes: 300,
+      originalPath: `${root}/Show/a.mkv`,
+      restoreId: null,
+    });
+    expect(findRecycled(db, `${bin}/Show/a.mkv`)).not.toBeNull();
+    expect(findActiveRestore(db, 'j1')).toBeNull();
+  });
+
+  it('a file appearing at the recycle name before the first move: nothing moved, the stranger is left alone', async () => {
+    let made = false;
+    const fs = {
+      ...nodeFsOps,
+      link: async (a: string, b: string) => {
+        if (!made && b === `${bin}/Show/a.mkv.1`) {
+          made = true;
+          await writeFile(b, 'stranger');
+        }
+        await nodeFsOps.link(a, b);
+      },
+    };
+    const r = await restoreRecycled({ ...deps, fs }, input());
+    expect(r).toMatchObject({ kind: 'failed' });
+    expect((r as { reason: string }).reason).toMatch(/^Restoring failed and nothing was changed/);
+    expect(await size(`${root}/Show/a.mkv`)).toBe(300);
+    expect(await size(`${bin}/Show/a.mkv.1`)).toBe(8);
+    expect(findRecycled(db, `${bin}/Show/a.mkv.1`)).toBeNull();
+    expect(findJob(db, 'j1')?.restoreJournal).toBeNull();
+  });
+
   // Review Focus 1
   it('two restores of one job at once: one wins, the other is refused', async () => {
     const [a, b] = await Promise.all([

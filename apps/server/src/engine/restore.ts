@@ -60,6 +60,8 @@ const REASON = {
   undone: 'This restore was undone already.',
   noFolder: "Transcoda can't tell which recycle folder this file is in.",
   inFlight: 'This file is already being restored.',
+  raced:
+    'Restoring stopped because another program wrote to the same place meanwhile. Nothing was lost; the recycle folder holds both versions.',
 } as const;
 
 /**
@@ -221,9 +223,10 @@ export async function restoreRecycled(
       }
       log.warn({ msg: 'restore move failed; rolling back', job: job.id, code: why(err) });
       const current = findJob(db, job.id) as JobRow;
-      const outcome = await rollBackRestore(deps, current);
+      const back = await rollBackRestore(deps, current);
+      if (back.keptAside.length > 0) return { kind: 'failed', reason: REASON.raced };
       const tail =
-        outcome === 'conflict' ? '; some files could not be put back, see the server log' : '';
+        back.outcome === 'conflict' ? '; some files could not be put back, see the server log' : '';
       return {
         kind: 'failed',
         reason: `Restoring failed and nothing was changed: ${why(err)}${tail}`,
@@ -341,9 +344,20 @@ async function planMoves(
 
   const taken = new Set<string>();
   const aside = await firstFree(fs, folder, root, job.path, taken);
+  const keyOf = (st: Stats): string => fingerprintKey(fingerprintFromStats(st));
   const moves: RestoreMove[] = [
-    { from: job.path, to: aside, role: direction === 'restore' ? 'output' : 'original' },
-    { from: row.path, to: job.path, role: direction === 'restore' ? 'original' : 'output' },
+    {
+      from: job.path,
+      to: aside,
+      role: direction === 'restore' ? 'output' : 'original',
+      key: atKey as string,
+    },
+    {
+      from: row.path,
+      to: job.path,
+      role: direction === 'restore' ? 'original' : 'output',
+      key: keyOf(copy),
+    },
   ];
   const sidecars: SidecarPlan[] = [];
   const notRestored: string[] = [];
@@ -371,6 +385,7 @@ async function planMoves(
         from: p,
         to: await firstFree(fs, folder, root, p, taken),
         role: 'sidecar',
+        key: keyOf(st),
       };
       moves.push(move);
       sidecars.push({ move, row: null, sizeBytes: st.size });
@@ -379,27 +394,46 @@ async function planMoves(
   return { moves, sidecars, notRestored, atPathBytes: atPath?.size ?? 0 };
 }
 
+/** What a rollback did: `keptAside` lists files left in the recycle folder (see below). */
+export interface RestoreRollback {
+  outcome: 'rolled-back' | 'conflict';
+  keptAside: string[];
+}
+
+/** The kind a file moved into the recycle folder is recorded as, by its role. */
+const ASIDE_KIND = { output: 'restored-output', original: 'original', sidecar: 'sidecar' } as const;
+
 /**
  * Undoes the moves of the job's restore journal from `next` down to the first, reading only the
  * disk: a file at `to` and none at `from` goes back; the same file under both names (half a
- * link + unlink) loses its `to` name; only `from` there means the move never ran. Anything else is
- * a conflict for the video files (logged, the journal kept) and skipped for a subtitle file. The
- * database records are only written once every move is done, so they never need undoing.
+ * link + unlink) loses its `to` name; only `from` there means the move never ran.
+ *
+ * Two different files at `from` and `to`: when the one at `to` is not the file the move planned
+ * (its fingerprint key differs), the move never ran and a stranger took `to`; it is left alone.
+ * When it is ours, another program wrote `from` after the move: ours stays where it is and, when
+ * that is the recycle folder, is recorded there, so nothing is lost and the job is not wedged.
+ * Anything else is a conflict for the video files (logged, the journal kept) and skipped for a
+ * subtitle file. The database records are only written once every move is done, so they never
+ * need undoing.
  */
-export async function rollBackRestore(
-  deps: RestoreDeps,
-  job: JobRow,
-): Promise<'rolled-back' | 'conflict'> {
-  const { fs, log } = deps;
+export async function rollBackRestore(deps: RestoreDeps, job: JobRow): Promise<RestoreRollback> {
+  const { db, fs, log } = deps;
   const j = job.restoreJournal;
-  if (j === null) return 'rolled-back';
+  if (j === null) return { outcome: 'rolled-back', keptAside: [] };
   let conflict = false;
+  const keptAside: { move: RestoreMove; sizeBytes: number }[] = [];
   for (let i = Math.min(j.next, j.moves.length - 1); i >= 0; i -= 1) {
     const move = j.moves[i] as RestoreMove;
     const [from, to] = [
       await statOrNull(fs, move.from, 'lstat'),
       await statOrNull(fs, move.to, 'lstat'),
     ];
+    const toIsOurs =
+      to !== null &&
+      move.key !== undefined &&
+      fingerprintKey(fingerprintFromStats(to)) === move.key;
+    // Where a move's `to` is in the recycle folder: the set-aside file, and an undo's subtitles.
+    const toRecycle = j.direction === 'restore' ? move.role === 'output' : move.role !== 'output';
     if (to !== null && from === null) {
       await renameNoClobber(fs, move.to, move.from);
       await syncDirs(fs, [dirname(move.from), dirname(move.to)], log);
@@ -408,6 +442,15 @@ export async function rollBackRestore(
       await syncDirs(fs, [dirname(move.to)], log);
     } else if (from !== null && to === null) {
       // The move never ran.
+    } else if (to !== null && move.key !== undefined && !toIsOurs) {
+      // The move never ran; another program's file is at `to`.
+    } else if (to !== null && toIsOurs && toRecycle) {
+      log.warn({
+        msg: 'restore raced another program; kept in the recycle folder',
+        job: job.id,
+        path: move.to,
+      });
+      keptAside.push({ move, sizeBytes: to.size });
     } else if (move.role === 'sidecar') {
       // A subtitle file someone else changed: left as it is.
     } else {
@@ -420,7 +463,22 @@ export async function rollBackRestore(
       conflict = true;
     }
   }
-  if (conflict) return 'conflict';
-  writeJournal(deps.db, job.id, null, deps.now());
-  return 'rolled-back';
+  if (conflict) return { outcome: 'conflict', keptAside: [] };
+  const at = deps.now().toISOString();
+  durably(db, () => {
+    for (const { move, sizeBytes } of keptAside) {
+      insertRecycled(db, {
+        path: move.to,
+        libraryId: job.libraryId,
+        jobId: job.id,
+        sizeBytes,
+        recycledAt: at,
+        kind: ASIDE_KIND[move.role],
+        originalPath: move.from,
+        restoreId: null,
+      });
+    }
+    updateJob(db, job.id, { restoreJournal: null }, deps.now());
+  });
+  return { outcome: 'rolled-back', keptAside: keptAside.map((k) => k.move.to) };
 }
