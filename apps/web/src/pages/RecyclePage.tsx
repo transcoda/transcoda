@@ -1,5 +1,5 @@
 import type { RecycledEntry, RecycleListOutput } from '@transcoda/contract';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useLocation, useSearch } from 'wouter';
 import { api, isDefinedError, safe } from '../api/client.ts';
 import { describeError } from '../api/errors.ts';
@@ -51,7 +51,16 @@ export function RecyclePage() {
     [asked],
   );
   const phone = usePhone();
+  const toast = useToast();
   const library = data?.library ?? null;
+  // A link to a library that was deleted since (the job page's undo link): show the default one.
+  const goneLibrary =
+    asked !== undefined && Boolean(error) && describeError(error).code === 'NOT_FOUND';
+  useEffect(() => {
+    if (!goneLibrary) return;
+    toast.info("That library doesn't exist any more.");
+    navigate('/recycle', { replace: true });
+  }, [goneLibrary, toast, navigate]);
 
   return (
     <div className="page recycle-page">
@@ -72,7 +81,7 @@ export function RecyclePage() {
         ) : null}
       </div>
 
-      {error ? (
+      {error && !goneLibrary ? (
         <div className="alert alert-danger" role="alert">
           <Icon name="cross" strokeWidth={2.4} round />
           <span>Could not load the recycle folder: {describeError(error).message}</span>

@@ -9,6 +9,7 @@ vi.mock('../api/client.ts', async () => {
   return { api: mocks, isDefinedError: orpc.isDefinedError, safe: orpc.safe };
 });
 
+import { ORPCError } from '@orpc/client';
 import type { RecycledEntry, RecycleListOutput } from '@transcoda/contract';
 import { fmtDate } from '../lib/time.ts';
 import { renderAt } from '../test/render.tsx';
@@ -136,6 +137,20 @@ describe('RecyclePage', () => {
   it('reads the library from the address', async () => {
     await open('/recycle?library=l2');
     expect(mocks.recycle.list).toHaveBeenCalledWith({ libraryId: 'l2' });
+  });
+
+  it('a library that no longer exists falls back to the default one and says so', async () => {
+    mocks.recycle.list.mockImplementation(async (input: { libraryId?: string }) => {
+      if (input.libraryId === 'gone') {
+        throw new ORPCError('NOT_FOUND', { defined: true, status: 404, message: 'Not found' });
+      }
+      return listing(ENTRIES);
+    });
+    const view = await open('/recycle?library=gone');
+    await waitFor(() => expect(view.location()).toBe('/recycle'));
+    expect(await screen.findByText(BIN)).toBeTruthy();
+    expect(screen.getByText("That library doesn't exist any more.")).toBeTruthy();
+    expect(screen.queryByRole('alert')).toBeNull();
   });
 
   it('shows the empty state', async () => {
