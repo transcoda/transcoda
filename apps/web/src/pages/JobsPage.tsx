@@ -34,7 +34,7 @@ import {
 } from '../jobs/jobText.ts';
 import { QueueLanes, QueuePausedNote, QueueToggle } from '../jobs/QueueBar.tsx';
 import { stateChangeTracker, useJobsList, useProblemCount } from '../jobs/useJobsList.ts';
-import { useQueue } from '../jobs/useQueue.ts';
+import { encodeStopped, useQueue } from '../jobs/useQueue.ts';
 import { fmtBytes } from '../lib/bytes.ts';
 import { usePageTitle } from '../lib/pageTitle.ts';
 import { fmtFull, fmtStamp, jobLastTime } from '../lib/time.ts';
@@ -308,11 +308,14 @@ function JobRow({
   job,
   controls,
   queuePaused,
+  frozen,
   withActions,
 }: {
   job: Job;
   controls: Controls;
   queuePaused: boolean;
+  /** An encode that stands still (paused queue, or waiting for a lane); its icon stays still. */
+  frozen: boolean;
   /** The list has a column for Pause / Cancel (some job on it is still active). */
   withActions: boolean;
 }) {
@@ -354,7 +357,7 @@ function JobRow({
         </span>
       </div>
       <div>
-        <JobStateChip job={job} />
+        <JobStateChip job={job} frozen={frozen} />
       </div>
       <div className="job-detail">
         {percent !== null ? <JobProgress job={job} percent={percent} /> : null}
@@ -616,7 +619,9 @@ export function JobsPage() {
                     {percent !== null ? <span className="mono">{percent}%</span> : null}
                   </div>
                   {percent !== null ? <JobProgress job={job} percent={percent} /> : null}
-                  {job.paused || job.dryRun ? <JobStateChip job={job} /> : null}
+                  {job.paused || job.dryRun ? (
+                    <JobStateChip job={job} frozen={encodeStopped(queue.status, job)} />
+                  ) : null}
                   <span className="phone-card-line">{phoneRunningLine(job)}</span>
                   <div className="phone-card-actions">
                     <JobActions job={job} controls={controls} block />
@@ -703,6 +708,7 @@ export function JobsPage() {
               job={job}
               controls={controls}
               queuePaused={queuePaused}
+              frozen={encodeStopped(queue.status, job)}
               withActions={withActions}
             />
           ))}

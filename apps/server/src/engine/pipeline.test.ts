@@ -1516,6 +1516,41 @@ describe('pipeline', () => {
     expect(spawner.calls).toEqual([]);
   });
 
+  it('a job that waited in the queue is already_processed when another job processed the file meanwhile', async () => {
+    const wf = v2Workflow();
+    const id = await queue(file(), wf);
+    await priorDone(wf, id, 2);
+    await t.deps.engine.start();
+    expect(await settled(id)).toMatchObject({ state: 'already_processed', workflowVersion: 2 });
+    expect(spawner.calls).toEqual([]);
+  });
+
+  it("a retried job isn't stopped by its own earlier failure at the same version", async () => {
+    const wf = v2Workflow();
+    const id = await queue(file(), wf);
+    insertJobResult(t.db, {
+      jobId: id,
+      fingerprint: fingerprintKey(await fingerprintOf(file())),
+      workflowId: wf,
+      workflowVersion: 2,
+      outcome: 'failed',
+      beforeBytes: 1000,
+      afterBytes: null,
+      estimatedBytes: null,
+      command: null,
+      plan: null,
+      replacedTo: null,
+      logPath: null,
+      warnings: [],
+      problems: [],
+      outputProbe: null,
+      sourceDamaged: false,
+      createdAt: '2026-10-01T10:00:00.000Z',
+    });
+    await t.deps.engine.start();
+    expect(await settled(id)).toMatchObject({ state: 'nothing_to_do', workflowVersion: 2 });
+  });
+
   it("a forced run's re-pinned job ignores the v3 history and runs", async () => {
     const wf = v2Workflow();
     const id = await queue(file(), wf, { force: true });

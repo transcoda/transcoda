@@ -87,6 +87,13 @@ async function queued(path: string, extra: Partial<QueueInput> = {}) {
   return r;
 }
 
+/** Ends every job still queued, so a rescan isn't skipped for a file another run holds. */
+function cancelQueued() {
+  db.prepare("UPDATE jobs SET state = 'cancelled', finished_at = ? WHERE state = 'queued'").run(
+    new Date().toISOString(),
+  );
+}
+
 function doneResult(jobId: string, fingerprint: string, extra: Partial<JobResultRow> = {}) {
   insertJobResult(db, {
     jobId,
@@ -287,6 +294,7 @@ describe('QueueService.queue', () => {
     if (!jobA) throw new Error('no job for a.mkv');
     updateJob(db, jobA.id, { state: 'done' }, new Date());
     doneResult(jobA.id, fingerprintKey(await fingerprintOf(a)));
+    cancelQueued();
 
     const second = await queued(join(root, 'Show'));
     expect(second.jobs.map((j) => [j.path.slice(root.length + 1), j.state, j.reason])).toEqual([
@@ -311,6 +319,7 @@ describe('QueueService.queue', () => {
       afterBytes: null,
     });
 
+    cancelQueued();
     const forced = await queued(join(root, 'Show'), { force: true });
     expect(forced.run.force).toBe(true);
     expect(forced.jobs.map((j) => j.state)).toEqual(['queued', 'queued']);
@@ -351,6 +360,7 @@ describe('QueueService.queue', () => {
       updateJob(db, job.id, { state: 'done' }, new Date());
       doneResult(job.id, fingerprintKey(await fingerprintOf(p)));
     }
+    cancelQueued();
     const scan = await queued(join(root, 'Show'));
     expect(scan.jobs.map((j) => j.state)).toEqual([
       'already_processed',
@@ -441,6 +451,7 @@ describe('QueueService.queue', () => {
     updateJob(db, dryJob.id, { state: 'failed' }, new Date());
     doneResult(dryJob.id, fp, { outcome: 'failed' });
     expect((await queued(a)).jobs.map((j) => j.state)).toEqual(['queued']);
+    cancelQueued();
 
     const real = await queued(a);
     const realJob = real.jobs[0];
@@ -448,6 +459,7 @@ describe('QueueService.queue', () => {
     updateJob(db, realJob.id, { state: 'failed' }, new Date());
     doneResult(realJob.id, fp, { outcome: 'failed', workflowVersion: 1 });
     expect((await queued(a)).jobs.map((j) => j.state)).toEqual(['queued']);
+    cancelQueued();
 
     const third = await queued(a);
     const thirdJob = third.jobs[0];
@@ -612,6 +624,22 @@ describe('QueueService.queue', () => {
     expect(next.run.workflowVersion).toBe(3);
     expect(next.jobs.map((j) => [j.state, j.workflowVersion])).toEqual([['already_processed', 3]]);
     expect(next.jobs[0]?.reason).toMatch(/^already done by v2 on /);
+  });
+
+  it('a file with a real job still queued or running is skipped by another real run, not run twice; a dry run may preview it', async () => {
+    const a = await settled(join(root, 'Show', 'a.mkv'));
+    const first = await queued(a);
+    expect(first.jobs[0]?.state).toBe('queued');
+    const again = await queued(a);
+    expect(again.jobs.map((j) => [j.state, j.reason])).toEqual([
+      ['skipped', 'already queued in another run'],
+    ]);
+    expect((await queued(a, { force: true })).jobs[0]?.state).toBe('skipped');
+    expect((await queued(a, { dryRun: true })).jobs[0]?.state).toBe('queued');
+    const job = first.jobs[0];
+    if (!job) throw new Error('no job');
+    updateJob(db, job.id, { state: 'cancelled' }, new Date());
+    expect((await queued(a)).jobs[0]?.state).toBe('queued');
   });
 
   it("run files carry each job's workflow version", async () => {
@@ -1105,6 +1133,21 @@ describe('QueueService.retryFailed', () => {
     });
     expect(findJob(db, jobB.id)?.state).toBe('done');
     expect(onQueued).toHaveBeenCalledTimes(1);
+  });
+
+  it('a job skipped because this one held the file does not count as newer: the failed job is retried', async () => {
+    const a = await settled(join(root, 'Show', 'a.mkv'));
+    const first = (await queued(a)).jobs[0];
+    if (!first) throw new Error('no job');
+    const skipped = (await queued(a)).jobs[0];
+    expect(skipped?.reason).toBe('already queued in another run');
+    // The skipped job is strictly newer, as the retry check compares.
+    const at = db.prepare('UPDATE jobs SET queued_at = ? WHERE id = ?');
+    at.run('2026-10-01T10:00:00.000Z', first.id);
+    at.run('2026-10-01T10:00:01.000Z', skipped?.id ?? '');
+    updateJob(db, first.id, { state: 'failed', reason: 'ffmpeg exited 1' }, new Date());
+    expect(svc.retryFailed()).toEqual({ retried: 1 });
+    expect(findJob(db, first.id)?.state).toBe('queued');
   });
 
   it('a retried job starts with no failed GPUs', async () => {

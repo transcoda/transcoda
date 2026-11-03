@@ -939,7 +939,8 @@ export function alreadyProcessedReason(prior: PriorRun): string {
  * processed it (`done`, `nothing_to_do`, `kept_original`) at any version, as its source or its
  * output; failing that, the newest `failed` result at `workflowVersion` (a newer version still
  * tries a file an older one failed on). `sameVersion` limits the processed match to
- * `workflowVersion` too, for dry runs (a preview of a version keeps its own history). Dry-run
+ * `workflowVersion` too, for dry runs (a preview of a version keeps its own history).
+ * `processedOnly` skips the failed match (a job starting again after its own failure). Dry-run
  * results never count.
  */
 export function findPriorRun(
@@ -947,7 +948,7 @@ export function findPriorRun(
   key: string,
   workflowId: string,
   workflowVersion: number,
-  opts: { sameVersion?: boolean } = {},
+  opts: { sameVersion?: boolean; processedOnly?: boolean } = {},
 ): PriorRun | null {
   const processed = findProcessedResult(db, {
     by: 'fingerprint',
@@ -959,6 +960,7 @@ export function findPriorRun(
     const { outcome, workflowVersion: v, createdAt, matched } = processed;
     return { outcome, workflowVersion: v, createdAt, matched };
   }
+  if (opts.processedOnly) return null;
   const failed = db
     .prepare(
       `SELECT r.created_at AS createdAt FROM job_results r JOIN jobs j ON j.id = r.job_id

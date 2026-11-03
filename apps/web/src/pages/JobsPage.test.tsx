@@ -186,6 +186,13 @@ async function push(e: EngineEvent) {
 const rowOf = (fileName: string) =>
   screen.getByRole('link', { name: fileName }).closest('.job-row') as HTMLElement;
 
+/** The lanes rows as one line: "Encode lane: idle · Quick lane: idle". */
+const lanesText = (el: HTMLElement) =>
+  Array.from(
+    el.querySelectorAll('.lane'),
+    (r) => `${r.querySelector('dt')?.textContent}: ${r.querySelector('dd')?.textContent}`,
+  ).join(' · ');
+
 describe('JobsPage', () => {
   it('"Retry failed" queues every failed job again and says how many; hidden with none failed', async () => {
     mocks.retryFailed.mockResolvedValue({ retried: 2 });
@@ -721,7 +728,7 @@ describe('JobsPage', () => {
 
   it('Pause queue calls queue.pause and shows the paused banner; lanes line names the running file', async () => {
     await renderPage();
-    expect((await screen.findByTestId('lanes')).textContent).toBe(
+    expect(lanesText(await screen.findByTestId('lanes'))).toBe(
       'Encode lane: Bluey S01E04.mp4 · Quick lane: idle',
     );
     fireEvent.click(screen.getByRole('button', { name: 'Pause queue' }));
@@ -743,7 +750,7 @@ describe('JobsPage', () => {
       lanes: { encode: null, quick: 'j-severance' },
       encodeSlots: [],
     });
-    expect(screen.getByTestId('lanes').textContent).toBe(
+    expect(lanesText(screen.getByTestId('lanes'))).toBe(
       'Encode lane: idle · Quick lane: Severance S02E01.mkv',
     );
     expect(screen.getByRole('button', { name: 'Resume queue' })).toBeTruthy();

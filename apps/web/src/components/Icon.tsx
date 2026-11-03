@@ -7,7 +7,7 @@
 // are lucide's (ISC licence) path data; plug-off is the handoff's plugin icon with a slash
 // (screen 05's "plugin missing" badge). undo and redo are lucide's undo-2 and redo-2.
 // The job state icons (state-running, state-queued, state-kept, state-noop, state-skipped) are
-// screen 07's (the noop circle is dashed by its chip's CSS); menu is screen 08's. tidy (three cards
+// screen 07's; state-planned is the hourglass of a job waiting for its lane (the noop circle is dashed by its chip's CSS); menu is screen 08's. tidy (three cards
 // in a row, the canvas's "Tidy up") follows the same stroke style.
 // All are decorative (aria-hidden); the adjacent text carries the meaning.
 const graph = (
@@ -126,6 +126,8 @@ const PATHS = {
   menu: <path d="M4 7h16M4 12h16M4 17h16" />,
   'state-running': <path d="M12 3a9 9 0 109 9" />,
   'state-queued': <path d="M12 7v5l3 2M12 3a9 9 0 100 18 9 9 0 000-18" />,
+  /* An hourglass: planned, waiting for its encode lane (never the turning arc of a working job). */
+  'state-planned': <path d="M6 3h12M6 21h12M7 3v3a5 5 0 0010 0V3M7 21v-3a5 5 0 0110 0v3" />,
   'state-kept': <path d="M9 14l-4-4 4-4M5 10h9a5 5 0 010 10h-2" />,
   /* A circle with a dash (nothing to do), never an open arc: that reads as a spinner. */
   'state-noop': <path d="M12 4a8 8 0 100 16 8 8 0 000-16M8.5 12h7" />,
