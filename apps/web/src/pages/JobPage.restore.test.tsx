@@ -152,6 +152,18 @@ describe('JobPage: Restore original', () => {
         "Couldn't restore the original: The original is no longer in the recycle folder (removed by hand).",
       ),
     ).toBeTruthy();
+    // A refusal can still change things (a gone original's entry is dropped): the job reloads.
+    await waitFor(() => expect(mocks.jobs.get).toHaveBeenCalledTimes(2));
+  });
+
+  it('an unexpected error also reloads the job, since files may have moved', async () => {
+    mocks.recycle.restore.mockRejectedValue(new Error('database is locked'));
+    await open();
+    fireEvent.click(await screen.findByRole('button', { name: 'Restore original' }));
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Restore original' }));
+    expect(await screen.findByText(/^Couldn't restore the original: /)).toBeTruthy();
+    await waitFor(() => expect(mocks.jobs.get).toHaveBeenCalledTimes(2));
   });
 
   it('a restored job says when and by whom, and offers no Restore', async () => {

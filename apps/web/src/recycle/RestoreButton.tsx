@@ -8,8 +8,10 @@ import { useToast } from '../components/Toast.tsx';
 /**
  * "Restore original" (or, for a restore's set-aside output, "Put Transcoda's version back"): asks
  * first, naming where the file goes, then calls `recycle.restore` with the recycle entry's `path`.
- * Success is a toast (naming any subtitle file that stayed) and `onDone`; a refusal is a toast
- * with the server's reason. The job page and the Recycle page both use it.
+ * Success is a toast (naming any subtitle file that stayed); a refusal or error is a toast with the
+ * reason. `onDone` runs either way (null output on a failure): a refusal can drop a stale entry and
+ * a failed restore may have moved files, so the caller reloads. The job page and the Recycle page
+ * both use it.
  */
 export function RestoreButton({
   path,
@@ -24,7 +26,7 @@ export function RestoreButton({
   /** Where the file goes back to (the job's path). */
   targetPath: string;
   direction: 'restore' | 'undo';
-  onDone(out: RecycleRestoreOutput): void;
+  onDone(out: RecycleRestoreOutput | null): void;
 }) {
   const toast = useToast();
   const [confirm, setConfirm] = useState(false);
@@ -45,6 +47,7 @@ export function RestoreButton({
       toast.error(
         `${restore ? "Couldn't restore the original" : "Couldn't put Transcoda's version back"}: ${why}`,
       );
+      onDone(null);
       return;
     }
     const done = restore ? 'Original restored' : "Transcoda's version is back";
