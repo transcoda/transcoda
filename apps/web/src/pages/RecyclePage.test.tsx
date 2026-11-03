@@ -171,3 +171,109 @@ describe('RecyclePage', () => {
     expect(cards[0]?.textContent).toContain('Show/a.de.srt');
   });
 });
+
+describe('RecyclePage actions', () => {
+  const rowOf = (name: string): HTMLElement => screen.getByText(name).closest('tr') as HTMLElement;
+
+  it('an original row restores, a restored-output row undoes, both through RestoreButton', async () => {
+    mocks.recycle.restore.mockResolvedValue({
+      jobId: 'j1',
+      direction: 'restored',
+      notRestored: [],
+    });
+    await open();
+    await screen.findByText(BIN);
+    expect(within(rowOf('Show/a.de.srt')).queryByRole('button')).toBeNull();
+
+    fireEvent.click(within(rowOf('Show/a.mkv')).getByRole('button', { name: 'Restore original' }));
+    let dialog = await screen.findByRole('dialog', { name: 'Restore the original of a.mkv?' });
+    expect(dialog.textContent).toContain('The original goes back to Show/a.mkv.');
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Restore original' }));
+    await waitFor(() =>
+      expect(mocks.recycle.restore).toHaveBeenCalledWith({ path: `${BIN}/Show/a.mkv` }),
+    );
+    await waitFor(() => expect(mocks.recycle.list).toHaveBeenCalledTimes(2));
+
+    mocks.recycle.restore.mockResolvedValue({ jobId: 'j2', direction: 'undone', notRestored: [] });
+    fireEvent.click(
+      within(rowOf('Show/b.mkv')).getByRole('button', { name: "Put Transcoda's version back" }),
+    );
+    dialog = await screen.findByRole('dialog', { name: "Put Transcoda's version back?" });
+    fireEvent.click(within(dialog).getByRole('button', { name: "Put Transcoda's version back" }));
+    await waitFor(() =>
+      expect(mocks.recycle.restore).toHaveBeenLastCalledWith({ path: `${BIN}/Show/b.mkv.1` }),
+    );
+    await waitFor(() => expect(mocks.recycle.list).toHaveBeenCalledTimes(3));
+  });
+
+  it('Delete asks first and is permanent', async () => {
+    mocks.recycle.delete.mockResolvedValue({ bytes: 1000 });
+    await open();
+    await screen.findByText(BIN);
+    fireEvent.click(within(rowOf('Show/a.mkv')).getByRole('button', { name: 'Delete' }));
+    let dialog = await screen.findByRole('dialog', { name: 'Delete a.mkv for good?' });
+    expect(
+      within(dialog).getByText(
+        "This deletes the file from the recycle folder. It can't be undone.",
+      ),
+    ).toBeTruthy();
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+    expect(mocks.recycle.delete).not.toHaveBeenCalled();
+
+    fireEvent.click(within(rowOf('Show/a.mkv')).getByRole('button', { name: 'Delete' }));
+    dialog = await screen.findByRole('dialog', { name: 'Delete a.mkv for good?' });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Delete' }));
+    await waitFor(() =>
+      expect(mocks.recycle.delete).toHaveBeenCalledWith({ path: `${BIN}/Show/a.mkv` }),
+    );
+    await waitFor(() => expect(mocks.recycle.list).toHaveBeenCalledTimes(2));
+  });
+
+  it('Empty folder states the count and size, sends the newest listed time, and reports skipped files', async () => {
+    mocks.recycle.list.mockResolvedValue(
+      listing([
+        entry({ sizeBytes: 1_000_000_000, recycledAt: '2026-11-01T10:00:00.000Z' }),
+        entry({
+          path: `${BIN}/Show/c.mkv`,
+          relativePath: 'Show/c.mkv',
+          sizeBytes: 200_000_000,
+          jobId: 'j3',
+          recycledAt: '2026-11-03T10:00:00.000Z',
+        }),
+        entry({
+          path: `${BIN}/Show/d.mkv`,
+          relativePath: 'Show/d.mkv',
+          sizeBytes: 100_000_000,
+          jobId: 'j4',
+          recycledAt: '2026-11-02T10:00:00.000Z',
+        }),
+      ]),
+    );
+    mocks.recycle.empty.mockResolvedValue({ removed: 2, bytes: 1_200_000_000, skipped: 1 });
+    await open();
+    await screen.findByText(BIN);
+    fireEvent.click(screen.getByRole('button', { name: 'Empty folder' }));
+    const dialog = await screen.findByRole('dialog', {
+      name: 'Empty the recycle folder of Shows?',
+    });
+    expect(within(dialog).getByText('This deletes 3 files (1.30 GB) for good.')).toBeTruthy();
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Empty folder' }));
+    await waitFor(() =>
+      expect(mocks.recycle.empty).toHaveBeenCalledWith({
+        libraryId: 'l1',
+        throughRecycledAt: '2026-11-03T10:00:00.000Z',
+      }),
+    );
+    expect(
+      await screen.findByText('Deleted 2 files; 1 was skipped because its job is still writing'),
+    ).toBeTruthy();
+    await waitFor(() => expect(mocks.recycle.list).toHaveBeenCalledTimes(2));
+  });
+
+  it('Empty folder is not offered when the folder is empty', async () => {
+    mocks.recycle.list.mockResolvedValue(listing([]));
+    await open();
+    await screen.findByText("Nothing in this library's recycle folder.");
+    expect(screen.queryByRole('button', { name: 'Empty folder' })).toBeNull();
+  });
+});

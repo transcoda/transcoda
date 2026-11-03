@@ -1,21 +1,26 @@
 import type { RecycledEntry, RecycleListOutput } from '@transcoda/contract';
+import { useState } from 'react';
 import { Link, useLocation, useSearch } from 'wouter';
-import { api } from '../api/client.ts';
+import { api, isDefinedError, safe } from '../api/client.ts';
 import { describeError } from '../api/errors.ts';
+import { Dialog } from '../components/Dialog.tsx';
 import { Icon } from '../components/Icon.tsx';
 import { ListboxSelect } from '../components/ListboxSelect.tsx';
 import { Loading } from '../components/Loading.tsx';
+import { useToast } from '../components/Toast.tsx';
 import { useAsync } from '../hooks/useAsync.ts';
 import { fmtBytes } from '../lib/bytes.ts';
 import { usePageTitle } from '../lib/pageTitle.ts';
 import { fmtDate } from '../lib/time.ts';
 import { usePhone } from '../lib/usePhone.ts';
 import { groupRecycled } from '../recycle/groupRecycled.ts';
+import { RestoreButton } from '../recycle/RestoreButton.tsx';
 
 type Library = NonNullable<RecycleListOutput['library']>;
 
 const files = (n: number): string => `${n} ${n === 1 ? 'file' : 'files'}`;
 const days = (n: number): string => `${n} ${n === 1 ? 'day' : 'days'}`;
+const baseName = (p: string): string => p.slice(p.lastIndexOf('/') + 1);
 
 /** What an entry is, when it isn't a plain replaced original. */
 function kindNote(entry: RecycledEntry, grouped: boolean): string | null {
@@ -31,6 +36,10 @@ function kindNote(entry: RecycledEntry, grouped: boolean): string | null {
  * one, the first library with anything in it). Its folder, size and free space, the retention
  * note, and a row per entry with where it came from, its job, when it was recycled and when
  * retention deletes it. A subtitle file sits under its video's original. Cards on a phone.
+ *
+ * Row actions: Restore original (an original), Put Transcoda's version back (a restore's
+ * set-aside output), Delete (asks first; permanent). A subtitle file under its original has none:
+ * it comes back with it. Empty folder deletes every entry listed, up to the newest one shown.
  */
 export function RecyclePage() {
   usePageTitle('Recycle folder');
@@ -79,12 +88,20 @@ export function RecyclePage() {
         <p className="recycle-empty">No libraries yet, so nothing is recycled.</p>
       ) : null}
 
-      {library ? <LibraryFolder library={library} phone={phone} /> : null}
+      {library ? <LibraryFolder library={library} phone={phone} onChanged={reload} /> : null}
     </div>
   );
 }
 
-function LibraryFolder({ library, phone }: { library: Library; phone: boolean }) {
+function LibraryFolder({
+  library,
+  phone,
+  onChanged,
+}: {
+  library: Library;
+  phone: boolean;
+  onChanged(): void;
+}) {
   const groups = groupRecycled(library.entries);
   return (
     <>
@@ -99,6 +116,9 @@ function LibraryFolder({ library, phone }: { library: Library; phone: boolean })
           <Link href="/settings/recycle">Settings</Link>
           {').'}
         </p>
+        {library.entries.length > 0 ? (
+          <EmptyFolder library={library} onChanged={onChanged} />
+        ) : null}
       </section>
 
       {groups.length === 0 ? (
@@ -123,6 +143,9 @@ function LibraryFolder({ library, phone }: { library: Library; phone: boolean })
                 {`Recycled ${fmtDate(entry.recycledAt)} · Deleted on ${fmtDate(entry.deletesAt)} · `}
                 <Link href={`/jobs/${entry.jobId}`}>Job</Link>
               </span>
+              <div className="phone-card-actions">
+                <EntryActions entry={entry} onChanged={onChanged} />
+              </div>
             </div>
           ))}
         </div>
@@ -136,13 +159,27 @@ function LibraryFolder({ library, phone }: { library: Library; phone: boolean })
                 <th scope="col">Job</th>
                 <th scope="col">Recycled</th>
                 <th scope="col">Deleted</th>
+                <th scope="col">
+                  <span className="sr-only">Actions</span>
+                </th>
               </tr>
             </thead>
             <tbody>
               {groups.flatMap(({ entry, sidecars }) => [
-                <EntryRow key={entry.path} entry={entry} note={kindNote(entry, false)} />,
+                <EntryRow
+                  key={entry.path}
+                  entry={entry}
+                  note={kindNote(entry, false)}
+                  onChanged={onChanged}
+                />,
                 ...sidecars.map((s) => (
-                  <EntryRow key={s.path} entry={s} note={kindNote(s, true)} sidecar />
+                  <EntryRow
+                    key={s.path}
+                    entry={s}
+                    note={kindNote(s, true)}
+                    sidecar
+                    onChanged={onChanged}
+                  />
                 )),
               ])}
             </tbody>
@@ -157,10 +194,12 @@ function EntryRow({
   entry,
   note,
   sidecar = false,
+  onChanged,
 }: {
   entry: RecycledEntry;
   note: string | null;
   sidecar?: boolean;
+  onChanged(): void;
 }) {
   return (
     <tr className={sidecar ? 'recycle-sidecar' : undefined}>
@@ -174,6 +213,156 @@ function EntryRow({
       </td>
       <td className="recycle-cell">{fmtDate(entry.recycledAt)}</td>
       <td className="recycle-cell">{`Deleted on ${fmtDate(entry.deletesAt)}`}</td>
+      <td className="recycle-cell">
+        {sidecar ? null : (
+          <div className="recycle-actions">
+            <EntryActions entry={entry} onChanged={onChanged} />
+          </div>
+        )}
+      </td>
     </tr>
+  );
+}
+
+/** Restore (or put back) and Delete for one entry. */
+function EntryActions({ entry, onChanged }: { entry: RecycledEntry; onChanged(): void }) {
+  const toast = useToast();
+  const [confirm, setConfirm] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const name = baseName(entry.relativePath);
+
+  async function remove(): Promise<void> {
+    setConfirm(false);
+    setBusy(true);
+    const [err] = await safe(api.recycle.delete({ path: entry.path }));
+    setBusy(false);
+    if (err) {
+      const why =
+        isDefinedError(err) && err.code === 'RECYCLE_REFUSED'
+          ? err.data.reason
+          : describeError(err).message;
+      toast.error(`Couldn't delete ${name}: ${why}`);
+    } else {
+      toast.success(`Deleted ${name}`);
+    }
+    onChanged();
+  }
+
+  return (
+    <>
+      {entry.kind === 'sidecar' ? null : (
+        <RestoreButton
+          path={entry.path}
+          fileName={name}
+          targetPath={entry.relativePath}
+          direction={entry.kind === 'original' ? 'restore' : 'undo'}
+          onDone={onChanged}
+        />
+      )}
+      <button
+        type="button"
+        className="btn btn-sm btn-danger-outline"
+        disabled={busy}
+        onClick={() => setConfirm(true)}
+      >
+        Delete
+      </button>
+      <Dialog
+        open={confirm}
+        title={`Delete ${name} for good?`}
+        tone="danger"
+        onClose={() => setConfirm(false)}
+        footer={
+          <>
+            <button
+              type="button"
+              className="btn btn-sm btn-ghost"
+              data-autofocus
+              onClick={() => setConfirm(false)}
+            >
+              Cancel
+            </button>
+            <button type="button" className="btn btn-sm btn-danger" onClick={() => void remove()}>
+              Delete
+            </button>
+          </>
+        }
+      >
+        <p>This deletes the file from the recycle folder. It can't be undone.</p>
+      </Dialog>
+    </>
+  );
+}
+
+/**
+ * Empty folder: deletes every entry of the library recycled up to the newest one listed (what the
+ * person saw when confirming), skipping any whose job is still writing.
+ */
+function EmptyFolder({ library, onChanged }: { library: Library; onChanged(): void }) {
+  const toast = useToast();
+  const [confirm, setConfirm] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const newest = library.entries.reduce(
+    (max, e) => (e.recycledAt > max ? e.recycledAt : max),
+    library.entries[0]?.recycledAt ?? '',
+  );
+
+  async function empty(): Promise<void> {
+    setConfirm(false);
+    setBusy(true);
+    const [err, out] = await safe(
+      api.recycle.empty({ libraryId: library.id, throughRecycledAt: newest }),
+    );
+    setBusy(false);
+    if (err) {
+      toast.error(`Couldn't empty the recycle folder: ${describeError(err).message}`);
+    } else if (out.skipped > 0) {
+      toast.info(
+        `Deleted ${files(out.removed)}; ${out.skipped} ${
+          out.skipped === 1
+            ? 'was skipped because its job is still writing'
+            : 'were skipped because their jobs are still writing'
+        }`,
+      );
+    } else {
+      toast.success(`Deleted ${files(out.removed)}`);
+    }
+    onChanged();
+  }
+
+  return (
+    <div className="recycle-empty-action">
+      <button
+        type="button"
+        className="btn btn-sm btn-danger-outline"
+        disabled={busy}
+        onClick={() => setConfirm(true)}
+      >
+        Empty folder
+      </button>
+      <Dialog
+        open={confirm}
+        title={`Empty the recycle folder of ${library.name}?`}
+        tone="danger"
+        onClose={() => setConfirm(false)}
+        footer={
+          <>
+            <button
+              type="button"
+              className="btn btn-sm btn-ghost"
+              data-autofocus
+              onClick={() => setConfirm(false)}
+            >
+              Cancel
+            </button>
+            <button type="button" className="btn btn-sm btn-danger" onClick={() => void empty()}>
+              Empty folder
+            </button>
+          </>
+        }
+      >
+        <p>{`This deletes ${files(library.entries.length)} (${fmtBytes(library.totalBytes)}) for good.`}</p>
+      </Dialog>
+    </div>
   );
 }

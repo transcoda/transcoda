@@ -10422,3 +10422,11 @@ button.job-step-more:hover {
   flex-direction: column;
   gap: 12px;
 }
+.recycle-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+.recycle-empty-action {
+  margin-top: 4px;
+}

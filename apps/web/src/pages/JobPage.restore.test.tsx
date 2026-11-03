@@ -163,6 +163,9 @@ describe('JobPage: Restore original', () => {
     );
     await open();
     expect(screen.getByText(`Original restored on ${fmtDate(AT)} by jan`)).toBeTruthy();
+    expect(
+      screen.getByRole('link', { name: 'Undo from the recycle folder' }).getAttribute('href'),
+    ).toBe('/recycle?library=l1');
     expect(screen.queryByRole('button', { name: 'Restore original' })).toBeNull();
   });
 

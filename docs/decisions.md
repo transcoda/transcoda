@@ -1956,6 +1956,14 @@ Approved plan: `docs/plans/2026-10-21-dryrun-depends-on-size.md` (local).
 - **Afterwards.** A restored file is the job's source again (same inode and mtime), so the never-re-run rule makes it `already_processed` for every version until Process again. Space saved leaves out a job whose restore is in effect and counts it again after an undo. The job page shows "Original kept until <date>" (`recycledAt` + retention days) and, after a restore, "Original restored on <date> by <user>".
 - **Who.** A person's session only (`requireHumanSessionWith('Restore is a UI action')`), like Process again: no token scope and no MCP tool, since it moves files in the library.
 
+## 2026-11-02 Recycle folder page
+
+- **Where (#41).** A "Recycle folder" item in the main menu after Libraries (`/recycle`, icon `trash`). One library at a time, picked in a switcher showing each library's file count; without `?library=`, the first library whose folder holds anything (else the first). It shows the folder, its size, the free space on that disk, and the retention note with a link to Settings → Recycle folder.
+- **Rows.** One per `recycled` entry: where it came from in the library, size, its job, when it was recycled, and "Deleted on <date>" (recycled time + retention days; the free-space cap may delete it sooner). A subtitle file sits under its video's original and has no actions of its own (it comes back with it); one without that original is its own row. A restore's set-aside output is labelled "Transcoda's version (restored original)" and its Restore puts it back (the undo). A phone shows a card per row.
+- **Delete and Empty folder.** Both permanent, both confirmed (Empty states the count and size). They remove files only through `removeRecycledRow`, the code retention uses, so an entry whose job has a replace or restore journal is never removed: Delete refuses it, Empty skips and counts it. Empty sends the newest `recycledAt` the page listed, so a file recycled after the person looked stays.
+- **API.** `recycle.list` (`read` scope: tokens may look), `recycle.delete` and `recycle.empty` (a person's session only, "Deleting from the recycle folder is a UI action"). An unknown library is NOT_FOUND.
+- **Job page.** A restored job's line links to its library's Recycle folder page, where the undo is.
+
 ## Follow-ups (2026-10-17)
 
 - **mp4 video default normalisation.** `normalizeDefaults` treats video like subtitle when the output container is mp4: extra default video flags are cleared and the first kept non-cover video is flagged when none is (note `mp4 cannot have no default video`). The mp4 muxer enables a video track that was told "not default", which verify would report as a stream mismatch. Matroska passes the flag through, so mkv output is unchanged; cover pictures are never touched.
