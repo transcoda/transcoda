@@ -36,10 +36,11 @@ import {
   listRecycledForJob,
   listTrace,
   type ReplaceJournal,
+  recycledTotalsByLibrary,
   updateJob,
   type WalkStep,
 } from '../db/repos/jobs.ts';
-import { listLibraries } from '../db/repos/libraries.ts';
+import { findLibrary, listLibraries } from '../db/repos/libraries.ts';
 import { findActiveRestore } from '../db/repos/restores.ts';
 import { getSettingOr, SETTING_DEFAULTS, SETTING_KEYS } from '../db/repos/settings.ts';
 import { findUserById } from '../db/repos/users.ts';
@@ -60,7 +61,13 @@ import { logPathFor, Pipeline } from './pipeline.ts';
 import { type JobProbe, jobProbeOf } from './probe.ts';
 import type { ProcessSpawner } from './process.ts';
 import { QueueService } from './queue-service.ts';
-import { pruneRecycle } from './recycle.ts';
+import {
+  deleteRecycledEntry,
+  emptyRecycle,
+  pruneRecycle,
+  type RecycleView,
+  recycleView,
+} from './recycle.ts';
 import { fingerprintFromStats, type ReplaceDeps } from './replace.ts';
 import { type RestoreResult, restoreRecycled } from './restore.ts';
 import { closedLibraries, type RunHoursHold, runHoursHold, serverTimeZone } from './run-hours.ts';
@@ -296,6 +303,49 @@ export class EngineService {
   restoreRecycled(input: { path: string; userId: string }): Promise<RestoreResult> {
     const { db, fs, log } = this.deps;
     return restoreRecycled({ db, fs, now: () => this.deps.now(), log }, input);
+  }
+
+  /**
+   * The Recycle page: every library with its recycle totals, and one library's folder (the asked
+   * one; else the first with files, else the first). Null `library` when the id is unknown or
+   * there are no libraries.
+   */
+  async recycleList(libraryId?: string): Promise<{
+    libraries: { id: string; name: string; files: number; bytes: number }[];
+    library: (RecycleView & { name: string; retentionDays: number }) | null;
+  }> {
+    const { db } = this;
+    const totals = new Map(recycledTotalsByLibrary(db).map((t) => [t.libraryId, t]));
+    const all = listLibraries(db);
+    const libraries = all.map((l) => ({
+      id: l.id,
+      name: l.name,
+      files: totals.get(l.id)?.files ?? 0,
+      bytes: totals.get(l.id)?.bytes ?? 0,
+    }));
+    const picked =
+      libraryId !== undefined
+        ? all.find((l) => l.id === libraryId)
+        : (all.find((l) => (totals.get(l.id)?.files ?? 0) > 0) ?? all[0]);
+    if (picked === undefined) return { libraries, library: null };
+    const { retentionDays } = this.recycleSettings();
+    const view = await recycleView(db, this.deps.fs, picked, { retentionDays });
+    return { libraries, library: { ...view, name: picked.name, retentionDays } };
+  }
+
+  /** Deletes one recycle entry for good. */
+  deleteRecycled(path: string): ReturnType<typeof deleteRecycledEntry> {
+    return deleteRecycledEntry(this.db, this.deps.fs, path, this.deps.log);
+  }
+
+  /** Empties a library's recycle folder up to what was confirmed; null for an unknown library. */
+  async emptyRecycle(
+    libraryId: string,
+    throughRecycledAt: string,
+  ): Promise<{ removed: number; bytes: number; skipped: number } | null> {
+    const library = findLibrary(this.db, libraryId);
+    if (library === null || library.deletedAt !== null) return null;
+    return emptyRecycle(this.db, this.deps.fs, libraryId, throughRecycledAt, this.deps.log);
   }
 
   /** The job's recycle facts for its page: the kept original, and the restore in effect. */
