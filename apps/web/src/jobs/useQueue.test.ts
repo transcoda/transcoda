@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { frozenByQueue, type QueueState } from './useQueue.ts';
+import { encodeStopped, type QueueState } from './useQueue.ts';
 
 const status = (over: Partial<QueueState> = {}): QueueState => ({
-  paused: true,
+  paused: false,
   lanes: { encode: 'enc', quick: 'qk' },
   encodeSlots: [
     { id: 'gpu:0', label: 'GPU 0', jobId: 'gpu0' },
@@ -10,24 +10,30 @@ const status = (over: Partial<QueueState> = {}): QueueState => ({
   ],
   ...over,
 });
+const encoding = (id: string) => ({ id, state: 'encoding' as const });
 
-describe('frozenByQueue', () => {
-  it('a paused queue freezes the jobs holding a lane or a GPU slot, and no other', () => {
-    const encoding = (id: string) => ({ id, state: 'encoding' as const });
-    expect(['enc', 'qk', 'gpu0'].map((id) => frozenByQueue(status(), encoding(id)))).toEqual([
-      true,
-      true,
-      true,
+describe('encodeStopped', () => {
+  it('an encode holding a lane or a GPU slot works while the queue runs', () => {
+    expect(['enc', 'qk', 'gpu0'].map((id) => encodeStopped(status(), encoding(id)))).toEqual([
+      false,
+      false,
+      false,
     ]);
-    // A verifying job that gave its encode slot up, or one still probing, goes on working.
-    expect(frozenByQueue(status(), encoding('released'))).toBe(false);
-    // The quick lane keeps its holder through verify and replace, which a pause doesn't stop.
-    expect(frozenByQueue(status(), { id: 'qk', state: 'verifying' })).toBe(false);
-    expect(frozenByQueue(status(), { id: 'qk', state: 'replacing' })).toBe(false);
   });
 
-  it('nothing is frozen while the queue runs, or before its status loads', () => {
-    expect(frozenByQueue(status({ paused: false }), { id: 'enc', state: 'encoding' })).toBe(false);
-    expect(frozenByQueue(null, { id: 'enc', state: 'encoding' })).toBe(false);
+  it('a paused queue stops every encode', () => {
+    expect(encodeStopped(status({ paused: true }), encoding('enc'))).toBe(true);
+    expect(encodeStopped(status({ paused: true }), encoding('gpu0'))).toBe(true);
+  });
+
+  it('a resumed encode waiting for its lane (another job took it) stands still', () => {
+    expect(encodeStopped(status(), encoding('waiting'))).toBe(true);
+  });
+
+  it('verify, replace and preparation go on, paused queue or not; nothing before the status loads', () => {
+    for (const state of ['verifying', 'replacing', 'probing'] as const) {
+      expect(encodeStopped(status({ paused: true }), { id: 'qk', state })).toBe(false);
+    }
+    expect(encodeStopped(null, encoding('enc'))).toBe(false);
   });
 });

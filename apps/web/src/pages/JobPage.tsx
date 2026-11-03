@@ -53,7 +53,7 @@ import { ProcessAgain } from '../jobs/ProcessAgain.tsx';
 import { damagedSideOf, type StepContext } from '../jobs/steps.ts';
 import { TestEncodeFile } from '../jobs/TestEncodeFile.tsx';
 import { TestOutputPanel } from '../jobs/TestOutputPanel.tsx';
-import { frozenByQueue, useQueue } from '../jobs/useQueue.ts';
+import { encodeStopped, useQueue } from '../jobs/useQueue.ts';
 import { useNodeParam } from '../jobs/useTryOnFile.ts';
 import { usePageTitle } from '../lib/pageTitle.ts';
 
@@ -140,7 +140,7 @@ const ENCODE_STATES: readonly JobState[] = ['encoding', 'verifying', 'replacing'
 /** A running job's state chip; a paused queue stills its turning icon. */
 function QueueAwareChip({ job }: { job: JobDetail }) {
   const queue = useQueue();
-  return <JobStateChip job={job} frozen={frozenByQueue(queue.status, job)} />;
+  return <JobStateChip job={job} frozen={encodeStopped(queue.status, job)} />;
 }
 
 export function JobPage() {

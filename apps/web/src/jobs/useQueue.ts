@@ -40,21 +40,21 @@ export function useQueue(): Queue {
 }
 
 /**
- * The job is stopped by a queue pause: the queue is paused and the job is encoding in a lane it
- * holds (the encode lane, a GPU's slot or the quick lane); the pause stops only the encode's
- * process. A job that gave its encode slot up, is verifying or replacing, or is still preparing,
- * goes on working.
+ * An encoding job whose process stands still: the queue is paused (that stops the encode), or the
+ * job doesn't hold a lane (the encode lane, a GPU's slot or the quick lane), so it waits for one,
+ * as a resumed job does while another took its lane. Other states go on working (verify and
+ * replace run without a process the pause stops); false until the queue status loads.
  */
-export function frozenByQueue(
+export function encodeStopped(
   status: QueueState | null,
   job: { id: string; state: JobState },
 ): boolean {
-  if (!status?.paused || job.state !== 'encoding') return false;
-  const jobId = job.id;
+  if (status === null || job.state !== 'encoding') return false;
+  if (status.paused) return true;
   const { encode, quick } = status.lanes;
-  return (
-    encode === jobId ||
-    quick === jobId ||
-    (status.encodeSlots ?? []).some((slot) => slot.jobId === jobId)
-  );
+  const holdsLane =
+    encode === job.id ||
+    quick === job.id ||
+    (status.encodeSlots ?? []).some((slot) => slot.jobId === job.id);
+  return !holdsLane;
 }
