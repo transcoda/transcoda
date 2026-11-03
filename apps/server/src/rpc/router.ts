@@ -89,6 +89,7 @@ export function createRouter() {
     runs: {
       list: runs.list,
       get: runs.get,
+      processAgain: runs.processAgain,
     },
     events: {
       subscribe: events.subscribe,

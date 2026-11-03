@@ -248,7 +248,7 @@ cd /mnt/copyrun/media
 mv -f ".transcoda-recycle/Shows/Example/episode.mkv" "Shows/Example/episode.mkv"
 ```
 
-A restored file keeps the fingerprint it had before the run (`mv` keeps its inode, size and mtime), so the next run over that folder leaves it alone: it ends `already_processed` with `already done on <date>; this file is the original from before then (moved back from the recycle folder?); run with force to process it again`. Queue it with `force: true` to process it again; its earlier recycle entry is then replaced by the new one. To undo a whole run, restore every file listed under `done` in `GET /api/v1/runs/{id}`.
+A restored file keeps the fingerprint it had before the run (`mv` keeps its inode, size and mtime), so the next run over that folder leaves it alone: it ends `already_processed` with `already done on <date>; this file is the original from before then (moved back from the recycle folder?); use Process again to run it anyway`. Press Process again on its job (or queue it with `force: true`) to process it again; its earlier recycle entry is then replaced by the new one. To undo a whole run, restore every file listed under `done` in `GET /api/v1/runs/{id}`.
 
 If a job reports `failed: replace left two copies` or `original missing`, nothing was deleted: the original is at the path named in the reason. Move it back by hand.
 

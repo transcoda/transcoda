@@ -7290,6 +7290,11 @@ a.nav-item.is-active .nav-count {
 
 /* ---------- Run summary: header, Jobs-style tiles, per-file table (phone: stacked cards) ---------- */
 
+/* The run's title left, Process again / Dry run again right; on a narrow screen the action wraps under. */
+.run-head-row {
+  flex-wrap: wrap;
+}
+
 .run-title-row {
   display: flex;
   flex-wrap: wrap;
@@ -8140,7 +8145,7 @@ a.nav-item.is-active .nav-count {
   color: var(--muted);
 }
 
-/* "Dry run again" / "Process again" on a finished job; the hint for an inactive workflow under them. */
+/* "Dry run again" / "Process again" on a finished job or a run; the hint for an inactive workflow under them. */
 .job-again {
   display: flex;
   flex-direction: column;

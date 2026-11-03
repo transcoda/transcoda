@@ -329,7 +329,14 @@ describe('contract', () => {
       description: "A person's session only.",
     });
     expect(Object.keys(contract.queue)).toEqual(['status', 'pause', 'resume']);
-    expect(Object.keys(contract.runs)).toEqual(['list', 'get']);
+    expect(Object.keys(contract.runs)).toEqual(['list', 'get', 'processAgain']);
+    expect(contract.runs.processAgain['~orpc'].route).toMatchObject({
+      method: 'POST',
+      path: '/runs/{id}/process-again',
+    });
+    expect(contract.runs.processAgain['~orpc'].route.description).toMatch(
+      /^A person's session only\./,
+    );
     expect(Object.keys(contract.events)).toEqual(['subscribe']);
   });
 

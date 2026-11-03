@@ -258,12 +258,106 @@ export class QueueService {
     const testEncode =
       input.dryRun &&
       (input.testEncode === true || (input.testEncode === 'if-single-file' && !st.isDirectory()));
+    return this.writeRun({
+      library,
+      requestedPath: realPath,
+      paths,
+      known: check,
+      workflowId,
+      testEncode,
+      source: input.workflowId === undefined ? 'library' : 'manual',
+      input,
+      newOnly,
+    });
+  }
+
+  /**
+   * "Process again" on a run: its `already_processed` files, queued again with `force` as one new
+   * `manual` run of the same workflow and library. A real run takes the active version (with
+   * nothing active, a dry run of the newest, as for any real request); a dry run plans the old
+   * run's version. Each file is checked again as it is
+   * now (a file that went away is `skipped`); the rest of the run's files are left alone.
+   */
+  async processAgain(
+    runId: string,
+    opts: { dryRun: boolean; createdBy: string },
+  ): Promise<QueueResult | { kind: 'run-missing' } | { kind: 'nothing-to-process' }> {
+    const old = findRun(this.db, runId);
+    if (!old) return { kind: 'run-missing' };
+    const paths = (
+      this.db
+        .prepare(
+          `SELECT path FROM jobs WHERE run_id = ? AND state = 'already_processed' ORDER BY rowid`,
+        )
+        .all(runId) as { path: string }[]
+    ).map((r) => r.path);
+    if (paths.length === 0) return { kind: 'nothing-to-process' };
+    const library = findLibrary(this.db, old.libraryId);
+    if (!library || library.deletedAt !== null) {
+      return { kind: 'path-rejected', reason: 'not found' };
+    }
+    // A dry run plans the run's own version again; a real run takes the active one.
+    const version = opts.dryRun ? old.workflowVersion : undefined;
+    const early = this.resolveWorkflow(old.workflowId, opts.dryRun, version);
+    if (early.kind !== 'ok') return early;
+    const input: QueueInput = {
+      path: old.requestedPath,
+      workflowId: old.workflowId,
+      dryRun: opts.dryRun,
+      ...(version !== undefined ? { workflowVersion: version } : {}),
+      force: true,
+      priority: 0,
+      createdBy: opts.createdBy,
+    };
+    const r = await this.writeRun({
+      library,
+      requestedPath: old.requestedPath,
+      paths,
+      known: null,
+      workflowId: old.workflowId,
+      testEncode: false,
+      source: 'manual',
+      input,
+      newOnly: false,
+    });
+    if (r.kind === 'nothing-new') throw new Error('nothing-new outside a catch-up scan');
+    return r;
+  }
+
+  /**
+   * Writes one run of `paths` (already listed, realpaths) with a job per file: each is checked as
+   * it is now, then queued, skipped or `already_processed` (unless `input.force`). `known` is the
+   * check of `requestedPath` when that is one of the paths. With `newOnly` (the catch-up scan) only
+   * files never seen are kept, and nothing is written when none is left.
+   */
+  private async writeRun(args: {
+    library: LibraryRow;
+    requestedPath: string;
+    paths: string[];
+    known: PathCheck | null;
+    workflowId: string;
+    testEncode: boolean;
+    /** `library` becomes `manual` for a dry run. */
+    source: 'library' | 'manual';
+    input: QueueInput;
+    newOnly: boolean;
+  }): Promise<QueueResult | NothingNew> {
+    const {
+      library,
+      requestedPath: realPath,
+      paths,
+      known,
+      workflowId,
+      testEncode,
+      input,
+      newOnly,
+    } = args;
 
     const now = this.deps.now();
     const candidates: Candidate[] = [];
     const seen = new Set<string>();
     for (const p of paths) {
-      const c = await this.candidate(p, p === realPath ? check : null, library, now);
+      const c = await this.candidate(p, p === realPath ? known : null, library, now);
       // Two names for one file (a symlink to a sibling): one job.
       if (seen.has(c.path)) continue;
       seen.add(c.path);
@@ -304,7 +398,7 @@ export class QueueService {
           note: workflow.note,
           force: input.force,
           createdBy: input.createdBy,
-          source: input.workflowId === undefined && !workflow.dryRun ? 'library' : 'manual',
+          source: args.source === 'library' && !workflow.dryRun ? 'library' : 'manual',
         },
         now,
       );

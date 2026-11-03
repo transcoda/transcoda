@@ -1490,7 +1490,7 @@ describe('pipeline', () => {
     expect(await settled(id)).toMatchObject({
       state: 'already_processed',
       reason:
-        'already done on 2026-10-01T10:00:00.000Z; this file is the original from before then (moved back from the recycle folder?); run with force to process it again',
+        'already done on 2026-10-01T10:00:00.000Z; this file is the original from before then (moved back from the recycle folder?); use Process again to run it anyway',
       workflowVersion: 3,
     });
     expect(findJobResult(t.db, id)).toMatchObject({

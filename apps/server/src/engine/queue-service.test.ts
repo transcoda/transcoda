@@ -294,7 +294,7 @@ describe('QueueService.queue', () => {
         'Show/a.mkv',
         'already_processed',
         // C5: a `done` result's fingerprint is the original's, so a match is that original, back.
-        'already done on 2026-10-01T10:00:00.000Z; this file is the original from before then (moved back from the recycle folder?); run with force to process it again',
+        'already done on 2026-10-01T10:00:00.000Z; this file is the original from before then (moved back from the recycle folder?); use Process again to run it anyway',
       ],
       ['Show/b.mkv', 'queued', null],
     ]);
@@ -338,12 +338,67 @@ describe('QueueService.queue', () => {
       [
         'Show/b.mkv',
         'already_processed',
-        'already done on 2026-10-01T10:00:00.000Z; this file is what that job wrote; run with force to process it again',
+        'already done on 2026-10-01T10:00:00.000Z; this file is what that job wrote; use Process again to run it anyway',
       ],
     ]);
 
     const forced = await queued(out, { force: true });
     expect(forced.jobs.map((j) => j.state)).toEqual(['queued']);
+  });
+
+  it("processAgain: a run's already-processed files, and only those, go back with force as one new manual run; a file gone since is skipped", async () => {
+    const a = await settled(join(root, 'Show', 'a.mkv'));
+    const b = await settled(join(root, 'Show', 'b.mkv'));
+    const c = await settled(join(root, 'Show', 'c.mkv'));
+    const first = await queued(join(root, 'Show'));
+    for (const p of [a, b]) {
+      const job = first.jobs.find((j) => j.path === p);
+      if (!job) throw new Error(`no job for ${p}`);
+      updateJob(db, job.id, { state: 'done' }, new Date());
+      doneResult(job.id, fingerprintKey(await fingerprintOf(p)));
+    }
+    const scan = await queued(join(root, 'Show'));
+    expect(scan.jobs.map((j) => j.state)).toEqual([
+      'already_processed',
+      'already_processed',
+      'queued',
+    ]);
+    await rm(b);
+    onQueued.mockClear();
+    published.length = 0;
+
+    const r = await svc.processAgain(scan.run.id, { dryRun: false, createdBy: 'u2' });
+    if (r.kind !== 'queued') throw new Error(`expected queued, got ${JSON.stringify(r)}`);
+    expect(r.run).toMatchObject({
+      force: true,
+      dryRun: false,
+      workflowId: flowId,
+      workflowVersion: 2,
+      requestedPath: join(root, 'Show'),
+      createdBy: 'u2',
+      testEncode: false,
+    });
+    expect(r.jobs.map((j) => [j.path, j.state, j.reason])).toEqual([
+      [a, 'queued', null],
+      [b, 'skipped', 'unreadable'],
+    ]);
+    expect(r.jobs.some((j) => j.path === c)).toBe(false);
+    expect(published).toContainEqual({ type: 'run.changed', runId: r.run.id });
+    expect(onQueued).toHaveBeenCalledTimes(1);
+
+    // A dry run plans the old run's version, with force too.
+    saveMore(flowId, 1);
+    const dry = await svc.processAgain(scan.run.id, { dryRun: true, createdBy: 'u2' });
+    if (dry.kind !== 'queued') throw new Error('expected queued');
+    expect(dry.run).toMatchObject({ dryRun: true, workflowVersion: 2, force: true });
+
+    // The new run has nothing already processed; an unknown run is missing.
+    expect(await svc.processAgain(r.run.id, { dryRun: false, createdBy: 'u2' })).toEqual({
+      kind: 'nothing-to-process',
+    });
+    expect(await svc.processAgain('nope', { dryRun: false, createdBy: 'u2' })).toEqual({
+      kind: 'run-missing',
+    });
   });
 
   it('history: a failed result is final, a dry-run result never is, another version never is', async () => {

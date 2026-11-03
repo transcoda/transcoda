@@ -1080,6 +1080,71 @@ describe('runs', () => {
     expect(list.runs[0]).not.toHaveProperty('files');
     expect((await get('/runs/nope')).status).toBe(404);
   });
+
+  it("runs.processAgain (a person's session only): queues the run's already-processed files with force as a new run, leaves the rest; a dry run plans the run's version; nothing to process or no run is 404; any token is 403", async () => {
+    const b = join(root, 'Show', 'b.mkv');
+    await writeFile(b, Buffer.alloc(1000, 7));
+    await fedLibrary();
+    // Nothing starts while the queue is paused, so the jobs stay where the test puts them.
+    expect((await send(t, 'POST', '/queue/pause', { headers: asSession(s, true) })).status).toBe(
+      200,
+    );
+    const { runId, jobIds } = await queued({ path: root });
+    expect(jobIds).toHaveLength(2);
+    const seen = jobIds.find((j) => row(j).path === b) as string;
+    updateJob(t.db, seen, { state: 'already_processed', reason: 'already done' }, new Date());
+
+    const again = (headers: Record<string, string>, body: Record<string, unknown> = {}) =>
+      send(t, 'POST', `/runs/${runId}/process-again`, { body, headers });
+
+    const all = await createToken(t, s, {
+      name: 'all',
+      scopes: ['read', 'plan', 'jobs:create', 'jobs:manage', 'workflows:write'],
+    });
+    const token = await again(bearer(all.token));
+    expect(token.status).toBe(403);
+    expect(await json(token)).toMatchObject({
+      code: 'FORBIDDEN',
+      message: 'Process again is a UI action',
+    });
+    expect((await again({})).status).toBe(401);
+    expect((await again(asSession(s, false))).status).toBe(403);
+
+    const res = await again(asSession(s, true));
+    expect(res.status).toBe(200);
+    const out = await json<{ runId: string; jobIds: string[]; dryRun: boolean }>(res);
+    expect(out).toMatchObject({ dryRun: false, workflowVersion: 2, testEncode: false });
+    expect(out.runId).not.toBe(runId);
+    expect(out.jobIds).toHaveLength(1);
+    expect(row(out.jobIds[0] as string)).toMatchObject({
+      runId: out.runId,
+      path: b,
+      state: 'queued',
+    });
+    expect(await json(await get(`/runs/${out.runId}`))).toMatchObject({
+      run: { force: true, dryRun: false, requestedPath: root },
+      counts: { total: 1, queued: 1 },
+    });
+
+    const dry = await json<{ jobIds: string[]; dryRun: boolean; workflowVersion: number }>(
+      await again(asSession(s, true), { dryRun: true }),
+    );
+    expect(dry).toMatchObject({ dryRun: true, workflowVersion: 2 });
+    expect(dry.jobIds).toHaveLength(1);
+
+    // The new run has no already-processed file; an unknown run is 404 too.
+    const none = await send(t, 'POST', `/runs/${out.runId}/process-again`, {
+      body: {},
+      headers: asSession(s, true),
+    });
+    expect(none.status).toBe(404);
+    expect(await json(none)).toMatchObject({ message: 'This run has no already-processed files' });
+    const missing = await send(t, 'POST', '/runs/nope/process-again', {
+      body: {},
+      headers: asSession(s, true),
+    });
+    expect(missing.status).toBe(404);
+  });
 });
 
 describe('dry-run savings', () => {

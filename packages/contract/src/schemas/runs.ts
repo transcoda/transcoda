@@ -72,6 +72,11 @@ export const RunDetailSchema = RunSummarySchema.extend({
 export const RunsListInputSchema = z.object({ limit: int.min(1).max(200).default(50) });
 export const RunsListOutputSchema = z.object({ runs: z.array(RunSummarySchema) });
 export const RunIdInputSchema = z.object({ id: z.string() });
+export const RunProcessAgainInputSchema = z.object({
+  id: z.string(),
+  /** Plan the files again instead of processing them. */
+  dryRun: z.boolean().default(false),
+});
 
 export type Run = z.infer<typeof RunSchema>;
 export type RunCounts = z.infer<typeof RunCountsSchema>;

@@ -162,18 +162,27 @@ describe('JobPage: Process again', () => {
     expect(button.getAttribute('aria-busy')).toBeNull();
   });
 
-  it('with no active version, Process again is not offered as a second dry run: it is disabled with the reason', async () => {
+  it('with no active version, only Dry run again is offered, with the reason', async () => {
     mocks.workflows.get.mockImplementation(async () => ({ ...MAIN, active: null }));
     mocks.workflows.list.mockResolvedValue({ workflows: [{ id: 'w1', active: null }] });
     await open();
-    const button = await screen.findByRole('button', { name: 'Process again' });
-    await waitFor(() => expect(button.getAttribute('aria-disabled')).toBe('true'));
-    const hint = screen.getByText('Activate a version to run for real');
-    expect(button.getAttribute('aria-describedby')).toBe(hint.id);
-    fireEvent.click(button);
+    const hint = await screen.findByText('Activate a version to run for real');
+    expect(screen.queryByRole('button', { name: 'Process again' })).toBeNull();
+    const dry = screen.getByRole('button', { name: 'Dry run again' });
+    expect(dry.getAttribute('aria-describedby')).toBe(hint.id);
+  });
+
+  it('a workflow found inactive only when Process again is pressed opens no dialog: Dry run again is left, and a toast says why', async () => {
+    // The page's workflow list has no entry for it yet, so the button is offered.
+    mocks.workflows.get.mockImplementation(async () => ({ ...MAIN, active: null }));
+    await open();
+    fireEvent.click(screen.getByRole('button', { name: 'Process again' }));
+    await screen.findByText('TV cleanup has no active version: use Dry run again');
     expect(screen.queryByRole('dialog')).toBeNull();
-    // Dry run again is the one action left.
+    expect(screen.queryByRole('button', { name: 'Process again' })).toBeNull();
+    expect(screen.getByText('Activate a version to run for real')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Dry run again' })).toBeTruthy();
+    expect(mocks.jobs.queue).not.toHaveBeenCalled();
   });
 
   it("when the active version can't run the dialog says so and the primary button is disabled", async () => {
