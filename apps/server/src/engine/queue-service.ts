@@ -402,6 +402,9 @@ export class QueueService {
         },
         now,
       );
+      const realJobActiveAt = db.prepare(
+        `SELECT 1 FROM jobs WHERE path = ? AND dry_run = 0 AND state IN (${ACTIVE_SQL}) LIMIT 1`,
+      );
       const jobs = candidates.map((c) => {
         let state: JobState = 'queued';
         let reason: string | null = null;
@@ -409,6 +412,11 @@ export class QueueService {
         if (c.skip !== null) {
           state = 'skipped';
           reason = c.skip;
+        } else if (!workflow.dryRun && realJobActiveAt.get(c.path) !== undefined) {
+          // Two real jobs never work on one file at once (the history check below only sees
+          // finished jobs); a forced run waits for the other job too.
+          state = 'skipped';
+          reason = 'already queued in another run';
         } else {
           const key = fingerprintKey(c.fp);
           // Never re-run a file any version of this workflow processed (a dry run keeps its own
