@@ -620,7 +620,7 @@ export function JobsPage() {
                   </div>
                   {percent !== null ? <JobProgress job={job} percent={percent} /> : null}
                   {job.paused || job.dryRun ? (
-                    <JobStateChip job={job} frozen={frozenByQueue(queue.status, job.id)} />
+                    <JobStateChip job={job} frozen={frozenByQueue(queue.status, job)} />
                   ) : null}
                   <span className="phone-card-line">{phoneRunningLine(job)}</span>
                   <div className="phone-card-actions">
@@ -708,7 +708,7 @@ export function JobsPage() {
               job={job}
               controls={controls}
               queuePaused={queuePaused}
-              frozen={frozenByQueue(queue.status, job.id)}
+              frozen={frozenByQueue(queue.status, job)}
               withActions={withActions}
             />
           ))}

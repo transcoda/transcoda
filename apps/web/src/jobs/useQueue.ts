@@ -1,4 +1,5 @@
 import type { QueueStatus } from '@transcoda/contract';
+import type { JobState } from '@transcoda/shared';
 import { useState } from 'react';
 import { api } from '../api/client.ts';
 import { useAsync } from '../hooks/useAsync.ts';
@@ -39,12 +40,17 @@ export function useQueue(): Queue {
 }
 
 /**
- * The job is stopped by a queue pause: the queue is paused and the job holds a lane (the encode
- * lane, a GPU's slot or the quick lane). A job that gave its encode slot up, or is still preparing,
+ * The job is stopped by a queue pause: the queue is paused and the job is encoding in a lane it
+ * holds (the encode lane, a GPU's slot or the quick lane); the pause stops only the encode's
+ * process. A job that gave its encode slot up, is verifying or replacing, or is still preparing,
  * goes on working.
  */
-export function frozenByQueue(status: QueueState | null, jobId: string): boolean {
-  if (!status?.paused) return false;
+export function frozenByQueue(
+  status: QueueState | null,
+  job: { id: string; state: JobState },
+): boolean {
+  if (!status?.paused || job.state !== 'encoding') return false;
+  const jobId = job.id;
   const { encode, quick } = status.lanes;
   return (
     encode === jobId ||

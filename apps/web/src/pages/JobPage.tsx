@@ -140,7 +140,7 @@ const ENCODE_STATES: readonly JobState[] = ['encoding', 'verifying', 'replacing'
 /** A running job's state chip; a paused queue stills its turning icon. */
 function QueueAwareChip({ job }: { job: JobDetail }) {
   const queue = useQueue();
-  return <JobStateChip job={job} frozen={frozenByQueue(queue.status, job.id)} />;
+  return <JobStateChip job={job} frozen={frozenByQueue(queue.status, job)} />;
 }
 
 export function JobPage() {

@@ -13,17 +13,21 @@ const status = (over: Partial<QueueState> = {}): QueueState => ({
 
 describe('frozenByQueue', () => {
   it('a paused queue freezes the jobs holding a lane or a GPU slot, and no other', () => {
-    expect(['enc', 'qk', 'gpu0'].map((id) => frozenByQueue(status(), id))).toEqual([
+    const encoding = (id: string) => ({ id, state: 'encoding' as const });
+    expect(['enc', 'qk', 'gpu0'].map((id) => frozenByQueue(status(), encoding(id)))).toEqual([
       true,
       true,
       true,
     ]);
     // A verifying job that gave its encode slot up, or one still probing, goes on working.
-    expect(frozenByQueue(status(), 'verifying-after-release')).toBe(false);
+    expect(frozenByQueue(status(), encoding('released'))).toBe(false);
+    // The quick lane keeps its holder through verify and replace, which a pause doesn't stop.
+    expect(frozenByQueue(status(), { id: 'qk', state: 'verifying' })).toBe(false);
+    expect(frozenByQueue(status(), { id: 'qk', state: 'replacing' })).toBe(false);
   });
 
   it('nothing is frozen while the queue runs, or before its status loads', () => {
-    expect(frozenByQueue(status({ paused: false }), 'enc')).toBe(false);
-    expect(frozenByQueue(null, 'enc')).toBe(false);
+    expect(frozenByQueue(status({ paused: false }), { id: 'enc', state: 'encoding' })).toBe(false);
+    expect(frozenByQueue(null, { id: 'enc', state: 'encoding' })).toBe(false);
   });
 });
