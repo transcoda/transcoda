@@ -46,13 +46,14 @@ import {
   detailLine,
   isWaitingForLane,
   percentOf,
+  verdictOf,
   wouldText,
 } from '../jobs/jobText.ts';
 import { ProcessAgain } from '../jobs/ProcessAgain.tsx';
 import { damagedSideOf, type StepContext } from '../jobs/steps.ts';
 import { TestEncodeFile } from '../jobs/TestEncodeFile.tsx';
 import { TestOutputPanel } from '../jobs/TestOutputPanel.tsx';
-import { useQueue } from '../jobs/useQueue.ts';
+import { encodeStopped, useQueue } from '../jobs/useQueue.ts';
 import { useNodeParam } from '../jobs/useTryOnFile.ts';
 import { usePageTitle } from '../lib/pageTitle.ts';
 
@@ -136,6 +137,12 @@ const ENCODE_STATES: readonly JobState[] = ['encoding', 'verifying', 'replacing'
  * `/jobs/:id`: where a job is now and why it went that way. Keyed by the id, so moving to another
  * job starts from nothing (no live fields, selection, sub-graphs or log of the last one).
  */
+/** A running job's state chip; a paused queue stills its turning icon. */
+function QueueAwareChip({ job }: { job: JobDetail }) {
+  const queue = useQueue();
+  return <JobStateChip job={job} frozen={encodeStopped(queue.status, job)} />;
+}
+
 export function JobPage() {
   const { id = '' } = useParams<{ id: string }>();
   return <JobView key={id} id={id} />;
@@ -336,7 +343,7 @@ function JobView({ id }: { id: string }) {
           <span aria-hidden="true">/</span>
         </nav>
         <div className="job-head-chips">
-          <JobStateChip job={job} />
+          {verdictOf(job) === 'running' ? <QueueAwareChip job={job} /> : <JobStateChip job={job} />}
           {/* The dry-run plan carries this badge itself (screen 06); a dry run without one shows it here. */}
           {job.dryRun && !job.plan && (
             <span className="badge badge-dry">

@@ -35,6 +35,14 @@ vi.mock('../api/client.ts', async () => {
         list: mocks.workflowsList,
       },
       libraries: { list: mocks.librariesList, browse: mocks.browse },
+      queue: {
+        status: async () => ({
+          paused: false,
+          lanes: { encode: null, quick: null },
+          encodeSlots: [],
+          preparing: [],
+        }),
+      },
     },
     isDefinedError: orpc.isDefinedError,
     safe: orpc.safe,

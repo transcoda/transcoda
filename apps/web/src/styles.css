@@ -6234,6 +6234,34 @@ a.nav-item.is-active .nav-count {
   flex-direction: column;
   min-width: 0;
 }
+/* Who holds each lane, one row per lane: its name, then the file, cut short with an ellipsis. */
+.lanes {
+  display: grid;
+  /* The lane's name takes at most half the width, so the file always has room. */
+  grid-template-columns: fit-content(50%) minmax(0, 1fr);
+  column-gap: 12px;
+  row-gap: 1px;
+  margin-top: 6px;
+}
+.lane {
+  display: contents;
+}
+.lanes dt {
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lanes dd {
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text);
+}
+.lanes dd.is-idle {
+  color: var(--muted);
+}
 .jobs-title-row {
   display: flex;
   align-items: center;
@@ -6394,6 +6422,12 @@ a.nav-item.is-active .nav-count {
   background: var(--st-running);
   border-color: var(--st-running);
   color: var(--st-running-ink);
+}
+/* A working job's arc turns; a planned one shows a still hourglass instead. */
+@media (prefers-reduced-motion: no-preference) {
+  .job-chip.is-working .icon {
+    animation: loading-spin 1.2s linear infinite;
+  }
 }
 .job-chip.is-queued,
 .job-chip.is-paused,
