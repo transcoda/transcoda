@@ -4,6 +4,7 @@ import { isPicture } from '@transcoda/shared';
 import type { Exec } from '../capabilities/ffmpeg.ts';
 import type { AlreadyProcessedAnswer, AlreadyProcessedQuery } from './already-processed.ts';
 import { classifyErrorLine, READ_FAILURE, sourceDecoderNames } from './decoder-names.ts';
+import { isMemoryLimitError, memoryLimitMessage } from './memory-guard.ts';
 import { progressReader } from './progress.ts';
 import type { VerifyFailure } from './verify.ts';
 
@@ -11,12 +12,14 @@ import type { VerifyFailure } from './verify.ts';
  * What the pass found. `damaged`: a source decoder reported an error the source reproduces, or the
  * file is cut off (see {@link CUT_OFF_SECONDS}); `stream` names the stream when the error says
  * which. `error`: the pass could not tell (a read error on a disk or network share, a timeout, a
- * demuxer error without a decoder error, ffmpeg failed without a source error): never damage.
+ * demuxer error without a decoder error, ffmpeg failed without a source error, ffmpeg stopped by
+ * the memory guard): never damage. `final`: another try would end the same way (the memory guard
+ * stopped ffmpeg), so the job is not retried.
  */
 export type CheckSourceResult =
   | { kind: 'ok'; warnings: string[] }
   | { kind: 'damaged'; reason: string; stream?: string }
-  | { kind: 'error'; message: string };
+  | { kind: 'error'; message: string; final?: true };
 
 /** A stream counts as cut off only when it ends more than this short of the declared end… */
 export const CUT_OFF_SECONDS = 30;
@@ -54,11 +57,12 @@ export function checkSourceTimeoutMs(sizeBytes: number): number {
 }
 
 /**
- * The pass: every audio stream decoded, video copied (decoded with `decodeVideo`, or when the file
- * has no audio: an empty pass would prove nothing), output discarded.
+ * The pass: the {@link decodedStreams}, each mapped by index, decoded; output discarded. Never
+ * `-map 0:V?`: it leaves out only streams flagged attached_pic, so a cover an earlier encode turned
+ * into an ordinary video track (isPicture) would be mapped, and the null muxer then queues every
+ * decoded frame of the film waiting for the cover's next frame until memory runs out.
  */
 export function checkSourceArgs(path: string, probe: ProbeResult, decodeVideo: boolean): string[] {
-  const hasAudio = probe.streams.some((s) => s.type === 'audio');
   return [
     '-nostdin',
     '-hide_banner',
@@ -68,18 +72,17 @@ export function checkSourceArgs(path: string, probe: ProbeResult, decodeVideo: b
     'pipe:1',
     '-i',
     path,
-    '-map',
-    '0:a?',
-    '-map',
-    '0:V?',
-    ...(decodeVideo || !hasAudio ? [] : ['-c:v', 'copy']),
+    ...decodedStreams(probe, decodeVideo).flatMap((s) => ['-map', `0:${s.index}`]),
     '-f',
     'null',
     '-',
   ];
 }
 
-/** The streams the pass decodes: every audio stream, video when decoded (see {@link checkSourceArgs}). */
+/**
+ * The streams the pass decodes: every audio stream; video (never a picture, see isPicture) with
+ * `decodeVideo`, or when the file has no audio (an empty pass would prove nothing).
+ */
 function decodedStreams(probe: ProbeResult, decodeVideo: boolean): ProbeResult['streams'] {
   const hasAudio = probe.streams.some((s) => s.type === 'audio');
   return probe.streams.filter(
@@ -184,7 +187,8 @@ interface Located {
 
 /**
  * Runs {@link locateArgs} and places each source decoder error in media time; a string when the
- * pass could not run or could not read the file (never damage). An abort rethrows.
+ * pass could not run or could not read the file, `memory` when the memory guard stopped it (never
+ * damage). An abort rethrows.
  */
 async function locate(input: {
   path: string;
@@ -194,7 +198,7 @@ async function locate(input: {
   exec: Exec;
   timeoutMs: number;
   signal?: AbortSignal;
-}): Promise<Located[] | string> {
+}): Promise<Located[] | string | { memory: string }> {
   const { probe, signal } = input;
   let stderr: string;
   try {
@@ -205,6 +209,7 @@ async function locate(input: {
     stderr = r.stderr;
   } catch (err) {
     if (signal?.aborted || (err as { name?: unknown } | null)?.name === 'AbortError') throw err;
+    if (isMemoryLimitError(err)) return { memory: memoryLimitMessage(err.memoryLimitBytes) };
     const e = (err ?? {}) as { killed?: boolean; stderr?: unknown; message?: unknown };
     if (e.killed === true || typeof e.stderr !== 'string') {
       return `the second read to place the decoder errors failed: ${String(e.message ?? err).split('\n')[0]}`;
@@ -277,6 +282,9 @@ export async function checkSource(input: {
   signal?: AbortSignal;
 }): Promise<CheckSourceResult> {
   const { probe, signal } = input;
+  if (decodedStreams(probe, input.decodeVideo).length === 0) {
+    return { kind: 'error', message: 'the file has no audio or video stream to read' };
+  }
   const timeoutMs = checkSourceTimeoutMs(input.sizeBytes);
   let readTo: number | null = null;
   const seen: Seen[] = [];
@@ -304,6 +312,10 @@ export async function checkSource(input: {
     stderr = r.stderr;
   } catch (err) {
     if (signal?.aborted || (err as { name?: unknown } | null)?.name === 'AbortError') throw err;
+    // Buffering, not the file: a retry would buffer the same way.
+    if (isMemoryLimitError(err)) {
+      return { kind: 'error', message: memoryLimitMessage(err.memoryLimitBytes), final: true };
+    }
     const e = (err ?? {}) as { killed?: boolean; stderr?: unknown; message?: unknown };
     if (e.killed === true) {
       return {
@@ -348,6 +360,7 @@ export async function checkSource(input: {
       ...(signal ? { signal } : {}),
     });
     if (typeof located === 'string') return { kind: 'error', message: located };
+    if ('memory' in located) return { kind: 'error', message: located.memory, final: true };
     if (located.length === 0) {
       const l = sourceErrors[0] as Seen;
       const stream = streamOf(l.line, probe);

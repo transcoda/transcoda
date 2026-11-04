@@ -13,6 +13,7 @@ import {
   tempDir,
   toolPaths,
 } from './fixtures.ts';
+import { MemoryLimitError } from './memory-guard.ts';
 import { probeFile } from './probe.ts';
 import { coverExtractArgs, renderArgs } from './render.ts';
 import { probeOf, withSidecar, withStream } from './test-helpers.ts';
@@ -34,6 +35,7 @@ function checks(failures: VerifyFailure[]): string[] {
 /** How a source decode can fail without saying anything about the file's content. */
 const UNSURE: [string, object][] = [
   ['killed (the verify timeout)', { killed: true, signal: 'SIGKILL', code: null }],
+  ['stopped by the memory guard', { ...new MemoryLimitError(2 ** 32, '[hevc @ 0x1] x\n') }],
   ['over the output limit', { code: 'ERR_CHILD_PROCESS_STDIO_MAXBUFFER' }],
   ['not started', { code: 'ENOENT' }],
   [
@@ -402,6 +404,99 @@ describe('confirmSourceDamage without ffmpeg', () => {
           'source: decoding 7 s from 29.00s failed: [dca @ 0x1] Invalid LFE scale factor index',
       },
     ]);
+  });
+});
+
+describe('decode passes never map a cover stored as a video track', () => {
+  // A cover an earlier encode turned into an ordinary HEVC video track (image tags, no
+  // attached_pic). ffmpeg's `0:V?` maps it; the null muxer then queues every decoded frame of the
+  // film waiting for the cover's next frame until memory runs out.
+  const ffprobeStreams = [
+    { index: 0, codec_type: 'video', codec_name: 'hevc', disposition: { default: 1 } },
+    {
+      index: 1,
+      codec_type: 'audio',
+      codec_name: 'aac',
+      tags: { language: 'eng' },
+      disposition: { default: 1 },
+    },
+    {
+      index: 2,
+      codec_type: 'video',
+      codec_name: 'hevc',
+      width: 640,
+      height: 360,
+      tags: { FILENAME: 'cover.jpg', MIMETYPE: 'image/jpeg' },
+      disposition: { attached_pic: 0 },
+    },
+  ];
+  const source = probeOf(
+    [
+      { type: 'video', default: true },
+      { type: 'audio', language: 'eng', default: true },
+      { type: 'video', codec: 'hevc', width: 640, height: 360, imageTrack: true },
+    ],
+    {
+      durationSeconds: 60,
+      raw: { format: { duration: '60.000000', start_time: '0.000000' }, streams: ffprobeStreams },
+    },
+  );
+
+  /** A fake ffprobe/ffmpeg over a file with the streams above; records every ffmpeg argv. */
+  function tools() {
+    const runs: string[][] = [];
+    const exec: Exec = async (file, args) => {
+      if (args.includes('-show_format')) {
+        const json = {
+          format: { format_name: 'matroska,webm', duration: '60.000000', start_time: '0.000000' },
+          streams: ffprobeStreams,
+        };
+        return { stdout: JSON.stringify(json), stderr: '' };
+      }
+      if (file === 'ffmpeg') runs.push(args);
+      if (args.includes('packet=pts_time,duration_time')) {
+        return { stdout: '59.960000,0.040000\n', stderr: '' };
+      }
+      if (args.includes('-read_intervals')) return { stdout: '50.000000,1000,K__\n', stderr: '' };
+      return { stdout: '', stderr: '' };
+    };
+    return { exec, runs };
+  }
+
+  /** The `-map` values of each decode run (the null muxer). */
+  const decodeMaps = (runs: string[][]) =>
+    runs.filter((a) => a.includes('null')).map((a) => a.filter((_, i) => a[i - 1] === '-map'));
+
+  it('verifyOutput decodes the film and its audio by index, never the cover', async () => {
+    const { exec, runs } = tools();
+    await verifyOutput({
+      outputPath: '/tmp/job/out.mkv',
+      sourcePath: '/lib/in.mkv',
+      model: modelFromProbe(source),
+      sourceProbe: source,
+      ffmpegPath: 'ffmpeg',
+      ffprobePath: 'ffprobe',
+      fullDecode: true,
+      exec,
+    });
+    const maps = decodeMaps(runs);
+    expect(maps.length).toBeGreaterThanOrEqual(3);
+    for (const m of maps) expect(m).toEqual(['0:0', '0:1']);
+  });
+
+  it('confirmSourceDamage decodes the film and its audio by index, never the cover', async () => {
+    const { exec, runs } = tools();
+    await confirmSourceDamage({
+      sourcePath: '/lib/in.mkv',
+      sourceProbe: source,
+      ffmpegPath: 'ffmpeg',
+      ffprobePath: 'ffprobe',
+      times: [30],
+      exec,
+    });
+    const maps = decodeMaps(runs);
+    expect(maps).toHaveLength(1);
+    expect(maps[0]).toEqual(['0:0', '0:1']);
   });
 });
 

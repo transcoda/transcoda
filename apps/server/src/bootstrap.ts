@@ -12,6 +12,7 @@ import { migrations } from './db/migrations/index.ts';
 import { openDatabase } from './db/open.ts';
 import { createAppDeps } from './deps.ts';
 import { setChildCapDrop } from './engine/child-caps.ts';
+import { setDecodeMemoryLimit } from './engine/memory-guard.ts';
 import { TEST_OUTPUT_SWEEP_MS } from './engine/test-outputs.ts';
 import type { Logger } from './logger.ts';
 import { assertIsolationUsable } from './plugins/isolation.ts';
@@ -42,6 +43,14 @@ export async function createDeps(
       log.warn("plugin hosts run as the server's user (TRANSCODA_PLUGIN_UID is not set)");
     }
   }
+  // The memory guard of read-only ffmpeg passes (unset: its default, worked out on first use).
+  setDecodeMemoryLimit(
+    config.decodeMemoryGiB === null
+      ? undefined
+      : config.decodeMemoryGiB === 0
+        ? null
+        : Math.round(config.decodeMemoryGiB * 2 ** 30),
+  );
   mkdirSync(config.configDir, { recursive: true });
   const secretKey = loadOrCreateSecretKey(config.configDir, config.secretKeyHex, (m) =>
     log.warn(m),

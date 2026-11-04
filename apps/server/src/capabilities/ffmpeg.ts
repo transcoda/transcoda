@@ -2,6 +2,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import type { Capabilities } from '@transcoda/contract';
 import { wrapChild } from '../engine/child-caps.ts';
+import { decodeMemoryLimit, MemoryLimitError, watchMemory } from '../engine/memory-guard.ts';
 
 /** Runs a tool; `signal` aborts the run and SIGKILLs the child (no orphaned ffmpeg). */
 export type Exec = (
@@ -23,9 +24,20 @@ const execFileAsync = promisify(execFile);
  * An Exec over `execFile` (no shell) with a timeout and output limit. An abort SIGKILLs the child
  * and rejects with an AbortError (execFile's own `signal` option would send SIGTERM, which a
  * stuck process can ignore). `onStdout`/`onStderr` see the output as it arrives (it is returned in
- * full too).
+ * full too). The memory guard (memory-guard.ts) SIGKILLs a child whose resident memory goes above
+ * `memory.limitBytes` (default: decodeMemoryLimit(), null: off) and rejects with a
+ * MemoryLimitError.
  */
-export function makeExec(limits: { timeout: number; maxBuffer: number }): Exec {
+export function makeExec(limits: {
+  timeout: number;
+  maxBuffer: number;
+  memory?: {
+    limitBytes?: number | null;
+    /** Tests: the RSS reader and how often it runs. */
+    read?: (pid: number) => Promise<number | null>;
+    intervalMs?: number;
+  };
+}): Exec {
   return async (file, args, opts) => {
     const signal = opts?.signal;
     if (signal?.aborted) throw abortError();
@@ -43,13 +55,35 @@ export function makeExec(limits: { timeout: number; maxBuffer: number }): Exec {
     const onStderr = opts?.onStderr;
     if (onStderr) run.child.stderr?.on('data', (chunk) => onStderr(String(chunk)));
     signal?.addEventListener('abort', onAbort, { once: true });
+    const memoryLimit =
+      limits.memory?.limitBytes !== undefined ? limits.memory.limitBytes : decodeMemoryLimit();
+    let overLimit = false;
+    const pid = run.child.pid;
+    const stopWatch =
+      memoryLimit !== null && pid !== undefined
+        ? watchMemory({
+            pid,
+            limitBytes: memoryLimit,
+            onExceed: () => {
+              overLimit = true;
+              run.child.kill('SIGKILL');
+            },
+            ...(limits.memory?.read ? { read: limits.memory.read } : {}),
+            ...(limits.memory?.intervalMs ? { intervalMs: limits.memory.intervalMs } : {}),
+          })
+        : null;
     try {
       const { stdout, stderr } = await run;
       return { stdout: String(stdout), stderr: String(stderr) };
     } catch (err) {
       if (signal?.aborted) throw abortError();
+      if (overLimit && memoryLimit !== null) {
+        const stderr = (err as { stderr?: unknown } | null)?.stderr;
+        throw new MemoryLimitError(memoryLimit, typeof stderr === 'string' ? stderr : '');
+      }
       throw err;
     } finally {
+      stopWatch?.();
       signal?.removeEventListener('abort', onAbort);
     }
   };
