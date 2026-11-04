@@ -1,7 +1,7 @@
 // After a replace: the subtitle files that were embedded move to the recycle folder.
 import { basename, dirname } from 'node:path';
 import type { BuildModel } from '@transcoda/sdk';
-import type { RecycledRow } from '../db/repos/jobs.ts';
+import type { RecycledInsert } from '../db/repos/jobs.ts';
 import type { Logger } from '../logger.ts';
 import { extraInputOf, isExtraStream } from './build-model.ts';
 import { errorCode, type FsOps, renameNoClobber, syncDirs } from './fs-ops.ts';
@@ -32,7 +32,7 @@ export async function recycleSidecars(
     libraryRoot: string;
     recycleFolder: string;
   },
-  deps: { fs: FsOps; recordRecycled(row: RecycledRow): void; now(): Date; log: Logger },
+  deps: { fs: FsOps; recordRecycled(row: RecycledInsert): void; now(): Date; log: Logger },
 ): Promise<string[]> {
   const { model } = input;
   const { fs, log } = deps;
@@ -71,6 +71,8 @@ export async function recycleSidecars(
         jobId: input.jobId,
         sizeBytes: st.size,
         recycledAt: deps.now().toISOString(),
+        kind: 'sidecar',
+        originalPath: path,
       });
       try {
         await syncDirs(fs, [dirname(dest), dirname(path)], log);

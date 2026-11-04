@@ -33,13 +33,17 @@ import {
   jobStats,
   jobsWithReplaceJournal,
   listJobs,
+  listRecycledForJob,
   listTrace,
   type ReplaceJournal,
+  recycledTotalsByLibrary,
   updateJob,
   type WalkStep,
 } from '../db/repos/jobs.ts';
-import { listLibraries } from '../db/repos/libraries.ts';
+import { findLibrary, listLibraries } from '../db/repos/libraries.ts';
+import { findActiveRestore } from '../db/repos/restores.ts';
 import { getSettingOr, SETTING_DEFAULTS, SETTING_KEYS } from '../db/repos/settings.ts';
+import { findUserById } from '../db/repos/users.ts';
 import { findVersion } from '../db/repos/workflows.ts';
 import type { Logger } from '../logger.ts';
 import type { NodeRegistry } from '../nodes/registry.ts';
@@ -57,8 +61,15 @@ import { logPathFor, Pipeline } from './pipeline.ts';
 import { type JobProbe, jobProbeOf } from './probe.ts';
 import type { ProcessSpawner } from './process.ts';
 import { QueueService } from './queue-service.ts';
-import { pruneRecycle } from './recycle.ts';
+import {
+  deleteRecycledEntry,
+  emptyRecycle,
+  pruneRecycle,
+  type RecycleView,
+  recycleView,
+} from './recycle.ts';
 import { fingerprintFromStats, type ReplaceDeps } from './replace.ts';
+import { type RestoreResult, restoreRecycled } from './restore.ts';
 import { closedLibraries, type RunHoursHold, runHoursHold, serverTimeZone } from './run-hours.ts';
 import { pickSlot, Scheduler } from './scheduler.ts';
 import { SpaceWaits } from './space-waits.ts';
@@ -110,7 +121,13 @@ export interface JobDetail {
   testOutput: TestOutputRow | null;
   /** Why the test output was not kept or went early; null when nothing to say. */
   testOutputNote: string | null;
+  /** The replaced original in the recycle folder, kept until retention removes it; null when none. */
+  recycled: { path: string; keptUntil: string } | null;
+  /** The restore in effect (`restoredBy` is the username); null when none. */
+  restore: { restoredAt: string; restoredBy: string; outputPath: string | null } | null;
 }
+
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 export class EngineService {
   readonly events: EngineEvents;
@@ -250,18 +267,7 @@ export class EngineService {
     const { db } = this.deps;
     try {
       return await pruneRecycle(db, this.deps.fs, {
-        retentionDays: getSettingOr(
-          db,
-          SETTING_KEYS.recycleRetentionDays,
-          z.number().min(0),
-          SETTING_DEFAULTS.recycleRetentionDays,
-        ),
-        maxFreePercent: getSettingOr(
-          db,
-          SETTING_KEYS.recycleMaxFreePercent,
-          z.number().min(0).max(100),
-          SETTING_DEFAULTS.recycleMaxFreePercent,
-        ),
+        ...this.recycleSettings(),
         now: this.deps.now(),
         log: this.deps.log,
       });
@@ -272,6 +278,109 @@ export class EngineService {
       });
       return { removed: 0, bytes: 0 };
     }
+  }
+
+  /** The recycle retention settings (Settings → Recycle folder). */
+  recycleSettings(): { retentionDays: number; maxFreePercent: number } {
+    const { db } = this.deps;
+    return {
+      retentionDays: getSettingOr(
+        db,
+        SETTING_KEYS.recycleRetentionDays,
+        z.number().min(0),
+        SETTING_DEFAULTS.recycleRetentionDays,
+      ),
+      maxFreePercent: getSettingOr(
+        db,
+        SETTING_KEYS.recycleMaxFreePercent,
+        z.number().min(0).max(100),
+        SETTING_DEFAULTS.recycleMaxFreePercent,
+      ),
+    };
+  }
+
+  /** Restores a recycled original, or undoes a restore (`engine/restore.ts`). */
+  restoreRecycled(input: { path: string; userId: string }): Promise<RestoreResult> {
+    const { db, fs, log } = this.deps;
+    return restoreRecycled(
+      {
+        db,
+        fs,
+        now: () => this.deps.now(),
+        log,
+        retentionDays: this.recycleSettings().retentionDays,
+      },
+      input,
+    );
+  }
+
+  /**
+   * The Recycle page: every library with its recycle totals, and one library's folder (the asked
+   * one; else the first with files, else the first). Null `library` when the id is unknown or
+   * there are no libraries.
+   */
+  async recycleList(libraryId?: string): Promise<{
+    libraries: { id: string; name: string; files: number; bytes: number }[];
+    library: (RecycleView & { name: string; retentionDays: number }) | null;
+  }> {
+    const { db } = this;
+    const totals = new Map(recycledTotalsByLibrary(db).map((t) => [t.libraryId, t]));
+    const all = listLibraries(db);
+    const libraries = all.map((l) => ({
+      id: l.id,
+      name: l.name,
+      files: totals.get(l.id)?.files ?? 0,
+      bytes: totals.get(l.id)?.bytes ?? 0,
+    }));
+    const picked =
+      libraryId !== undefined
+        ? all.find((l) => l.id === libraryId)
+        : (all.find((l) => (totals.get(l.id)?.files ?? 0) > 0) ?? all[0]);
+    if (picked === undefined) return { libraries, library: null };
+    const { retentionDays } = this.recycleSettings();
+    const view = await recycleView(db, this.deps.fs, picked, { retentionDays });
+    return { libraries, library: { ...view, name: picked.name, retentionDays } };
+  }
+
+  /** Deletes one recycle entry for good. */
+  deleteRecycled(path: string): ReturnType<typeof deleteRecycledEntry> {
+    return deleteRecycledEntry(this.db, this.deps.fs, path, this.deps.log);
+  }
+
+  /** Empties a library's recycle folder up to what was confirmed; null for an unknown library. */
+  async emptyRecycle(
+    libraryId: string,
+    throughRecycledAt: string,
+  ): Promise<{ removed: number; bytes: number; skipped: number } | null> {
+    const library = findLibrary(this.db, libraryId);
+    if (library === null || library.deletedAt !== null) return null;
+    return emptyRecycle(this.db, this.deps.fs, libraryId, throughRecycledAt, this.deps.log);
+  }
+
+  /** The job's recycle facts for its page: the kept original, and the restore in effect. */
+  private recycleFacts(id: string): Pick<JobDetail, 'recycled' | 'restore'> {
+    const { db } = this;
+    const rows = listRecycledForJob(db, id);
+    const original = rows.find((r) => r.kind === 'original');
+    const active = findActiveRestore(db, id);
+    const days = this.recycleSettings().retentionDays;
+    return {
+      recycled: original
+        ? {
+            path: original.path,
+            keptUntil: new Date(Date.parse(original.recycledAt) + days * DAY_MS).toISOString(),
+          }
+        : null,
+      restore: active
+        ? {
+            restoredAt: active.restoredAt,
+            restoredBy: findUserById(db, active.restoredBy)?.username ?? 'a removed user',
+            outputPath:
+              rows.find((r) => r.kind === 'restored-output' && r.restoreId === active.id)?.path ??
+              null,
+          }
+        : null,
+    };
   }
 
   jobDetail(id: string): JobDetail | null {
@@ -303,6 +412,7 @@ export class EngineService {
       path: row.walkPath ?? [],
       testOutput: this.testOutputs.find(id),
       testOutputNote: this.testOutputs.note(id),
+      ...this.recycleFacts(id),
     };
   }
 

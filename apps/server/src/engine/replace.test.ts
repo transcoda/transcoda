@@ -246,6 +246,9 @@ describe('replaceOriginal', () => {
         jobId: JOB,
         sizeBytes: ORIG.length,
         recycledAt: now.toISOString(),
+        kind: 'original',
+        originalPath: original,
+        restoreId: null,
       },
     ]);
     expect(await filesUnder(lib)).toEqual([recyclePath(), original].sort());
@@ -710,7 +713,9 @@ describe('durableReplaceWrites', () => {
       recycledAt: now.toISOString(),
     };
     expect(() => w.recordRecycled(row)).not.toThrow();
-    expect(listRecycled(db)).toEqual([row]);
+    expect(listRecycled(db)).toEqual([
+      { ...row, kind: 'original', originalPath: null, restoreId: null },
+    ]);
     expect(warnings).toEqual([
       {
         msg: 'replaced a stale recycle row; its original had left the recycle folder',

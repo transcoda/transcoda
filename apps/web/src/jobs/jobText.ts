@@ -454,7 +454,8 @@ export function detailLine(job: Job, opts: { queuePaused?: boolean; now?: Date }
       if (!r || r.beforeBytes === null || r.afterBytes === null) return 'Replaced';
       const sizes = `${fmtBytes(r.beforeBytes)} → ${fmtBytes(r.afterBytes)}, ${fmtSaving(r.beforeBytes, r.afterBytes)}`;
       // The chip already says "Replaced"; only the recycle folder is worth a word (the original
-      // is not gone), never "original replaced".
+      // is not gone), never "original replaced". A restore put the original back.
+      if (r.restored) return `${sizes} · original restored`;
       return r.replacedTo === 'recycle' ? `${sizes} · original in recycle folder` : sizes;
     }
     case 'kept_original':

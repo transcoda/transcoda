@@ -56,6 +56,8 @@ import { TestOutputPanel } from '../jobs/TestOutputPanel.tsx';
 import { encodeStopped, useQueue } from '../jobs/useQueue.ts';
 import { useNodeParam } from '../jobs/useTryOnFile.ts';
 import { usePageTitle } from '../lib/pageTitle.ts';
+import { fmtDate } from '../lib/time.ts';
+import { RestoreButton } from '../recycle/RestoreButton.tsx';
 
 type Live = Pick<JobDetail, 'state' | 'paused' | 'progress' | 'lane' | 'problems' | 'reason'>;
 
@@ -355,6 +357,24 @@ function JobView({ id }: { id: string }) {
         <div className="head-row job-title-row">
           <h1>{job.fileName}</h1>
           <div className="head-actions">
+            {!active && job.state === 'done' && job.recycled !== null && (
+              <RestoreButton
+                path={job.recycled.path}
+                fileName={job.fileName}
+                targetPath={job.filePath}
+                direction="restore"
+                onDone={reload}
+              />
+            )}
+            {!active && job.state === 'done' && job.restore?.outputPath && (
+              <RestoreButton
+                path={job.restore.outputPath}
+                fileName={job.fileName}
+                targetPath={job.filePath}
+                direction="undo"
+                onDone={reload}
+              />
+            )}
             {!active && (
               <ProcessAgain
                 job={job}
@@ -420,6 +440,14 @@ function JobView({ id }: { id: string }) {
             </>
           )}
         </p>
+        {job.recycled && (
+          <p className="head-sub">{`Original kept until ${fmtDate(job.recycled.keptUntil)}`}</p>
+        )}
+        {job.restore && (
+          <p className="head-sub">
+            <span>{`Original restored on ${fmtDate(job.restore.restoredAt)} by ${job.restore.restoredBy}`}</span>
+          </p>
+        )}
         {active && (
           <div className="job-progress">
             {running && (

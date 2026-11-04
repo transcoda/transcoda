@@ -8,6 +8,7 @@ import {
   allTimeSaved,
   alreadyProcessedReason,
   appendTrace,
+  claimRestoreJournal,
   countJobsByState,
   deleteRecycled,
   findJob,
@@ -15,18 +16,24 @@ import {
   findJobResult,
   findPriorRun,
   findProcessedResult,
+  findRecycled,
+  hasActiveJobAt,
+  hasFileJournal,
   insertJob,
   insertJobResult,
   insertRecycled,
   type JobResultRow,
   jobHistory,
   jobStats,
+  jobsWithRestoreJournal,
   listJobs,
   listRecycled,
+  listRecycledForJob,
   listTrace,
   nextQueuedJobs,
   nextTraceSeq,
   type ReplaceJournal,
+  type RestoreJournal,
   recentRatios,
   setJobProbe,
   updateJob,
@@ -41,6 +48,7 @@ import {
   softDeleteLibrary,
   updateLibrary,
 } from './libraries.ts';
+import { findActiveRestore, findRestore, insertRestore, markRestoreUndone } from './restores.ts';
 import { insertRun, listRuns, runCounts } from './runs.ts';
 import { getSettingOr, SETTING_DEFAULTS, SETTING_KEYS, setSetting } from './settings.ts';
 import { insertWorkflow } from './workflows.ts';
@@ -562,7 +570,8 @@ describe('jobs', () => {
       recycledAt: now.toISOString(),
     };
     insertRecycled(db, row);
-    expect(listRecycled(db)).toEqual([row]);
+    const stored = { ...row, kind: 'original', originalPath: null, restoreId: null };
+    expect(listRecycled(db)).toEqual([stored]);
     expect(listRecycled(db, 'other')).toEqual([]);
     expect(deleteRecycled(db, row.path)).toBe(true);
     expect(listRecycled(db, 'l1')).toEqual([]);
@@ -583,9 +592,137 @@ describe('jobs', () => {
       sizeBytes: 250,
       recycledAt: new Date(now.getTime() + 60_000).toISOString(),
     };
+    const plain = { kind: 'original', originalPath: null, restoreId: null };
     expect(insertRecycled(db, first)).toBeNull();
-    expect(insertRecycled(db, second)).toEqual(first);
-    expect(listRecycled(db)).toEqual([second]);
+    expect(insertRecycled(db, second)).toEqual({ ...first, ...plain });
+    expect(listRecycled(db)).toEqual([{ ...second, ...plain }]);
+  });
+
+  it('insertRecycled keeps kind and original path, also on conflict; findRecycled and listRecycledForJob', () => {
+    const base = { libraryId: 'l1', jobId: 'a', sizeBytes: 1, recycledAt: now.toISOString() };
+    insertRecycled(db, { ...base, path: '/media/tv/.rb/a.mkv', originalPath: '/media/tv/a.mkv' });
+    insertRecycled(db, {
+      ...base,
+      path: '/media/tv/.rb/a.de.srt',
+      kind: 'sidecar',
+      originalPath: '/media/tv/a.de.srt',
+    });
+    insertRecycled(db, {
+      ...base,
+      path: '/media/tv/.rb/a.mkv',
+      kind: 'restored-output',
+      originalPath: '/media/tv/a.mkv',
+      restoreId: 's1',
+    });
+    expect(findRecycled(db, '/media/tv/.rb/a.mkv')).toMatchObject({
+      kind: 'restored-output',
+      originalPath: '/media/tv/a.mkv',
+      restoreId: 's1',
+    });
+    expect(findRecycled(db, '/nope')).toBeNull();
+    expect(
+      listRecycledForJob(db, 'a')
+        .map((r) => r.kind)
+        .sort(),
+    ).toEqual(['restored-output', 'sidecar']);
+  });
+
+  it('claimRestoreJournal refuses while either journal is set; hasFileJournal sees both', () => {
+    const j: RestoreJournal = {
+      direction: 'restore',
+      restoreId: 's1',
+      libraryRoot: '/media',
+      moves: [{ from: '/media/tv/r.mkv', to: '/media/tv/.rb/r.mkv', role: 'output' }],
+      next: 0,
+    };
+    job('r');
+    expect(hasFileJournal(db, 'r')).toBe(false);
+    expect(claimRestoreJournal(db, 'r', j)).toBe(true);
+    expect(claimRestoreJournal(db, 'r', j)).toBe(false);
+    expect(findJob(db, 'r')?.restoreJournal).toEqual(j);
+    expect(hasFileJournal(db, 'r')).toBe(true);
+    expect(jobsWithRestoreJournal(db).map((x) => x.id)).toEqual(['r']);
+    updateJob(db, 'r', { restoreJournal: null }, now);
+    expect(jobsWithRestoreJournal(db)).toEqual([]);
+
+    job('p');
+    updateJob(db, 'p', { replaceJournal: { step: 'checking' } as unknown as ReplaceJournal }, now);
+    expect(claimRestoreJournal(db, 'p', j)).toBe(false);
+    expect(hasFileJournal(db, 'p')).toBe(true);
+  });
+
+  it('hasActiveJobAt sees a queued or running job at the path only', () => {
+    job('q');
+    expect(hasActiveJobAt(db, '/media/tv/q.mkv')).toBe(true);
+    updateJob(db, 'q', { state: 'done', finishedAt: now.toISOString() }, now);
+    expect(hasActiveJobAt(db, '/media/tv/q.mkv')).toBe(false);
+    expect(hasActiveJobAt(db, '/media/tv/other.mkv')).toBe(false);
+  });
+
+  it('listJobs: a job whose original is restored says so until the restore is undone', () => {
+    job('rs');
+    updateJob(db, 'rs', { state: 'done' }, now);
+    insertJobResult(db, result('rs'));
+    expect(listJobs(db, {})[0]?.result).toMatchObject({ restored: false });
+    insertRestore(db, {
+      id: 'rs1',
+      jobId: 'rs',
+      restoredAt: now.toISOString(),
+      restoredBy: 'u1',
+      sidecarPaths: [],
+    });
+    expect(listJobs(db, {})[0]?.result).toMatchObject({ restored: true });
+    markRestoreUndone(db, 'rs1', now.toISOString(), 'u1');
+    expect(listJobs(db, {})[0]?.result).toMatchObject({ restored: false });
+  });
+
+  it('restores: insert, find the active one, mark it undone', () => {
+    job('s');
+    insertRestore(db, {
+      id: 's1',
+      jobId: 's',
+      restoredAt: now.toISOString(),
+      restoredBy: 'u1',
+      sidecarPaths: ['/media/tv/s.de.srt'],
+    });
+    expect(findActiveRestore(db, 's')).toEqual({
+      id: 's1',
+      jobId: 's',
+      restoredAt: now.toISOString(),
+      restoredBy: 'u1',
+      sidecarPaths: ['/media/tv/s.de.srt'],
+      sidecarKeys: {},
+      undoneAt: null,
+      undoneBy: null,
+    });
+    expect(markRestoreUndone(db, 's1', now.toISOString(), 'u2')).toBe(true);
+    expect(markRestoreUndone(db, 's1', now.toISOString(), 'u2')).toBe(false);
+    expect(findActiveRestore(db, 's')).toBeNull();
+    expect(findRestore(db, 's1')).toMatchObject({ undoneBy: 'u2' });
+  });
+
+  it("restores: the subtitle files' keys round-trip; a row of the first form (a plain array) still reads", () => {
+    job('k');
+    insertRestore(db, {
+      id: 'k1',
+      jobId: 'k',
+      restoredAt: now.toISOString(),
+      restoredBy: 'u1',
+      sidecarPaths: ['/media/tv/k.de.srt'],
+      sidecarKeys: { '/media/tv/k.de.srt': '1:2:3:4' },
+    });
+    expect(findRestore(db, 'k1')).toMatchObject({
+      sidecarPaths: ['/media/tv/k.de.srt'],
+      sidecarKeys: { '/media/tv/k.de.srt': '1:2:3:4' },
+    });
+    db.prepare('UPDATE restores SET sidecar_paths = ? WHERE id = ?').run(
+      '["/media/tv/k.de.srt"]',
+      'k1',
+    );
+    expect(findRestore(db, 'k1')).toMatchObject({
+      sidecarPaths: ['/media/tv/k.de.srt'],
+      sidecarKeys: {},
+    });
   });
 });
 
@@ -633,6 +770,27 @@ describe('job history', () => {
     const day = jobHistory(db, bounds)[1];
     expect(day?.savedBytes).toBe(0);
     expect(day?.seconds).toBe(0);
+  });
+
+  // Review Focus 4
+  it('space saved flips with restore and undo', () => {
+    const t = '2026-10-24T12:00:00.000Z';
+    finished('j1', t, { beforeBytes: 1000, afterBytes: 300 });
+    expect(allTimeSaved(db).savedBytes).toBe(700);
+    insertRestore(db, {
+      id: 'rs1',
+      jobId: 'j1',
+      restoredAt: t,
+      restoredBy: 'u1',
+      sidecarPaths: [],
+    });
+    expect(allTimeSaved(db)).toMatchObject({ savedBytes: 0, files: 1 });
+    expect(jobStats(db, bounds[0] as string)).toMatchObject({ savedBytes: 0, files: 1 });
+    expect(jobHistory(db, bounds)[1]).toMatchObject({ savedBytes: 0, replaced: 1 });
+    markRestoreUndone(db, 'rs1', t, 'u1');
+    expect(allTimeSaved(db).savedBytes).toBe(700);
+    expect(jobStats(db, bounds[0] as string).savedBytes).toBe(700);
+    expect(jobHistory(db, bounds)[1]?.savedBytes).toBe(700);
   });
 
   it('allTimeSaved on an empty database', () => {
