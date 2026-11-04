@@ -6,13 +6,14 @@ import type { Database } from '../open.ts';
 import { createTestDb } from '../test-db.ts';
 import {
   allTimeSaved,
+  alreadyProcessedReason,
   appendTrace,
   countJobsByState,
   deleteRecycled,
-  findFinalRealResult,
   findJob,
   findJobListRow,
   findJobResult,
+  findPriorRun,
   findProcessedResult,
   insertJob,
   insertJobResult,
@@ -727,19 +728,76 @@ describe('run notes and job re-pinning', () => {
     expect(findJob(db, 'p')?.workflowVersion).toBe(3);
   });
 
-  it('findFinalRealResult finds the newest final result of a real job for that file and version only', () => {
-    job('real');
-    updateJob(db, 'real', { state: 'done' }, at(1));
-    insertJobResult(db, result('real'));
-    job('dry', { dryRun: true });
-    updateJob(db, 'dry', { state: 'dry_run' }, at(1));
-    insertJobResult(db, result('dry', { outcome: 'dry_run', workflowVersion: 2 }));
-    expect(findFinalRealResult(db, 'k1', 'w1', 1)).toEqual({
+  it('findPriorRun: a processed result of any version wins, as source or output; failed only at the same version', () => {
+    const real = (id: string, r: Partial<JobResultRow>, extra: { dryRun?: boolean } = {}) => {
+      job(id, { workflowVersion: r.workflowVersion ?? 1, ...extra });
+      updateJob(db, id, { state: r.outcome ?? 'done' }, at(1));
+      insertJobResult(db, result(id, { createdAt: '2026-10-01T10:00:00.000Z', ...r }));
+    };
+    real('d', { fingerprint: 'src', outputFingerprint: 'out' });
+    real('f', { fingerprint: 'bad', outcome: 'failed' });
+    real('dry', { fingerprint: 'dry' }, { dryRun: true });
+    expect(findPriorRun(db, 'src', 'w1', 2)).toEqual({
       outcome: 'done',
-      createdAt: now.toISOString(),
+      workflowVersion: 1,
+      createdAt: '2026-10-01T10:00:00.000Z',
+      matched: 'source',
     });
-    expect(findFinalRealResult(db, 'k1', 'w1', 2)).toBeNull();
-    expect(findFinalRealResult(db, 'other', 'w1', 1)).toBeNull();
+    expect(findPriorRun(db, 'out', 'w1', 2)).toMatchObject({
+      workflowVersion: 1,
+      matched: 'output',
+    });
+    expect(findPriorRun(db, 'bad', 'w1', 1)).toMatchObject({
+      outcome: 'failed',
+      workflowVersion: 1,
+    });
+    expect(findPriorRun(db, 'bad', 'w1', 2)).toBeNull();
+    expect(findPriorRun(db, 'dry', 'w1', 1)).toBeNull();
+    // A dry run's check stays with its own version.
+    expect(findPriorRun(db, 'src', 'w1', 2, { sameVersion: true })).toBeNull();
+    expect(findPriorRun(db, 'src', 'w1', 1, { sameVersion: true })).toMatchObject({
+      workflowVersion: 1,
+    });
+  });
+
+  it('alreadyProcessedReason names the version and points to Process again', () => {
+    const at = '2026-10-01T10:00:00.000Z';
+    expect(
+      alreadyProcessedReason({
+        outcome: 'nothing_to_do',
+        workflowVersion: 2,
+        createdAt: at,
+        matched: 'source',
+      }),
+    ).toBe(`already nothing_to_do by v2 on ${at}; use Process again to run it anyway`);
+    expect(
+      alreadyProcessedReason({
+        outcome: 'done',
+        workflowVersion: 2,
+        createdAt: at,
+        matched: 'source',
+      }),
+    ).toBe(
+      `already done by v2 on ${at}; this file is the original from before then (moved back from the recycle folder?); use Process again to run it anyway`,
+    );
+    expect(
+      alreadyProcessedReason({
+        outcome: 'done',
+        workflowVersion: 1,
+        createdAt: at,
+        matched: 'output',
+      }),
+    ).toBe(
+      `already done by v1 on ${at}; this file is what that job wrote; use Process again to run it anyway`,
+    );
+    expect(
+      alreadyProcessedReason({
+        outcome: 'failed',
+        workflowVersion: 3,
+        createdAt: at,
+        matched: 'source',
+      }),
+    ).toBe(`already failed by v3 on ${at}; use Process again to run it anyway`);
   });
 
   it('findProcessedResult matches the source or the written file, real jobs and counted outcomes only', () => {

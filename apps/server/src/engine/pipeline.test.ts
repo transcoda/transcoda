@@ -1490,7 +1490,7 @@ describe('pipeline', () => {
     expect(await settled(id)).toMatchObject({
       state: 'already_processed',
       reason:
-        'already done on 2026-10-01T10:00:00.000Z; this file is the original from before then (moved back from the recycle folder?); use Process again to run it anyway',
+        'already done by v3 on 2026-10-01T10:00:00.000Z; this file is the original from before then (moved back from the recycle folder?); use Process again to run it anyway',
       workflowVersion: 3,
     });
     expect(findJobResult(t.db, id)).toMatchObject({
@@ -1498,6 +1498,57 @@ describe('pipeline', () => {
       workflowVersion: 3,
     });
     expect(spawner.calls).toEqual([]);
+  });
+
+  it('a job re-pinned to v3 on start is already_processed when v2 processed the file', async () => {
+    const wf = v2Workflow();
+    const id = await queue(file(), wf);
+    savedV3(wf);
+    expect(t.deps.workflows.activate(wf, 3, 'u').kind).toBe('ok');
+    await priorDone(wf, id, 2);
+    await t.deps.engine.start();
+    expect(await settled(id)).toMatchObject({
+      state: 'already_processed',
+      reason:
+        'already done by v2 on 2026-10-01T10:00:00.000Z; this file is the original from before then (moved back from the recycle folder?); use Process again to run it anyway',
+      workflowVersion: 3,
+    });
+    expect(spawner.calls).toEqual([]);
+  });
+
+  it('a job that waited in the queue is already_processed when another job processed the file meanwhile', async () => {
+    const wf = v2Workflow();
+    const id = await queue(file(), wf);
+    await priorDone(wf, id, 2);
+    await t.deps.engine.start();
+    expect(await settled(id)).toMatchObject({ state: 'already_processed', workflowVersion: 2 });
+    expect(spawner.calls).toEqual([]);
+  });
+
+  it("a retried job isn't stopped by its own earlier failure at the same version", async () => {
+    const wf = v2Workflow();
+    const id = await queue(file(), wf);
+    insertJobResult(t.db, {
+      jobId: id,
+      fingerprint: fingerprintKey(await fingerprintOf(file())),
+      workflowId: wf,
+      workflowVersion: 2,
+      outcome: 'failed',
+      beforeBytes: 1000,
+      afterBytes: null,
+      estimatedBytes: null,
+      command: null,
+      plan: null,
+      replacedTo: null,
+      logPath: null,
+      warnings: [],
+      problems: [],
+      outputProbe: null,
+      sourceDamaged: false,
+      createdAt: '2026-10-01T10:00:00.000Z',
+    });
+    await t.deps.engine.start();
+    expect(await settled(id)).toMatchObject({ state: 'nothing_to_do', workflowVersion: 2 });
   });
 
   it("a forced run's re-pinned job ignores the v3 history and runs", async () => {

@@ -170,6 +170,29 @@ describe('jobText', () => {
     expect(detailLine(job({ state: 'done', result: null }))).toBe('Replaced');
   });
 
+  it('reasonOf names the version when the engine gives one', () => {
+    const at = '2026-11-02T09:00:00.000Z';
+    expect(
+      reasonOf({
+        state: 'already_processed',
+        reason: `already done by v2 on ${at}; use Process again to run it anyway`,
+      }),
+    ).toBe(`Processed by v2 on ${fmtDate(at)}: replaced; use Process again to run it anyway`);
+    // Stored reasons from before keep their wording.
+    expect(reasonOf({ state: 'already_processed', reason: `already done on ${at}` })).toBe(
+      `Processed on ${fmtDate(at)}: replaced`,
+    );
+    // The phone line keeps the version and cuts the hint after the semicolon.
+    const phone = phoneLine(
+      job({
+        state: 'already_processed',
+        reason: `already done by v2 on ${at}; use Process again to run it anyway`,
+      }),
+    );
+    expect(phone.startsWith('Already processed · processed by v2 on ')).toBe(true);
+    expect(phone).not.toContain('Process again');
+  });
+
   it("reasonOf words the engine's already-processed reason and a missing nothing-to-do reason", () => {
     const at = '2026-10-17T04:18:10.386Z';
     const day = fmtDate(at);

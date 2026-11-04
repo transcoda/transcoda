@@ -45,8 +45,8 @@ import { durably } from '../db/open.ts';
 import {
   alreadyProcessedReason,
   appendTrace,
-  findFinalRealResult,
   findJob,
+  findPriorRun,
   hasReplaceJournal,
   insertJobResult,
   type JobPatch,
@@ -643,14 +643,14 @@ export class Pipeline implements JobExecutor {
     if (sourceHash !== null) this.sourceHashes.set(job.id, sourceHash);
     else this.sourceHashes.delete(job.id);
 
-    // The version it now runs may have finished this file already (a forced run ignores that).
-    if (repinned && !findRun(db, job.runId)?.force) {
-      const prior = findFinalRealResult(
-        db,
-        fingerprintKey(fp),
-        job.workflowId,
-        job.workflowVersion,
-      );
+    // Another job may have processed this file while this one waited, and a re-pinned version
+    // may have failed on it already (a forced run ignores both). A job not re-pinned skips the
+    // failed match: Retry failed starts it again at the version its own failure has.
+    if (!findRun(db, job.runId)?.force) {
+      const prior = findPriorRun(db, fingerprintKey(fp), job.workflowId, job.workflowVersion, {
+        sameVersion: job.dryRun,
+        processedOnly: !repinned,
+      });
       if (prior) {
         this.finish(
           job,

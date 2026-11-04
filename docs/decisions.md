@@ -1941,6 +1941,12 @@ Approved plan: `docs/plans/2026-10-21-dryrun-depends-on-size.md` (local).
 - **Engine.** A finish node that both the main path and a gate's `else` (or Render's Damaged) lead into is built once per walk (`Walker.finished`); the branch reuses its actions, so its hook runs and is traced once. A plan-only dry run lists it once in the walk.
 - **Editor.** `checkConnection` refuses a second edge only into a data input ("That data input is already connected"); a wired file input still glows while dragging. `onDamagedSide` follows every edge into a finish node's file input and is true only when all of them are on a Damaged side (the validator's per-path DAMAGED_ONLY); `nextNodeRule` follows it. On the job page, `damagedSideOf` leaves out a node the file can also reach without a Damaged output.
 
+## 2026-11-02 Never re-run a processed file
+
+- **The rule (Jan).** A workflow never runs a file again on its own once any of its versions processed it: `done`, `nothing_to_do` or `kept_original`, as the job's source or as the file it wrote. This holds for Scan now and queueing a folder (`queueRun`) and for a job re-pinned to a newer version when it starts, as it already did for the automatic library check. Process again (`force`) overrides it.
+- **Exceptions.** A `failed` result counts only for its own version, so a newer version still tries a file an older one failed on. A dry run is a preview a person asked for: it keeps the check for its own version only (`findPriorRun(..., { sameVersion: true })`). Dry-run results never count.
+- **Reason.** `already <outcome> by v<N> on <ISO time>`, then "this file is the original from before then (moved back from the recycle folder?)" for a `done` source match or "this file is what that job wrote" for an output match, always ending "use Process again to run it anyway". The web formats the time.
+
 ## Follow-ups (2026-10-17)
 
 - **mp4 video default normalisation.** `normalizeDefaults` treats video like subtitle when the output container is mp4: extra default video flags are cleared and the first kept non-cover video is flagged when none is (note `mp4 cannot have no default video`). The mp4 muxer enables a video track that was told "not default", which verify would report as a stream mismatch. Matroska passes the flag through, so mkv output is unchanged; cover pictures are never touched.
