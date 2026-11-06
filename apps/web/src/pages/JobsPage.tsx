@@ -76,10 +76,15 @@ function useCancelCounts(
   listCounts: Record<JobState, number> | null,
   narrowed: boolean,
 ): Record<JobState, number> | null {
+  // Each answer carries the library it counts: useAsync keeps the last data while a call for a
+  // new library is in flight, and those counts must never stand for the new one.
   const all = useAsync(
     async () =>
       narrowed
-        ? (await api.jobs.list({ limit: 1, ...(libraryId ? { libraryId } : {}) })).counts
+        ? {
+            libraryId,
+            counts: (await api.jobs.list({ limit: 1, ...(libraryId ? { libraryId } : {}) })).counts,
+          }
         : null,
     [libraryId, narrowed],
   );
@@ -88,7 +93,8 @@ function useCancelCounts(
     (e) => narrowed && (e.type === 'run.changed' || (e.type === 'job.changed' && changed(e))),
     all.reload,
   );
-  return narrowed ? (all.data ?? null) : listCounts;
+  if (!narrowed) return listCounts;
+  return all.data && all.data.libraryId === libraryId ? all.data.counts : null;
 }
 
 /** Pause / Resume / Cancel (with its confirmation) for one job. */

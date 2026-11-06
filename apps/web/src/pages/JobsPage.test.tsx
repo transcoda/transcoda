@@ -781,6 +781,31 @@ describe('JobsPage', () => {
     await waitFor(() => expect(mocks.list).toHaveBeenCalledWith({ limit: 1 }));
   });
 
+  it("Cancel all never shows another library's counts while the Runs facet is on (#54)", async () => {
+    await renderPage();
+    fireEvent.click(screen.getByRole('button', { name: 'Runs Real and dry runs' }));
+    const runs = screen.getByRole('listbox', { name: 'Runs' });
+    fireEvent.keyDown(runs, { key: 'ArrowDown' });
+    fireEvent.keyDown(runs, { key: 'ArrowDown' });
+    fireEvent.keyDown(runs, { key: 'Enter' });
+    await waitFor(() => expect(mocks.list).toHaveBeenCalledWith({ limit: 1 }));
+    expect(await screen.findByRole('button', { name: 'Cancel all' })).toBeTruthy();
+    // Shows' own counts never arrive: Cancel all must not keep offering every library's 39 jobs.
+    const base = mocks.list.getMockImplementation();
+    mocks.list.mockImplementation((input?: { limit?: number; libraryId?: string }) =>
+      input?.limit === 1 && input.libraryId === 'lib-shows' ? new Promise(() => {}) : base?.(input),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Library All libraries' }));
+    const libs = screen.getByRole('listbox', { name: 'Library' });
+    fireEvent.keyDown(libs, { key: 'ArrowDown' });
+    fireEvent.keyDown(libs, { key: 'ArrowDown' });
+    fireEvent.keyDown(libs, { key: 'Enter' });
+    await waitFor(() =>
+      expect(mocks.list).toHaveBeenCalledWith({ limit: 1, libraryId: 'lib-shows' }),
+    );
+    expect(screen.queryByRole('button', { name: 'Cancel all' })).toBeNull();
+  });
+
   it('Pause and Resume a single job', async () => {
     await renderPage();
     fireEvent.click(
