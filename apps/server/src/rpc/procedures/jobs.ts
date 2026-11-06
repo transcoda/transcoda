@@ -138,6 +138,8 @@ export const get = os.jobs.get
         container: detail.testOutput.container,
       },
       testOutputNote: detail.testOutputNote,
+      recycled: detail.recycled,
+      restore: detail.restore,
     };
   });
 

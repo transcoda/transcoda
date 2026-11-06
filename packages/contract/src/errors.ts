@@ -112,6 +112,12 @@ export const errorDefs = {
     }),
   },
   JOB_NOT_ACTIVE: { status: 409, message: 'The job is not in a state that allows this' },
+  /** A restore (or its undo) the files on disk don't allow; nothing moved. */
+  RECYCLE_REFUSED: {
+    status: 409,
+    message: 'The recycle folder action was refused',
+    data: z.object({ reason: z.string() }),
+  },
 } as const;
 
 export type ErrorCode = keyof typeof errorDefs;

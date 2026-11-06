@@ -141,6 +141,9 @@ export function Shell({
       <NavLink href="/libraries" icon="libraries" rail={rail}>
         Libraries
       </NavLink>
+      <NavLink href="/recycle" icon="trash" rail={rail}>
+        Recycle folder
+      </NavLink>
       {/* With updates waiting, the link lands on the Updates tab. */}
       <NavLink
         href={updates > 0 ? '/plugins?show=updates' : '/plugins'}

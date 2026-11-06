@@ -77,6 +77,7 @@ export interface JobRow {
   progress: JobProgress | null;
   reason: string | null;
   replaceJournal: ReplaceJournal | null;
+  restoreJournal: RestoreJournal | null;
   /** The path the walk took (partial up to the failing node on a walk failure); null before. */
   walkPath: WalkStep[] | null;
   queuedAt: string;
@@ -96,6 +97,8 @@ export interface JobListRow extends JobRow {
     replacedTo: 'recycle' | 'deleted' | null;
     /** The original was kept because the source is damaged ("Damaged source"). */
     sourceDamaged: boolean;
+    /** A restore of the original is in effect (not undone). */
+    restored: boolean;
   } | null;
   /** The result's problems (empty when none or no result). */
   problems: string[];
@@ -164,12 +167,49 @@ export interface FileRow {
   updatedAt: string;
 }
 
+/** What a recycle entry holds: a replaced original, a subtitle file, or an output a restore set aside. */
+export type RecycledKind = 'original' | 'sidecar' | 'restored-output';
+
 export interface RecycledRow {
   path: string;
   libraryId: string;
   jobId: string;
   sizeBytes: number;
   recycledAt: string;
+  kind: RecycledKind;
+  /** Where the file came from (its way back); null on rows from before migration 0017 it couldn't tell. */
+  originalPath: string | null;
+  /** A `restored-output` row: the restore that set it aside. */
+  restoreId: string | null;
+}
+
+/** A row to record; an original with no known way back unless said. */
+export type RecycledInsert = Omit<RecycledRow, 'kind' | 'originalPath' | 'restoreId'> &
+  Partial<Pick<RecycledRow, 'kind' | 'originalPath' | 'restoreId'>>;
+
+/** One file move of a restore (or its undo), in the order they run. */
+export interface RestoreMove {
+  from: string;
+  to: string;
+  role: 'output' | 'original' | 'sidecar';
+  /**
+   * The fingerprint key of the file at `from` when the move was planned, so a rollback can tell
+   * Transcoda's file from one another program put there meanwhile. Absent in older journals.
+   */
+  key?: string;
+}
+
+/**
+ * A restore in flight, kept on the job like the replace journal: the moves and how many are done,
+ * so the start-up sweep can roll back a restore a crash cut short.
+ */
+export interface RestoreJournal {
+  direction: 'restore' | 'undo';
+  restoreId: string;
+  libraryRoot: string;
+  moves: RestoreMove[];
+  /** The index of the first move not yet done. */
+  next: number;
 }
 
 export type JobInsert = Pick<
@@ -200,6 +240,7 @@ export type JobPatch = Partial<
     | 'progress'
     | 'reason'
     | 'replaceJournal'
+    | 'restoreJournal'
     | 'walkPath'
     | 'startedAt'
     | 'finishedAt'
@@ -229,6 +270,7 @@ interface DbJob {
   progress: string | null;
   reason: string | null;
   replace_journal: string | null;
+  restore_journal: string | null;
   walk_path: string | null;
   queued_at: string;
   started_at: string | null;
@@ -244,6 +286,7 @@ interface DbJobList extends DbJob {
   r_after_bytes: number | null;
   r_replaced_to: 'recycle' | 'deleted' | null;
   r_source_damaged: number | null;
+  r_restored: number;
   r_problems_json: string | null;
   r_estimated_bytes: number | null;
   r_plan: string | null;
@@ -292,6 +335,9 @@ interface DbRecycled {
   job_id: string;
   size_bytes: number;
   recycled_at: string;
+  kind: RecycledKind;
+  original_path: string | null;
+  restore_id: string | null;
 }
 
 const parseJson = <T>(s: string | null): T | null => (s === null ? null : (JSON.parse(s) as T));
@@ -330,6 +376,7 @@ const toJob = (r: DbJob): JobRow => ({
   progress: parseJson<JobProgress>(r.progress),
   reason: r.reason,
   replaceJournal: parseJson<ReplaceJournal>(r.replace_journal),
+  restoreJournal: parseJson<RestoreJournal>(r.restore_journal),
   walkPath: parseJson<WalkStep[]>(r.walk_path),
   queuedAt: r.queued_at,
   startedAt: r.started_at,
@@ -379,6 +426,9 @@ const toRecycled = (r: DbRecycled): RecycledRow => ({
   jobId: r.job_id,
   sizeBytes: r.size_bytes,
   recycledAt: r.recycled_at,
+  kind: r.kind,
+  originalPath: r.original_path,
+  restoreId: r.restore_id,
 });
 
 // ---- jobs ----
@@ -430,6 +480,7 @@ const PATCH_COLUMNS: Record<keyof JobPatch, [string, (v: unknown) => unknown]> =
   progress: ['progress', toJson],
   reason: ['reason', same],
   replaceJournal: ['replace_journal', toJson],
+  restoreJournal: ['restore_journal', toJson],
   walkPath: ['walk_path', toJson],
   startedAt: ['started_at', same],
   finishedAt: ['finished_at', same],
@@ -486,6 +537,7 @@ const LIST_SELECT = `SELECT j.*, l.name AS library_name, w.name AS workflow_name
     r.replaced_to AS r_replaced_to, r.source_damaged AS r_source_damaged,
     r.problems_json AS r_problems_json,
     r.estimated_bytes AS r_estimated_bytes, r.plan AS r_plan,
+    EXISTS (SELECT 1 FROM restores x WHERE x.job_id = j.id AND x.undone_at IS NULL) AS r_restored,
     (SELECT source FROM runs WHERE runs.id = j.run_id) AS run_source
   FROM jobs j
   LEFT JOIN libraries l ON l.id = j.library_id
@@ -509,6 +561,7 @@ const toListRow = (r: DbJobList): JobListRow => {
             afterBytes: r.r_after_bytes,
             replacedTo: r.r_replaced_to,
             sourceDamaged: r.r_source_damaged === 1,
+            restored: r.r_restored === 1,
           },
     problems: r.r_problems_json === null ? [] : (JSON.parse(r.r_problems_json) as string[]),
     estimatedBytes: r.dry_run !== 0 ? r.r_estimated_bytes : null,
@@ -677,8 +730,12 @@ export function countDependsOnSize(
   return row.n;
 }
 
+/** A restore still in effect for the result row `alias`: its file is the original again, so it saved nothing. */
+const ACTIVE_RESTORE_SQL = (alias: string): string =>
+  `SELECT 1 FROM restores x WHERE x.job_id = ${alias}.job_id AND x.undone_at IS NULL`;
+
 /**
- * Dashboard numbers: `files` (done results), `savedBytes` (before − after of those) over results
+ * Dashboard numbers: `files` (done results), `savedBytes` (before − after of those, unless restored) over results
  * created at or after `since`; `problems`: results with problems created at or after `since`; `failed`: jobs in state `failed` that finished at or after `since`
  * (a job the sweep failed has no result row); `queued` and `running` are current.
  */
@@ -697,7 +754,7 @@ export function jobStats(
     .prepare(
       `SELECT
          COALESCE(SUM(outcome = 'done'), 0) AS files,
-         COALESCE(SUM(CASE WHEN outcome = 'done'
+         COALESCE(SUM(CASE WHEN outcome = 'done' AND NOT EXISTS (${ACTIVE_RESTORE_SQL('job_results')})
            THEN COALESCE(before_bytes, 0) - COALESCE(after_bytes, 0) ELSE 0 END), 0) AS savedBytes,
          (SELECT COUNT(*) FROM jobs WHERE state = 'failed' AND finished_at >= ?) AS failed,
          COALESCE(SUM(json_array_length(problems_json) > 0), 0) AS problems
@@ -731,7 +788,7 @@ export interface DayTotals {
 export function jobHistory(db: Database, bounds: string[]): DayTotals[] {
   const stmt = db.prepare(
     `SELECT
-       COALESCE(SUM(CASE WHEN r.outcome = 'done'
+       COALESCE(SUM(CASE WHEN r.outcome = 'done' AND NOT EXISTS (${ACTIVE_RESTORE_SQL('r')})
          THEN COALESCE(r.before_bytes, 0) - COALESCE(r.after_bytes, 0) ELSE 0 END), 0) AS savedBytes,
        COALESCE(SUM(r.outcome = 'done'), 0) AS replaced,
        COALESCE(SUM(r.outcome = 'kept_original'), 0) AS kept,
@@ -762,7 +819,7 @@ export function allTimeSaved(db: Database): {
   return db
     .prepare(
       `SELECT
-         COALESCE(SUM(CASE WHEN outcome = 'done'
+         COALESCE(SUM(CASE WHEN outcome = 'done' AND NOT EXISTS (${ACTIVE_RESTORE_SQL('job_results')})
            THEN COALESCE(before_bytes, 0) - COALESCE(after_bytes, 0) ELSE 0 END), 0) AS savedBytes,
          COALESCE(SUM(outcome = 'done'), 0) AS files,
          MIN(created_at) AS since
@@ -809,6 +866,50 @@ export function jobsWithReplaceJournal(db: Database): JobRow[] {
     .prepare('SELECT * FROM jobs WHERE replace_journal IS NOT NULL ORDER BY rowid')
     .all() as DbJob[];
   return rows.map(toJob);
+}
+
+/** Jobs with a restore journal (any state): what the startup sweep rolls back. */
+export function jobsWithRestoreJournal(db: Database): JobRow[] {
+  const rows = db
+    .prepare('SELECT * FROM jobs WHERE restore_journal IS NOT NULL ORDER BY rowid')
+    .all() as DbJob[];
+  return rows.map(toJob);
+}
+
+/**
+ * Starts a restore: sets the job's restore journal only when neither journal is set (one file
+ * operation per job at a time). False when another one holds the job.
+ */
+export function claimRestoreJournal(db: Database, jobId: string, journal: RestoreJournal): boolean {
+  return (
+    db
+      .prepare(
+        `UPDATE jobs SET restore_journal = ? WHERE id = ?
+         AND restore_journal IS NULL AND replace_journal IS NULL`,
+      )
+      .run(toJson(journal), jobId).changes > 0
+  );
+}
+
+/** True while the job has either journal (a replace or a restore in flight or awaiting the sweep). */
+export function hasFileJournal(db: Database, jobId: string): boolean {
+  return (
+    db
+      .prepare(
+        `SELECT 1 FROM jobs WHERE id = ?
+         AND (replace_journal IS NOT NULL OR restore_journal IS NOT NULL)`,
+      )
+      .get(jobId) !== undefined
+  );
+}
+
+/** True when a queued or running job works on the file at `path`. */
+export function hasActiveJobAt(db: Database, path: string): boolean {
+  return (
+    db
+      .prepare(`SELECT 1 FROM jobs WHERE path = ? AND state IN (${ACTIVE_SQL}) LIMIT 1`)
+      .get(path) !== undefined
+  );
 }
 
 /** True while the job has a replace journal (a replace in flight or awaiting the sweep). */
@@ -1097,18 +1198,43 @@ export function fileSeen(db: Database, path: string, fingerprint: string): boole
  * any. A row for the same path can only be stale (C5): a replace never moves an original onto a
  * taken path, so that row's original was moved back out by hand. It is replaced, not kept.
  */
-export function insertRecycled(db: Database, row: RecycledRow): RecycledRow | null {
+export function insertRecycled(db: Database, row: RecycledInsert): RecycledRow | null {
   return db.transaction(() => {
     const prior = db.prepare('SELECT * FROM recycled WHERE path = ?').get(row.path) as
       | DbRecycled
       | undefined;
     db.prepare(
-      `INSERT INTO recycled (path, library_id, job_id, size_bytes, recycled_at) VALUES (?, ?, ?, ?, ?)
+      `INSERT INTO recycled (path, library_id, job_id, size_bytes, recycled_at, kind, original_path,
+         restore_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(path) DO UPDATE SET library_id = excluded.library_id, job_id = excluded.job_id,
-         size_bytes = excluded.size_bytes, recycled_at = excluded.recycled_at`,
-    ).run(row.path, row.libraryId, row.jobId, row.sizeBytes, row.recycledAt);
+         size_bytes = excluded.size_bytes, recycled_at = excluded.recycled_at, kind = excluded.kind,
+         original_path = excluded.original_path, restore_id = excluded.restore_id`,
+    ).run(
+      row.path,
+      row.libraryId,
+      row.jobId,
+      row.sizeBytes,
+      row.recycledAt,
+      row.kind ?? 'original',
+      row.originalPath ?? null,
+      row.restoreId ?? null,
+    );
     return prior ? toRecycled(prior) : null;
   })();
+}
+
+/** The recycle entry at `path`, or null. */
+export function findRecycled(db: Database, path: string): RecycledRow | null {
+  const r = db.prepare('SELECT * FROM recycled WHERE path = ?').get(path) as DbRecycled | undefined;
+  return r ? toRecycled(r) : null;
+}
+
+/** A job's recycle entries, newest first (a restore's set-aside output before older rows). */
+export function listRecycledForJob(db: Database, jobId: string): RecycledRow[] {
+  const rows = db
+    .prepare('SELECT * FROM recycled WHERE job_id = ? ORDER BY recycled_at DESC, rowid DESC')
+    .all(jobId) as DbRecycled[];
+  return rows.map(toRecycled);
 }
 
 /** Recycled originals, oldest first (the order retention removes them in). */
@@ -1129,6 +1255,18 @@ export function recycledTotals(db: Database): { files: number; bytes: number } {
     .prepare('SELECT COUNT(*) AS files, COALESCE(SUM(size_bytes), 0) AS bytes FROM recycled')
     .get() as { files: number; bytes: number };
   return { files: r.files, bytes: r.bytes };
+}
+
+/** Files and bytes in the recycle index per library, by library id. */
+export function recycledTotalsByLibrary(
+  db: Database,
+): { libraryId: string; files: number; bytes: number }[] {
+  return db
+    .prepare(
+      `SELECT library_id AS libraryId, COUNT(*) AS files, COALESCE(SUM(size_bytes), 0) AS bytes
+       FROM recycled GROUP BY library_id ORDER BY library_id`,
+    )
+    .all() as { libraryId: string; files: number; bytes: number }[];
 }
 
 export function deleteRecycled(db: Database, path: string): boolean {

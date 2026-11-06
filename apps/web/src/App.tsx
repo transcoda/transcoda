@@ -13,6 +13,7 @@ import { LibrariesPage } from './pages/LibrariesPage.tsx';
 import { LoginPage } from './pages/LoginPage.tsx';
 import { NewWorkflowPage } from './pages/NewWorkflowPage.tsx';
 import { PluginsPage } from './pages/PluginsPage.tsx';
+import { RecyclePage } from './pages/RecyclePage.tsx';
 import { RunPage } from './pages/RunPage.tsx';
 import { SetupPage } from './pages/SetupPage.tsx';
 import { SettingsPage } from './pages/settings/SettingsPage.tsx';
@@ -82,6 +83,13 @@ export function App() {
           <RequireAuth>
             <Shell>
               <LibrariesPage />
+            </Shell>
+          </RequireAuth>
+        </Route>
+        <Route path="/recycle">
+          <RequireAuth>
+            <Shell>
+              <RecyclePage />
             </Shell>
           </RequireAuth>
         </Route>

@@ -7,6 +7,7 @@ import { libraries } from './routers/libraries.ts';
 import { nodes } from './routers/nodes.ts';
 import { plugins } from './routers/plugins.ts';
 import { queue } from './routers/queue.ts';
+import { recycle } from './routers/recycle.ts';
 import { runs } from './routers/runs.ts';
 import { settings } from './routers/settings.ts';
 import { system } from './routers/system.ts';
@@ -24,6 +25,7 @@ export const contract = {
   jobs,
   queue,
   runs,
+  recycle,
   events,
   plugins,
   fs,
@@ -41,6 +43,7 @@ export * from './schemas/licences.ts';
 export * from './schemas/nodes.ts';
 export * from './schemas/plugins.ts';
 export * from './schemas/queue.ts';
+export * from './schemas/recycle.ts';
 export * from './schemas/runs.ts';
 export * from './schemas/settings.ts';
 export * from './schemas/system.ts';

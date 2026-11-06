@@ -92,6 +92,11 @@ export const JobSchema = z.object({
       replacedTo: ReplacedToSchema.nullable(),
       /** The original was kept because the source is damaged: the UI says "Damaged source". */
       sourceDamaged: z.boolean().default(false),
+      /**
+       * The recycled original was put back (a restore not undone): the output is not in place.
+       * The jobs list always sends it; other places that build a result may leave it out.
+       */
+      restored: z.boolean().optional(),
     })
     .nullable(),
   /**
@@ -192,6 +197,19 @@ export const JobDetailSchema = JobSchema.extend({
    * `expired`, `deleted`, …); null when there is nothing to say.
    */
   testOutputNote: z.string().nullable(),
+  /** The replaced original in the recycle folder and when retention removes it; null when there is none. */
+  recycled: z.object({ path: z.string(), keptUntil: z.iso.datetime() }).nullable(),
+  /**
+   * The restore in effect: when and by whom (the username, or "a removed user"), and where the
+   * output it set aside is (null once retention or a person removed it).
+   */
+  restore: z
+    .object({
+      restoredAt: z.iso.datetime(),
+      restoredBy: z.string(),
+      outputPath: z.string().nullable(),
+    })
+    .nullable(),
 });
 
 export const JobIdInputSchema = z.object({ id: z.string() });

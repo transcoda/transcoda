@@ -13,6 +13,7 @@ import {
   type JobRow,
   listRecycled,
   type ReplaceJournal,
+  type RestoreJournal,
   updateJob,
 } from '../db/repos/jobs.ts';
 import { insertLibrary } from '../db/repos/libraries.ts';
@@ -186,6 +187,7 @@ describe('startupSweep without journals', () => {
       interrupted: ['enc'],
       cleared: [],
       conflicts: [],
+      restoresRolledBack: [],
       tempRemoved: 1,
     });
     expect(findJob(db, 'enc')).toMatchObject({
@@ -765,6 +767,63 @@ function exited(child: ChildProcess): Promise<NodeJS.Signals | null> {
     else child.once('exit', (_code, signal) => resolve(signal));
   });
 }
+
+describe('startupSweep: interrupted restores', () => {
+  // A restore of j1: output a.mkv → recycle a.mkv.1, original recycle a.mkv → a.mkv.
+  let out: string;
+  let aside: string;
+  let orig: string;
+  beforeEach(async () => {
+    out = join(lib, 'Show', 'a.mkv');
+    aside = recyclePathFor(join(lib, '.transcoda-recycle'), lib, out, 1);
+    orig = recyclePathFor(join(lib, '.transcoda-recycle'), lib, out);
+    await mkdir(dirname(orig), { recursive: true });
+    await writeFile(out, NEW);
+    await writeFile(orig, ORIG);
+    job('j1', 'done', out);
+  });
+  const journal = (next: number): RestoreJournal => ({
+    direction: 'restore',
+    restoreId: 'rs1',
+    libraryRoot: lib,
+    moves: [
+      { from: out, to: aside, role: 'output' },
+      { from: orig, to: out, role: 'original' },
+    ],
+    next,
+  });
+
+  it('rolls back a restore interrupted after its first move', async () => {
+    await rename(out, aside);
+    updateJob(db, 'j1', { restoreJournal: journal(1) }, now);
+    const r = await startupSweep(db, sweepDeps());
+    expect(r.restoresRolledBack).toEqual(['j1']);
+    expect(sha(await readFile(out))).toBe(sha(NEW));
+    expect(sha(await readFile(orig))).toBe(sha(ORIG));
+    expect(findJob(db, 'j1')).toMatchObject({ state: 'done', restoreJournal: null });
+  });
+
+  it('a restore it cannot roll back is a conflict and keeps its journal; the job stays done', async () => {
+    await rename(out, aside);
+    await writeFile(out, randomBytes(64));
+    updateJob(db, 'j1', { restoreJournal: journal(1) }, now);
+    const r = await startupSweep(db, sweepDeps());
+    expect(r.restoresRolledBack).toEqual([]);
+    expect(r.conflicts).toEqual(['j1']);
+    expect(findJob(db, 'j1')).toMatchObject({ state: 'done', restoreJournal: journal(1) });
+    expect(sha(await readFile(aside))).toBe(sha(NEW));
+  });
+
+  it('an interrupted restore inside renameNoClobber (one file, two names) drops the second name', async () => {
+    await link(out, aside);
+    updateJob(db, 'j1', { restoreJournal: journal(0) }, now);
+    const r = await startupSweep(db, sweepDeps());
+    expect(r.restoresRolledBack).toEqual(['j1']);
+    expect(sha(await readFile(out))).toBe(sha(NEW));
+    expect((await readdir(dirname(aside))).sort()).toEqual(['a.mkv']);
+    expect(findJob(db, 'j1')?.restoreJournal).toBeNull();
+  });
+});
 
 describe('killStaleFfmpeg', () => {
   it('does nothing without a pid file, and ignores a malformed one', async () => {

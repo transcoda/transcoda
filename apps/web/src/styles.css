@@ -10362,3 +10362,79 @@ button.job-step-more:hover {
   gap: 14px;
   padding-top: 4px;
 }
+
+/* ---------- Recycle folder page ---------- */
+.recycle-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.recycle-folder {
+  overflow-wrap: anywhere;
+}
+.recycle-empty {
+  color: var(--muted);
+}
+.recycle-table {
+  overflow-x: auto;
+}
+.recycle-table table {
+  width: 100%;
+  min-width: 640px;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.recycle-table th {
+  padding: 14px 12px;
+  text-align: left;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--faint);
+  text-transform: uppercase;
+}
+.recycle-cell {
+  padding: 12px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  vertical-align: middle;
+}
+.recycle-file {
+  display: block;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+.recycle-note {
+  display: block;
+  font-size: var(--fs-small);
+  color: var(--faint);
+}
+/* A subtitle file sits under its video's original. */
+.recycle-sidecar .recycle-cell {
+  border-top: none;
+  padding-top: 0;
+}
+.recycle-sidecar .recycle-cell:first-child {
+  padding-left: 32px;
+}
+.recycle-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.recycle-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+.recycle-empty-action {
+  margin-top: 4px;
+}
+/* The size stays on one line; the file name keeps room to read, the buttons may wrap. */
+.recycle-table td:nth-child(2) {
+  white-space: nowrap;
+}
+.recycle-table td:first-child {
+  min-width: 14em;
+}

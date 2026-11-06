@@ -10,6 +10,7 @@ import {
   type JobRow,
   jobsInStates,
   jobsWithReplaceJournal,
+  jobsWithRestoreJournal,
   listRecycled,
   type ReplaceJournal,
   updateJob,
@@ -26,6 +27,7 @@ import {
 } from './fs-ops.ts';
 import { recordRecycledRow } from './recycle.ts';
 import { fingerprintFromStats } from './replace.ts';
+import { rollBackRestore } from './restore.ts';
 import { TEST_OUTPUT_DIR } from './test-outputs.ts';
 
 export interface SweepResult {
@@ -45,6 +47,8 @@ export interface SweepResult {
    * library (the last two keep their journal and are settled again on the next start).
    */
   conflicts: string[];
+  /** Restores a crash cut short whose moves were all undone (the job stays `done`). */
+  restoresRolledBack: string[];
   /** Entries removed from the transcode dir plus stray library tmp files. */
   tempRemoved: number;
 }
@@ -181,6 +185,7 @@ export async function startupSweep(db: Database, deps: SweepDeps): Promise<Sweep
     interrupted: [],
     cleared: [],
     conflicts: [],
+    restoresRolledBack: [],
     tempRemoved: 0,
   };
   const killStale = deps.killStaleGroup ?? ((p: string) => killStaleFfmpeg(p, log));
@@ -202,6 +207,20 @@ export async function startupSweep(db: Database, deps: SweepDeps): Promise<Sweep
     result[await settleOne(db, deps, job, j, now, true)].push(job.id);
   }
 
+  // 2b. Interrupted restores: rolled back from the disk; the job's state is never changed. One that
+  // can't be rolled back (or an unreachable library) keeps its journal for the next start.
+  for (const job of jobsWithRestoreJournal(db)) {
+    journaledIds.add(job.id);
+    let outcome: 'rolled-back' | 'conflict';
+    try {
+      outcome = (await rollBackRestore({ db, fs, now: deps.now, log }, job)).outcome;
+    } catch (err) {
+      log.error({ msg: 'could not roll back a restore', job: job.id, error: message(err) });
+      outcome = 'conflict';
+    }
+    (outcome === 'rolled-back' ? result.restoresRolledBack : result.conflicts).push(job.id);
+  }
+
   // 3. Interrupted running jobs.
   for (const job of jobsInStates(db, [...RUNNING_JOB_STATES])) {
     if (job.replaceJournal !== null) continue;
@@ -216,6 +235,7 @@ export async function startupSweep(db: Database, deps: SweepDeps): Promise<Sweep
   }
   // A tmp is never stray while its job had or still has a journal (an unreachable library keeps it).
   for (const j of jobsWithReplaceJournal(db)) journaledIds.add(j.id);
+  for (const j of jobsWithRestoreJournal(db)) journaledIds.add(j.id);
   for (const root of deps.libraryRoots) {
     let reachable: boolean;
     try {
@@ -239,6 +259,7 @@ export async function startupSweep(db: Database, deps: SweepDeps): Promise<Sweep
       rolledBack: result.rolledBack.length,
       interrupted: result.interrupted.length,
       conflicts: result.conflicts.length,
+      restoresRolledBack: result.restoresRolledBack.length,
       tempRemoved: result.tempRemoved,
     });
   }
@@ -411,6 +432,8 @@ async function settleJournal(
             jobId: job.id,
             sizeBytes: j.fingerprint.sizeBytes,
             recycledAt: now.toISOString(),
+            kind: 'original',
+            originalPath: job.path,
           },
           log,
         );

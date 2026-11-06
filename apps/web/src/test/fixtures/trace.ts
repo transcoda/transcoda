@@ -146,6 +146,8 @@ export function jobDetail(over: Partial<JobDetail> = {}): JobDetail {
     testEncode: false,
     testOutput: null,
     testOutputNote: null,
+    recycled: null,
+    restore: null,
     fileName: 'Tigger and Pooh S01E01.mkv',
     filePath: '/media/Shows/Tigger and Pooh/Tigger and Pooh S01E01.mkv',
     libraryId: 'l1',

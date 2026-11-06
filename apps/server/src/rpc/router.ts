@@ -7,6 +7,7 @@ import * as libraries from './procedures/libraries.ts';
 import * as nodes from './procedures/nodes.ts';
 import * as plugins from './procedures/plugins.ts';
 import * as queue from './procedures/queue.ts';
+import * as recycle from './procedures/recycle.ts';
 import * as runs from './procedures/runs.ts';
 import * as settings from './procedures/settings.ts';
 import * as system from './procedures/system.ts';
@@ -90,6 +91,12 @@ export function createRouter() {
       list: runs.list,
       get: runs.get,
       processAgain: runs.processAgain,
+    },
+    recycle: {
+      restore: recycle.restore,
+      list: recycle.list,
+      delete: recycle.remove,
+      empty: recycle.empty,
     },
     events: {
       subscribe: events.subscribe,
