@@ -243,6 +243,7 @@ export async function restoreRecycled(
     (m) => m.role === (direction === 'restore' ? 'output' : 'original'),
   ) as RestoreMove;
   const movedSidecars = plan.sidecars.filter((s) => done.has(s.move));
+  const restoredKey = plan.moves.find((m) => m.to === job.path)?.key;
   durably(db, () => {
     if (direction === 'restore') {
       insertRestore(db, {
@@ -251,9 +252,11 @@ export async function restoreRecycled(
         restoredAt: at,
         restoredBy: input.userId,
         sidecarPaths: movedSidecars.map((s) => s.move.to),
-        sidecarKeys: Object.fromEntries(
-          movedSidecars.flatMap((s) => (s.move.key ? [[s.move.to, s.move.key]] : [])),
-        ),
+        // The subtitle files' keys, and the restored original's under the job's path (undo checks it).
+        sidecarKeys: Object.fromEntries([
+          ...movedSidecars.flatMap((s) => (s.move.key ? [[s.move.to, s.move.key]] : [])),
+          ...(restoredKey ? [[job.path, restoredKey]] : []),
+        ]),
       });
       insertRecycled(db, {
         path: outputMove.to,
@@ -352,7 +355,8 @@ async function planMoves(
   if (direction === 'restore') {
     if (ctx.outputFingerprint === null) throw new Refused(REASON.noOutputKey);
     if (atKey !== ctx.outputFingerprint) throw new Refused(REASON.notOutput);
-  } else if (atKey !== ctx.fingerprint) {
+  } else if (atKey !== (restore?.sidecarKeys[job.path] ?? ctx.fingerprint)) {
+    // Against the original as the restore put it back (its key then), when recorded.
     throw new Refused(REASON.changedSinceRestore);
   }
   const copy = await statOrNull(fs, row.path);
@@ -479,6 +483,13 @@ export async function rollBackRestore(deps: RestoreDeps, job: JobRow): Promise<R
       await syncDirs(fs, [dirname(move.to)], log);
     } else if (from !== null && to === null) {
       // The move never ran.
+    } else if (from === null && to === null) {
+      // The move never ran and its source is gone (deleted meanwhile): nothing to put back.
+      log.warn({
+        msg: 'a restore source vanished during the restore',
+        job: job.id,
+        path: move.from,
+      });
     } else if (to !== null && move.key !== undefined && !toIsOurs) {
       // The move never ran; another program's file is at `to`.
     } else if (to !== null && toIsOurs && toRecycle) {

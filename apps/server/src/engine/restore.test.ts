@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto';
-import { mkdir, rm, stat, unlink, writeFile } from 'node:fs/promises';
+import { mkdir, rm, stat, unlink, utimes, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { emptyGraph } from '@transcoda/shared';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -379,6 +379,31 @@ describe('restoreRecycled', () => {
       kind: 'failed',
       reason: "Putting Transcoda's version back failed and nothing was changed: EIO",
     });
+  });
+
+  it('an original deleted from the recycle folder while the restore runs: the output goes back, the job is not stuck', async () => {
+    const fs = {
+      ...nodeFsOps,
+      link: async (a: string, b: string) => {
+        if (a === `${bin}/Show/a.mkv`) await nodeFsOps.unlink(a);
+        await nodeFsOps.link(a, b);
+      },
+    };
+    const r = await restoreRecycled({ ...deps, fs }, input());
+    expect(r).toMatchObject({ kind: 'failed' });
+    expect((r as { reason: string }).reason).toMatch(/^Restoring failed and nothing was changed/);
+    expect(await size(`${root}/Show/a.mkv`)).toBe(300);
+    expect(findJob(db, 'j1')?.restoreJournal).toBeNull();
+  });
+
+  it('undo checks against the original as it was restored, not as first recorded', async () => {
+    const t = new Date('2026-02-01T00:00:00.000Z');
+    await utimes(`${bin}/Show/a.mkv`, t, t);
+    expect(await restoreRecycled(deps, input())).toMatchObject({ kind: 'restored' });
+    expect(
+      await restoreRecycled(deps, { path: `${bin}/Show/a.mkv.1`, userId: 'u2' }),
+    ).toMatchObject({ kind: 'undone' });
+    expect(await size(`${root}/Show/a.mkv`)).toBe(300);
   });
 
   it('a failed move rolls back every move before it', async () => {
