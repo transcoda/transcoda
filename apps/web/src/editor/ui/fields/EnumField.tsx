@@ -5,13 +5,17 @@ const NEXT: Record<string, number> = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -
 
 /**
  * An enum: a segmented radio group (≤ 5 options; arrow keys move the choice, one tab stop) or a
- * `<select>`. An unset value selects nothing; the select then shows an empty first entry.
+ * `<select>`. An unset value shows the schema default, which the
+ * server applies; without a default it selects nothing and the select shows an empty first entry.
  */
 export function EnumField(props: FieldProps) {
   const { def, value, onChange, readOnly, autoFocus } = props;
   if (def.spec.kind !== 'enum') return null;
   const { options, control } = def.spec;
   const current = typeof value === 'string' && options.includes(value) ? value : undefined;
+  const fallback =
+    typeof def.default === 'string' && options.includes(def.default) ? def.default : undefined;
+  const shown = current ?? fallback;
 
   if (control === 'select') {
     return (
@@ -20,7 +24,7 @@ export function EnumField(props: FieldProps) {
           <select
             id={ids.id}
             className="input tc-input"
-            value={current ?? ''}
+            value={shown ?? ''}
             disabled={readOnly}
             aria-describedby={ids.describedBy}
             aria-invalid={ids.invalid || undefined}
@@ -28,7 +32,7 @@ export function EnumField(props: FieldProps) {
             autoFocus={autoFocus}
             onChange={(e) => onChange(e.target.value === '' ? undefined : e.target.value)}
           >
-            {current === undefined && <option value="">—</option>}
+            {shown === undefined && <option value="">—</option>}
             {options.map((o) => (
               <option key={o} value={o}>
                 {humanise(o)}
@@ -52,7 +56,7 @@ export function EnumField(props: FieldProps) {
     group?.querySelectorAll<HTMLButtonElement>('[role="radio"]')[next]?.focus();
   }
 
-  const tabStop = current ?? options[0];
+  const tabStop = shown ?? options[0];
   return (
     <Field {...props} labelling="group">
       {(ids) => (
@@ -69,7 +73,7 @@ export function EnumField(props: FieldProps) {
               key={o}
               type="button"
               role="radio"
-              aria-checked={o === current}
+              aria-checked={o === shown}
               tabIndex={o === tabStop ? 0 : -1}
               disabled={readOnly}
               // biome-ignore lint/a11y/noAutofocus: the inspector focuses a field on request only

@@ -42,11 +42,45 @@ export interface FieldIds {
 }
 
 /**
- * Display text for an enum value: multi-word ids are sentence-cased ("drop-incompatible" →
- * "Drop incompatible"); single tokens stay as stored (codec and container ids such as hevc, mkv,
- * aac, whose casing cannot be guessed). The stored value never changes.
+ * Plain names for the core nodes' single-word option values (codec, container and mode ids as
+ * ffmpeg and the schemas spell them), so the inspector never shows a raw id such as "hevc" or
+ * "reencode". The stored value never changes.
+ */
+const OPTION_LABELS: Record<string, string> = {
+  hevc: 'HEVC (H.265)',
+  h264: 'H.264',
+  av1: 'AV1',
+  quality: 'Quality',
+  bitrate: 'Bitrate',
+  never: 'Never',
+  copy: 'Copy',
+  reencode: 'Re-encode',
+  aac: 'AAC',
+  ac3: 'AC-3',
+  opus: 'Opus',
+  none: 'None',
+  stereo: 'Stereo',
+  convert: 'Convert',
+  fail: 'Fail',
+  keep: 'Keep',
+  recycle: 'Recycle',
+  move: 'Move',
+  mkv: 'MKV',
+  mp4: 'MP4',
+  audio: 'Audio',
+  subtitle: 'Subtitle',
+  'android-tv': 'Android TV',
+  chrome: 'Chrome',
+};
+
+/**
+ * Display text for an enum value: a plain name from `OPTION_LABELS`, else multi-word ids are
+ * sentence-cased ("drop-incompatible" → "Drop incompatible"); other single tokens stay as stored
+ * (a plugin's ids, whose casing cannot be guessed). The stored value never changes.
  */
 export function humanise(value: string): string {
+  const named = OPTION_LABELS[value];
+  if (named !== undefined) return named;
   if (!/[-_]/.test(value)) return value;
   const words = value.replace(/[-_]+/g, ' ').trim().toLowerCase();
   return words.charAt(0).toUpperCase() + words.slice(1);
@@ -66,13 +100,27 @@ export function defaultText(def: FieldDef): string | null {
   const d = def.default;
   if (typeof d === 'boolean') return `Default: ${d ? 'on' : 'off'}`;
   if (typeof d === 'number') return `Default: ${d}`;
-  if (typeof d === 'string' && d !== '') return `Default: ${d}`;
+  if (typeof d === 'string' && d !== '') {
+    return `Default: ${def.spec.kind === 'enum' ? humanise(d) : d}`;
+  }
   return null;
 }
 
+/** The value is the setting's plain default (stored or not, the node behaves the same). */
+function isDefault(def: FieldDef, value: JsonValue | undefined): boolean {
+  const d = def.default;
+  return (
+    value !== undefined &&
+    (typeof d === 'boolean' || typeof d === 'number' || (typeof d === 'string' && d !== '')) &&
+    value === d
+  );
+}
+
 /**
- * The shared frame of every inspector field: the label (with its unit), "not set" for an optional
- * setting without a value, a Clear button for an optional setting with one, and the message slot
+ * The shared frame of every inspector field: the label (with its unit), "Default: 24" for an
+ * optional setting left at its default (unset or stored with the default value, so a new node
+ * with its defaults filled in reads like an older one without them), "not set" for one without a
+ * value or default, a Clear button for an optional setting changed from it, and the message slot
  * (amber, icon + text). `data-field` lets the inspector focus a field by setting path.
  * `labelling: 'group'` is for controls made of several elements (chips, radio groups): the label
  * is a plain element the control's own group names itself by (`aria-labelledby={labelId}`)
@@ -107,6 +155,7 @@ export function Field({
   const hintId = `${id}-hint`;
   const describedBy = [def.hint ? hintId : null, issue ? issueId : null].filter(Boolean).join(' ');
   const optional = !def.required;
+  const atDefault = value === undefined || isDefault(def, value);
   const unit = def.unit ? (
     <>
       {' '}
@@ -134,10 +183,10 @@ export function Field({
             {unit}
           </label>
         )}
-        {optional && value === undefined && notSet !== null && (
+        {optional && atDefault && notSet !== null && (
           <span className="tc-field-notset">{defaultText(def) ?? notSet}</span>
         )}
-        {optional && value !== undefined && !readOnly && clearable && (
+        {optional && !atDefault && !readOnly && clearable && (
           <button
             type="button"
             className="tc-field-clear"

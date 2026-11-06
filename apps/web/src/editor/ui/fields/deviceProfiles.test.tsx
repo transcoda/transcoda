@@ -60,7 +60,7 @@ describe('EnumListField device profiles', () => {
         readOnly={false}
       />,
     );
-    expect(screen.getByRole('button', { name: 'Android tv' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Android TV' })).toBeTruthy();
     await waitFor(() => expect(capabilities).not.toHaveBeenCalled());
   });
 });
