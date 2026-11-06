@@ -62,6 +62,7 @@ const base: WorkflowSummary = {
   usesOutdatedSubworkflow: false,
   feedsLibrary: null,
   libraryInput: null,
+  trigger: null,
   usedBy: [],
   createdAt: '2026-10-16T08:00:00.000Z',
   updatedAt: '2026-10-16T09:00:00.000Z',

@@ -1081,6 +1081,7 @@ export class WorkflowService {
       libraryInput: input?.libraryId
         ? { id: input.libraryId, name: index.libraries.get(input.libraryId) ?? null }
         : null,
+      trigger: isWorkflow && newestGraph ? triggerOf(newestGraph) : null,
       createdAt: workflow.createdAt,
       updatedAt: workflow.updatedAt,
     };
@@ -1104,4 +1105,19 @@ export class WorkflowService {
     const entry = index.byId.get(id);
     return entry ? this.currentSummary(entry, index) : null;
   }
+}
+
+const TRIGGERS: Record<string, NonNullable<WorkflowSummary['trigger']>> = {
+  'core:input-library': 'library',
+  'core:input-webhook': 'webhook',
+  'core:input-manual': 'manual',
+};
+
+/** The graph's trigger, the first in node order (validation reports more than one). */
+function triggerOf(graph: WorkflowGraph): WorkflowSummary['trigger'] {
+  for (const n of graph.nodes) {
+    const t = TRIGGERS[n.type];
+    if (t) return t;
+  }
+  return null;
 }

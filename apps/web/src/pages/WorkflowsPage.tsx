@@ -115,6 +115,25 @@ function ProblemChips({ w }: { w: WorkflowSummary }) {
   );
 }
 
+/**
+ * The TRIGGER column: what starts the workflow. A library is named: the one the active version
+ * takes files from, else the newest version's.
+ */
+function TriggerCell({ w }: { w: WorkflowSummary }) {
+  const library = w.feedsLibrary?.name ?? (w.trigger === 'library' ? w.libraryInput?.name : null);
+  const text = library
+    ? `Library: ${library}`
+    : w.trigger === 'library'
+      ? 'Library, none picked'
+      : w.trigger === 'webhook'
+        ? 'Webhook'
+        : w.trigger === 'manual'
+          ? 'Manual'
+          : null;
+  if (text === null) return <span className="wf-quiet">No trigger</span>;
+  return <span title={text}>{text}</span>;
+}
+
 /** Active workflows first, then the rest; each group A–Z, ignoring case. */
 function byActiveThenName(a: WorkflowSummary, b: WorkflowSummary): number {
   const live = Number(b.active !== null) - Number(a.active !== null);
@@ -507,7 +526,7 @@ export function WorkflowsPage() {
                   <th scope="col">Used by</th>
                 ) : (
                   <>
-                    <th scope="col">Library</th>
+                    <th scope="col">Trigger</th>
                     <th scope="col">Active</th>
                   </>
                 )}
@@ -552,11 +571,7 @@ export function WorkflowsPage() {
                   ) : (
                     <>
                       <td className="wf-cell wf-meta wf-library">
-                        {w.feedsLibrary ? (
-                          <span title={w.feedsLibrary.name}>{w.feedsLibrary.name}</span>
-                        ) : (
-                          <span className="wf-quiet">Run on a file only</span>
-                        )}
+                        <TriggerCell w={w} />
                       </td>
                       <td className="wf-cell wf-meta">
                         <ActiveCell

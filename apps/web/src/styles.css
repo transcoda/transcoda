@@ -2958,7 +2958,7 @@ a.btn-secondary:hover {
 }
 
 /* Fits the 1024 px desktop without scrolling, so the row menu is never clipped there. Both
-   tables are fixed-layout; USED BY spans LIBRARY + ACTIVE, so LAST EDITED and the menus line up. */
+   tables are fixed-layout; USED BY spans TRIGGER + ACTIVE, so LAST EDITED and the menus line up. */
 .wf-table table {
   width: 100%;
   min-width: 720px;
