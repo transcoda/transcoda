@@ -223,6 +223,18 @@ describe('restoreRecycled', () => {
     expect(findJob(db, 'j1')?.restoreJournal).toBeNull();
   });
 
+  it('undo leaves a subtitle file that changed since the restore where it is and says so', async () => {
+    await restoreRecycled(deps, input());
+    await writeFile(`${root}/Show/a.de.srt`, 'edited subs');
+    const r = await restoreRecycled(deps, { path: `${bin}/Show/a.mkv.1`, userId: 'u2' });
+    expect(r).toMatchObject({
+      kind: 'undone',
+      notRestored: ['a.de.srt (changed since the restore, left in place)'],
+    });
+    expect(await size(`${root}/Show/a.de.srt`)).toBe(11);
+    expect(findRecycled(db, `${bin}/Show/a.de.srt`)).toBeNull();
+  });
+
   it('refuses when the file at the path is not the output', async () => {
     await writeFile(`${root}/Show/a.mkv`, randomBytes(500));
     expect(await restoreRecycled(deps, input())).toEqual({
@@ -239,6 +251,34 @@ describe('restoreRecycled', () => {
       reason: 'The original is no longer in the recycle folder (removed by hand).',
     });
     expect(findRecycled(db, `${bin}/Show/a.mkv`)).toBeNull();
+  });
+
+  it('a missing original past its cleanup date names that date', async () => {
+    await unlink(`${bin}/Show/a.mkv`);
+    const later = { ...deps, retentionDays: 7, now: () => new Date('2026-03-09T12:00:00.000Z') };
+    expect(await restoreRecycled(later, input())).toEqual({
+      kind: 'refused',
+      reason: 'The original is no longer in the recycle folder (removed on 2026-03-08 or by hand).',
+    });
+  });
+
+  it('a file set aside by a restore that stopped part-way has no restore to undo, and says so', async () => {
+    await writeFile(`${bin}/Show/a.mkv.1`, randomBytes(300));
+    insertRecycled(db, {
+      path: `${bin}/Show/a.mkv.1`,
+      libraryId: 'l1',
+      jobId: 'j1',
+      sizeBytes: 300,
+      recycledAt: now.toISOString(),
+      kind: 'restored-output',
+      originalPath: `${root}/Show/a.mkv`,
+      restoreId: null,
+    });
+    expect(await restoreRecycled(deps, { path: `${bin}/Show/a.mkv.1`, userId: 'u1' })).toEqual({
+      kind: 'refused',
+      reason:
+        "This file was set aside when a restore stopped part-way, so there's no restore to undo. Move it back by hand or delete it.",
+    });
   });
 
   it('refuses when the recycled copy has another size', async () => {
@@ -323,6 +363,56 @@ describe('restoreRecycled', () => {
     expect(listRecycled(db, 'l1')).toEqual(rowsBefore);
     expect(findJob(db, 'j1')?.restoreJournal).toBeNull();
     expect(findActiveRestore(db, 'j1')).toBeNull();
+  });
+
+  it('another program writing the file between the moves: the restore stops, keeps both files and never wedges the job', async () => {
+    const foreign = randomBytes(77);
+    const fs = {
+      ...nodeFsOps,
+      unlink: async (p: string) => {
+        await nodeFsOps.unlink(p);
+        if (p === `${root}/Show/a.mkv`) await writeFile(p, foreign);
+      },
+    };
+    const r = await restoreRecycled({ ...deps, fs }, input());
+    expect(r).toEqual({
+      kind: 'failed',
+      reason:
+        'Restoring stopped because another program wrote to the same place meanwhile. Nothing was lost; the recycle folder holds both versions.',
+    });
+    expect(await size(`${root}/Show/a.mkv`)).toBe(77);
+    expect(await size(`${bin}/Show/a.mkv`)).toBe(1000);
+    expect(await size(`${bin}/Show/a.mkv.1`)).toBe(300);
+    expect(findJob(db, 'j1')?.restoreJournal).toBeNull();
+    expect(findRecycled(db, `${bin}/Show/a.mkv.1`)).toMatchObject({
+      kind: 'restored-output',
+      sizeBytes: 300,
+      originalPath: `${root}/Show/a.mkv`,
+      restoreId: null,
+    });
+    expect(findRecycled(db, `${bin}/Show/a.mkv`)).not.toBeNull();
+    expect(findActiveRestore(db, 'j1')).toBeNull();
+  });
+
+  it('a file appearing at the recycle name before the first move: nothing moved, the stranger is left alone', async () => {
+    let made = false;
+    const fs = {
+      ...nodeFsOps,
+      link: async (a: string, b: string) => {
+        if (!made && b === `${bin}/Show/a.mkv.1`) {
+          made = true;
+          await writeFile(b, 'stranger');
+        }
+        await nodeFsOps.link(a, b);
+      },
+    };
+    const r = await restoreRecycled({ ...deps, fs }, input());
+    expect(r).toMatchObject({ kind: 'failed' });
+    expect((r as { reason: string }).reason).toMatch(/^Restoring failed and nothing was changed/);
+    expect(await size(`${root}/Show/a.mkv`)).toBe(300);
+    expect(await size(`${bin}/Show/a.mkv.1`)).toBe(8);
+    expect(findRecycled(db, `${bin}/Show/a.mkv.1`)).toBeNull();
+    expect(findJob(db, 'j1')?.restoreJournal).toBeNull();
   });
 
   // Review Focus 1

@@ -94,6 +94,9 @@ export function createRouter() {
     },
     recycle: {
       restore: recycle.restore,
+      list: recycle.list,
+      delete: recycle.remove,
+      empty: recycle.empty,
     },
     events: {
       subscribe: events.subscribe,

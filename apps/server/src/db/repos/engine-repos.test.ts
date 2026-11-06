@@ -659,6 +659,23 @@ describe('jobs', () => {
     expect(hasActiveJobAt(db, '/media/tv/other.mkv')).toBe(false);
   });
 
+  it('listJobs: a job whose original is restored says so until the restore is undone', () => {
+    job('rs');
+    updateJob(db, 'rs', { state: 'done' }, now);
+    insertJobResult(db, result('rs'));
+    expect(listJobs(db, {})[0]?.result).toMatchObject({ restored: false });
+    insertRestore(db, {
+      id: 'rs1',
+      jobId: 'rs',
+      restoredAt: now.toISOString(),
+      restoredBy: 'u1',
+      sidecarPaths: [],
+    });
+    expect(listJobs(db, {})[0]?.result).toMatchObject({ restored: true });
+    markRestoreUndone(db, 'rs1', now.toISOString(), 'u1');
+    expect(listJobs(db, {})[0]?.result).toMatchObject({ restored: false });
+  });
+
   it('restores: insert, find the active one, mark it undone', () => {
     job('s');
     insertRestore(db, {
@@ -674,6 +691,7 @@ describe('jobs', () => {
       restoredAt: now.toISOString(),
       restoredBy: 'u1',
       sidecarPaths: ['/media/tv/s.de.srt'],
+      sidecarKeys: {},
       undoneAt: null,
       undoneBy: null,
     });
@@ -681,6 +699,30 @@ describe('jobs', () => {
     expect(markRestoreUndone(db, 's1', now.toISOString(), 'u2')).toBe(false);
     expect(findActiveRestore(db, 's')).toBeNull();
     expect(findRestore(db, 's1')).toMatchObject({ undoneBy: 'u2' });
+  });
+
+  it("restores: the subtitle files' keys round-trip; a row of the first form (a plain array) still reads", () => {
+    job('k');
+    insertRestore(db, {
+      id: 'k1',
+      jobId: 'k',
+      restoredAt: now.toISOString(),
+      restoredBy: 'u1',
+      sidecarPaths: ['/media/tv/k.de.srt'],
+      sidecarKeys: { '/media/tv/k.de.srt': '1:2:3:4' },
+    });
+    expect(findRestore(db, 'k1')).toMatchObject({
+      sidecarPaths: ['/media/tv/k.de.srt'],
+      sidecarKeys: { '/media/tv/k.de.srt': '1:2:3:4' },
+    });
+    db.prepare('UPDATE restores SET sidecar_paths = ? WHERE id = ?').run(
+      '["/media/tv/k.de.srt"]',
+      'k1',
+    );
+    expect(findRestore(db, 'k1')).toMatchObject({
+      sidecarPaths: ['/media/tv/k.de.srt'],
+      sidecarKeys: {},
+    });
   });
 });
 

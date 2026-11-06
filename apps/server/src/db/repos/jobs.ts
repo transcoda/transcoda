@@ -97,6 +97,8 @@ export interface JobListRow extends JobRow {
     replacedTo: 'recycle' | 'deleted' | null;
     /** The original was kept because the source is damaged ("Damaged source"). */
     sourceDamaged: boolean;
+    /** A restore of the original is in effect (not undone). */
+    restored: boolean;
   } | null;
   /** The result's problems (empty when none or no result). */
   problems: string[];
@@ -190,6 +192,11 @@ export interface RestoreMove {
   from: string;
   to: string;
   role: 'output' | 'original' | 'sidecar';
+  /**
+   * The fingerprint key of the file at `from` when the move was planned, so a rollback can tell
+   * Transcoda's file from one another program put there meanwhile. Absent in older journals.
+   */
+  key?: string;
 }
 
 /**
@@ -279,6 +286,7 @@ interface DbJobList extends DbJob {
   r_after_bytes: number | null;
   r_replaced_to: 'recycle' | 'deleted' | null;
   r_source_damaged: number | null;
+  r_restored: number;
   r_problems_json: string | null;
   r_estimated_bytes: number | null;
   r_plan: string | null;
@@ -529,6 +537,7 @@ const LIST_SELECT = `SELECT j.*, l.name AS library_name, w.name AS workflow_name
     r.replaced_to AS r_replaced_to, r.source_damaged AS r_source_damaged,
     r.problems_json AS r_problems_json,
     r.estimated_bytes AS r_estimated_bytes, r.plan AS r_plan,
+    EXISTS (SELECT 1 FROM restores x WHERE x.job_id = j.id AND x.undone_at IS NULL) AS r_restored,
     (SELECT source FROM runs WHERE runs.id = j.run_id) AS run_source
   FROM jobs j
   LEFT JOIN libraries l ON l.id = j.library_id
@@ -552,6 +561,7 @@ const toListRow = (r: DbJobList): JobListRow => {
             afterBytes: r.r_after_bytes,
             replacedTo: r.r_replaced_to,
             sourceDamaged: r.r_source_damaged === 1,
+            restored: r.r_restored === 1,
           },
     problems: r.r_problems_json === null ? [] : (JSON.parse(r.r_problems_json) as string[]),
     estimatedBytes: r.dry_run !== 0 ? r.r_estimated_bytes : null,
@@ -1245,6 +1255,18 @@ export function recycledTotals(db: Database): { files: number; bytes: number } {
     .prepare('SELECT COUNT(*) AS files, COALESCE(SUM(size_bytes), 0) AS bytes FROM recycled')
     .get() as { files: number; bytes: number };
   return { files: r.files, bytes: r.bytes };
+}
+
+/** Files and bytes in the recycle index per library, by library id. */
+export function recycledTotalsByLibrary(
+  db: Database,
+): { libraryId: string; files: number; bytes: number }[] {
+  return db
+    .prepare(
+      `SELECT library_id AS libraryId, COUNT(*) AS files, COALESCE(SUM(size_bytes), 0) AS bytes
+       FROM recycled GROUP BY library_id ORDER BY library_id`,
+    )
+    .all() as { libraryId: string; files: number; bytes: number }[];
 }
 
 export function deleteRecycled(db: Database, path: string): boolean {

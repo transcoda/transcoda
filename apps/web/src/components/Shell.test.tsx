@@ -134,6 +134,18 @@ describe('Shell', () => {
     expect(within(nav).getByRole('link', { name: 'Jobs' }).getAttribute('href')).toBe('/jobs');
   });
 
+  it('has a Recycle folder item after Libraries', () => {
+    render(<Shell>x</Shell>);
+    const nav = screen.getByRole('navigation', { name: 'Main' });
+    const names = within(nav)
+      .getAllByRole('link')
+      .map((l) => l.textContent?.trim());
+    expect(names.indexOf('Recycle folder')).toBe(names.indexOf('Libraries') + 1);
+    expect(within(nav).getByRole('link', { name: 'Recycle folder' }).getAttribute('href')).toBe(
+      '/recycle',
+    );
+  });
+
   it('starts with a skip link to the main content, in both layouts', () => {
     for (const rail of [false, true]) {
       const { container } = render(<Shell rail={rail}>x</Shell>);

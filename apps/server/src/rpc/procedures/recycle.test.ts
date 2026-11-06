@@ -162,3 +162,105 @@ describe('recycle.restore', () => {
     });
   });
 });
+
+describe('recycle.list, recycle.delete, recycle.empty', () => {
+  async function secondLibrary(): Promise<string> {
+    const films = join(base, 'films');
+    await mkdir(join(films, '.transcoda-recycle'), { recursive: true });
+    // Named to sort first, and empty: list still opens TV, the one with files.
+    insertLibrary(
+      t.db,
+      { id: 'l0', name: 'A films', path: films, recycleFolder: null, processHardlinked: false },
+      new Date(recycledAt),
+    );
+    return films;
+  }
+
+  it('recycle.list picks the first library with anything in its folder; a token with read may list', async () => {
+    await secondLibrary();
+    const reader = await createToken(t, s, { name: 'reader', scopes: ['read'] });
+    const res = await send(t, 'GET', '/recycle', { headers: bearer(reader.token) });
+    expect(res.status).toBe(200);
+    const out = await json<{
+      libraries: unknown[];
+      library: { id: string; entries: unknown[] } | null;
+    }>(res);
+    expect(out.libraries).toEqual([
+      { id: 'l0', name: 'A films', files: 0, bytes: 0 },
+      { id: 'l1', name: 'TV', files: 1, bytes: 1000 },
+    ]);
+    expect(out.library).toMatchObject({
+      id: 'l1',
+      name: 'TV',
+      folder: bin,
+      totalBytes: 1000,
+      retentionDays: 7,
+      entries: [
+        {
+          path: `${bin}/Show/a.mkv`,
+          relativePath: 'Show/a.mkv',
+          kind: 'original',
+          sizeBytes: 1000,
+          jobId,
+          recycledAt,
+          deletesAt: '2026-01-08T00:00:00.000Z',
+        },
+      ],
+    });
+    const l0 = await json<{ library: { id: string; entries: unknown[] } }>(
+      await get('/recycle?libraryId=l0'),
+    );
+    expect(l0.library).toMatchObject({ id: 'l0', entries: [] });
+    expect((await get('/recycle?libraryId=nope')).status).toBe(404);
+  });
+
+  it("recycle.delete and recycle.empty (a person's session only): any token is 403 with the UI-action message", async () => {
+    const all = await createToken(t, s, {
+      name: 'all',
+      scopes: ['read', 'plan', 'jobs:create', 'jobs:manage', 'workflows:write'],
+    });
+    const del = (headers: Record<string, string>, path = `${bin}/Show/a.mkv`) =>
+      send(t, 'POST', '/recycle/delete', { body: { path }, headers });
+    const empty = (headers: Record<string, string>, libraryId = 'l1') =>
+      send(t, 'POST', '/recycle/empty', {
+        body: { libraryId, throughRecycledAt: '2026-01-02T00:00:00.000Z' },
+        headers,
+      });
+    for (const [call, message] of [
+      [del, 'Deleting from the recycle folder is a UI action'],
+      [empty, 'Deleting from the recycle folder is a UI action'],
+    ] as const) {
+      const res = await call(bearer(all.token));
+      expect(res.status).toBe(403);
+      expect(await json(res)).toMatchObject({ code: 'FORBIDDEN', message });
+      expect((await call({})).status).toBe(401);
+      expect((await call(asSession(s, false))).status).toBe(403);
+    }
+    const ok = await del(asSession(s, true));
+    expect(ok.status).toBe(200);
+    expect(await json(ok)).toEqual({ bytes: 1000 });
+    expect((await del(asSession(s, true))).status).toBe(404);
+    expect((await empty(asSession(s, true), 'nope')).status).toBe(404);
+  });
+
+  it('recycle.empty only removes what was confirmed', async () => {
+    await writeFile(join(bin, 'Show', 'b.mkv'), Buffer.alloc(10));
+    insertRecycled(t.db, {
+      path: join(bin, 'Show', 'b.mkv'),
+      libraryId: 'l1',
+      jobId,
+      sizeBytes: 10,
+      recycledAt: '2026-01-03T00:00:00.000Z',
+      kind: 'original',
+      originalPath: join(root, 'Show', 'b.mkv'),
+    });
+    const res = await send(t, 'POST', '/recycle/empty', {
+      body: { libraryId: 'l1', throughRecycledAt: '2026-01-02T00:00:00.000Z' },
+      headers: asSession(s, true),
+    });
+    expect(res.status).toBe(200);
+    expect(await json(res)).toEqual({ removed: 1, bytes: 1000, skipped: 0 });
+    const out = await json<{ library: { entries: { path: string }[] } }>(await get('/recycle'));
+    expect(out.library.entries.map((e) => e.path)).toEqual([join(bin, 'Show', 'b.mkv')]);
+  });
+});
