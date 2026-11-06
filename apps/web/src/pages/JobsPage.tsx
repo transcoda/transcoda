@@ -82,7 +82,7 @@ function useCancelCounts(
   libraryId: string | null,
   list: { counts: Record<JobState, number> | null; countsScope: string | null },
   narrowed: boolean,
-): Record<JobState, number> | null {
+): { counts: Record<JobState, number> | null; reload(): void } {
   // Each answer carries the library it counts: useAsync keeps the last data while a call for a
   // new library is in flight, and those counts must never stand for the new one.
   const all = useAsync(
@@ -100,10 +100,13 @@ function useCancelCounts(
     (e) => narrowed && (e.type === 'run.changed' || (e.type === 'job.changed' && changed(e))),
     all.reload,
   );
+  // After Cancel all, the narrowed list's reload does not refresh these counts.
+  const reload = all.reload;
   if (!narrowed) {
-    return list.countsScope === countsScopeOf(libraryId, null) ? list.counts : null;
+    const counts = list.countsScope === countsScopeOf(libraryId, null) ? list.counts : null;
+    return { counts, reload };
   }
-  return all.data && all.data.libraryId === libraryId ? all.data.counts : null;
+  return { counts: all.data && all.data.libraryId === libraryId ? all.data.counts : null, reload };
 }
 
 /** Pause / Resume / Cancel (with its confirmation) for one job. */
@@ -587,13 +590,17 @@ export function JobsPage() {
 
   const jobs = filter?.paused ? list.jobs.filter((j) => j.paused) : list.jobs;
   const cancelCounts = useCancelCounts(libraryId, list, dryRun !== null);
+  const afterCancelAll = () => {
+    list.reload();
+    if (dryRun !== null) cancelCounts.reload();
+  };
   const cancelAll = (
     <CancelAll
-      counts={cancelCounts}
+      counts={cancelCounts.counts}
       libraryId={libraryId}
       libraryName={(libraries.data ?? []).find((l) => l.id === libraryId)?.name ?? null}
       statusFiltered={filterIndex !== 0 || dryRun !== null}
-      onDone={list.reload}
+      onDone={afterCancelAll}
     />
   );
   const fileNameOf = (id: string) => list.jobs.find((j) => j.id === id)?.fileName ?? null;

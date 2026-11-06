@@ -781,6 +781,26 @@ describe('JobsPage', () => {
     await waitFor(() => expect(mocks.list).toHaveBeenCalledWith({ limit: 1 }));
   });
 
+  it('Cancel all refreshes its own counts after cancelling while the Runs facet is on (#54)', async () => {
+    await renderPage();
+    fireEvent.click(screen.getByRole('button', { name: 'Runs Real and dry runs' }));
+    const runs = screen.getByRole('listbox', { name: 'Runs' });
+    fireEvent.keyDown(runs, { key: 'ArrowDown' });
+    fireEvent.keyDown(runs, { key: 'ArrowDown' });
+    fireEvent.keyDown(runs, { key: 'Enter' });
+    fireEvent.click(await screen.findByRole('button', { name: 'Cancel all' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Cancel 39 jobs?' });
+    const before = mocks.list.mock.calls.filter(([input]) => input?.limit === 1).length;
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel 39 jobs' }));
+    await waitFor(() => expect(mocks.cancelAll).toHaveBeenCalled());
+    // Without the event stream, only a reload tells Cancel all that nothing is left.
+    await waitFor(() =>
+      expect(mocks.list.mock.calls.filter(([input]) => input?.limit === 1).length).toBeGreaterThan(
+        before,
+      ),
+    );
+  });
+
   it("Cancel all never shows another library's counts while the Runs facet is on (#54)", async () => {
     await renderPage();
     fireEvent.click(screen.getByRole('button', { name: 'Runs Real and dry runs' }));
