@@ -28,12 +28,24 @@ function When({ iso, children }: { iso: string; children: string }) {
 
 type Created = ApiToken & { token: string };
 
+/**
+ * The expiry day of the date input's value (`YYYY-MM-DD`) at local noon, or null when it is not
+ * one the app can read: the input allows years past 9999, which make an invalid Date.
+ */
+export function expiryDay(value: string): Date | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+  const day = new Date(`${value}T12:00:00`);
+  return Number.isNaN(day.getTime()) ? null : day;
+}
+
 /** Settings → API tokens: create, copy once, revoke. The section's h2 comes from SettingsPage. */
 export function TokensSection() {
   const { data, error: loadError, loading, reload } = useAsync(() => api.tokens.list(), []);
   const [name, setName] = useState('');
   const [scopes, setScopes] = useState<TokenScope[]>([]);
   const [expires, setExpires] = useState('');
+  const expiry = expires ? expiryDay(expires) : null;
+  const expiresInvalid = expires !== '' && expiry === null;
   const [created, setCreated] = useState<Created | null>(null);
   const [copied, setCopied] = useState(false);
   /** Shown when the clipboard can't be written (plain http): what to press instead. */
@@ -51,7 +63,9 @@ export function TokensSection() {
         ? 'Enter a name'
         : scopes.length === 0
           ? 'Pick at least one scope'
-          : null;
+          : expiresInvalid
+            ? 'Fix the expiry date'
+            : null;
 
   function toggle(scope: TokenScope, on: boolean) {
     setScopes((s) => TOKEN_SCOPES.filter((x) => (x === scope ? on : s.includes(x))));
@@ -70,6 +84,7 @@ export function TokensSection() {
       setError('Enter a token name');
       return;
     }
+    if (expires && !expiryDay(expires)) return;
     setPending(true);
     try {
       const input: { name: string; scopes: TokenScope[]; expiresAt?: string } = {
@@ -191,15 +206,22 @@ export function TokensSection() {
                 className="input"
                 type="date"
                 aria-describedby={`${id}-exp-hint`}
+                aria-invalid={expiresInvalid ? true : undefined}
                 value={expires}
                 onChange={(e) => setExpires(e.target.value)}
               />
               {/* The picker shows the browser's date format; the hint says the day in the app's. */}
-              <span id={`${id}-exp-hint`} className="field-hint">
-                {expires
-                  ? `Works until the end of ${fmtDate(`${expires}T12:00:00`)}.`
-                  : 'Optional. Leave empty and the token never expires.'}
-              </span>
+              {expiresInvalid ? (
+                <span id={`${id}-exp-hint`} className="lib-field-error" role="alert">
+                  Enter a date with a four-digit year.
+                </span>
+              ) : (
+                <span id={`${id}-exp-hint`} className="field-hint">
+                  {expiry
+                    ? `Works until the end of ${fmtDate(expiry.toISOString())}.`
+                    : 'Optional. Leave empty and the token never expires.'}
+                </span>
+              )}
             </div>
           </div>
           <fieldset className="scopes">

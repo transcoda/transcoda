@@ -187,6 +187,18 @@ describe('TokensSection', () => {
     expect(expected).not.toBe(new Date('2026-10-20T23:59:59.999Z').toISOString());
   });
 
+  it('a date the app cannot read (a five-digit year) is an error, not a crash, and is not sent', async () => {
+    render(<TokensSection />);
+    await screen.findByText('ci-bot');
+    fireEvent.change(screen.getByLabelText(/^Name/), { target: { value: 'n' } });
+    fireEvent.click(screen.getByLabelText('read'));
+    fireEvent.change(screen.getByLabelText(/Expires/), { target: { value: '10000-10-20' } });
+    expect(screen.getByText('Enter a date with a four-digit year.')).toBeTruthy();
+    expect(screen.getByLabelText(/Expires/).getAttribute('aria-invalid')).toBe('true');
+    fireEvent.click(screen.getByRole('button', { name: 'Create token' }));
+    expect(mocks.create).not.toHaveBeenCalled();
+  });
+
   it('sends scopes in TOKEN_SCOPES order regardless of click order', async () => {
     mocks.create.mockResolvedValue({ ...row, token: 'tcd_x' });
     render(<TokensSection />);
