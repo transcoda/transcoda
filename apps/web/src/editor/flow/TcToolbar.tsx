@@ -131,8 +131,8 @@ export function TcToolbar({
         <button
           type="button"
           className="tc-toolbar-btn tc-toolbar-delete"
-          aria-label="Delete"
-          title="Delete"
+          aria-label="Remove node"
+          title="Remove node"
           onClick={onDelete}
         >
           <Icon name="trash" size={13} />
@@ -144,7 +144,7 @@ export function TcToolbar({
 
 /**
  * Two or more selected cards: one toolbar above the whole selection (rendered by the first
- * selected card) with "Group N nodes" and "Delete N nodes". Hidden on a read-only canvas.
+ * selected card) with "Group N nodes" and "Remove N nodes" (the inspector's verb). Hidden on a read-only canvas.
  */
 export function TcSelectionToolbar({
   nodeIds,
@@ -179,7 +179,7 @@ export function TcSelectionToolbar({
           onClick={onDelete}
         >
           <Icon name="trash" size={13} />
-          Delete {n} nodes
+          Remove {n} nodes
         </button>
       </div>
     </NodeToolbar>

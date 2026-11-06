@@ -106,13 +106,12 @@ export function defaultText(def: FieldDef): string | null {
   return null;
 }
 
-/** The value is the setting's plain default (stored or not, the node behaves the same). */
+/** The value is the setting's default (stored or not, the node behaves the same). */
 function isDefault(def: FieldDef, value: JsonValue | undefined): boolean {
-  const d = def.default;
   return (
     value !== undefined &&
-    (typeof d === 'boolean' || typeof d === 'number' || (typeof d === 'string' && d !== '')) &&
-    value === d
+    def.default !== undefined &&
+    JSON.stringify(value) === JSON.stringify(def.default)
   );
 }
 

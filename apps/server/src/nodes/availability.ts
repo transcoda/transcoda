@@ -31,7 +31,7 @@ export function nodeAvailability(
   const down = entry.unavailable?.() ?? null;
   if (down !== null) return { available: false, reason: down };
   if (def.type === MOVE_COPY_TYPE && env.outputRoots.length === 0) {
-    return { available: false, reason: 'no output roots configured (TRANSCODA_OUTPUT_ROOTS)' };
+    return { available: false, reason: 'needs an output folder (server setting)' };
   }
   const { encoders = [], filters = [], hwaccels = [] } = def.requires ?? {};
   if (encoders.length + filters.length + hwaccels.length === 0) return { available: true };

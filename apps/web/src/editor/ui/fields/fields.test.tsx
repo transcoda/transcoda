@@ -446,6 +446,11 @@ describe('field controls', () => {
     renderField({ def: defOf('flag'), value: true });
     expect(screen.getByText('Default: on')).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Clear Keep cover images' })).toBeNull();
+    cleanup();
+    // A list stored as its empty default reads "not set", like the same list left unset.
+    renderField({ def: { ...defOf('targets'), default: [] }, value: [] });
+    expect(screen.getByText('not set')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Clear Targets' })).toBeNull();
   });
 
   it('an unset slider shows the default, muted, and says so', () => {

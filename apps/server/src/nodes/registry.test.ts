@@ -169,7 +169,7 @@ describe('nodeAvailability', () => {
     const off: Capabilities = { available: false, path: 'ffmpeg', error: 'ENOENT' };
     expect(nodeAvailability(moveCopy, off, { outputRoots: [] })).toEqual({
       available: false,
-      reason: 'no output roots configured (TRANSCODA_OUTPUT_ROOTS)',
+      reason: 'needs an output folder (server setting)',
     });
     expect(nodeAvailability(moveCopy, off, { outputRoots: ['/out'] })).toEqual({ available: true });
   });

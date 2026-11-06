@@ -213,6 +213,17 @@ describe('EditorPage', () => {
     );
   });
 
+  it('a node added from the palette is selected: the inspector shows it, not the last one', async () => {
+    const { container } = await loadedEditor();
+    fireEvent.click(flowNode(container, 'keep'));
+    const inspector = screen.getByRole('complementary', { name: 'Inspector' });
+    await within(inspector).findByRole('heading', { level: 2, name: 'Keep languages' });
+    fireEvent.click(paletteButton('Action', 'Encode audio'));
+    expect(
+      await within(inspector).findByRole('heading', { level: 2, name: 'Encode audio' }),
+    ).toBeTruthy();
+  });
+
   it('a refused add from the palette is a toast', async () => {
     await loadedEditor();
     fireEvent.click(paletteButton('Trigger', 'Library input'));
@@ -720,9 +731,8 @@ describe('EditorPage', () => {
     fireEvent.click(flowNode(container, 'keep'));
     const inspector = screen.getByRole('complementary', { name: 'Inspector' });
     await within(inspector).findByRole('heading', { level: 2, name: 'Keep languages' });
-    fireEvent.change(within(inspector).getByRole('combobox', { name: 'Group' }), {
-      target: { value: 'g1' },
-    });
+    fireEvent.click(within(inspector).getByRole('button', { name: 'Group None' }));
+    fireEvent.click(within(inspector).getByRole('option', { name: 'Audio' }));
     fireEvent.click(screen.getByRole('button', { name: 'Save v4' }));
     await waitFor(() => expect(mocks.save).toHaveBeenCalledTimes(1));
     const graph = mocks.save.mock.calls[0]?.[0].graph as WorkflowGraph;
@@ -1367,7 +1377,7 @@ describe('EditorPage on-node settings, groups and bypass (Task 14)', () => {
       await screen.findByRole('group', { name: /Action Keep languages/ });
       fireEvent.click(flowNode(container, 'start'));
       const toolbar = await screen.findByRole('toolbar', { name: 'Node actions' });
-      fireEvent.click(within(toolbar).getByRole('button', { name: 'Delete' }));
+      fireEvent.click(within(toolbar).getByRole('button', { name: 'Remove node' }));
       expect((await screen.findByRole('alert')).textContent).toContain(
         'A sub-workflow needs its start and end',
       );

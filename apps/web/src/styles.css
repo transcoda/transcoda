@@ -4816,6 +4816,23 @@ a.btn-secondary:hover {
   color: var(--faint);
 }
 
+/* A disabled item's reason with a docs link: the link sits beside the item, not inside it. */
+.palette-item-wrap {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+}
+.palette-item-wrap .palette-item {
+  flex: 1;
+  min-width: 0;
+}
+.palette-item-docs {
+  flex: none;
+  padding: 4px 10px 8px 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
 .palette-empty {
   padding: 0 4px;
   font-size: var(--fs-small);
@@ -5536,6 +5553,13 @@ a.btn-secondary:hover {
 
 .canvas-banner-action:hover {
   color: inherit;
+}
+
+/* An action the version can't take yet (its reason is the tooltip): muted, no underline. */
+.canvas-banner-action:disabled {
+  color: var(--faint);
+  text-decoration: none;
+  cursor: not-allowed;
 }
 
 /* A past version's two actions stay side by side, on the message's line or wrapped together. */

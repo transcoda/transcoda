@@ -5,6 +5,7 @@ import { KIND_WORD } from '../../components/Chips.tsx';
 import { Icon } from '../../components/Icon.tsx';
 import { NodeIcon } from '../../components/NodeIcon.tsx';
 import type { Catalog } from '../../hooks/useCatalog.ts';
+import { envDocsUrl } from '../../pages/settings/sourceText.ts';
 
 export type PaletteItem =
   | { kind: 'node'; def: NodeInfo }
@@ -19,6 +20,9 @@ export type PaletteItem =
 export const PALETTE_DRAG_TYPE = 'application/x-transcoda-node';
 
 const MAIN_ONLY = 'main workflow only';
+/** Move or copy needs output folders, a server setting: its reason line links to the docs. */
+const MOVE_COPY_TYPE = 'core:move-copy';
+const OUTPUT_ROOTS_DOCS = envDocsUrl('TRANSCODA_OUTPUT_ROOTS');
 const NOTE_TITLE = 'Note';
 const VALUES_TITLE = 'Shared values';
 
@@ -52,6 +56,7 @@ function PaletteButton({
   title,
   plugin = false,
   reason,
+  docs,
   disabled,
   onAdd,
   onDragStart,
@@ -61,12 +66,14 @@ function PaletteButton({
   title: string;
   plugin?: boolean;
   reason: string | null;
+  /** A docs page that explains the reason: a "Docs" link under the item (never inside it). */
+  docs?: string | undefined;
   disabled: boolean;
   onAdd(item: PaletteItem): void;
   onDragStart(item: PaletteItem, e: DragEvent): void;
 }) {
   const reasonId = useId();
-  return (
+  const button = (
     <button
       type="button"
       className="palette-item"
@@ -98,6 +105,16 @@ function PaletteButton({
         </span>
       )}
     </button>
+  );
+  if (!reason || !docs) return button;
+  return (
+    <div className="palette-item-wrap">
+      {button}
+      <a className="palette-item-docs" href={docs} target="_blank" rel="noreferrer">
+        Docs
+        <span className="sr-only">: {title}</span>
+      </a>
+    </div>
   );
 }
 
@@ -201,6 +218,7 @@ export function Palette({
                 title={def.title}
                 plugin={def.source.kind === 'plugin'}
                 reason={reason}
+                docs={def.type === MOVE_COPY_TYPE ? OUTPUT_ROOTS_DOCS : undefined}
                 disabled={readOnly || reason !== null}
                 {...common}
               />
