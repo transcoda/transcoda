@@ -61,6 +61,21 @@ describe('JobResult', () => {
     );
   });
 
+  it('a restored job whose set-aside version is gone says only that the original is restored', () => {
+    const { container } = render(
+      <JobResult
+        job={{
+          state: 'done',
+          dryRun: false,
+          reason: null,
+          result: DONE,
+          restore: { restoredAt: '2026-11-03T08:30:00.000Z', restoredBy: 'jan', outputPath: null },
+        }}
+      />,
+    );
+    expect(container.querySelector('.job-result-meta')?.textContent).toBe('Original restored');
+  });
+
   it('a kept original leads with its reason and is neutral, never blue or green', () => {
     const { container } = render(
       <JobResult

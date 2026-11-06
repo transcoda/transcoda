@@ -366,6 +366,15 @@ function JobView({ id }: { id: string }) {
                 onDone={reload}
               />
             )}
+            {!active && job.state === 'done' && job.restore?.outputPath && (
+              <RestoreButton
+                path={job.restore.outputPath}
+                fileName={job.fileName}
+                targetPath={job.filePath}
+                direction="undo"
+                onDone={reload}
+              />
+            )}
             {!active && (
               <ProcessAgain
                 job={job}
@@ -437,14 +446,6 @@ function JobView({ id }: { id: string }) {
         {job.restore && (
           <p className="head-sub">
             <span>{`Original restored on ${fmtDate(job.restore.restoredAt)} by ${job.restore.restoredBy}`}</span>
-            {job.restore.outputPath ? (
-              <>
-                {' · '}
-                <Link href={`/recycle?library=${encodeURIComponent(job.libraryId)}`}>
-                  Undo from the recycle folder
-                </Link>
-              </>
-            ) : null}
           </p>
         )}
         {active && (

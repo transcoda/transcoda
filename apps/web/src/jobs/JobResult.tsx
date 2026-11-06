@@ -45,7 +45,14 @@ function sizesHeadline(before: number, after: number, estimated: boolean): React
 /** Where a replaced file's original went (only a `done` job says it). */
 function whereOf(job: ResultJob): string[] {
   if (job.state !== 'done') return [];
-  if (job.restore) return ["Original restored; Transcoda's version in recycle folder"];
+  if (job.restore) {
+    // The set-aside version may be gone (retention, or deleted by hand).
+    return [
+      job.restore.outputPath
+        ? "Original restored; Transcoda's version in recycle folder"
+        : 'Original restored',
+    ];
+  }
   if (job.result?.replacedTo === 'recycle') return ['Original in recycle folder'];
   if (job.result?.replacedTo === 'deleted') return ['Original replaced'];
   return [];

@@ -227,11 +227,13 @@ export async function restoreRecycled(
       const current = findJob(db, job.id) as JobRow;
       const back = await rollBackRestore(deps, current);
       if (back.keptAside.length > 0) return { kind: 'failed', reason: REASON.raced };
-      const tail =
-        back.outcome === 'conflict' ? '; some files could not be put back, see the server log' : '';
+      const doing = direction === 'restore' ? 'Restoring' : "Putting Transcoda's version back";
       return {
         kind: 'failed',
-        reason: `Restoring failed and nothing was changed: ${why(err)}${tail}`,
+        reason:
+          back.outcome === 'conflict'
+            ? `${doing} stopped part-way and some files couldn't be put back (${why(err)}); see the server log.`
+            : `${doing} failed and nothing was changed: ${why(err)}`,
       };
     }
   }

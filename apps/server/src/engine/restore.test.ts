@@ -350,6 +350,37 @@ describe('restoreRecycled', () => {
     });
   });
 
+  it('a rollback that leaves files behind says so instead of "nothing was changed"', async () => {
+    const fs = {
+      ...nodeFsOps,
+      unlink: async (p: string) => {
+        await nodeFsOps.unlink(p);
+        if (p === `${bin}/Show/a.mkv`) await writeFile(p, 'another program');
+      },
+      link: async (a: string, b: string) => {
+        if (b === `${root}/Show/a.de.srt`) throw Object.assign(new Error('io'), { code: 'EIO' });
+        await nodeFsOps.link(a, b);
+      },
+    };
+    expect(await restoreRecycled({ ...deps, fs }, input())).toEqual({
+      kind: 'failed',
+      reason:
+        "Restoring stopped part-way and some files couldn't be put back (EIO); see the server log.",
+    });
+    expect(findJob(db, 'j1')?.restoreJournal).not.toBeNull();
+  });
+
+  it('a failed undo names the undo, not a restore', async () => {
+    await restoreRecycled(deps, input());
+    const fs = failingAt(nodeFsOps, 'link', 2, Object.assign(new Error('io'), { code: 'EIO' }));
+    expect(
+      await restoreRecycled({ ...deps, fs }, { path: `${bin}/Show/a.mkv.1`, userId: 'u2' }),
+    ).toEqual({
+      kind: 'failed',
+      reason: "Putting Transcoda's version back failed and nothing was changed: EIO",
+    });
+  });
+
   it('a failed move rolls back every move before it', async () => {
     const fs = failingAt(nodeFsOps, 'link', 2, Object.assign(new Error('io'), { code: 'EIO' }));
     const rowsBefore = listRecycled(db, 'l1');

@@ -175,10 +175,34 @@ describe('JobPage: Restore original', () => {
     );
     await open();
     expect(screen.getByText(`Original restored on ${fmtDate(AT)} by jan`)).toBeTruthy();
-    expect(
-      screen.getByRole('link', { name: 'Undo from the recycle folder' }).getAttribute('href'),
-    ).toBe('/recycle?library=l1');
     expect(screen.queryByRole('button', { name: 'Restore original' })).toBeNull();
+  });
+
+  it("a restored job offers Put Transcoda's version back on the job page", async () => {
+    mocks.jobs.get.mockResolvedValue(
+      recycledJob({
+        recycled: null,
+        restore: { restoredAt: AT, restoredBy: 'jan', outputPath: `${BIN}.1` },
+      }),
+    );
+    mocks.recycle.restore.mockResolvedValue({ jobId: 'j1', direction: 'undone', notRestored: [] });
+    await open();
+    fireEvent.click(screen.getByRole('button', { name: "Put Transcoda's version back" }));
+    const dialog = await screen.findByRole('dialog', { name: "Put Transcoda's version back?" });
+    fireEvent.click(within(dialog).getByRole('button', { name: "Put Transcoda's version back" }));
+    await waitFor(() => expect(mocks.recycle.restore).toHaveBeenCalledWith({ path: `${BIN}.1` }));
+    await waitFor(() => expect(mocks.jobs.get).toHaveBeenCalledTimes(2));
+  });
+
+  it('a restored job whose set-aside version is gone offers no undo', async () => {
+    mocks.jobs.get.mockResolvedValue(
+      recycledJob({
+        recycled: null,
+        restore: { restoredAt: AT, restoredBy: 'jan', outputPath: null },
+      }),
+    );
+    await open();
+    expect(screen.queryByRole('button', { name: "Put Transcoda's version back" })).toBeNull();
   });
 
   it('no Restore on a running job, a dry run, or a job without a recycled original', async () => {
