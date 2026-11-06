@@ -3329,9 +3329,11 @@ a.btn-secondary:hover {
   border-color: var(--danger-line);
 }
 
+/* The divider under the title mirrors the footer's: a scrolled body never slides under the title. */
 .dialog-title {
   flex: none;
-  padding: 20px 24px 0;
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid var(--line);
   font-size: var(--fs-h2);
   font-weight: 700;
 }
@@ -3344,7 +3346,7 @@ a.btn-secondary:hover {
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
-  padding: 12px 24px 20px;
+  padding: 16px 24px 20px;
   display: flex;
   flex-direction: column;
   gap: var(--sp-3);

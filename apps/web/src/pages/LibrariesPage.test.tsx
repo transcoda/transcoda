@@ -182,6 +182,10 @@ describe('LibrariesPage', () => {
     // Feeds: the workflow's name and the Workflows list's activation pill.
     expect(within(first).getByRole('cell', { name: 'Downsize Active v3' })).toBeTruthy();
     expect(within(first).getByText('Active v3').className).toContain('activation-pill is-active');
+    // The workflow's name opens it.
+    expect(within(first).getByRole('link', { name: 'Downsize' }).getAttribute('href')).toBe(
+      '/workflows/w1',
+    );
     // One inline primary and the "…" menu; no other inline row buttons.
     expect(
       within(first)
@@ -617,6 +621,20 @@ describe('LibrariesPage', () => {
         'Its run hours have no hours chosen: the files are queued but do not start on their own.',
       ),
     ).toBeTruthy();
+
+    // Run hours that are open now: Scan now still names them.
+    const always = { ...runHours, every: Array.from({ length: 24 }, (_, h) => h) };
+    mocks.libraries.list.mockResolvedValue({
+      libraries: [{ ...shows, runHours: always }, movies],
+      notices: [],
+    });
+    cleanup();
+    renderAt('/libraries', <LibrariesPage />);
+    fireEvent.click(within(await rowOf('Shows')).getByRole('button', { name: 'Scan Shows now' }));
+    const open = await screen.findByRole('dialog', { name: 'Scan Shows now?' });
+    expect(
+      within(open).getByText('Its run hours are open now: runs all day, every day.'),
+    ).toBeTruthy();
   });
 
   it('edits a custom recycle folder back to the default and shows an unexpected failure inline', async () => {
@@ -682,7 +700,7 @@ describe('LibrariesPage', () => {
     const dialog = await screen.findByRole('dialog', { name: 'Scan Shows now?' });
     // v3 is the feeder's active version (Library.feeds), not the newest (v6).
     const force = within(dialog).getByRole('checkbox', {
-      name: 'Also re-run files v3 already finished (they may be rewritten)',
+      name: 'Also include files v3 already finished (they may be rewritten)',
     }) as HTMLInputElement;
     expect(force.checked).toBe(false);
     expect(document.activeElement).toBe(within(dialog).getByRole('button', { name: 'Cancel' }));
@@ -696,7 +714,7 @@ describe('LibrariesPage', () => {
     });
   });
 
-  it('Dry run… has its own force checkbox, worded as planning with the newest version, off each time it opens', async () => {
+  it("Dry run… has its own force checkbox, worded like Scan now's with the newest version, off each time it opens", async () => {
     mocks.jobs.queue.mockResolvedValueOnce({
       runId: 'r6',
       jobIds: [],
@@ -709,7 +727,8 @@ describe('LibrariesPage', () => {
     await waitFor(() => expect(mocks.workflows.list).toHaveBeenCalled());
     await pickAction('Shows', 'Dry run…');
     let dialog = await screen.findByRole('dialog', { name: 'Dry run on Shows' });
-    const label = 'Also plan files the newest version already finished';
+    // Worded like Scan now's, with the picked workflow's newest version (Archive v2 comes first).
+    const label = 'Also include files v2 already finished';
     let force = within(dialog).getByRole('checkbox', { name: label }) as HTMLInputElement;
     expect(force.checked).toBe(false);
     fireEvent.click(force);

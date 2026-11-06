@@ -45,6 +45,10 @@ function capitalise(text: string): string {
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
+function uncapitalise(text: string): string {
+  return text.charAt(0).toLowerCase() + text.slice(1);
+}
+
 /**
  * A path on one muted line, cut from the left when it does not fit ("…/media/movies"): the end of
  * a path names the folder. The full path is the tooltip. The LRM marks keep a leading slash where
@@ -608,7 +612,7 @@ function DryRunDialog({
   onPick(workflow: WorkflowSummary, force: boolean, testEncode: boolean): void;
   onClose(): void;
 }) {
-  // "Also plan files the newest version already finished" (`force`) and "Test-encode": off every
+  // "Also include files vN already finished" (`force`) and "Test-encode": off every
   // time it opens; the first workflow is picked.
   const [force, setForce] = useState(false);
   const [testEncode, setTestEncode] = useState(false);
@@ -667,7 +671,7 @@ function DryRunDialog({
       </fieldset>
       <label className="lib-check">
         <input type="checkbox" checked={force} onChange={(e) => setForce(e.target.checked)} />
-        <span>Also plan files the newest version already finished</span>
+        <span>{`Also include files v${chosen?.currentVersion ?? ''} already finished`}</span>
       </label>
       <TestEncodeField checked={testEncode} onChange={setTestEncode} />
     </Dialog>
@@ -685,7 +689,7 @@ export function LibrariesPage() {
   const [scanning, setScanning] = useState<string | null>(null);
   const [confirmScan, setConfirmScan] = useState<Library | null>(null);
   const [dryRun, setDryRun] = useState<{ library: Library; menu: HTMLElement | null } | null>(null);
-  // "Also re-run files this version already finished" (`force`): off every time the dialog opens.
+  // "Also include files vN already finished" (`force`): off every time the dialog opens.
   // The blocked dialog's "Test-encode" (for its dry run instead): off every time it opens.
   const [testEncode, setTestEncode] = useState(false);
   const [force, setForce] = useState(false);
@@ -801,12 +805,20 @@ export function LibrariesPage() {
     return `Applies ${feeds.name} v${feeds.version} (active) to every file in ${library.path}. Files that need changes are rewritten.`;
   }
 
-  /** A real scan held back by the library's run hours says when its files start. */
+  /**
+   * A real scan held back by the library's run hours says when its files start; with run hours
+   * that are open now, it names them.
+   */
   const scanWait =
-    confirmScan && !blocked ? scanWaitText(confirmScan, libraries.data?.clock ?? null) : null;
+    confirmScan && !blocked
+      ? (scanWaitText(confirmScan, libraries.data?.clock ?? null) ??
+        (confirmScan.runHours?.enabled
+          ? `Its run hours are open now: ${uncapitalise(runHoursSummary(confirmScan.runHours))}.`
+          : null))
+      : null;
 
   /** The force checkbox of Scan now: a real run of the feeder's active version may rewrite files. */
-  const forceLabel = `Also re-run files v${confirmScan?.feeds?.version ?? ''} already finished (they may be rewritten)`;
+  const forceLabel = `Also include files v${confirmScan?.feeds?.version ?? ''} already finished (they may be rewritten)`;
 
   /**
    * The feeder's active version for its pill: the workflow list's (it knows whether the version
@@ -926,7 +938,8 @@ export function LibrariesPage() {
                     {l.feeds ? (
                       <td className="lib-cell">
                         <span className="lib-feed">
-                          {l.feeds.name} <ActivationPill active={feederActive(l.feeds)} />
+                          <Link href={`/workflows/${l.feeds.workflowId}`}>{l.feeds.name}</Link>{' '}
+                          <ActivationPill active={feederActive(l.feeds)} />
                         </span>
                       </td>
                     ) : waiting ? (
