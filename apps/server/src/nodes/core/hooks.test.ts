@@ -154,7 +154,7 @@ describe('core:video-is', () => {
     });
     expect(await decide(videoIs, decideCtx(big), { maxBitrateKbps: 8000 })).toMatchObject({
       port: 'else',
-      reason: 'video is hevc 2160p, 20000 kbps, wanted at most 8000 kbps → no',
+      reason: 'video is hevc 2160p, 20.0 Mb/s, wanted at most 8.0 Mb/s → no',
       findings: { bitrateKbps: 20_000 },
     });
     expect((await decide(videoIs, decideCtx(big), { minHeight: 720 })).port).toBe('pass');
@@ -162,7 +162,7 @@ describe('core:video-is', () => {
     const unknown = probeOf([{ codec: 'hevc' }], { bitrateKbps: null });
     expect(await decide(videoIs, decideCtx(unknown), { maxBitrateKbps: 8000 })).toMatchObject({
       port: 'else',
-      reason: 'video is hevc, bitrate unknown, wanted at most 8000 kbps → no',
+      reason: 'video is hevc, bitrate unknown, wanted at most 8.0 Mb/s → no',
       findings: { bitrateKbps: null },
     });
   });
@@ -541,7 +541,7 @@ describe('core:encode-video', () => {
       profile: null,
     });
     expect(result.reason).toBe(
-      'video h264 → hevc (libx265 crf 24 medium, at most 13333k: the whole file’s bitrate)',
+      'video h264 → hevc (libx265 crf 24 medium, at most 13.3 Mb/s: the whole file’s bitrate)',
     );
 
     const tenBit = probeOf([{ codec: 'h264', bitDepth: 10 }]);
@@ -612,14 +612,14 @@ describe('core:encode-video', () => {
     it('quality mode is capped at the source stream bitrate by default', async () => {
       const result = await build(encodeVideo, buildCtx(sized));
       expect(byIndex(result.model, 0)).toMatchObject({ quality: 24, bitrateKbps: 5000 });
-      expect(result.reason).toBe('video h264 → hevc (libx265 crf 24 medium, at most 5000k)');
+      expect(result.reason).toBe('video h264 → hevc (libx265 crf 24 medium, at most 5.0 Mb/s)');
     });
 
     it('quality mode without a stream bitrate is capped at the file bitrate', async () => {
       const result = await build(encodeVideo, buildCtx(h264));
       expect(byIndex(result.model, 0)).toMatchObject({ quality: 24, bitrateKbps: 13_333 });
       expect(result.reason).toBe(
-        'video h264 → hevc (libx265 crf 24 medium, at most 13333k: the whole file’s bitrate)',
+        'video h264 → hevc (libx265 crf 24 medium, at most 13.3 Mb/s: the whole file’s bitrate)',
       );
     });
 
@@ -648,7 +648,7 @@ describe('core:encode-video', () => {
         });
         const s = byIndex(result.model, 0);
         expect(s).toMatchObject({ mode: 'convert', quality: null, bitrateKbps: 3000 });
-        expect(result.reason).toBe(`video h264 → hevc (${s.encoder} 3000k medium)`);
+        expect(result.reason).toBe(`video h264 → hevc (${s.encoder} 3.0 Mb/s medium)`);
       }
     });
 
@@ -656,7 +656,7 @@ describe('core:encode-video', () => {
       const result = await build(encodeVideo, buildCtx(sized, { encoders }), {
         encoder: 'hevc_nvenc',
       });
-      expect(result.reason).toBe('video h264 → hevc (hevc_nvenc cq 24 medium, at most 5000k)');
+      expect(result.reason).toBe('video h264 → hevc (hevc_nvenc cq 24 medium, at most 5.0 Mb/s)');
     });
 
     it('bitrate mode above the source bitrate is capped at it', async () => {
@@ -666,7 +666,7 @@ describe('core:encode-video', () => {
       });
       expect(byIndex(result.model, 0)).toMatchObject({ quality: null, bitrateKbps: 5000 });
       expect(result.reason).toBe(
-        'video h264 → hevc (libx265 5000k medium, capped from 8000k at the source bitrate)',
+        'video h264 → hevc (libx265 5.0 Mb/s medium, capped from 8.0 Mb/s at the source bitrate)',
       );
       const uncapped = await build(encodeVideo, buildCtx(sized), {
         rateControl: 'bitrate',
@@ -731,7 +731,7 @@ describe('core:encode-audio', () => {
     expect(indices(kept(result.model))).toEqual([0, 1, 1, 2, 3]);
     expect(result.model.targets).toEqual(['chrome']);
     expect(result.reason).toBe(
-      "audio #1 eac3 8ch: added default aac 160k 2ch copy for chrome; warning: audio #1 won't direct-play on Chrome (desktop)",
+      "audio #1 eac3 8ch: added default aac 160 kb/s 2ch copy for chrome; warning: audio #1 won't direct-play on Chrome (desktop)",
     );
     expect(result.findings).toEqual({
       unsupported: [1],
@@ -776,7 +776,7 @@ describe('core:encode-audio', () => {
       default: true,
     });
     expect(audio[1]).toMatchObject({ sourceIndex: 2, mode: 'copy' });
-    expect(result.reason).toBe('audio #1 eac3 8ch: converted to aac 160k 6ch for chrome');
+    expect(result.reason).toBe('audio #1 eac3 8ch: converted to aac 160 kb/s 6ch for chrome');
   });
 
   it('fail throws', async () => {
@@ -800,7 +800,7 @@ describe('core:encode-audio', () => {
       // Already stereo: no -ac, the source's two channels carry over.
       ['convert', 'aac', 192, null],
     ]);
-    expect(result.reason).toBe('audio #1, #2 → aac 192k 2ch');
+    expect(result.reason).toBe('audio #1, #2 → aac 192 kb/s 2ch');
   });
 
   describe('never above the source bitrate', () => {
@@ -821,7 +821,9 @@ describe('core:encode-audio', () => {
     it('reencode caps a track whose source bitrate is lower, by default', async () => {
       const result = await build(encodeAudio, buildCtx(sized), { mode: 'reencode' });
       expect(streamsOf(result.model, 'audio').map((s) => s.bitrateKbps)).toEqual([160, 96, 160]);
-      expect(result.reason).toBe('audio #1, #2, #3 → aac 160k; audio #2 capped at its source 96k');
+      expect(result.reason).toBe(
+        'audio #1, #2, #3 → aac 160 kb/s; audio #2 capped at its source 96 kb/s',
+      );
     });
 
     it('neverIncreaseBitrate off encodes every track at the set bitrate, as before', async () => {
@@ -830,7 +832,7 @@ describe('core:encode-audio', () => {
         neverIncreaseBitrate: false,
       });
       expect(streamsOf(result.model, 'audio').map((s) => s.bitrateKbps)).toEqual([160, 160, 160]);
-      expect(result.reason).toBe('audio #1, #2, #3 → aac 160k');
+      expect(result.reason).toBe('audio #1, #2, #3 → aac 160 kb/s');
     });
 
     it('a converted or added track is capped too', async () => {
@@ -843,7 +845,7 @@ describe('core:encode-audio', () => {
         whenUnsupported: 'convert',
       });
       expect(byIndex(converted.model, 1)).toMatchObject({ codec: 'aac', bitrateKbps: 128 });
-      expect(converted.reason).toBe('audio #1 eac3 6ch: converted to aac 128k 6ch for chrome');
+      expect(converted.reason).toBe('audio #1 eac3 6ch: converted to aac 128 kb/s 6ch for chrome');
       const added = await build(encodeAudio, buildCtx(low), { targets: ['chrome'] });
       expect(streamsOf(added.model, 'audio')[1]).toMatchObject({ codec: 'aac', bitrateKbps: 128 });
     });
