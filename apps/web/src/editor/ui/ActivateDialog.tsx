@@ -15,7 +15,7 @@ import { useToast } from '../../components/Toast.tsx';
 import { useCatalog } from '../../hooks/useCatalog.ts';
 import { fmtAgo } from '../../lib/time.ts';
 import { changeLines, diffVersions } from '../model/version-diff.ts';
-import { activatedByText, versionAuthor } from '../model/version-text.ts';
+import { activatedByText, activateLabel, versionLine } from '../model/version-text.ts';
 
 export const ACTIVATE_FAILED = 'Could not activate, try again';
 
@@ -42,7 +42,7 @@ const errorsOf = (issues: Issue[] | null): Issue[] | null => {
   return errors.length > 0 ? errors : null;
 };
 
-type VersionRow = { version: number; note: string | null; createdBy: string };
+type VersionRow = { version: number; note: string | null; createdBy: string; createdAt: string };
 
 interface Loaded {
   versions: VersionRow[];
@@ -214,8 +214,7 @@ export function ActivateDialog({
   }
 
   const title = rollback ? `Roll back ${name} to v${version}?` : `Activate v${version} of ${name}?`;
-  const rowText = (v: VersionRow) =>
-    `v${v.version} · ${v.note || 'saved'} · ${versionAuthor(v.createdBy, me)}`;
+  const rowText = (v: VersionRow) => versionLine(v, me);
   const waitingLine =
     jobs && jobs.waiting > 0
       ? `${jobs.atLeast ? 'At least ' : ''}${jobs.waiting} waiting job${jobs.waiting === 1 ? '' : 's'} will run on v${version} when ${jobs.waiting === 1 ? 'it starts' : 'they start'}.`
@@ -239,7 +238,7 @@ export function ActivateDialog({
             aria-busy={pending}
             onClick={() => void activate()}
           >
-            {rollback ? `Roll back to v${version}` : `Activate v${version}`}
+            {activateLabel(active, version)}
           </button>
         </>
       }

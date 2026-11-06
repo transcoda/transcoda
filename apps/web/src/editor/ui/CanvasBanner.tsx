@@ -1,11 +1,12 @@
 import type { WorkflowSummary } from '@transcoda/contract';
 import type { Issue, WorkflowGraph } from '@transcoda/shared';
-import type { ReactNode } from 'react';
+import { type ReactNode, useId } from 'react';
 import { Icon } from '../../components/Icon.tsx';
 import type { Catalog } from '../../hooks/useCatalog.ts';
 import { GuardedLink } from '../../lib/navigation.tsx';
 import { firstError } from '../model/issues.ts';
 import type { libraryShift as LibraryShiftFn } from '../model/library-shift.ts';
+import { activateLabel } from '../model/version-text.ts';
 import { hasActivation } from './ActivationControl.tsx';
 import { subjectOf } from './IssuesPanel.tsx';
 
@@ -142,9 +143,10 @@ export function CanvasBanner({
 
 /**
  * A past version opened read-only (`?version=N`): "Viewing v3 — current is v7" with "Restore as
- * new version" (busy while the restore saves) and "Activate v3" (the rollback); the active
- * version says "Viewing v3 — active" and offers no Activate. Opened on the current version
- * itself, it says so and links to the editable editor instead.
+ * new version" (busy while the restore saves) and the activation (`activateLabel`: "Roll back to
+ * v3" below the active version), disabled with its reason while the version can't be activated;
+ * the active version says "Viewing v3 — active" and offers no activation. Opened on the current
+ * version itself, it says so and links to the editable editor instead.
  */
 export function PastVersionBanner({
   viewing,
@@ -161,14 +163,35 @@ export function PastVersionBanner({
   restoring: boolean;
   onRestore(): void;
   /** Rollback entry point: null on the active version or a sub-workflow. */
-  activate: { onClick(): void } | null;
+  activate: {
+    active: WorkflowSummary['active'];
+    /** Why this version can't be activated (its errors): the disabled button's reason. */
+    blockedReason?: string | undefined;
+    onClick(): void;
+  } | null;
   /** The viewed version is the active one. */
   viewingActive?: boolean;
 }) {
+  const reasonId = useId();
+  const blocked = activate?.blockedReason;
   const activateButton = activate && (
-    <button type="button" className="canvas-banner-action" onClick={activate.onClick}>
-      Activate v{viewing}
-    </button>
+    <>
+      <button
+        type="button"
+        className="canvas-banner-action"
+        disabled={blocked !== undefined}
+        title={blocked}
+        {...(blocked !== undefined ? { 'aria-describedby': reasonId } : {})}
+        onClick={activate.onClick}
+      >
+        {activateLabel(activate.active, viewing)}
+      </button>
+      {blocked !== undefined && (
+        <span id={reasonId} className="sr-only">
+          {blocked}
+        </span>
+      )}
+    </>
   );
   if (viewing === current) {
     return (

@@ -1766,7 +1766,7 @@ describe('EditorPage activation (Task 17, activation Task 9)', () => {
     expect(menuItem('Deactivate')).toBeTruthy();
   });
 
-  it('a past version shows "Activate v2" beside "Restore as new version"; the active version shows "Viewing v3 — active" without it', async () => {
+  it('a past version shows "Roll back to v2" beside "Restore as new version"; the active version shows "Viewing v3 — active" without it', async () => {
     mocks.get.mockResolvedValue({
       ...detail(chainMainReplace(), 2),
       currentVersion: 3,
@@ -1775,9 +1775,10 @@ describe('EditorPage activation (Task 17, activation Task 9)', () => {
     await loadedEditor('/workflows/wf1?version=2');
     expect(screen.getByText('Viewing v2 — current is v3')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Restore as new version' })).toBeTruthy();
-    // Read-only: the header menu has no Activate, the past-version banner has the one.
-    expect(screen.getAllByRole('button', { name: 'Activate v2' })).toHaveLength(1);
-    expect(menuItem('Activate v2')).toBeNull();
+    // Read-only: the header menu has no Activate, the past-version banner has the one, with the
+    // dialog's verb (v2 is below the active v3).
+    expect(screen.getAllByRole('button', { name: 'Roll back to v2' })).toHaveLength(1);
+    expect(menuItem('Roll back to v2')).toBeNull();
     cleanup();
 
     mocks.get.mockResolvedValue({
@@ -1881,7 +1882,7 @@ describe('EditorPage activation (Task 17, activation Task 9)', () => {
       .getByText(/^Active v3 can't run/)
       .closest('[role="status"]') as HTMLElement;
     expect(within(danger).queryByRole('button')).toBeNull();
-    expect(screen.getAllByRole('button', { name: 'Activate v2' })).toHaveLength(1);
+    expect(screen.getAllByRole('button', { name: 'Roll back to v2' })).toHaveLength(1);
   });
 
   it("focus returns to the header pill after a rollback and after activating from the can't-run banner", async () => {
@@ -1896,7 +1897,7 @@ describe('EditorPage activation (Task 17, activation Task 9)', () => {
       active: { ...activeV3(), version: 2 },
     });
     await loadedEditor('/workflows/wf1?version=2');
-    fireEvent.click(screen.getByRole('button', { name: 'Activate v2' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Roll back to v2' }));
     let dialog = await screen.findByRole('dialog', { name: 'Roll back Smoke to v2?' });
     const go = within(dialog).getByRole('button', { name: 'Roll back to v2' }) as HTMLButtonElement;
     await waitFor(() => expect(go.disabled).toBe(false));

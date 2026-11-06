@@ -14,8 +14,7 @@ import { AuthContext } from '../../auth/AuthProvider.tsx';
 import { Icon } from '../../components/Icon.tsx';
 import { Loading } from '../../components/Loading.tsx';
 import { GuardedLink } from '../../lib/navigation.tsx';
-import { fmtAgo } from '../../lib/time.ts';
-import { versionAuthor } from '../model/version-text.ts';
+import { versionLine } from '../model/version-text.ts';
 
 export type VersionListLoad =
   | { status: 'loading' }
@@ -54,25 +53,20 @@ export function useVersionList(
   return { load, reload };
 }
 
-/** "v8 · Layout only · 2 min ago" (+ " · automatic update" / " · another user" when not mine; see `VersionsPanel`). */
+/** `versionLine`, plus " · active" on the active version. */
 function rowText(
   v: WorkflowVersionInfo,
   me: { id: string; username: string } | null,
   active: boolean,
 ): string {
-  const mine = me !== null && v.createdBy === me.id;
-  const note = v.note || (mine ? 'saved by you' : 'saved');
-  // My own versions don't repeat my name; "saved by you" or the note already says it.
-  const author = mine ? '' : ` · ${versionAuthor(v.createdBy, me)}`;
-  return `v${v.version} · ${note} · ${fmtAgo(v.createdAt)}${author}${active ? ' · active' : ''}`;
+  return `${versionLine(v, me)}${active ? ' · active' : ''}`;
 }
 
 /**
  * The version history under the header's pill: a non-modal panel (`role="dialog"`; the canvas
- * stays usable) listing `load` (see `useVersionList`) newest first as "v8 · <note> · <time>".
- * The note falls back to "saved by you" (the current user's own version) or "saved"; an author
- * is added only when it isn't me: "automatic update" for the server's upgrader, else "another
- * user" (never a raw id). A Close button in the title row closes it too.
+ * stays usable) listing `load` (see `useVersionList`) newest first as `versionLine` reads them
+ * ("v8 · Layout only · saved by you 2 min ago"; never a raw user id). A Close button in the title
+ * row closes it too.
  * Each row links to `?version=N` (the current version to the plain editor route); the viewed row
  * is `aria-current`; the active one ends " · active" with a check icon. Escape, a click outside
  * (the pill toggles it itself) or a row closes it.

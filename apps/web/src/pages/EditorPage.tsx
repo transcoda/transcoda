@@ -1041,7 +1041,12 @@ function Editor({
                     activate={
                       hasActivation(state.workflow) &&
                       state.workflow.active?.version !== state.savedVersion
-                        ? { onClick: () => setActivating(state.savedVersion) }
+                        ? {
+                            active: state.workflow.active,
+                            // The past version's own errors, as the banner below names them.
+                            blockedReason: activateBlocked(false, state.issues)?.reason,
+                            onClick: () => setActivating(state.savedVersion),
+                          }
                         : null
                     }
                   />
