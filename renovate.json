@@ -62,10 +62,12 @@
       "pinDigests": true
     },
     {
-      "description": "ffmpeg in the image changes what users run: its PR needs a release note, so it doesn't get the no-change label.",
+      "description": "ffmpeg in the image: Renovate can't write a release note, so its PR gets the no-change label like every update (without it the release-note check fails until someone adds one by hand). The PR text asks the reviewer to swap the label for a note when users would notice the update.",
       "matchPackageNames": ["jellyfin-ffmpeg8"],
       "semanticCommitType": "FFmpeg",
-      "labels": ["dependencies"]
+      "prBodyNotes": [
+        "**Release note:** this updates the ffmpeg that Transcoda runs. If users would notice it (new hardware support, a fixed encode or decode bug, a changed default), remove the `no user-facing change` label and add a `.changes/` note before merging; see `.changes/README.md`."
+      ]
     }
   ],
   "customManagers": [
