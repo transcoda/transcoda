@@ -50,7 +50,7 @@ import {
   wouldText,
 } from '../jobs/jobText.ts';
 import { ProcessAgain } from '../jobs/ProcessAgain.tsx';
-import { damagedSideOf, type StepContext } from '../jobs/steps.ts';
+import { damagedSideOf, didText, type StepContext } from '../jobs/steps.ts';
 import { TestEncodeFile } from '../jobs/TestEncodeFile.tsx';
 import { TestOutputPanel } from '../jobs/TestOutputPanel.tsx';
 import { encodeStopped, useQueue } from '../jobs/useQueue.ts';
@@ -224,9 +224,13 @@ function JobView({ id }: { id: string }) {
     return currentNode;
   }, [job, subgraphs, currentNode]);
   // A dry run changed nothing: its write steps read "would replace the original" on the canvas,
-  // never as done; one its size gate decides says the replace is conditional (#41).
+  // never as done; one its size gate decides says the replace is conditional (#41). A real run
+  // that wrote says it did ("replaced the original"), like its steps.
   const trace = useMemo(() => {
-    if (!data?.dryRun) return data?.trace;
+    if (!data?.dryRun) {
+      if (data?.state !== 'done') return data?.trace;
+      return data.trace.map((e) => ({ ...e, reason: didText(e.reason) }));
+    }
     const depends = data.state === 'dry_run' && data.dependsOnSize != null;
     return data.trace.map((e) => ({
       ...e,

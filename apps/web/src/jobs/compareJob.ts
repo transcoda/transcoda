@@ -53,8 +53,6 @@ type Kind = 'video' | 'audio' | 'subtitle';
 
 const KINDS: readonly Kind[] = ['video', 'audio', 'subtitle'];
 
-const UNKNOWN = '—';
-
 const CODECS: Record<string, string> = {
   hevc: 'HEVC',
   h264: 'H.264',
@@ -136,9 +134,9 @@ function codecName(codec: string, profile: string | null): string {
   return CODECS[codec] ?? codec.toUpperCase();
 }
 
-/** "13.7 Mb/s", "640 kb/s"; "≈" in front of a derived one. */
-function fmtRate(rate: Rate | null): string {
-  if (rate === null) return UNKNOWN;
+/** "13.7 Mb/s", "640 kb/s"; "≈" in front of a derived one; null (left out) when unknown. */
+function fmtRate(rate: Rate | null): string | null {
+  if (rate === null) return null;
   const text = fmtKbps(rate.kbps);
   return rate.approx ? `≈${text}` : text;
 }
@@ -274,9 +272,9 @@ function deriveVideo(facts: Facts[], totalKbps: number | null): void {
   if (rest > 0) video.rate = { kbps: rest, approx: true };
 }
 
-const bitsOf = (f: Facts, withRange: boolean): string | null => {
+const bitsOf = (f: Facts): string | null => {
   const depth = f.bitDepth === null ? null : `${f.bitDepth}-bit`;
-  const range = withRange && f.hdr !== null ? RANGES[f.hdr] : null;
+  const range = f.hdr !== null ? RANGES[f.hdr] : null;
   const both = [depth, range].filter(Boolean).join(' ');
   return both === '' ? null : both;
 };
@@ -289,11 +287,10 @@ function describe(f: Facts, was: Facts | null): string[] {
     const name = codecName(f.codec, f.profile);
     items.push(f.encoding ? `${name} (${f.encoding})` : profile ? `${name} ${profile}` : name);
     items.push(f.width && f.height ? `${f.width}×${f.height}` : null);
-    const fpsChanged =
-      !was || (f.frameRate !== null && fmtFps(f.frameRate) !== fmtFps(was.frameRate ?? 0));
-    items.push(f.frameRate !== null && fpsChanged ? fmtFps(f.frameRate) : null);
-    const rangeChanged = !was || (f.hdr !== null && f.hdr !== was.hdr);
-    items.push(bitsOf(f, rangeChanged));
+    // Frame rate and range are written on both sides, like the size: a value After leaves out
+    // would read as lost.
+    items.push(f.frameRate !== null ? fmtFps(f.frameRate) : null);
+    items.push(bitsOf(f));
     items.push(fmtRate(f.rate));
   } else if (f.type === 'audio') {
     const name = codecName(f.codec, f.profile);
@@ -351,7 +348,12 @@ function lossesOf(was: Facts, now: Facts): Loss[] {
   return losses;
 }
 
-const side = (items: string[], losses: Loss[] = []): Side => ({ items, tag: null, losses });
+/** A side's values; an unknown one (null) is left out rather than shown as a dash. */
+const side = (items: (string | null)[], losses: Loss[] = []): Side => ({
+  items: items.filter((i): i is string => i !== null),
+  tag: null,
+  losses,
+});
 const tagged = (tag: 'kept' | 'added'): Side => ({ items: [], tag, losses: [] });
 const REMOVED: Loss = { word: 'removed', why: 'the output does not have this track' };
 
@@ -609,10 +611,10 @@ function fileRow(
     key: 'file',
     label: 'File',
     before,
-    // Without a size the bitrate is unknown too: one "—" says both.
+    // Without a size the bitrate is unknown too: one "size unknown" says both.
     after: side([
       ...(size === null
-        ? [UNKNOWN]
+        ? ['size unknown']
         : [
             `${fmtBytes(size)}${measured === null ? ' (est.)' : ''}`,
             fmtRate(rateOf(kbps, measured === null)),

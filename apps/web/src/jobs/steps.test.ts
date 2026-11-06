@@ -1,7 +1,14 @@
 import type { ProbeStream, ProbeSummary, TraceChanges, WorkflowGraph } from '@transcoda/shared';
 import { describe, expect, it } from 'vitest';
 import type { Decision } from '../editor/trace/traceOverlay.ts';
-import { damagedSideOf, type StepContext, steps, stepsHeading, stepsSummary } from './steps.ts';
+import {
+  damagedSideOf,
+  didText,
+  type StepContext,
+  steps,
+  stepsHeading,
+  stepsSummary,
+} from './steps.ts';
 
 const d = (over: Partial<Decision> & Pick<Decision, 'key' | 'nodeId' | 'title'>): Decision => ({
   attempt: 1,
@@ -306,24 +313,24 @@ describe('steps: one sentence and a badge per node', () => {
         }),
       );
     const target = encode('libx265', null, 3000);
-    expect(target.sentence).toBe('Video is re-encoded to HEVC in software (libx265, 3000 kb/s)');
-    expect(target.detail).toMatchObject({ after: 'HEVC 8-bit, libx265, 3000 kb/s, medium' });
+    expect(target.sentence).toBe('Video is re-encoded to HEVC in software (libx265, 3.0 Mb/s)');
+    expect(target.detail).toMatchObject({ after: 'HEVC 8-bit, libx265, 3.0 Mb/s, medium' });
     const capped = encode('libx265', 24, 5000);
     expect(capped.sentence).toBe(
-      'Video is re-encoded to HEVC in software (libx265, CRF 24, at most 5000 kb/s)',
+      'Video is re-encoded to HEVC in software (libx265, CRF 24, at most 5.0 Mb/s)',
     );
     expect(capped.detail).toMatchObject({
-      after: 'HEVC 8-bit, libx265, CRF 24, at most 5000 kb/s, medium',
+      after: 'HEVC 8-bit, libx265, CRF 24, at most 5.0 Mb/s, medium',
     });
     // Capped, NVENC encodes VBR with a constant-quality target (CQ), not constant QP.
     expect(encode('hevc_nvenc', 24, 5000).sentence).toBe(
-      'Video is re-encoded to HEVC on the GPU (NVENC, CQ 24, at most 5000 kb/s)',
+      'Video is re-encoded to HEVC on the GPU (NVENC, CQ 24, at most 5.0 Mb/s)',
     );
     expect(encode('hevc_vaapi', 24, 5000).sentence).toBe(
-      'Video is re-encoded to HEVC on the GPU (VA-API, Q 24, at most 5000 kb/s)',
+      'Video is re-encoded to HEVC on the GPU (VA-API, Q 24, at most 5.0 Mb/s)',
     );
     expect(encode('hevc_qsv', null, 3000).sentence).toBe(
-      'Video is re-encoded to HEVC on the GPU (Quick Sync, 3000 kb/s)',
+      'Video is re-encoded to HEVC on the GPU (Quick Sync, 3.0 Mb/s)',
     );
   });
 
@@ -635,7 +642,7 @@ describe('steps: one sentence and a badge per node', () => {
       reason: 'replace the original (recycle folder: library default)',
     });
     expect(one(ro).sentence).toBe(
-      "Replaces the original, which moves to this library's recycle folder",
+      "Would replace the original and move it to this library's recycle folder",
     );
     expect(one(ro).badge).toBe('finish');
     expect(one(ro, { ...DRY, dependsOnSize: true }).sentence).toBe(
@@ -651,6 +658,30 @@ describe('steps: one sentence and a badge per node', () => {
     expect(one({ ...ro, untaken: true }, DONE).sentence).toBe(
       "Didn't run: the file took the size gate's other branch",
     );
+  });
+
+  it('Move or copy: a dry run says what a real run would do, a real run what it did', () => {
+    const mc = d({
+      key: '8',
+      nodeId: 'mc',
+      title: 'Move or copy',
+      kind: 'finish',
+      type: 'core:move-copy',
+      phase: 'finish',
+      settings: { mode: 'move', outputRoot: '/out' },
+      reason: 'move the result to /out',
+    });
+    expect(one(mc).sentence).toBe('Would move the result to /out');
+    expect(one(mc, DONE).sentence).toBe('Moved the result to /out');
+  });
+
+  it('a real run that wrote words its write steps on the flow in the past tense', () => {
+    expect(didText('replace the original (recycle folder: library default)')).toBe(
+      'replaced the original (recycle folder: library default)',
+    );
+    expect(didText('move the result to /out')).toBe('moved the result to /out');
+    expect(didText('copy the result to /out')).toBe('copied the result to /out');
+    expect(didText('size gate: at least 10% smaller')).toBe('size gate: at least 10% smaller');
   });
 
   it('a failed step says what went wrong; a bypassed one that it was skipped', () => {
@@ -776,7 +807,7 @@ describe('steps: the Damaged side', () => {
       ).sentence,
     ).toBe('Decides while encoding; if the source is damaged: Notify webhook');
     expect(one(notify, ctx).sentence).toBe(
-      'If the source is damaged: Sends a POST request to the webhook',
+      'If the source is damaged: Would send a POST request to the webhook',
     );
   });
 
