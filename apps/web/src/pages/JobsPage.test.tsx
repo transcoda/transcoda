@@ -806,6 +806,36 @@ describe('JobsPage', () => {
     expect(screen.queryByRole('button', { name: 'Cancel all' })).toBeNull();
   });
 
+  it("Cancel all never counts with the dry-run list's counts after the Runs facet is cleared (#54)", async () => {
+    await renderPage();
+    const base = mocks.list.getMockImplementation();
+    // The dry-run list counts one queued job; every job in the library is 39.
+    mocks.list.mockImplementation((input?: { limit?: number; dryRun?: boolean }) =>
+      input?.dryRun === true
+        ? Promise.resolve({ jobs: [], counts: counts({ queued: 1 }), problemCount: 0 })
+        : base?.(input),
+    );
+    const pick = (button: string, key: 'ArrowDown' | 'ArrowUp') => {
+      fireEvent.click(screen.getByRole('button', { name: button }));
+      const lb = screen.getByRole('listbox', { name: 'Runs' });
+      fireEvent.keyDown(lb, { key });
+      fireEvent.keyDown(lb, { key });
+      fireEvent.keyDown(lb, { key: 'Enter' });
+    };
+    pick('Runs Real and dry runs', 'ArrowDown');
+    await waitFor(() => expect(mocks.list).toHaveBeenCalledWith({ limit: 200, dryRun: true }));
+    expect(await screen.findByRole('button', { name: 'Cancel all' })).toBeTruthy();
+    // Back to real and dry runs; the unfiltered list's answer is held back.
+    mocks.list.mockImplementation((input?: { limit?: number; dryRun?: boolean }) =>
+      input?.limit === 200 && input.dryRun === undefined ? new Promise(() => {}) : base?.(input),
+    );
+    const calls = mocks.list.mock.calls.length;
+    pick('Runs Dry runs', 'ArrowUp');
+    await waitFor(() => expect(mocks.list.mock.calls.length).toBeGreaterThan(calls));
+    expect(screen.getByRole('button', { name: 'Runs Real and dry runs' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Cancel all' })).toBeNull();
+  });
+
   it('Pause and Resume a single job', async () => {
     await renderPage();
     fireEvent.click(

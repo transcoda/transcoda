@@ -33,7 +33,12 @@ import {
   wherePrefix,
 } from '../jobs/jobText.ts';
 import { QueueLanes, QueuePausedNote, QueueToggle } from '../jobs/QueueBar.tsx';
-import { stateChangeTracker, useJobsList, useProblemCount } from '../jobs/useJobsList.ts';
+import {
+  countsScopeOf,
+  stateChangeTracker,
+  useJobsList,
+  useProblemCount,
+} from '../jobs/useJobsList.ts';
 import { encodeStopped, useQueue } from '../jobs/useQueue.ts';
 import { fmtBytes } from '../lib/bytes.ts';
 import { usePageTitle } from '../lib/pageTitle.ts';
@@ -69,11 +74,13 @@ const RUN_KINDS: Array<{ value: RunKind; label: string }> = [
 
 /**
  * Jobs per state for "Cancel all", which covers real and dry runs alike: the list's own counts,
- * or (while the dry-run facet narrows the list) the library's counts fetched apart.
+ * or (while the dry-run facet narrows the list) the library's counts fetched apart. Counts are
+ * used only for the scope that produced them: right after a filter change the old answer is still
+ * held, and it must never stand for what the action will cancel (null hides Cancel all meanwhile).
  */
 function useCancelCounts(
   libraryId: string | null,
-  listCounts: Record<JobState, number> | null,
+  list: { counts: Record<JobState, number> | null; countsScope: string | null },
   narrowed: boolean,
 ): Record<JobState, number> | null {
   // Each answer carries the library it counts: useAsync keeps the last data while a call for a
@@ -93,7 +100,9 @@ function useCancelCounts(
     (e) => narrowed && (e.type === 'run.changed' || (e.type === 'job.changed' && changed(e))),
     all.reload,
   );
-  if (!narrowed) return listCounts;
+  if (!narrowed) {
+    return list.countsScope === countsScopeOf(libraryId, null) ? list.counts : null;
+  }
   return all.data && all.data.libraryId === libraryId ? all.data.counts : null;
 }
 
@@ -577,7 +586,7 @@ export function JobsPage() {
   const queuePaused = queue.status?.paused ?? false;
 
   const jobs = filter?.paused ? list.jobs.filter((j) => j.paused) : list.jobs;
-  const cancelCounts = useCancelCounts(libraryId, list.counts, dryRun !== null);
+  const cancelCounts = useCancelCounts(libraryId, list, dryRun !== null);
   const cancelAll = (
     <CancelAll
       counts={cancelCounts}
