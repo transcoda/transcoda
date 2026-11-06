@@ -18,7 +18,7 @@ import {
   queuedWait,
   reasonOf,
   sentence,
-  testEncodeLine,
+  testEncodeOutcome,
 } from '../jobs/jobText.ts';
 import { QUEUE_PAUSED_TEXT } from '../jobs/QueueBar.tsx';
 import {
@@ -43,9 +43,9 @@ const estimateOf = (f: RunFile): number | null => (f.state === 'dry_run' ? f.est
 /** A test-encode file that would be rewritten: the size its output measured. */
 const measuredOf = (f: RunFile): number | null => (f.state === 'dry_run' ? f.afterBytes : null);
 
-/** A test-encode file's measured outcome ("Would replace · 315 MB → 190 MB (−40%)"), else null. */
-function measuredLine(f: RunFile): string | null {
-  return testEncodeLine({
+/** A test-encode file's measured outcome ("Would replace", "315 MB → 190 MB (−40%)"), else null. */
+function measuredOutcome(f: RunFile): { word: string; detail: string } | null {
+  return testEncodeOutcome({
     state: f.state,
     dryRun: true,
     testEncode: true,
@@ -62,18 +62,19 @@ function measuredLine(f: RunFile): string | null {
 
 /**
  * The muted line under a file's name: why it waits or ended as it did, when there is more to say
- * than its chip. A test-encode's measured outcome, a dry run's plan, otherwise the reason. A replaced file's
- * sizes say it all; a nothing-to-do file without its own reason has nothing to add.
+ * than its chip and size. The chip has the outcome and the Size column the sizes, so the note never
+ * repeats them: a test-encode that would replace has nothing to add, one that would keep the
+ * original says why ("Saved only 3% (gate ≥ 10%)"). A dry run's plan, otherwise the reason in the
+ * Jobs list's words ("Already complies with every rule"). A replaced file's sizes say it all.
  */
 function noteText(f: RunFile, testEncode: boolean, queuePaused: boolean): string | null {
   // A queued file says why it waits, as the Jobs list does ("Queue paused").
   const wait = queuedWait(f, queuePaused);
   if (wait) return wait;
-  const measured = testEncode ? measuredLine(f) : null;
-  if (measured) return measured;
+  const measured = testEncode ? measuredOutcome(f) : null;
+  if (measured) return f.state === 'dry_run' ? null : sentence(measured.detail);
   if (f.state === 'dry_run' && f.planSummary) return sentence(f.planSummary);
   if (f.state === 'done') return null;
-  if (f.state === 'nothing_to_do' && (!f.reason || f.reason === 'already as planned')) return null;
   const reason = reasonOf(f);
   return reason ? sentence(reason) : null;
 }
@@ -113,6 +114,8 @@ function FileChip({ f, run }: { f: RunFile; run: RunDetail['run'] }) {
       outcome={outcomeOf(f.state)}
       dryRun={run.dryRun}
       testEncode={run.testEncode}
+      // The heading carries the run's "Dry run" badge once; no row repeats it.
+      badge={false}
       paused={f.paused}
       word={dependsWord({ ...f, dryRun: run.dryRun })}
       estimate={
