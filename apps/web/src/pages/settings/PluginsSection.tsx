@@ -92,10 +92,11 @@ export function PluginsSection() {
         </GuardedLink>
       </p>
       <ServerValues>
-        {/* No setting or variable changes it, so it says so instead of naming a source. */}
+        {/* A `plugins.limits.finishRunTimeoutMs` row can override the default; no field edits it. */}
         <SettingRow
           label="Finish-step timeout"
-          hint="How long a plugin's finish step may run before it is stopped. Fixed: it can't be changed."
+          hint="How long a plugin's finish step may run before it is stopped. Not editable here."
+          source={plugins.finishRunTimeoutMs.source}
         >
           {seconds(plugins.finishRunTimeoutMs.value)}
         </SettingRow>
