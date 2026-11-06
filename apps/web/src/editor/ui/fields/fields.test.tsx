@@ -422,6 +422,25 @@ describe('field controls', () => {
     expect(humanise('POST')).toBe('POST');
   });
 
+  it('an invalid stored enum value selects nothing, never the default', () => {
+    const def: FieldDef = {
+      ...defOf('method'),
+      default: 'hevc',
+      spec: { kind: 'enum', options: ['hevc', 'h264'], control: 'segmented' },
+    };
+    renderField({ def, value: 'bogus', issue: 'Must be one of: hevc, h264' });
+    for (const radio of screen.getAllByRole('radio')) {
+      expect(radio.getAttribute('aria-checked'), radio.textContent ?? '').toBe('false');
+    }
+    expect(screen.getByText('Must be one of: hevc, h264')).toBeTruthy();
+    cleanup();
+    renderField({
+      def: { ...def, spec: { kind: 'enum', options: ['hevc', 'h264'], control: 'select' } },
+      value: 'bogus',
+    });
+    expect((screen.getByRole('combobox') as HTMLSelectElement).value).toBe('');
+  });
+
   it('a stored default reads like an unset one: "Default: …" and no Clear', () => {
     const def: FieldDef = {
       ...defOf('method'),

@@ -15,7 +15,9 @@ export function EnumField(props: FieldProps) {
   const current = typeof value === 'string' && options.includes(value) ? value : undefined;
   const fallback =
     typeof def.default === 'string' && options.includes(def.default) ? def.default : undefined;
-  const shown = current ?? fallback;
+  // Only an unset value falls back to the default: an invalid stored one selects nothing, so it
+  // reads as the error it is (and a later edit does not quietly keep it behind the default).
+  const shown = current ?? (value === undefined ? fallback : undefined);
 
   if (control === 'select') {
     return (
