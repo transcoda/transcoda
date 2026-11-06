@@ -122,7 +122,7 @@ function PortRow({
   fitOf: FitOf;
   /** The progress fill's inverted copy: the labels only, no handles. */
   ghost?: boolean;
-  /** Read-only (the job page's flow): the labels are only drawn, screen readers skip them. */
+  /** The job trace (its cards say what each node did): the labels are only drawn, screen readers skip them. */
   quiet?: boolean;
 }) {
   const hide = quiet ? ({ 'aria-hidden': true } as const) : {};
@@ -420,7 +420,7 @@ export function TcNode({ id, data, selected }: NodeProps<TcNodeType>) {
           connected={connected.has(port.id)}
           fit={fitOf(direction, port.id)}
           named={named}
-          quiet={actions.readOnly}
+          quiet={trace !== undefined}
         />
       ));
     return (
@@ -474,7 +474,7 @@ export function TcNode({ id, data, selected }: NodeProps<TcNodeType>) {
           traced={portTrace}
           fitOf={fitOf}
           ghost={ghost}
-          quiet={actions.readOnly}
+          quiet={trace !== undefined}
         />
       ))}
       {reached && trace && run && (

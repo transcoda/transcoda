@@ -94,7 +94,7 @@ export function TcHandle({
   /** An output of a node with several file outputs: its title names the port (`portLabel`). */
   named?: boolean | undefined;
   fit?: Fit | undefined;
-  /** Read-only (the job page's flow): the title stays for the pointer, screen readers skip it. */
+  /** The job trace: the title stays for the pointer, screen readers skip it. */
   quiet?: boolean;
   onPlus?(port: PortSpec): void;
 }) {
