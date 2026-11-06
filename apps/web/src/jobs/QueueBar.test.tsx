@@ -53,7 +53,7 @@ describe('QueueBar', () => {
       </EventsProvider>,
     );
     expect((await screen.findByTestId('lanes')).textContent).toBe(
-      'Encode lane: j1.mkv · Quick lane: idle',
+      'Encoder: j1.mkv · Quick tasks: idle',
     );
   });
 
@@ -74,7 +74,7 @@ describe('QueueBar', () => {
       </EventsProvider>,
     );
     expect((await screen.findByTestId('lanes')).textContent).toBe(
-      'GPU 0 · RTX 3060: j1.mkv · GPU 1 · RTX 3060: idle · Quick lane: j3.mkv',
+      'GPU 0 · RTX 3060: j1.mkv · GPU 1 · RTX 3060: idle · Quick tasks: j3.mkv',
     );
   });
 

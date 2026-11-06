@@ -271,11 +271,13 @@ export const JobsListInputSchema = z.object({
   problems: z.boolean().optional(),
   /** true: only plan-only dry runs whose outcome depends on the size gate. */
   dependsOnSize: z.boolean().optional(),
+  /** true: only dry runs; false: only real runs. A scope: the counts cover it too. */
+  dryRun: z.boolean().optional(),
 });
 export const JobsListOutputSchema = z.object({
   jobs: z.array(JobSchema),
   /**
-   * Jobs per state (every state, zero when none) within the list's scope (`runId`, `libraryId`);
+   * Jobs per state (every state, zero when none) within the list's scope (`runId`, `libraryId`, `dryRun`);
    * the `state` filter and paging do not apply.
    */
   counts: z.record(JobStateSchema, z.number().int()),

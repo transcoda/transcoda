@@ -433,7 +433,7 @@ export function detailLine(job: Job, opts: { queuePaused?: boolean; now?: Date }
     case 'building':
       if (held && isWaitingForLane(job)) return `Planned · ${held}`;
       return isWaitingForLane(job)
-        ? `Planned · waiting for ${job.lane === 'encode' ? 'the encoder' : 'the quick lane'}`
+        ? `Planned · waiting for ${job.lane === 'encode' ? 'the encoder' : 'quick tasks'}`
         : RUNNING_DETAIL.building;
     case 'replacing':
       // C4: the replace waits for free space ("waiting for 5.4 GB free on /media (5.1 GB free)").
@@ -445,7 +445,7 @@ export function detailLine(job: Job, opts: { queuePaused?: boolean; now?: Date }
       return RUNNING_DETAIL[job.state];
     case 'queued':
       return (
-        queuedWait(job, opts.queuePaused ?? false) ?? (held ? sentence(held) : 'Waiting for a lane')
+        queuedWait(job, opts.queuePaused ?? false) ?? (held ? sentence(held) : 'Waiting its turn')
       );
     case 'done': {
       const first = job.problems[0];
@@ -465,10 +465,14 @@ export function detailLine(job: Job, opts: { queuePaused?: boolean; now?: Date }
       const reason = reasonOf(job);
       return reason ? `${sentence(reason)} · original untouched` : 'Original untouched';
     }
-    case 'skipped':
-      return job.reason ? sentence(job.reason) : 'Skipped';
+    case 'skipped': {
+      // reasonOf words the engine's codes ("still growing") as the run page does.
+      const reason = reasonOf(job);
+      return reason ? sentence(reason) : 'Skipped';
+    }
     case 'nothing_to_do':
-      return 'Already complies with every rule';
+      // reasonOf words it as the run page does ("Already complies with every rule").
+      return sentence(reasonOf(job) ?? '');
     case 'dry_run':
       // A test-encode measured its output: it says what it found, not that a plan is ready.
       if (job.testEncode) return testEncodeLine(job) ?? WOULD_WORD.dry ?? 'Would replace';

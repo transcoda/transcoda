@@ -19,6 +19,8 @@ export interface JobsFilter {
   problems?: boolean;
   /** true: only plan-only dry runs whose size gate decides after encoding. */
   dependsOnSize?: boolean;
+  /** A scope like the library: true only dry runs, false only real runs, null/absent both. */
+  dryRun?: boolean | null;
 }
 
 type JobChanged = Extract<EngineEvent, { type: 'job.changed' }>;
@@ -81,7 +83,8 @@ export function useJobsList(filter: JobsFilter): {
   const { libraryId, states } = filter;
   const problems = filter.problems === true;
   const depends = filter.dependsOnSize === true;
-  const key = `${libraryId ?? ''}|${states?.join(',') ?? '*'}|${problems ? 'p' : ''}|${depends ? 'd' : ''}`;
+  const dryRun = filter.dryRun ?? null;
+  const key = `${libraryId ?? ''}|${states?.join(',') ?? '*'}|${problems ? 'p' : ''}|${depends ? 'd' : ''}|${dryRun ?? ''}`;
   const [state, setState] = useState<ListState>({
     jobs: [],
     active: null,
@@ -102,6 +105,7 @@ export function useJobsList(filter: JobsFilter): {
     const id = ++seq.current;
     const scope: JobsListInput = { limit: JOBS_LIST_MAX };
     if (libraryId) scope.libraryId = libraryId;
+    if (dryRun !== null) scope.dryRun = dryRun;
     const withStates: JobsListInput = states ? { ...scope, state: states } : scope;
     const input: JobsListInput = {
       ...withStates,

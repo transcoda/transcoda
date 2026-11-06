@@ -35,6 +35,10 @@ describe('reason wording is one on every page (polish review)', () => {
     expect(reasonOf({ state: 'skipped', reason: 'still growing' })).toBe(
       'Changed in the last few minutes: it is picked up once it stops changing',
     );
+    // The Jobs list's line says the same as the run page (#53).
+    expect(detailLine({ ...fx.skipped, reason: 'still growing' })).toBe(
+      'Changed in the last few minutes: it is picked up once it stops changing',
+    );
   });
 });
 
@@ -58,7 +62,7 @@ describe('jobText', () => {
     expect(detailLine(fx.running)).toBe('42% · 118 fps · ETA 3 min');
     expect(detailLine(fx.verifying)).toBe('Checking duration, streams and decode');
     expect(detailLine(fx.skipped)).toBe('Hardlinked by the torrent client');
-    expect(detailLine(fx.queued)).toBe('Waiting for a lane');
+    expect(detailLine(fx.queued)).toBe('Waiting its turn');
     // While the whole queue is paused nothing starts: the line says so instead.
     expect(detailLine(fx.queued, { queuePaused: true })).toBe('Queue paused');
     expect(detailLine({ ...fx.queued, paused: true }, { queuePaused: true })).toBe('Paused');
@@ -365,7 +369,7 @@ describe('jobText', () => {
     it('says it is planned and waiting, in the detail line, the chip and on a phone', () => {
       expect(detailLine(waiting)).toBe('Planned · waiting for the encoder');
       expect(detailLine(job({ state: 'building', lane: 'quick' }))).toBe(
-        'Planned · waiting for the quick lane',
+        'Planned · waiting for quick tasks',
       );
       expect(phoneRunningLine(waiting)).toBe('Planned · waiting for the encoder');
       expect(stateWord(waiting)).toBe('Planned');
