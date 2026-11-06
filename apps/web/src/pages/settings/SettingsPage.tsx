@@ -12,19 +12,31 @@ const hrefOf = (s: SettingsSection) => `/settings/${s.id}`;
 /**
  * The current section (or its sub-page) under its h2 (the page's h1 is "Settings"). Beside the
  * nav the h2 is for screen readers only: the highlighted nav item already names the section. A
- * sub-page (Licences) is not in the nav, so its h2 shows; on a phone the h2 is the page's title.
+ * sub-page (Licences) is not in the nav, so its h2 shows under a breadcrumb back to its section
+ * (a phone has its own back link); on a phone the h2 is the page's title.
  */
 function SectionBody({
   section,
   visibleTitle,
+  parent,
 }: {
   section: SettingsSection | SettingsSubPage;
   visibleTitle: boolean;
+  /** A sub-page's section: a breadcrumb back to it goes above the h2. */
+  parent?: SettingsSection | undefined;
 }) {
   const id = useId();
   const { Component } = section;
   return (
     <section className="settings-section" aria-labelledby={id}>
+      {parent ? (
+        <nav aria-label="Breadcrumb" className="settings-crumbs">
+          <GuardedLink href={hrefOf(parent)} className="settings-crumb-link">
+            {parent.title}
+          </GuardedLink>
+          <span aria-hidden="true">/</span>
+        </nav>
+      ) : null}
       <h2 id={id} className={visibleTitle ? undefined : 'sr-only'}>
         {section.title}
       </h2>
@@ -126,7 +138,11 @@ export function SettingsPage({
             );
           })}
         </nav>
-        <SectionBody section={subPage ?? current} visibleTitle={subPage !== undefined} />
+        <SectionBody
+          section={subPage ?? current}
+          visibleTitle={subPage !== undefined}
+          parent={subPage ? current : undefined}
+        />
       </div>
     </div>
   );

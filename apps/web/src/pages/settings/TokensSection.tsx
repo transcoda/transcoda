@@ -194,8 +194,11 @@ export function TokensSection() {
                 value={expires}
                 onChange={(e) => setExpires(e.target.value)}
               />
+              {/* The picker shows the browser's date format; the hint says the day in the app's. */}
               <span id={`${id}-exp-hint`} className="field-hint">
-                Optional. Leave empty and the token never expires.
+                {expires
+                  ? `Works until the end of ${fmtDate(`${expires}T12:00:00`)}.`
+                  : 'Optional. Leave empty and the token never expires.'}
               </span>
             </div>
           </div>

@@ -1,5 +1,6 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { fmtDate } from '../../lib/time.ts';
 
 const mocks = vi.hoisted(() => ({ list: vi.fn(), create: vi.fn(), revoke: vi.fn() }));
 vi.mock('../../api/client.ts', () => ({
@@ -175,6 +176,10 @@ describe('TokensSection', () => {
     fireEvent.change(screen.getByLabelText(/^Name/), { target: { value: 'n' } });
     fireEvent.click(screen.getByLabelText('read'));
     fireEvent.change(screen.getByLabelText(/Expires/), { target: { value: '2026-10-20' } });
+    // The chosen day as text, in the format the rest of the app uses.
+    expect(
+      screen.getByText(`Works until the end of ${fmtDate('2026-10-20T12:00:00')}.`),
+    ).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Create token' }));
     await waitFor(() => expect(mocks.create).toHaveBeenCalled());
     const expected = new Date('2026-10-20T23:59:59.999').toISOString();

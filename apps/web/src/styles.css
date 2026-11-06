@@ -2180,6 +2180,28 @@ a.nav-item.is-active:focus-visible,
   color: var(--text);
 }
 
+/* A sub-page's way back to its section beside the nav: "About /" above its h2. */
+.settings-crumbs {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-bottom: calc(-1 * var(--sp-2));
+  font-size: var(--fs-small);
+  color: var(--faint);
+}
+
+.settings-crumb-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--target-min);
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.settings-crumb-link:hover {
+  color: var(--text);
+}
+
 /* One value, the same on every Settings screen: the label (where the value comes from as a quiet
    tag on the right), the control or the value, then a short hint and an env variable's line. */
 .setting-row {

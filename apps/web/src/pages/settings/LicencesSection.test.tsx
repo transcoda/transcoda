@@ -116,6 +116,11 @@ describe('LicencesSection', () => {
     render(<LicencesSection />);
     expect(await screen.findByText(/This build has no licence list/)).toBeTruthy();
     expect(screen.getByText('pnpm licences').tagName).toBe('CODE');
+    // No "components below" when there are none below.
+    expect(document.body.textContent).not.toContain('components below');
+    expect(document.querySelector('.section-intro')?.textContent).toBe(
+      'Transcoda is free software under the GNU GPL v3.',
+    );
     expect(screen.queryByRole('searchbox')).toBeNull();
   });
 

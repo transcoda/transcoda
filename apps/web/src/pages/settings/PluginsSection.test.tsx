@@ -47,6 +47,12 @@ describe('PluginsSection', () => {
     // The shared "Set on the server" panel starts closed.
     fireEvent.click(await screen.findByRole('button', { name: /Set on the server/ }));
     expect(screen.getByText('600 seconds')).toBeTruthy();
+    // Fixed, and it says so like the other read-only rows say where they come from.
+    expect(
+      screen.getByText(
+        "How long a plugin's finish step may run before it is stopped. Fixed: it can't be changed.",
+      ),
+    ).toBeTruthy();
     expect(screen.getByText('Separate user')).toBeTruthy();
     expect(screen.queryByRole('spinbutton', { name: /finish/i })).toBeNull();
     const link = screen.getByRole('link', { name: /catalogs are managed on the plugins page/i });
