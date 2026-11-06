@@ -646,7 +646,7 @@ describe('steps: one sentence and a badge per node', () => {
     );
     expect(one(ro).badge).toBe('finish');
     expect(one(ro, { ...DRY, dependsOnSize: true }).sentence).toBe(
-      "If the size gate passes, replaces the original and moves it to this library's recycle folder; otherwise keeps it",
+      "Would replace the original and move it to this library's recycle folder if the size gate passes; otherwise keeps it",
     );
     expect(one(ro, DONE).sentence).toBe(
       "Replaced the original, which is now in this library's recycle folder",
@@ -673,6 +673,15 @@ describe('steps: one sentence and a badge per node', () => {
     });
     expect(one(mc).sentence).toBe('Would move the result to /out');
     expect(one(mc, DONE).sentence).toBe('Moved the result to /out');
+    expect(one(mc, { ...DRY, dependsOnSize: true }).sentence).toBe(
+      'Would move the result to /out if the size gate passes; otherwise keeps the original',
+    );
+    expect(
+      one(
+        { ...mc, settings: { mode: 'copy', outputRoot: '/out' } },
+        { ...DRY, dependsOnSize: true },
+      ).sentence,
+    ).toBe('Would copy the result to /out if the size gate passes; otherwise keeps the original');
   });
 
   it('a real run that wrote words its write steps on the flow in the past tense', () => {

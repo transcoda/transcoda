@@ -722,7 +722,7 @@ function finishStep(d: Decision, ctx: StepContext, past: boolean): string {
       const folder = str(s.recycleFolder);
       const where = folder ? `the folder ${folder}` : "this library's recycle folder";
       if (ctx.dependsOnSize) {
-        return `If the size gate passes, replaces the original and moves it to ${where}; otherwise keeps it`;
+        return `Would replace the original and move it to ${where} if the size gate passes; otherwise keeps it`;
       }
       // A real job still running has not written yet: it says when, not where the original goes.
       if (!ctx.dryRun && !isFinalState(ctx.state))
@@ -738,7 +738,7 @@ function finishStep(d: Decision, ctx: StepContext, past: boolean): string {
       const mode = str(s.mode) === 'move' ? 'move' : 'copy';
       const root = str(s.outputRoot) ?? 'the output folder';
       if (ctx.dependsOnSize) {
-        return `If the size gate passes, ${mode === 'move' ? 'moves' : 'copies'} the result to ${root}; otherwise keeps the original`;
+        return `Would ${mode} the result to ${root} if the size gate passes; otherwise keeps the original`;
       }
       const verb = ctx.dryRun
         ? `Would ${mode}`
