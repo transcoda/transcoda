@@ -9284,8 +9284,10 @@ button.job-step-more:hover {
   border-radius: var(--r-md);
   background: var(--line);
   color: var(--text);
-  font-size: 17px;
+  /* Two letters ("So", "TM") fit the 40px tile. */
+  font-size: 15px;
   font-weight: 800;
+  letter-spacing: -0.02em;
 }
 .plugin-tile img {
   display: block;
@@ -9553,6 +9555,37 @@ button.job-step-more:hover {
   margin: 0;
   min-width: 0;
   color: var(--text);
+}
+/* The full checksum wraps anywhere; Copy sits beside it. */
+.plugin-checksum {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-2);
+}
+.plugin-checksum .mono {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.plugin-checksum .btn {
+  flex: 0 0 auto;
+  margin-top: -4px;
+}
+.plugin-install-about {
+  margin: 0;
+}
+/* On a phone each fact stacks: its label above, the value (and the whole checksum) full width. */
+@media (max-width: 639px) {
+  .plugin-facts {
+    grid-template-columns: 1fr;
+    row-gap: 2px;
+  }
+  .plugin-facts > div + div dt {
+    margin-top: var(--sp-2);
+  }
+  /* The Build proof tip stays inside the dialog (no sideways scrolling). */
+  .plugin-facts .info-tip-text {
+    max-width: min(280px, 60vw);
+  }
 }
 
 /* InfoTip: the text appears above the button on hover and keyboard focus. */

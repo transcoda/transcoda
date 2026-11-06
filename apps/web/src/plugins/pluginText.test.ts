@@ -6,6 +6,8 @@ import { plugin } from '../test/fixtures/plugins.ts';
 import {
   blockedText,
   CUSTOM_CATALOG_WARNING,
+  installFailureText,
+  provenanceSource,
   removeConfirmText,
   SECURITY_PROMISE,
   stateLabel,
@@ -95,6 +97,33 @@ describe('fixed copy', () => {
     expect(paragraphs[1]).toBe(
       "This is accident protection, not a wall. A malicious plugin could still use the network freely (Transcoda offers a controlled HTTP client, but cannot block raw sockets: the network is outside Node's permission model) or exhaust memory the heap limit does not count. In the Docker image every plugin process runs as a separate unprivileged user, shared by all plugins, so it cannot signal Transcoda's own process or read `/config` (plugins can still signal each other); outside the image, when the container is started with `--user`, or with `TRANSCODA_PLUGIN_ISOLATION=off`, plugins share Transcoda's user and can do both. The official catalog only lists builds made by our CI from the public source, signed with a key this version of Transcoda knows; the signature and checksum are verified before every start, and a blocklist we publish stops known-bad builds within an hour. Custom catalogs are unsigned unless you pin their key, and show a warning for this reason. Install only what you would run on the server yourself.",
     );
+  });
+});
+
+describe('installFailureText', () => {
+  it('a plugin that exited on start: the exit code and the next step', () => {
+    expect(installFailureText('ntfy', 'plugin crashed on start: exited with code 1')).toBe(
+      "ntfy didn't start (exit code 1). See the server log or try again.",
+    );
+  });
+
+  it('another start failure keeps its reason as a sentence', () => {
+    expect(installFailureText('ntfy', 'plugin crashed on start: did not start within 10 s')).toBe(
+      "ntfy didn't start: Did not start within 10 s. See the server log or try again.",
+    );
+  });
+
+  it('any other reason reads as an install failure', () => {
+    expect(installFailureText('Example', 'example 1.1.0 is not in that catalog.')).toBe(
+      "Example didn't install: Example 1.1.0 is not in that catalog. See the server log or try again.",
+    );
+  });
+});
+
+describe('provenanceSource', () => {
+  it('says where the build comes from without jargon', () => {
+    expect(provenanceSource(true)).toBe('Official catalog, built from public source');
+    expect(provenanceSource(false)).toBe('A custom catalog');
   });
 });
 

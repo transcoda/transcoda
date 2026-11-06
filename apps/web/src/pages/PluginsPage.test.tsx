@@ -165,7 +165,7 @@ describe('PluginsPage installed plugins', () => {
     expect(within(r).getByText('1.0.0')).toBeTruthy();
     expect(within(r).getByText('Used by TV cleanup, Movie shrink')).toBeTruthy();
     expect(within(r).getByText('Running')).toBeTruthy();
-    expect(r.querySelector('.plugin-tile')?.textContent).toBe('E');
+    expect(r.querySelector('.plugin-tile')?.textContent).toBe('Ex');
     const settings = within(r).getByRole('button', { name: 'Example settings' });
     expect(settings.getAttribute('aria-expanded')).toBe('false');
     expect(within(r).queryByRole('button', { name: /^Update/ })).toBeNull();
@@ -625,7 +625,7 @@ describe('PluginsPage toolbar', () => {
     await open();
     const source = screen.getByText('Official catalog').closest('.plugins-source') as HTMLElement;
     expect(await within(source).findByText('checked 57 min ago')).toBeTruthy();
-    expect(within(source).getByText('3 blocked')).toBeTruthy();
+    expect(within(source).getByText('3 blocked versions')).toBeTruthy();
     expect(source.textContent).not.toContain('·');
     fireEvent.click(within(source).getByRole('button', { name: 'Refresh the catalog' }));
     await waitFor(() => expect(mocks.plugins.catalog).toHaveBeenCalledWith({ refresh: true }));
@@ -851,15 +851,19 @@ describe('PluginsPage catalog', () => {
     const fact = (label: string) =>
       within(facts).getByText(label, { selector: 'dt' }).parentElement?.querySelector('dd')
         ?.textContent;
-    expect(fact('Source')).toBe('Built by CI');
+    // What it does first, in the catalog's words.
+    expect(within(dialog).getByText('Shouts at your files.')).toBeTruthy();
+    expect(fact('Source')).toBe('Official catalog, built from public source');
     expect(fact('Signature')).toBe('Signed with key official-1');
-    expect(fact('SHA-256')).toBe('abcdef012345');
+    // The whole checksum, with a way to copy it.
+    expect(fact('Checksum (SHA-256)')).toBe(`${'abcdef0123456789'.repeat(4)}Copy`);
+    expect(within(facts).getByRole('button', { name: 'Copy the checksum' })).toBeTruthy();
     expect(dialog.textContent).not.toContain(' · ');
     const link = within(dialog).getByRole('link', { name: /View on GitHub/ });
     expect(link.getAttribute('href')).toBe('https://github.com/transcoda/plugins/attestations/1');
     // Focus starts on Cancel, so the tooltip is not open when the dialog opens.
     expect(document.activeElement).toBe(within(dialog).getByRole('button', { name: 'Cancel' }));
-    const tip = within(facts).getByRole('button', { name: 'What is an attestation?' });
+    const tip = within(facts).getByRole('button', { name: 'What is a build proof?' });
     const text = document.getElementById(tip.getAttribute('aria-describedby') ?? '');
     expect(text?.getAttribute('role')).toBe('tooltip');
     expect(text?.textContent).toMatch(
@@ -934,7 +938,7 @@ describe('PluginsPage catalog', () => {
     const alert = await within(dialog).findByRole('alert');
     // Whose install failed, why (as a sentence), and what to do next.
     expect(alert.textContent).toBe(
-      "Example didn't install: Bundle has no plugin default export. Its output is in the server log; try again once that is fixed.",
+      "Example didn't install: Bundle has no plugin default export. See the server log or try again.",
     );
     expect(screen.getByRole('dialog', { name: 'Install Example 1.0.0?' })).toBeTruthy();
   });
@@ -954,7 +958,7 @@ describe('PluginsPage catalog', () => {
     mocks.plugins.catalog.mockResolvedValue(catalogWith({ latest: null }));
     view();
     const button = (await screen.findByRole('button', {
-      name: 'Install example',
+      name: 'Install Example',
     })) as HTMLButtonElement;
     expect(button.disabled).toBe(true);
     expect(screen.getByText('Needs SDK ^2')).toBeTruthy();
@@ -1062,7 +1066,7 @@ describe('PluginsPage catalog', () => {
     // The custom catalog's install dialog does not claim a CI build.
     fireEvent.click(screen.getByRole('button', { name: 'Install Example 1.0.0 from mine.test' }));
     const dialog = await screen.findByRole('dialog', { name: 'Install Example 1.0.0?' });
-    expect(within(dialog).getByText('From a custom catalog', { selector: 'dd' })).toBeTruthy();
+    expect(within(dialog).getByText('A custom catalog', { selector: 'dd' })).toBeTruthy();
     expect(within(dialog).getByText('Unsigned', { selector: 'dd' })).toBeTruthy();
     expect(within(dialog).getByText(CUSTOM_CATALOG_WARNING)).toBeTruthy();
     fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
@@ -1119,7 +1123,7 @@ describe('PluginsPage catalog', () => {
       await screen.findByRole('button', { name: 'Install Example 1.0.0 from signed.test' }),
     );
     const dialog = await screen.findByRole('dialog', { name: 'Install Example 1.0.0?' });
-    expect(within(dialog).getByText('From a custom catalog', { selector: 'dd' })).toBeTruthy();
+    expect(within(dialog).getByText('A custom catalog', { selector: 'dd' })).toBeTruthy();
     expect(within(dialog).getByText('Signed with key k1', { selector: 'dd' })).toBeTruthy();
     expect(within(dialog).queryByText(CUSTOM_CATALOG_WARNING)).toBeNull();
   });
