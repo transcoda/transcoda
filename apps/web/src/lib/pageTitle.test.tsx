@@ -1,10 +1,20 @@
 import { cleanup, render } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
-import { setServerTitle, usePageTitle } from './pageTitle.ts';
+import { setServerTitle, useOverrideTitle, usePageTitle } from './pageTitle.ts';
 
 function Page({ title }: { title: string | null }) {
   usePageTitle(title);
   return null;
+}
+
+function Missing() {
+  useOverrideTitle('Page not found');
+  return null;
+}
+
+function Settings({ missing }: { missing: boolean }) {
+  usePageTitle('Settings');
+  return missing ? <Missing /> : null;
 }
 
 afterEach(() => {
@@ -23,5 +33,12 @@ describe('usePageTitle', () => {
     expect(document.title).toBe('Home · Transcoda');
     setServerTitle(null);
     expect(document.title).toBe('Transcoda');
+  });
+
+  it('a not-found title wins over the page title of the screen that renders it', () => {
+    const { rerender } = render(<Settings missing />);
+    expect(document.title).toBe('Page not found · Transcoda');
+    rerender(<Settings missing={false} />);
+    expect(document.title).toBe('Settings · Transcoda');
   });
 });

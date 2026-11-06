@@ -1,5 +1,5 @@
 import { Link } from 'wouter';
-import { usePageTitle } from '../lib/pageTitle.ts';
+import { useOverrideTitle } from '../lib/pageTitle.ts';
 import { Icon } from './Icon.tsx';
 
 /**
@@ -16,13 +16,14 @@ export function NotFound({
   backHref?: string;
   backLabel?: string;
 }) {
-  usePageTitle(`${what.charAt(0).toUpperCase()}${what.slice(1)} not found`);
+  const title = `${what.charAt(0).toUpperCase()}${what.slice(1)} not found`;
+  useOverrideTitle(title);
   return (
     <div className="page not-found">
       <div className="panel not-found-panel" role="alert">
         <Icon name="alert" size={18} round />
         <div>
-          <h1 className="not-found-title">{`${what.charAt(0).toUpperCase()}${what.slice(1)} not found`}</h1>
+          <h1 className="not-found-title">{title}</h1>
           <p>{`This ${what} does not exist, or it was deleted.`}</p>
           <Link href={backHref} className="btn btn-secondary btn-sm">
             {backLabel}

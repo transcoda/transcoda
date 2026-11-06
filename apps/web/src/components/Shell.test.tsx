@@ -355,7 +355,7 @@ describe('Shell', () => {
     await waitFor(() => expect(logout).toHaveBeenCalled());
   });
 
-  it('rail mode (the editor): no top bar, icon nav with names and tooltips, home and log out', async () => {
+  it('rail mode (the editor): no top bar, icon nav with names and tooltips, home and sign out', async () => {
     logout.mockResolvedValue(undefined);
     const { container } = render(<Shell rail>x</Shell>);
     expect(container.querySelector('.topbar')).toBeNull();

@@ -38,7 +38,7 @@ export function LoginPage() {
     } else if (isDefinedError(err) && err.code === 'RATE_LIMITED') {
       setWait(Math.max(1, Math.ceil(err.data.retryAfterSeconds)));
     } else {
-      setError('Login failed, try again');
+      setError("Couldn't sign in. Try again.");
     }
   }
 
