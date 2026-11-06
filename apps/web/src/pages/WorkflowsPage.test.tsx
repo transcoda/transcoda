@@ -214,6 +214,12 @@ describe('WorkflowsPage', () => {
           libraryInput: { id: 'l2', name: 'Movies' },
         }),
         summary({ id: 'c', name: 'Unset', trigger: 'library' }),
+        summary({
+          id: 'g',
+          name: 'Gone',
+          trigger: 'library',
+          libraryInput: { id: 'l9', name: null },
+        }),
         summary({ id: 'd', name: 'Hook', trigger: 'webhook' }),
         summary({ id: 'e', name: 'Loose', trigger: 'manual' }),
         summary({ id: 'f', name: 'Blank' }),
@@ -229,6 +235,8 @@ describe('WorkflowsPage', () => {
     );
     expect(cell('Films').textContent).toBe('Library: Movies');
     expect(cell('Unset').textContent).toBe('Library, none picked');
+    // An id no live library has: the library was deleted, not left unpicked.
+    expect(cell('Gone').textContent).toBe('Missing library');
     expect(cell('Hook').textContent).toBe('Webhook');
     expect(cell('Loose').textContent).toBe('Manual');
     expect(within(cell('Blank')).getByText('No trigger').className).toContain('wf-quiet');

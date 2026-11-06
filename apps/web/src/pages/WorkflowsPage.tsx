@@ -12,6 +12,7 @@ import { RowMenu, type RowMenuItem } from '../components/RowMenu.tsx';
 import { useToast } from '../components/Toast.tsx';
 import { ActivateDialog } from '../editor/ui/ActivateDialog.tsx';
 import { ActivationPill } from '../editor/ui/ActivationControl.tsx';
+import { MISSING_LIBRARY } from '../editor/ui/fields/LibrarySelect.tsx';
 import { BUNDLED_EXAMPLES, type BundledExample } from '../examples/bundled.ts';
 import { createFromGraph } from '../examples/createExample.ts';
 import { useWorkflows } from '../hooks/useWorkflows.ts';
@@ -117,14 +118,16 @@ function ProblemChips({ w }: { w: WorkflowSummary }) {
 
 /**
  * The TRIGGER column: what starts the workflow. A library is named: the one the active version
- * takes files from, else the newest version's.
+ * takes files from, else the newest version's; an id no live library has reads "Missing library".
  */
 function TriggerCell({ w }: { w: WorkflowSummary }) {
   const library = w.feedsLibrary?.name ?? (w.trigger === 'library' ? w.libraryInput?.name : null);
   const text = library
     ? `Library: ${library}`
     : w.trigger === 'library'
-      ? 'Library, none picked'
+      ? w.libraryInput
+        ? MISSING_LIBRARY
+        : 'Library, none picked'
       : w.trigger === 'webhook'
         ? 'Webhook'
         : w.trigger === 'manual'
