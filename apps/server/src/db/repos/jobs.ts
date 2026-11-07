@@ -341,8 +341,8 @@ interface DbRecycled {
 }
 
 const parseJson = <T>(s: string | null): T | null => (s === null ? null : (JSON.parse(s) as T));
-/** A GPU id list that survives a corrupt cell: one bad row must not break every job read. */
-const parseIdList = (s: string): string[] => {
+/** A string list (GPU ids, warnings, problems) that survives a corrupt cell: one bad row must not break every job read. */
+const parseStringList = (s: string): string[] => {
   try {
     const v: unknown = JSON.parse(s);
     return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [];
@@ -372,7 +372,7 @@ const toJob = (r: DbJob): JobRow => ({
   attempt: r.attempt,
   requeues: r.requeues,
   encodedOn: r.encoded_on,
-  failedGpus: parseIdList(r.failed_gpus),
+  failedGpus: parseStringList(r.failed_gpus),
   progress: parseJson<JobProgress>(r.progress),
   reason: r.reason,
   replaceJournal: parseJson<ReplaceJournal>(r.replace_journal),
@@ -397,8 +397,8 @@ const toResult = (r: DbResult): JobResultRow => ({
   plan: parseJson<JobPlan>(r.plan),
   replacedTo: r.replaced_to,
   logPath: r.log_path,
-  warnings: JSON.parse(r.warnings) as string[],
-  problems: JSON.parse(r.problems_json) as string[],
+  warnings: parseStringList(r.warnings),
+  problems: parseStringList(r.problems_json),
   outputProbe: parseJson<JsonValue>(r.output_probe),
   sourceDamaged: r.source_damaged === 1,
   outputFingerprint: r.output_fingerprint,
@@ -596,7 +596,7 @@ const toListRow = (r: DbJobList): JobListRow => {
             sourceDamaged: r.r_source_damaged === 1,
             restored: r.r_restored === 1,
           },
-    problems: r.r_problems_json === null ? [] : (JSON.parse(r.r_problems_json) as string[]),
+    problems: r.r_problems_json === null ? [] : parseStringList(r.r_problems_json),
     estimatedBytes: r.dry_run !== 0 ? r.r_estimated_bytes : null,
     planSummary: plan ? planSummary(plan) : null,
     dependsOnSize: r.state === 'dry_run' ? (plan?.dependsOnSize ?? null) : null,

@@ -196,6 +196,18 @@ describe('job GPU fields', () => {
     expect(findJobListRow(db, 'g')).toBeTruthy();
   });
 
+  it('reads corrupt warnings and problems_json cells as empty lists', () => {
+    job('bad');
+    updateJob(db, 'bad', { state: 'done', finishedAt: now.toISOString() }, now);
+    insertJobResult(db, result('bad', { warnings: ['w'], problems: ['p'] }));
+    db.prepare(
+      "UPDATE job_results SET warnings = 'not json', problems_json = '{' WHERE job_id = 'bad'",
+    ).run();
+    expect(findJobResult(db, 'bad')).toMatchObject({ warnings: [], problems: [] });
+    expect(findJobListRow(db, 'bad')?.problems).toEqual([]);
+    expect(listJobs(db, {}).map((r) => r.id)).toEqual(['bad']);
+  });
+
   it('start empty and round-trip encodedOn and failedGpus through updateJob', () => {
     expect(job('g')).toMatchObject({ encodedOn: null, failedGpus: [] });
     const updated = updateJob(
