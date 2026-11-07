@@ -108,4 +108,74 @@ describe.skipIf(!toolsAvailable())('checkSource with real ffmpeg', () => {
     ]);
     expect(await check(intact)).toEqual({ kind: 'ok', warnings: [] });
   }, 60_000);
+
+  /** RSS in bytes by `ps` (Linux and macOS alike, unlike /proc); null once the process is gone. */
+  async function psRss(pid: number): Promise<number | null> {
+    try {
+      const { stdout } = await execFileAsync('ps', ['-o', 'rss=', '-p', String(pid)]);
+      const kb = Number(stdout.trim());
+      return Number.isFinite(kb) && kb > 0 ? kb * 1024 : null;
+    } catch {
+      return null;
+    }
+  }
+
+  /** libx265 is there: the HEVC decoder is frame-threaded and holds a lone cover frame back. */
+  const hasX265 = / libx265 /.test(
+    spawnSync(ffmpegPath, ['-hide_banner', '-encoders'], { encoding: 'utf8' }).stdout ?? '',
+  );
+
+  it.skipIf(!hasX265)(
+    'a cover stored as an ordinary video track is not decoded: the pass stays small and reads clean',
+    async () => {
+      // A 30 s 720p film with ac3 audio, plus a cover an earlier encode turned into a one-frame HEVC
+      // video track (image tags, no attached_pic). Mapped by `0:V?`, the null muxer queued every
+      // decoded film frame waiting for the cover (about 1.1 GB here, 7.9 GB on a full film).
+      const film = join(base, 'film.mkv');
+      const cover = join(base, 'cover.mkv');
+      const out = join(base, 'with-cover.mkv');
+      // biome-ignore format: flag/value pairs
+      await execFileAsync(ffmpegPath, [
+      '-nostdin', '-v', 'error', '-y',
+      '-f', 'lavfi', '-i', 'testsrc2=size=1280x720:rate=30:duration=30',
+      '-f', 'lavfi', '-i', 'sine=frequency=440:duration=30:sample_rate=48000',
+      '-c:v', 'mpeg4', '-q:v', '5', '-ac', '2', '-c:a', 'ac3', film,
+    ]);
+      // biome-ignore format: flag/value pairs
+      await execFileAsync(ffmpegPath, [
+      '-nostdin', '-v', 'error', '-y',
+      '-f', 'lavfi', '-i', 'testsrc=size=640x360:rate=25', '-frames:v', '1',
+      '-c:v', 'libx265', '-x265-params', 'log-level=error', cover,
+    ]);
+      // biome-ignore format: flag/value pairs
+      await execFileAsync(ffmpegPath, [
+      '-nostdin', '-v', 'error', '-y', '-i', film, '-i', cover,
+      '-map', '0:v', '-map', '0:a', '-map', '1:v', '-c', 'copy',
+      '-metadata:s:v:1', 'FILENAME=cover.jpg', '-metadata:s:v:1', 'MIMETYPE=image/jpeg',
+      '-disposition:v:1', '0', out,
+    ]);
+      const guarded = makeExec({
+        timeout: 60_000,
+        maxBuffer: 64 * 1024 * 1024,
+        memory: { limitBytes: 512 * 2 ** 20, read: psRss, intervalMs: 100 },
+      });
+      const probe = await probeFile(out, { ffprobePath, exec });
+      expect(probe.streams.map((s) => [s.type, s.imageTrack ?? false])).toEqual([
+        ['video', false],
+        ['audio', false],
+        ['video', true],
+      ]);
+      const r = await checkSource({
+        path: out,
+        probe,
+        ffmpegPath,
+        decodeVideo: true,
+        sizeBytes: probe.sizeBytes,
+        exec: guarded,
+        confirm: async () => [],
+      });
+      expect(r).toEqual({ kind: 'ok', warnings: [] });
+    },
+    120_000,
+  );
 });

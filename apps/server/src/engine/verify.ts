@@ -5,6 +5,7 @@ import { DEVICE_PROFILES, isPicture, type ProbeStream, sameLanguage } from '@tra
 import { type Exec, makeExec } from '../capabilities/ffmpeg.ts';
 import { extraInputOf, isExtraStream, isMkvCover, outputOrder } from './build-model.ts';
 import { READ_FAILURE } from './decoder-names.ts';
+import { isMemoryLimitError, memoryLimitMessage } from './memory-guard.ts';
 import { probeFile } from './probe.ts';
 import { type ProgressSample, progressReader, type VerifyProgress } from './progress.ts';
 import { containerPlaysOn, streamPlaysOn, type TargetIssue } from './targets.ts';
@@ -129,7 +130,10 @@ async function run(exec: Exec, file: string, args: string[]): Promise<RunResult>
       killed?: unknown;
     };
     const stderr = typeof e.stderr === 'string' ? e.stderr : '';
-    const detail = firstLine(stderr) ?? firstLine(String(e.message ?? err));
+    // Stopped by the memory guard: that is the reason, whatever ffmpeg had logged before.
+    const detail = isMemoryLimitError(err)
+      ? memoryLimitMessage(err.memoryLimitBytes)
+      : (firstLine(stderr) ?? firstLine(String(e.message ?? err)));
     const exited = typeof e.code === 'number' && e.killed !== true;
     return { ok: false, detail: detail ?? 'failed', exited, stderr };
   }
@@ -712,6 +716,39 @@ async function decode(
       };
 }
 
+/**
+ * The `-map`s of a decode of a file's content: every video stream that is not a picture (see
+ * isPicture) and every audio stream, by index. Never `0:V?`: it leaves out only streams flagged
+ * attached_pic, so a cover an earlier encode turned into an ordinary video track would be decoded
+ * too, and the null muxer then queues every decoded frame of the film waiting for the cover's next
+ * frame until memory runs out. Outputs need this as much as sources: a cover is copied as it is.
+ * A file with neither keeps ffmpeg's own choice (a lone picture cannot hold anything back).
+ *
+ * `byId` is for a byte-seek source (see BYTE_SEEK_FORMATS) opened mid-way: the demuxer numbers
+ * streams in the order it meets them there, so a stream is named by its id (PID) instead. A stream
+ * whose id is missing or shared with another keeps its index.
+ */
+export function mediaMaps(probe: ProbeResult, byId = false): string[] {
+  const streams = [...probe.streams].sort((a, b) => a.index - b.index);
+  const media = streams.filter(
+    (s) => (s.type === 'video' && !isPicture(s, streams)) || s.type === 'audio',
+  );
+  if (media.length === 0) return ['0:V?', '0:a?'];
+  const raw = byId ? rawOf(probe).streams : [];
+  const idOf = (index: number): string | null => {
+    const id = raw.find((r) => num(r.index) === index)?.id;
+    if (typeof id !== 'string' || id === '') return null;
+    return raw.filter((r) => r.id === id).length === 1 ? id : null;
+  };
+  return [
+    ...media.filter((s) => s.type === 'video'),
+    ...media.filter((s) => s.type === 'audio'),
+  ].map((s) => {
+    const id = idOf(s.index);
+    return id === null ? `0:${s.index}` : `0:i:${id}`;
+  });
+}
+
 /** How decode-start and decode-end open `file` (stream maps are added per run). */
 async function decodeInputs(
   exec: Exec,
@@ -893,7 +930,7 @@ async function decodeChecks(
           run,
           input.ffmpegPath,
           spot.check,
-          { ...how, maps: ['0:V?', '0:a?'], output: extra },
+          { ...how, maps: mediaMaps(output.probe), output: extra },
           '',
         )
       : null;
@@ -1165,7 +1202,7 @@ export async function confirmSourceDamage(input: {
       exec,
       input.ffmpegPath,
       'decode-sample',
-      { input: open, maps: ['0:V?', '0:a?'], where },
+      { input: open, maps: mediaMaps(file.probe, file.byteSeek), where },
       'source: ',
     );
     // Only a decode error confirms: a timeout or a read error says nothing about the file.

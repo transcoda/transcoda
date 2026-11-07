@@ -69,6 +69,12 @@ export interface Config {
    * more output for this long (paused time excluded) is stopped and the job fails.
    */
   encodeStallMinutes: number;
+  /**
+   * TRANSCODA_DECODE_MEMORY_GIB (default null: half the memory available, at least 1 and at most
+   * 4 GiB; 0 turns it off): a read-only ffmpeg pass (Check source, verify's decodes) whose memory
+   * grows past this is stopped (memory-guard.ts).
+   */
+  decodeMemoryGiB: number | null;
   /** TRANSCODA_HEALTH_MIN_FREE_GIB (default 5): the deep health scratch-space check needs at least max(5, this). */
   healthMinFreeGiB: number;
   /** TRANSCODA_UPDATE_CHECK (default true): false never asks GitHub whether a newer release exists. */
@@ -403,6 +409,15 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
       env.TRANSCODA_ENCODE_STALL_MINUTES,
       60,
     ),
+    decodeMemoryGiB:
+      env.TRANSCODA_DECODE_MEMORY_GIB === undefined || env.TRANSCODA_DECODE_MEMORY_GIB.trim() === ''
+        ? null
+        : parseNonNegative(
+            'TRANSCODA_DECODE_MEMORY_GIB',
+            'GiB',
+            env.TRANSCODA_DECODE_MEMORY_GIB,
+            0,
+          ),
     healthMinFreeGiB: parsePositive(
       'TRANSCODA_HEALTH_MIN_FREE_GIB',
       'GiB',

@@ -2,6 +2,7 @@ import type { ProbeResult } from '@transcoda/sdk';
 import { describe, expect, it } from 'vitest';
 import type { Exec } from '../capabilities/ffmpeg.ts';
 import { checkSource, checkSourceArgs, checkSourceTimeoutMs, locateArgs } from './check-source.ts';
+import { MemoryLimitError } from './memory-guard.ts';
 import { probeOf } from './test-helpers.ts';
 import type { VerifyFailure } from './verify.ts';
 
@@ -248,7 +249,7 @@ describe('checkSource', () => {
     );
   });
 
-  it('copies video unless decodeVideo; decodes video when the file has no audio', async () => {
+  it('maps audio only unless decodeVideo; decodes video when the file has no audio', async () => {
     const args = checkSourceArgs('/lib/a.mkv', dts(), false);
     expect(args).toEqual([
       '-nostdin',
@@ -260,21 +261,81 @@ describe('checkSource', () => {
       '-i',
       '/lib/a.mkv',
       '-map',
-      '0:a?',
-      '-map',
-      '0:V?',
-      '-c:v',
-      'copy',
+      '0:1',
       '-f',
       'null',
       '-',
     ]);
-    expect(checkSourceArgs('/lib/a.mkv', dts(), true)).not.toContain('-c:v');
+    expect(maps(checkSourceArgs('/lib/a.mkv', dts(), true))).toEqual(['0:0', '0:1']);
     const silent = probeOf([{ type: 'video', codec: 'hevc', default: true }]);
-    expect(checkSourceArgs('/lib/a.mkv', silent, false)).not.toContain('-c:v');
+    expect(maps(checkSourceArgs('/lib/a.mkv', silent, false))).toEqual(['0:0']);
     const exec = fakeExec({ readTo: 60 });
     expect(await run(exec, silent)).toEqual({ kind: 'ok', warnings: [] });
-    expect(exec.calls[0]?.args).not.toContain('copy');
+  });
+
+  /** The `-map` values of an ffmpeg argv. */
+  const maps = (args: string[]) => args.filter((_, i) => args[i - 1] === '-map');
+
+  /**
+   * A film whose cover an earlier encode turned into an ordinary HEVC video track (image tags, no
+   * attached_pic): ffmpeg's `0:V?` maps it, and the null muxer then queues every decoded frame of
+   * the film waiting for the cover's next frame until memory runs out.
+   */
+  const withCoverTrack = (): ProbeResult =>
+    probeOf(
+      [
+        { type: 'video', codec: 'hevc', default: true, width: 1920, height: 1080 },
+        { type: 'audio', codec: 'eac3', language: 'eng', default: true },
+        { type: 'video', codec: 'hevc', width: 640, height: 360, imageTrack: true },
+        { type: 'audio', codec: 'aac', language: 'deu' },
+      ],
+      { sizeBytes: 12 * 2 ** 30, durationSeconds: 7200 },
+    );
+
+  it('never maps a cover stored as a video track: the decoded streams by index, no 0:V?', async () => {
+    for (const decodeVideo of [false, true]) {
+      const args = checkSourceArgs('/lib/a.mkv', withCoverTrack(), decodeVideo);
+      expect(maps(args)).toEqual(decodeVideo ? ['0:0', '0:1', '0:3'] : ['0:1', '0:3']);
+      expect(args.join(' ')).not.toMatch(/0:V|0:a\?|0:2/);
+    }
+    // A file with no audio decodes its video, still without the cover.
+    const silent = probeOf([
+      { type: 'video', codec: 'hevc', default: true },
+      { type: 'video', codec: 'mjpeg', attachedPic: true },
+      { type: 'video', codec: 'hevc', imageTrack: true },
+    ]);
+    expect(maps(checkSourceArgs('/lib/a.mkv', silent, false))).toEqual(['0:0']);
+    // The locating pass reads the same streams.
+    expect(maps(locateArgs('/lib/a.mkv', withCoverTrack(), true))).toEqual(['0:0', '0:1', '0:3']);
+  });
+
+  it('a file with nothing to read (no audio, video only pictures) is an error, and runs nothing', async () => {
+    const covers = probeOf([{ type: 'video', codec: 'mjpeg', attachedPic: true }]);
+    const exec = fakeExec({ readTo: 60 });
+    expect(await run(exec, covers, true)).toEqual({
+      kind: 'error',
+      message: 'the file has no audio or video stream to read',
+    });
+    expect(exec.calls).toHaveLength(0);
+  });
+
+  it('ffmpeg stopped by the memory guard is an error that is not worth retrying (never damaged)', async () => {
+    const memory = new MemoryLimitError(4 * 2 ** 30, `${LFE}\n`);
+    expect(await run(fakeExec({ errorAt: 60, stderr: [LFE], fail: { ...memory } }))).toEqual({
+      kind: 'error',
+      message: 'ffmpeg used more than 4 GiB of memory and was stopped',
+      final: true,
+    });
+    // In the locating pass too.
+    const locating = (async (_file, args) => {
+      if (args.includes('level+info')) throw memory;
+      return { stdout: '', stderr: `${LFE}\n` };
+    }) as Exec;
+    expect(await run(locating)).toEqual({
+      kind: 'error',
+      message: 'ffmpeg used more than 4 GiB of memory and was stopped',
+      final: true,
+    });
   });
 
   /** The demuxer says the file stops at `at` (its own context, as libavformat logs it). */

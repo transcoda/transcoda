@@ -1078,7 +1078,7 @@ describe('finish nodes', () => {
     expect(shown({ qualityCheck: true })).toEqual([RENDER_DONE_PORT, RENDER_DAMAGED_PORT]);
   });
 
-  it('check-source: ok → port ok; damaged → port damaged with findings; error → throws retryable', async () => {
+  it('check-source: ok → port ok; damaged → port damaged with findings; error → throws retryable (not when final)', async () => {
     const probe = probeOf([{}]);
     const asked: boolean[] = [];
     const withCore = (r: CheckSourceResult): DecideContext => {
@@ -1132,6 +1132,19 @@ describe('finish nodes', () => {
     await expect(failed).rejects.toMatchObject({
       message: 'check source failed: Input/output error',
       retryable: true,
+    });
+    // Stopped by the memory guard: another try would buffer the same way.
+    const final = decide(
+      checkSource,
+      withCore({
+        kind: 'error',
+        message: 'ffmpeg used more than 4 GiB of memory and was stopped',
+        final: true,
+      }),
+    );
+    await expect(final).rejects.toMatchObject({
+      message: 'check source failed: ffmpeg used more than 4 GiB of memory and was stopped',
+      retryable: false,
     });
     await expect(decide(checkSource, decideCtx(probe))).rejects.toThrow(
       'check source is not available here',
