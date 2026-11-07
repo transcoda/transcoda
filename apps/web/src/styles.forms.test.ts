@@ -30,6 +30,11 @@ describe('dialogs (H7, L1)', () => {
     expect(rule('.dialog-footer')).toMatch(/flex:\s*none/);
   });
 
+  it('a divider under the title, like the one over the footer, so scrolled content never slides under it', () => {
+    expect(rule('.dialog-title')).toMatch(/border-bottom:\s*1px solid var\(--line\)/);
+    expect(rule('.dialog-footer')).toMatch(/border-top:\s*1px solid var\(--line\)/);
+  });
+
   it('the close button is a full-size target and lives in the dialog section', () => {
     const close = rule('.dialog-close');
     expect(close).toMatch(/width:\s*var\(--target-min\)/);
