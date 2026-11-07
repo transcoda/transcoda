@@ -307,6 +307,24 @@ describe('renderArgs: GPU decode', () => {
       );
     });
 
+    it('gpuDecode false keeps the decode on the CPU but still opens the Intel GPU', () => {
+      const args = renderArgs({
+        model: qsv('yuv420p'),
+        input: '/in.mkv',
+        output: '/o.mkv',
+        device,
+        gpuDecode: false,
+      });
+      expect(beforeInput(args).slice(-4)).toEqual([
+        '-init_hw_device',
+        'qsv=qsv:hw,child_device=/dev/dri/renderD128',
+        '-filter_hw_device',
+        'qsv',
+      ]);
+      expect(args).not.toContain('-hwaccel');
+      expect(args).toContain('-pix_fmt:0');
+    });
+
     it('keeps decoding on the CPU (and -pix_fmt) where GPU frames would not fit', () => {
       const twoVideos = withStream(
         withStream(

@@ -287,6 +287,11 @@ export interface RenderInput {
   extraInputFiles?: ReadonlyMap<number, string>;
   /** Absent: ffmpeg's default device (the only GPU, or CUDA device 0). */
   device?: RenderDevice;
+  /**
+   * False: the source decodes on the CPU even where it could decode on the Intel GPU (the retry
+   * after that GPU could not decode it). Absent: see `qsvFrames`.
+   */
+  gpuDecode?: boolean;
 }
 
 /** ffmpeg demuxer for a sidecar subtitle codec (`ssa` is read by the ass demuxer). */
@@ -355,7 +360,8 @@ type QsvFrames = Map<StreamPlan, 'nv12' | 'p010'>;
  * 8- or 10-bit 4:2:0 format. GPU frames reach no CPU filter, so the format conversion is
  * `vpp_qsv=format=nv12|p010` on the GPU. Null keeps the CPU decode (measured on an Arc A310: the CPU
  * decode starved a parallel NVENC job on a 4-core box). A source the GPU cannot decode (4:2:2, say)
- * fails as a GPU failure, which tries another GPU, then software.
+ * fails as a GPU failure, which tries another GPU, then this GPU with `gpuDecode: false`, then
+ * software.
  */
 function qsvFrames(
   model: BuildModel,
@@ -502,7 +508,7 @@ export function renderArgs(r: RenderInput): string[] {
   // Covers in mkv become attachments after every mapped stream (see outputOrder).
   const streams = all.filter((s) => !isMkvCover(model, s));
   const covers = all.filter((s) => isMkvCover(model, s));
-  const frames = qsvFrames(model, streams, r.device);
+  const frames = r.gpuDecode === false ? null : qsvFrames(model, streams, r.device);
   const args = [
     '-nostdin',
     '-hide_banner',
