@@ -322,8 +322,11 @@ describe.skipIf(!fixturesAvailable())('examples/workflows: the end-to-end gate',
     expect(two.size, explain(two)).toBe(files.length);
     for (const [file, o] of two) {
       const before = one.get(file)?.state;
-      if (o.state === 'already_processed') {
-        // Only a file the first run left untouched keeps its fingerprint.
+      if (before === 'done') {
+        // A file the first run rewrote is recognised as that job's output, never run again.
+        expect(o.state, `${file}\n${explain(two)}`).toBe('already_processed');
+      } else if (o.state === 'already_processed') {
+        // An untouched file keeps its fingerprint.
         expect(['nothing_to_do', 'kept_original'], `${file}\n${explain(two)}`).toContain(before);
       } else {
         expect(o.state, `${file}\n${explain(two)}`).toBe('nothing_to_do');
