@@ -1,5 +1,5 @@
 // Intel GPU video-engine load from the i915 driver's per-client counters in /proc/<pid>/fdinfo:
-// every process holding the render node open reports the nanoseconds its client kept the engine busy.
+// every ffmpeg process holding the render node open reports the nanoseconds its client kept the engine busy.
 import { readdirSync, readFileSync, readlinkSync } from 'node:fs';
 
 export interface ParsedFdinfo {
@@ -72,6 +72,8 @@ export class IntelLoadReader {
     const clients = new Map<string, ParsedFdinfo>();
     for (const pid of attempt(() => this.proc.readdir('/proc')) ?? []) {
       if (!/^\d+$/.test(pid)) continue;
+      // only ffmpeg encodes count, and skipping every other process keeps the scan cheap on bare metal
+      if (attempt(() => this.proc.readFile(`/proc/${pid}/comm`))?.trim() !== 'ffmpeg') continue;
       for (const fd of attempt(() => this.proc.readdir(`/proc/${pid}/fd`)) ?? []) {
         const link = attempt(() => this.proc.readlink(`/proc/${pid}/fd/${fd}`));
         if (!link || !/^\/dev\/dri\/renderD\d+$/.test(link)) continue;
