@@ -1096,7 +1096,7 @@ describe('pipeline', () => {
       expect(encodedOn).toBe(name);
     });
 
-    it('a workflow that names hevc_nvenc takes the NVIDIA GPU and is not retargeted, even with Intel first', async () => {
+    it('a workflow that names hevc_nvenc is not retargeted to Quick Sync, even with Intel first', async () => {
       await setup({ capabilities: mixed(['cuda']) });
       const { args } = await encode(hevc('hevc_nvenc'), true);
       expect(args).toContain('-c:0 hevc_nvenc');
