@@ -1,5 +1,6 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { fmtDate } from '../../lib/time.ts';
 
 const mocks = vi.hoisted(() => ({ list: vi.fn(), create: vi.fn(), revoke: vi.fn() }));
 vi.mock('../../api/client.ts', () => ({
@@ -175,11 +176,27 @@ describe('TokensSection', () => {
     fireEvent.change(screen.getByLabelText(/^Name/), { target: { value: 'n' } });
     fireEvent.click(screen.getByLabelText('read'));
     fireEvent.change(screen.getByLabelText(/Expires/), { target: { value: '2026-10-20' } });
+    // The chosen day as text, in the format the rest of the app uses.
+    expect(
+      screen.getByText(`Works until the end of ${fmtDate('2026-10-20T12:00:00')}.`),
+    ).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Create token' }));
     await waitFor(() => expect(mocks.create).toHaveBeenCalled());
     const expected = new Date('2026-10-20T23:59:59.999').toISOString();
     expect(mocks.create).toHaveBeenCalledWith({ name: 'n', scopes: ['read'], expiresAt: expected });
     expect(expected).not.toBe(new Date('2026-10-20T23:59:59.999Z').toISOString());
+  });
+
+  it('a date the app cannot read (a five-digit year) is an error, not a crash, and is not sent', async () => {
+    render(<TokensSection />);
+    await screen.findByText('ci-bot');
+    fireEvent.change(screen.getByLabelText(/^Name/), { target: { value: 'n' } });
+    fireEvent.click(screen.getByLabelText('read'));
+    fireEvent.change(screen.getByLabelText(/Expires/), { target: { value: '10000-10-20' } });
+    expect(screen.getByText('Enter a date with a four-digit year.')).toBeTruthy();
+    expect(screen.getByLabelText(/Expires/).getAttribute('aria-invalid')).toBe('true');
+    fireEvent.click(screen.getByRole('button', { name: 'Create token' }));
+    expect(mocks.create).not.toHaveBeenCalled();
   });
 
   it('sends scopes in TOKEN_SCOPES order regardless of click order', async () => {

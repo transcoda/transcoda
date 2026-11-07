@@ -11,6 +11,7 @@ import { useEffect, useId, useMemo, useState } from 'react';
 import { KIND_WORD, KindEyebrow } from '../../components/Chips.tsx';
 import { Disclosure } from '../../components/Disclosure.tsx';
 import { Icon } from '../../components/Icon.tsx';
+import { ListboxSelect } from '../../components/ListboxSelect.tsx';
 import type { Catalog } from '../../hooks/useCatalog.ts';
 import { BADGE_ICON } from '../flow/badges.ts';
 import { kindClassOf } from '../flow/TcNode.tsx';
@@ -79,7 +80,7 @@ const plural = (n: number) => `${n} node${n === 1 ? '' : 's'}`;
 /**
  * The inspector column's top part (screen 05), nothing while nothing is selected: the group inspector, the
  * selected node's header, settings form, "On the canvas" section and
- * footer, or "N nodes selected" with "Group N nodes" and "Delete N nodes".
+ * footer, or "N nodes selected" with "Group N nodes" and "Remove N nodes".
  */
 export function Inspector(props: InspectorProps) {
   const { state, dispatch, readOnly } = props;
@@ -110,7 +111,7 @@ export function Inspector(props: InspectorProps) {
             disabled={readOnly}
             onClick={() => dispatch((g) => removeNodes(g, ids))}
           >
-            Delete {plural(ids.length)}
+            Remove {plural(ids.length)}
           </button>
         </div>
       </section>
@@ -287,7 +288,6 @@ function NodeInspector({
   const issues = useMemo(() => settingIssues(nodeState), [nodeState]);
   const [open, setOpen] = useState(readOpen);
   const labelId = useId();
-  const groupId = useId();
 
   // NodeForm (a child, so its effect ran first) has focused the field.
   useEffect(() => {
@@ -437,28 +437,19 @@ function NodeInspector({
               }}
             />
             <div className="tc-field">
-              <div className="tc-field-head">
-                <label htmlFor={groupId} className="tc-field-label">
-                  Group
-                </label>
-              </div>
-              <select
-                id={groupId}
-                className="input tc-input"
-                value={node.groupId ?? ''}
+              <ListboxSelect
+                label="Group"
+                visibleLabel
                 disabled={readOnly}
-                onChange={(e) => {
-                  const target = e.target.value === '' ? undefined : e.target.value;
-                  if (!readOnly) joinGroup(id, target);
+                value={node.groupId ?? ''}
+                options={[
+                  { value: '', label: 'None' },
+                  ...state.draft.groups.map((gr) => ({ value: gr.id, label: gr.name })),
+                ]}
+                onChange={(next) => {
+                  if (!readOnly) joinGroup(id, next === '' ? undefined : next);
                 }}
-              >
-                <option value="">None</option>
-                {state.draft.groups.map((gr) => (
-                  <option key={gr.id} value={gr.id}>
-                    {gr.name}
-                  </option>
-                ))}
-              </select>
+              />
             </div>
           </div>
         </Disclosure>

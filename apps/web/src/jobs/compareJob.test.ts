@@ -30,7 +30,7 @@ describe('compareJob', () => {
       [
         'Video',
         'HEVC Main, 1920×1080, 23.976 fps, 8-bit SDR, ≈9.6 Mb/s',
-        'HEVC (NVENC QP 24), 1920×1080, 8-bit, ≈2.2 Mb/s',
+        'HEVC (NVENC QP 24), 1920×1080, 23.976 fps, 8-bit SDR, ≈2.2 Mb/s',
       ],
       ['Audio 1', 'TrueHD 5.1, lossless, English', 'AAC 2.0, 160 kb/s !downmixed !lossy'],
       ['Audio 2', 'AC-3 5.1, 640 kb/s, English', 'AAC 2.0, 160 kb/s !downmixed'],
@@ -68,7 +68,7 @@ describe('compareJob', () => {
     const truehd = noTag.streams[1];
     if (truehd) truehd.tagBitrateKbps = null;
     expect(rows(testEncode({ probe: noTag }))[1]?.[1]).toBe(
-      'HEVC Main, 1920×1080, 23.976 fps, 8-bit SDR, —',
+      'HEVC Main, 1920×1080, 23.976 fps, 8-bit SDR',
     );
     // A video tag that fits the file is the bitrate, without ≈.
     const fits = source();
@@ -100,7 +100,7 @@ describe('compareJob', () => {
     ]);
   });
 
-  it('a plan-only dry run: After from the plan and the estimate, marked planned; unknowns are —', () => {
+  it('a plan-only dry run: After from the plan and the estimate, marked planned; an unknown bitrate is left out, an unknown size says so', () => {
     const job = testEncode({
       testEncode: false,
       outputProbe: null,
@@ -112,7 +112,7 @@ describe('compareJob', () => {
       [
         'Video',
         'HEVC Main, 1920×1080, 23.976 fps, 8-bit SDR, ≈9.6 Mb/s',
-        'HEVC (NVENC QP 24), 1920×1080, 8-bit, —',
+        'HEVC (NVENC QP 24), 1920×1080, 23.976 fps, 8-bit',
       ],
       ['Audio 1', 'TrueHD 5.1, lossless, English', 'AAC 2.0, 160 kb/s !downmixed !lossy'],
       ['Audio 2', 'AC-3 5.1, 640 kb/s, English', 'AAC 2.0, 160 kb/s !downmixed'],
@@ -120,7 +120,7 @@ describe('compareJob', () => {
     ]);
     // A size gate decides after encoding: no estimate claims a size.
     const depends = rows({ ...job, dependsOnSize: { minSavingPercent: 25 } });
-    expect(depends[0]?.[2]).toBe('—, MKV');
+    expect(depends[0]?.[2]).toBe('size unknown, MKV');
   });
 
   it('a removed track says removed (a loss); an added one says added before', () => {
@@ -156,7 +156,7 @@ describe('compareJob', () => {
       ['Audio 1', 'TrueHD 5.1, lossless, English', 'kept'],
       ['Audio 2', 'added', 'AAC 2.0, 160 kb/s, English'],
       ['Audio 3', 'AC-3 5.1, 640 kb/s, English', 'AAC 2.0, 160 kb/s !downmixed'],
-      ['Audio 4', 'DTS 5.1, —, German', '!removed'],
+      ['Audio 4', 'DTS 5.1, German', '!removed'],
       ['Subtitles', 'PGS, English', 'kept'],
     ]);
   });
@@ -212,7 +212,7 @@ describe('compareJob', () => {
       [
         'Video',
         'HEVC Main, 1920×1080, 23.976 fps, 8-bit SDR, ≈9.6 Mb/s',
-        'HEVC (NVENC QP 24), 1920×1080, 8-bit, ≈2.2 Mb/s',
+        'HEVC (NVENC QP 24), 1920×1080, 23.976 fps, 8-bit SDR, ≈2.2 Mb/s',
       ],
       ['Audio 1', 'TrueHD 5.1, lossless, English', 'kept'],
       ['Audio 2', 'added', 'AAC 2.0, 160 kb/s, English'],

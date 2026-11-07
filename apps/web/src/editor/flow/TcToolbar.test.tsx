@@ -36,7 +36,7 @@ describe('TcToolbar', () => {
     const names = screen
       .getAllByRole('button')
       .map((b) => b.getAttribute('aria-label') ?? b.textContent);
-    expect(names).toEqual(['Try this node', 'Duplicate', 'Bypass', 'Delete']);
+    expect(names).toEqual(['Try this node', 'Duplicate', 'Bypass', 'Remove node']);
     const tryIt = screen.getByRole('button', { name: 'Try this node' }) as HTMLButtonElement;
     expect(tryIt.disabled).toBe(true);
     expect(tryIt.title).toBe('A sub-workflow is tried from a workflow that runs it');
@@ -47,7 +47,7 @@ describe('TcToolbar', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Duplicate' }));
     fireEvent.click(screen.getByRole('button', { name: 'Bypass', pressed: false }));
-    fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Remove node' }));
     expect(h.onDuplicate).toHaveBeenCalledTimes(1);
     expect(h.onBypass).toHaveBeenCalledTimes(1);
     expect(h.onDelete).toHaveBeenCalledTimes(1);

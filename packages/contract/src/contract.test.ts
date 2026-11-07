@@ -536,6 +536,7 @@ describe('contract', () => {
         ...summary,
         feedsLibrary: { id: 'l', name: 'Shows' },
         libraryInput: { id: 'l', name: null },
+        trigger: 'library',
       }).success,
     ).toBe(true);
     expect('feeds' in LibrarySchema.shape).toBe(true);
@@ -603,6 +604,7 @@ describe('contract', () => {
       usedBy: [],
       feedsLibrary: null,
       libraryInput: null,
+      trigger: null,
       createdAt: AT,
       updatedAt: AT,
     };

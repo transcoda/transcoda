@@ -63,6 +63,7 @@ const summary: WorkflowSummary = {
   usesOutdatedSubworkflow: false,
   feedsLibrary: null,
   libraryInput: null,
+  trigger: null,
   usedBy: [],
   createdAt: minutesAgo(600),
   updatedAt: minutesAgo(2),
@@ -211,6 +212,17 @@ describe('EditorPage', () => {
     expect((screen.getByRole('button', { name: 'Save v4' }) as HTMLButtonElement).disabled).toBe(
       false,
     );
+  });
+
+  it('a node added from the palette is selected: the inspector shows it, not the last one', async () => {
+    const { container } = await loadedEditor();
+    fireEvent.click(flowNode(container, 'keep'));
+    const inspector = screen.getByRole('complementary', { name: 'Inspector' });
+    await within(inspector).findByRole('heading', { level: 2, name: 'Keep languages' });
+    fireEvent.click(paletteButton('Action', 'Encode audio'));
+    expect(
+      await within(inspector).findByRole('heading', { level: 2, name: 'Encode audio' }),
+    ).toBeTruthy();
   });
 
   it('a refused add from the palette is a toast', async () => {
@@ -720,9 +732,8 @@ describe('EditorPage', () => {
     fireEvent.click(flowNode(container, 'keep'));
     const inspector = screen.getByRole('complementary', { name: 'Inspector' });
     await within(inspector).findByRole('heading', { level: 2, name: 'Keep languages' });
-    fireEvent.change(within(inspector).getByRole('combobox', { name: 'Group' }), {
-      target: { value: 'g1' },
-    });
+    fireEvent.click(within(inspector).getByRole('button', { name: 'Group None' }));
+    fireEvent.click(within(inspector).getByRole('option', { name: 'Audio' }));
     fireEvent.click(screen.getByRole('button', { name: 'Save v4' }));
     await waitFor(() => expect(mocks.save).toHaveBeenCalledTimes(1));
     const graph = mocks.save.mock.calls[0]?.[0].graph as WorkflowGraph;
@@ -1367,7 +1378,7 @@ describe('EditorPage on-node settings, groups and bypass (Task 14)', () => {
       await screen.findByRole('group', { name: /Action Keep languages/ });
       fireEvent.click(flowNode(container, 'start'));
       const toolbar = await screen.findByRole('toolbar', { name: 'Node actions' });
-      fireEvent.click(within(toolbar).getByRole('button', { name: 'Delete' }));
+      fireEvent.click(within(toolbar).getByRole('button', { name: 'Remove node' }));
       expect((await screen.findByRole('alert')).textContent).toContain(
         'A sub-workflow needs its start and end',
       );
@@ -1766,7 +1777,7 @@ describe('EditorPage activation (Task 17, activation Task 9)', () => {
     expect(menuItem('Deactivate')).toBeTruthy();
   });
 
-  it('a past version shows "Activate v2" beside "Restore as new version"; the active version shows "Viewing v3 — active" without it', async () => {
+  it('a past version shows "Roll back to v2" beside "Restore as new version"; the active version shows "Viewing v3 — active" without it', async () => {
     mocks.get.mockResolvedValue({
       ...detail(chainMainReplace(), 2),
       currentVersion: 3,
@@ -1775,9 +1786,10 @@ describe('EditorPage activation (Task 17, activation Task 9)', () => {
     await loadedEditor('/workflows/wf1?version=2');
     expect(screen.getByText('Viewing v2 — current is v3')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Restore as new version' })).toBeTruthy();
-    // Read-only: the header menu has no Activate, the past-version banner has the one.
-    expect(screen.getAllByRole('button', { name: 'Activate v2' })).toHaveLength(1);
-    expect(menuItem('Activate v2')).toBeNull();
+    // Read-only: the header menu has no Activate, the past-version banner has the one, with the
+    // dialog's verb (v2 is below the active v3).
+    expect(screen.getAllByRole('button', { name: 'Roll back to v2' })).toHaveLength(1);
+    expect(menuItem('Roll back to v2')).toBeNull();
     cleanup();
 
     mocks.get.mockResolvedValue({
@@ -1881,7 +1893,7 @@ describe('EditorPage activation (Task 17, activation Task 9)', () => {
       .getByText(/^Active v3 can't run/)
       .closest('[role="status"]') as HTMLElement;
     expect(within(danger).queryByRole('button')).toBeNull();
-    expect(screen.getAllByRole('button', { name: 'Activate v2' })).toHaveLength(1);
+    expect(screen.getAllByRole('button', { name: 'Roll back to v2' })).toHaveLength(1);
   });
 
   it("focus returns to the header pill after a rollback and after activating from the can't-run banner", async () => {
@@ -1896,7 +1908,7 @@ describe('EditorPage activation (Task 17, activation Task 9)', () => {
       active: { ...activeV3(), version: 2 },
     });
     await loadedEditor('/workflows/wf1?version=2');
-    fireEvent.click(screen.getByRole('button', { name: 'Activate v2' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Roll back to v2' }));
     let dialog = await screen.findByRole('dialog', { name: 'Roll back Smoke to v2?' });
     const go = within(dialog).getByRole('button', { name: 'Roll back to v2' }) as HTMLButtonElement;
     await waitFor(() => expect(go.disabled).toBe(false));

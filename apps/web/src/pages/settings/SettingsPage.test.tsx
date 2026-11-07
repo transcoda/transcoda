@@ -69,6 +69,11 @@ describe('SettingsPage (desktop)', () => {
     expect(about.classList.contains('is-active')).toBe(true);
     // The section is current, but the page is its sub-page.
     expect(about.getAttribute('aria-current')).toBe('true');
+    // A breadcrumb leads back to the section: "About / Open-source licences".
+    const crumbs = screen.getByRole('navigation', { name: 'Breadcrumb' });
+    expect(within(crumbs).getByRole('link', { name: 'About' }).getAttribute('href')).toBe(
+      '/settings/about',
+    );
   });
 
   it('an unknown sub-page goes back to its section', () => {

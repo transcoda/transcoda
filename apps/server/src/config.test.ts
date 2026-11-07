@@ -42,6 +42,20 @@ describe('loadConfig', () => {
     }
   });
 
+  it('reads the decode memory guard: null (the default) when unset, 0 turns it off', () => {
+    expect(loadConfig({}).decodeMemoryGiB).toBeNull();
+    expect(loadConfig({ TRANSCODA_DECODE_MEMORY_GIB: '' }).decodeMemoryGiB).toBeNull();
+    expect(loadConfig({ TRANSCODA_DECODE_MEMORY_GIB: '2.5' }).decodeMemoryGiB).toBe(2.5);
+    expect(loadConfig({ TRANSCODA_DECODE_MEMORY_GIB: '0' }).decodeMemoryGiB).toBe(0);
+    for (const value of ['abc', '-1']) {
+      expect(() => loadConfig({ TRANSCODA_DECODE_MEMORY_GIB: value })).toThrow(
+        new ConfigError(
+          `TRANSCODA_DECODE_MEMORY_GIB must be 0 (off) or a positive number of GiB, got "${value}"`,
+        ),
+      );
+    }
+  });
+
   it.each([
     ['TRANSCODA_HEALTH_STALL_HOURS', '0'],
     ['TRANSCODA_HEALTH_STALL_HOURS', 'abc'],

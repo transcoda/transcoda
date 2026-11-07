@@ -27,6 +27,7 @@ const summary: WorkflowSummary = {
   usesOutdatedSubworkflow: false,
   feedsLibrary: null,
   libraryInput: null,
+  trigger: null,
   usedBy: [],
   createdAt: '2026-10-16T10:00:00.000Z',
   updatedAt: '2026-10-16T10:00:00.000Z',
@@ -119,18 +120,26 @@ describe('Inspector', () => {
     const bypass = within(section).getByRole('switch', { name: 'Bypass' });
     expect(bypass.getAttribute('aria-checked')).toBe('false');
     expect(within(section).getByText('The file passes through unchanged')).toBeTruthy();
-    const group = within(section).getByRole('combobox', { name: 'Group' });
-    expect(within(group).getByRole('option', { name: 'None' })).toBeTruthy();
+    // The app's dropdown, not a native select: "Group" with the current choice.
+    fireEvent.click(within(section).getByRole('button', { name: 'Group None' }));
+    const groups = within(section).getByRole('listbox', { name: 'Group' });
+    expect(within(groups).getByRole('option', { name: 'None' })).toBeTruthy();
+    fireEvent.keyDown(groups, { key: 'Escape' });
 
     expect(screen.getByRole('button', { name: 'Duplicate' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Remove node' })).toBeTruthy();
   });
 
   it('changing a field dispatches setSettings with the merged object; clearing removes the key', () => {
-    const { dispatch, lastGraph } = renderInspector(keepSelected());
+    // Languages other than the default ["en"]: a setting at its default offers no Clear.
+    const graph = withNode({
+      id: 'keep',
+      settings: { languages: ['en', 'de'], keepOriginal: true, keepUntagged: true },
+    });
+    const { dispatch, lastGraph } = renderInspector(keepSelected([], graph));
     fireEvent.click(screen.getByRole('switch', { name: 'Keep the original language' }));
     expect(nodeOf(lastGraph(), 'keep')?.settings).toEqual({
-      languages: ['en'],
+      languages: ['en', 'de'],
       keepOriginal: false,
       keepUntagged: true,
     });
@@ -284,7 +293,8 @@ describe('Inspector', () => {
     expect(nodeOf(lastGraph(), 'keep')?.bypassed).toBe(true);
 
     // The page joins the group with the card's measured size (graph-ops joinGroup).
-    fireEvent.change(screen.getByRole('combobox', { name: 'Group' }), { target: { value: 'g1' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Group None' }));
+    fireEvent.click(screen.getByRole('option', { name: 'Audio' }));
     expect(joinGroup).toHaveBeenCalledWith('keep', 'g1');
   });
 
@@ -478,7 +488,7 @@ describe('Inspector', () => {
     // Grouping is offered here too, not only on the canvas toolbar (final review M16).
     fireEvent.click(screen.getByRole('button', { name: 'Group 2 nodes' }));
     expect(groupSelection).toHaveBeenCalledWith('Group');
-    fireEvent.click(screen.getByRole('button', { name: 'Delete 2 nodes' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Remove 2 nodes' }));
     expect(lastGraph().nodes.map((n) => n.id)).toEqual(['in']);
   });
 
@@ -492,7 +502,7 @@ describe('Inspector', () => {
     expect(
       (screen.getByRole('textbox', { name: 'Name on the canvas' }) as HTMLInputElement).readOnly,
     ).toBe(true);
-    expect((screen.getByRole('combobox', { name: 'Group' }) as HTMLSelectElement).disabled).toBe(
+    expect((screen.getByRole('button', { name: 'Group None' }) as HTMLButtonElement).disabled).toBe(
       true,
     );
     expect((screen.getByRole('button', { name: 'Duplicate' }) as HTMLButtonElement).disabled).toBe(

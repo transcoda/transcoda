@@ -10,6 +10,7 @@ import {
   DEVICE_PROFILES,
   type DeviceProfileId,
   DeviceProfileIdSchema,
+  fmtKbps,
   isPicture,
   normalizeLanguage,
   type ProbeStream,
@@ -169,17 +170,19 @@ function videoRate(
     const capped = cap !== null && settings.bitrateKbps > cap.kbps;
     const kbps = capped ? cap.kbps : settings.bitrateKbps;
     const why = capped
-      ? `, capped from ${settings.bitrateKbps}k at the ${cap.whole ? 'whole file’s' : 'source'} bitrate`
+      ? `, capped from ${fmtKbps(settings.bitrateKbps)} at the ${cap.whole ? 'whole file’s' : 'source'} bitrate`
       : '';
     return {
       quality: null,
       bitrateKbps: kbps,
-      how: `${encoder} ${kbps}k ${settings.preset}${why}`,
+      how: `${encoder} ${fmtKbps(kbps)} ${settings.preset}${why}`,
       note,
     };
   }
   const ceiling =
-    cap === null ? '' : `, at most ${cap.kbps}k${cap.whole ? ': the whole file’s bitrate' : ''}`;
+    cap === null
+      ? ''
+      : `, at most ${fmtKbps(cap.kbps)}${cap.whole ? ': the whole file’s bitrate' : ''}`;
   return {
     quality: settings.quality,
     bitrateKbps: cap?.kbps ?? null,
@@ -600,7 +603,7 @@ export const encodeAudio = defineNode({
       if (settings.updateTitles && !ownTitle) {
         s.title = retitle(s.title, { codec, channels: out, bitrateKbps: kbps });
       }
-      return `${codec} ${kbps}k${out === null ? '' : ` ${out}ch`}`;
+      return `${codec} ${fmtKbps(kbps)}${out === null ? '' : ` ${out}ch`}`;
     };
     const issuesOf = (s: StreamPlan) => planIssues(s, ctx.probe, targets);
     const audio = streamsOf(model, 'audio');
@@ -613,10 +616,10 @@ export const encodeAudio = defineNode({
         const channels = channelsOf(s);
         convert(s, stereo && (channels === null || channels > 2) ? 2 : null);
       }
-      pieces.push(`audio ${refs(audio)} → ${codec} ${bitrateKbps}k${stereo ? ' 2ch' : ''}`);
+      pieces.push(`audio ${refs(audio)} → ${codec} ${fmtKbps(bitrateKbps)}${stereo ? ' 2ch' : ''}`);
       for (const s of audio) {
-        if (s.bitrateKbps !== bitrateKbps) {
-          pieces.push(`audio ${refs([s])} capped at its source ${s.bitrateKbps}k`);
+        if (s.bitrateKbps !== null && s.bitrateKbps !== bitrateKbps) {
+          pieces.push(`audio ${refs([s])} capped at its source ${fmtKbps(s.bitrateKbps)}`);
         }
       }
     }

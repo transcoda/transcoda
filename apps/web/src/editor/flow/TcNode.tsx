@@ -107,6 +107,7 @@ function PortRow({
   traced,
   fitOf,
   ghost = false,
+  quiet = false,
 }: {
   input: PortSpec | undefined;
   output: PortSpec | undefined;
@@ -121,7 +122,10 @@ function PortRow({
   fitOf: FitOf;
   /** The progress fill's inverted copy: the labels only, no handles. */
   ghost?: boolean;
+  /** The job trace (its cards say what each node did): the labels are only drawn, screen readers skip them. */
+  quiet?: boolean;
 }) {
+  const hide = quiet ? ({ 'aria-hidden': true } as const) : {};
   const data = (input ?? output)?.type !== 'file';
   let outClass = 'tc-port-out';
   const branch = output ? branchClass(output) : null;
@@ -135,13 +139,18 @@ function PortRow({
     <div className={`tc-port${data ? ' is-data' : ''}`}>
       {input && (
         <>
-          {showLabels && <span className="tc-port-in">{labelOf(input, false)}</span>}
+          {showLabels && (
+            <span className="tc-port-in" {...hide}>
+              {labelOf(input, false)}
+            </span>
+          )}
           {!ghost && (
             <TcHandle
               port={input}
               direction="in"
               connected={connectedIn.has(input.id)}
               fit={fitOf('in', input.id)}
+              quiet={quiet}
             />
           )}
         </>
@@ -149,7 +158,7 @@ function PortRow({
       {output && (
         <>
           {showLabels && (
-            <span className={outClass}>
+            <span className={outClass} {...hide}>
               {labelOf(output, named)}
               {outType && <BranchType type={outType} />}
             </span>
@@ -161,6 +170,7 @@ function PortRow({
               connected={connectedOut.has(output.id)}
               fit={fitOf('out', output.id)}
               named={named}
+              quiet={quiet}
               {...(onPlus && { onPlus })}
             />
           )}
@@ -410,6 +420,7 @@ export function TcNode({ id, data, selected }: NodeProps<TcNodeType>) {
           connected={connected.has(port.id)}
           fit={fitOf(direction, port.id)}
           named={named}
+          quiet={trace !== undefined}
         />
       ));
     return (
@@ -463,6 +474,7 @@ export function TcNode({ id, data, selected }: NodeProps<TcNodeType>) {
           traced={portTrace}
           fitOf={fitOf}
           ghost={ghost}
+          quiet={trace !== undefined}
         />
       ))}
       {reached && trace && run && (

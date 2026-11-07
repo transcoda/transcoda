@@ -1638,4 +1638,20 @@ describe('library trigger read fields', () => {
     expect(summary(sub)).toMatchObject({ feedsLibrary: null, libraryInput: null });
     expect(svc.get(sub)).toMatchObject({ feedsLibrary: null, libraryInput: null });
   });
+
+  it('trigger says what starts the newest version: library, webhook, manual or none', () => {
+    lib('shows', 'Shows');
+    const a = make('Downsize', 'workflow', fromLibrary('shows'));
+    expect(summary(a).trigger).toBe('library');
+    save(
+      a,
+      chain('workflow', node('in', 'core:input-webhook'), node('ro', 'core:replace-original')),
+    );
+    expect(summary(a).trigger).toBe('webhook');
+    expect(summary(make('Manual', 'workflow', mainWith())).trigger).toBe('manual');
+    expect(summary(make('Empty', 'workflow')).trigger).toBeNull();
+    const sub = make('Sub', 'subworkflow', childGraph());
+    expect(summary(sub).trigger).toBeNull();
+    expect(svc.get(sub)?.trigger).toBeNull();
+  });
 });

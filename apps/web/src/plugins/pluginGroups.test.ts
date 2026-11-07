@@ -39,9 +39,14 @@ describe('cardDescription', () => {
 });
 
 describe('monogram and nodeNameOf', () => {
-  it('takes the first character as written', () => {
-    expect(monogram('Jellyfin')).toBe('J');
-    expect(monogram('ntfy')).toBe('n');
+  it('takes the first two letters, the first a capital, so Seerr and Sonarr differ', () => {
+    expect(monogram('Jellyfin')).toBe('Je');
+    expect(monogram('Seerr')).toBe('Se');
+    expect(monogram('Sonarr')).toBe('So');
+    expect(monogram('ntfy')).toBe('Nt');
+    expect(monogram('TMDB')).toBe('TM');
+    expect(monogram(' X ')).toBe('X');
+    expect(monogram('')).toBe('?');
   });
 
   it('turns a node type into a name', () => {

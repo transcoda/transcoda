@@ -140,6 +140,21 @@ export function trackLabel(s: PlanStream, probe: ProbeSummary | null): string {
   return s.type === 'video' && src?.bitrateKbps ? `${head} · ${fmtBitrate(src.bitrateKbps)}` : head;
 }
 
+/**
+ * A stream's note with its bitrates written the way every screen writes them: the engine notes an
+ * encode as `convert h264→hevc (libx265 crf 24 medium max 3317k)`, and here that reads
+ * `convert h264→hevc (libx265 crf 24 medium at most 3.3 Mb/s)` ("160k" → "160 kb/s"). Only the
+ * conversion's own parentheses are read, so nothing else in the note changes.
+ */
+export function noteText(note: string): string {
+  return note.replace(/(convert [^\s→]+→[^\s(]+ \()([^()]*)(\))/g, (_, open, inner, close) => {
+    const rates = (inner as string)
+      .replace(/\bmax (\d+)k\b/g, (_m, n) => `at most ${fmtKbps(Number(n))}`)
+      .replace(/(^|\s)(\d+)k(?=\s|$)/g, (_m, sp, n) => `${sp}${fmtKbps(Number(n))}`);
+    return `${open}${rates}${close}`;
+  });
+}
+
 /** "MP4 → MKV · remux" | "MKV" (unchanged). */
 export function containerLine(plan: JobPlan): string {
   const from = plan.container.from.toUpperCase();

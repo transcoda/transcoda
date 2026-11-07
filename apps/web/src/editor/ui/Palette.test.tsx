@@ -4,6 +4,7 @@ import type { WorkflowKind } from '@transcoda/shared';
 import { createRef } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { KIND_WORD } from '../../components/Chips.tsx';
+import { buildCatalog } from '../../hooks/useCatalog.ts';
 import { catalogFixture, nodesFixture } from '../../test/fixtures/catalog.ts';
 import { Palette, type PaletteItem } from './Palette.tsx';
 
@@ -21,6 +22,7 @@ function summary(id: string, name: string, kind: WorkflowKind): WorkflowSummary 
     usesOutdatedSubworkflow: false,
     feedsLibrary: null,
     libraryInput: null,
+    trigger: null,
     usedBy: [],
     createdAt: '2026-10-01T10:00:00.000Z',
     updatedAt: '2026-10-02T10:00:00.000Z',
@@ -126,6 +128,35 @@ describe('Palette', () => {
     expect(within(button).getByRole('img', { name: 'plugin' })).toBeTruthy();
     fireEvent.click(button);
     expect(onAdd).not.toHaveBeenCalled();
+  });
+
+  it('Move or copy without output folders links its reason to the docs, beside the item', () => {
+    const reason = 'needs an output folder (server setting)';
+    const nodes = nodesFixture.map((n) =>
+      n.type === 'core:move-copy'
+        ? { ...n, availability: { available: false as const, reason } }
+        : n,
+    );
+    render(
+      <Palette
+        catalog={buildCatalog(nodes)}
+        graphKind="workflow"
+        selfId="main"
+        subworkflows={[]}
+        readOnly={false}
+        hasValues={false}
+        onAdd={vi.fn()}
+        onDragStart={vi.fn()}
+        searchRef={createRef<HTMLInputElement>()}
+      />,
+    );
+    const button = within(section('Finish')).getByRole('button', { name: 'Move or copy' });
+    expect(isDisabled(button)).toBe(true);
+    expect(button.textContent).toContain(reason);
+    expect(button.textContent).not.toContain('TRANSCODA_');
+    const docs = within(section('Finish')).getByRole('link', { name: 'Docs: Move or copy' });
+    expect(docs.getAttribute('href')).toMatch(/docs\/env\.md#server$/);
+    expect(button.contains(docs)).toBe(false);
   });
 
   it('in a sub-workflow, triggers and finishes are disabled with "main workflow only" and an End item is offered', () => {

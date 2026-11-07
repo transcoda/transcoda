@@ -5,6 +5,7 @@ import { api, safe } from '../../api/client.ts';
 import { Icon } from '../../components/Icon.tsx';
 import { useToast } from '../../components/Toast.tsx';
 import { countIssues } from '../model/issues.ts';
+import { activateLabel } from '../model/version-text.ts';
 import { ActivateDialog } from './ActivateDialog.tsx';
 import type { OverflowItem } from './EditorHeader.tsx';
 
@@ -144,10 +145,7 @@ export function useActivation({
   const items: OverflowItem[] = [];
   if (!readOnly && !showsActive) {
     items.push({
-      label:
-        active !== null && shown.version < active.version
-          ? `Roll back to v${shown.version}`
-          : `Activate v${shown.version}`,
+      label: activateLabel(active, shown.version),
       onSelect: () => setConfirming(true),
       blockedReason: blocked?.reason,
     });

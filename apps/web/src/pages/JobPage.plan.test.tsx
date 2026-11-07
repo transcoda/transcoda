@@ -134,6 +134,7 @@ const workflow: WorkflowDetail = {
   usesOutdatedSubworkflow: false,
   feedsLibrary: null,
   libraryInput: null,
+  trigger: null,
   usedBy: [],
   createdAt: AT,
   updatedAt: AT,
@@ -217,7 +218,7 @@ describe('JobPage dry-run plan (Task 24)', () => {
     renderJob();
     const decisions = await screen.findByRole('region', { name: 'What the workflow would do' });
     expect(decisions.textContent).toContain(
-      "Replaces the original, which moves to this library's recycle folder",
+      "Would replace the original and move it to this library's recycle folder",
     );
     expect(within(decisions).getByText('Dry run')).toBeTruthy();
     expect(screen.getAllByText('Dry run').length).toBeGreaterThan(0);
@@ -242,6 +243,11 @@ describe('JobPage dry-run plan (Task 24)', () => {
     const decisions = await screen.findByRole('region', { name: 'What the workflow did' });
     expect(decisions.textContent).toContain('Replaced the original');
     expect(within(decisions).queryByText('Dry run')).toBeNull();
+    // The flow says it too, in the same tense.
+    const flow = screen.getByRole('region', { name: 'Workflow trace' });
+    await waitFor(() =>
+      expect(flow.textContent).toContain('replaced the original (recycle folder: library default)'),
+    );
   });
 
   it('toolbar "Try this node" navigates with ?node=<id> and JobPage preselects it', async () => {

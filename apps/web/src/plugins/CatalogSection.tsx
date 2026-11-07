@@ -125,7 +125,7 @@ function CatalogCardView({
     ? catalog.official
       ? `Install ${entry.title} ${version.version}`
       : `Install ${entry.title} ${version.version} from ${hostOf(catalog.catalogUrl)}`
-    : `Install ${entry.name}`;
+    : `Install ${entry.title}`;
   return (
     <li>
       <article className="catalog-card" aria-labelledby={`${id}-title`}>

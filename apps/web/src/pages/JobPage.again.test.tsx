@@ -278,7 +278,7 @@ describe('JobPage: Process again', () => {
       const steps = screen.getByRole('region', { name: 'What the workflow would do' });
       expect(
         within(steps).getByText(
-          "If the size gate passes, replaces the original and moves it to this library's recycle folder; otherwise keeps it",
+          "Would replace the original and move it to this library's recycle folder if the size gate passes; otherwise keeps it",
         ),
       ).toBeTruthy();
       // One row for the gate (its decision stands in for its build entry), checked after encode.

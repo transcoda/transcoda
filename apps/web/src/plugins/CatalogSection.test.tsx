@@ -149,7 +149,7 @@ describe('CatalogGroups', () => {
 
   it('without a version that runs here, Install is disabled and says why', () => {
     show([catalog({ plugins: [entry({ latest: null })] })]);
-    const button = screen.getByRole('button', { name: 'Install example' }) as HTMLButtonElement;
+    const button = screen.getByRole('button', { name: 'Install Example' }) as HTMLButtonElement;
     expect(button.disabled).toBe(true);
     const reason = document.getElementById(button.getAttribute('aria-describedby') ?? '');
     expect(reason?.textContent).toBe('Needs SDK ^2');
@@ -178,10 +178,10 @@ describe('CatalogGroups', () => {
     // One that cannot be encoded (a lone surrogate) falls back to the monogram, not a crash.
     cleanup();
     show([catalog({ plugins: [entry({ icon: '<svg>\ud800</svg>' })] })]);
-    expect(document.querySelector('.plugin-tile')?.textContent).toBe('E');
-    // Without one, the title's first letter.
+    expect(document.querySelector('.plugin-tile')?.textContent).toBe('Ex');
+    // Without one, the title's first two letters.
     cleanup();
     show([catalog({ plugins: [base] })]);
-    expect(document.querySelector('.plugin-tile')?.textContent).toBe('E');
+    expect(document.querySelector('.plugin-tile')?.textContent).toBe('Ex');
   });
 });

@@ -50,13 +50,15 @@ export function LicencesSection() {
     return () => clearTimeout(t);
   }, [query]);
 
+  // "The components below" only when there is a list below.
+  const listed = result.data?.available === true;
   const intro = (
     <p className="section-intro">
       Transcoda is free software under the{' '}
       <a href={PROJECT_LICENCE} target="_blank" rel="noreferrer">
         GNU GPL v3
       </a>
-      . It is built on the components below.
+      {listed ? '. It is built on the components below.' : '.'}
     </p>
   );
 

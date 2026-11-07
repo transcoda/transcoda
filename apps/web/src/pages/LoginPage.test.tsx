@@ -72,6 +72,14 @@ describe('LoginPage', () => {
     expect(screen.getByLabelText('Password').getAttribute('aria-invalid')).toBe('true');
   });
 
+  it('says sign-in failed in a full sentence, like the other auth errors', async () => {
+    mocks.error = { code: 'SOMETHING_ELSE' };
+    mocks.login.mockRejectedValue(new Error('down'));
+    render(<LoginPage />);
+    submit();
+    expect((await screen.findByRole('alert')).textContent).toBe("Couldn't sign in. Try again.");
+  });
+
   it('locks the form while rate limited and unlocks after the wait', async () => {
     mocks.error = { code: 'RATE_LIMITED', data: { retryAfterSeconds: 2 } };
     mocks.login.mockRejectedValue(new Error('slow down'));

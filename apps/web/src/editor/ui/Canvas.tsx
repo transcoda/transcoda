@@ -27,7 +27,7 @@ import {
 import { Icon } from '../../components/Icon.tsx';
 import type { Catalog } from '../../hooks/useCatalog.ts';
 import { type FlowChangeResult, fromEdgeChanges, fromNodeChanges } from '../flow/fromFlow.ts';
-import { edgeTypes, nodeTypes } from '../flow/nodeTypes.ts';
+import { ARIA_LABELS, edgeTypes, nodeTypes } from '../flow/nodeTypes.ts';
 import { TcConnectionLine } from '../flow/TcConnectionLine.tsx';
 import { TcMiniMap } from '../flow/TcMiniMap.tsx';
 import { COLLAPSED_GROUP_SIZE, toFlow } from '../flow/toFlow.ts';
@@ -401,6 +401,7 @@ export function Canvas({
         {...(defaultViewport ? { defaultViewport } : {})}
         {...(onMoveEnd ? { onMoveEnd } : {})}
         fitViewOptions={FIT_VIEW}
+        ariaLabelConfig={ARIA_LABELS}
         colorMode="dark"
         // React Flow is MIT; the credit stays on Settings → About → Open-source licences.
         proOptions={PRO_OPTIONS}

@@ -25,6 +25,7 @@ const workflow: WorkflowSummary = {
   usesOutdatedSubworkflow: false,
   feedsLibrary: { id: 'l1', name: 'Shows' },
   libraryInput: { id: 'l1', name: 'Shows' },
+  trigger: 'library',
   usedBy: [],
   createdAt: '2026-10-21T08:00:00.000Z',
   updatedAt: '2026-10-21T08:00:00.000Z',

@@ -55,6 +55,7 @@ function summary(over: Partial<WorkflowSummary>): WorkflowSummary {
     usesOutdatedSubworkflow: false,
     feedsLibrary: null,
     libraryInput: null,
+    trigger: null,
     usedBy: [],
     createdAt: minutesAgo(600),
     updatedAt: minutesAgo(5),
@@ -189,12 +190,12 @@ describe('WorkflowsPage', () => {
       within(wfTable)
         .getAllByRole('columnheader')
         .map((h) => h.textContent),
-    ).toEqual(['Name', 'Library', 'Active', 'Last edited', 'Actions']);
+    ).toEqual(['Name', 'Trigger', 'Active', 'Last edited', 'Actions']);
     expect(screen.queryByRole('columnheader', { name: 'Status' })).toBeNull();
     expect(screen.queryByRole('columnheader', { name: 'Version' })).toBeNull();
   });
 
-  it('the Library column names the library a workflow processes, or says it runs on a file only', async () => {
+  it('the Trigger column says what starts a workflow and names its library', async () => {
     mocks.list.mockResolvedValue({
       workflows: [
         summary({
@@ -203,17 +204,42 @@ describe('WorkflowsPage', () => {
           active: activeV(2, true),
           currentVersion: 2,
           feedsLibrary: { id: 'l1', name: 'TV' },
+          libraryInput: { id: 'l2', name: 'Movies' },
+          trigger: 'library',
         }),
-        summary({ id: 'b', name: 'Loose', currentVersion: 1 }),
+        summary({
+          id: 'b',
+          name: 'Films',
+          trigger: 'library',
+          libraryInput: { id: 'l2', name: 'Movies' },
+        }),
+        summary({ id: 'c', name: 'Unset', trigger: 'library' }),
+        summary({
+          id: 'g',
+          name: 'Gone',
+          trigger: 'library',
+          libraryInput: { id: 'l9', name: null },
+        }),
+        summary({ id: 'd', name: 'Hook', trigger: 'webhook' }),
+        summary({ id: 'e', name: 'Loose', trigger: 'manual' }),
+        summary({ id: 'f', name: 'Blank' }),
       ],
     });
     renderAt('/', <WorkflowsPage />);
     await screen.findByRole('link', { name: 'Shows' });
-    const shows = rowOf('Shows').querySelector('.wf-library') as HTMLElement;
-    expect(shows.textContent).toBe('TV');
-    expect(within(shows).getByText('TV').getAttribute('title')).toBe('TV');
-    const loose = within(rowOf('Loose')).getByText('Run on a file only');
-    expect(loose.className).toContain('wf-quiet');
+    const cell = (name: string) => rowOf(name).querySelector('.wf-library') as HTMLElement;
+    // The live library wins over the newest version's.
+    expect(cell('Shows').textContent).toBe('Library: TV');
+    expect(within(cell('Shows')).getByText('Library: TV').getAttribute('title')).toBe(
+      'Library: TV',
+    );
+    expect(cell('Films').textContent).toBe('Library: Movies');
+    expect(cell('Unset').textContent).toBe('Library, none picked');
+    // An id no live library has: the library was deleted, not left unpicked.
+    expect(cell('Gone').textContent).toBe('Missing library');
+    expect(cell('Hook').textContent).toBe('Webhook');
+    expect(cell('Loose').textContent).toBe('Manual');
+    expect(within(cell('Blank')).getByText('No trigger').className).toContain('wf-quiet');
   });
 
   it('lists active workflows first, then the rest, each A–Z ignoring case; sub-workflows A–Z', async () => {

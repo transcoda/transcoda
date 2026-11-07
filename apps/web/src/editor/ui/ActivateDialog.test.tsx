@@ -56,6 +56,7 @@ const workflow: WorkflowSummary = {
   usesOutdatedSubworkflow: false,
   feedsLibrary: null,
   libraryInput: null,
+  trigger: null,
   usedBy: [],
   createdAt: '2026-10-16T08:00:00.000Z',
   updatedAt: '2026-10-16T09:00:00.000Z',
@@ -161,11 +162,11 @@ describe('ActivateDialog', () => {
     await waitFor(() => expect(primary('Activate v6').disabled).toBe(false));
     const text = dialog.textContent ?? '';
     expect(text).toContain(
-      'From now on, real runs use v6. v3 is active now (activated 2 h ago by jan).',
+      'From now on, real runs use v6. v3 is active now (activated 2 h ago by you).',
     );
     expect(text).toContain('What changes');
-    expect(text).toContain('v4 · Layout only · jan');
-    expect(text).toContain('v5 · saved · another user');
+    expect(text).toContain('v4 · Layout only · saved by you 40 min ago');
+    expect(text).toContain('v5 · saved by another user 50 min ago');
     expect(text).not.toContain('v6 ·');
     expect(text).toContain('This version vs v3:');
     expect(within(dialog).getByText('Added Encode video')).toBeTruthy();
@@ -191,9 +192,9 @@ describe('ActivateDialog', () => {
       (li) => li.textContent,
     );
     expect(items).toEqual([
-      'v5 · saved · another user',
-      'v4 · Layout only · jan',
-      'v3 · note 3 · jan',
+      'v5 · saved by another user 50 min ago',
+      'v4 · Layout only · saved by you 40 min ago',
+      'v3 · note 3 · saved by you 30 min ago',
     ]);
     expect(dialog.textContent).toContain('v2 vs v6:');
     expect(within(dialog).getByText('Removed Encode video')).toBeTruthy();
@@ -206,7 +207,7 @@ describe('ActivateDialog', () => {
     expect(dialog.textContent).toContain(
       'No version is active now; TV cleanup only runs dry runs.',
     );
-    expect(dialog.textContent).toContain('v6 · note 6 · jan');
+    expect(dialog.textContent).toContain('v6 · note 6 · saved by you 1 h ago');
     expect(dialog.textContent).not.toContain('This version vs');
     expect(dialog.querySelector('.activate-summary-versions')).toBeNull();
     expect(primary('Cancel')).toBeTruthy();

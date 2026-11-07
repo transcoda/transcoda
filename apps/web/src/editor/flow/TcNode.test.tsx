@@ -486,7 +486,7 @@ describe('TcNode', () => {
     await show([keep], [], actions);
     fireEvent.click(screen.getByRole('button', { name: 'Duplicate' }));
     fireEvent.click(screen.getByRole('button', { name: 'Bypass' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Remove node' }));
     expect(actions.duplicate).toHaveBeenCalledWith('keep');
     expect(actions.toggleBypass).toHaveBeenCalledWith('keep');
     expect(actions.remove).toHaveBeenCalledWith(['keep']);
@@ -522,7 +522,7 @@ describe('TcNode', () => {
     expect(card('enc').querySelector('.tc-node-row .tc-onnode')).not.toBeNull();
   });
 
-  it('two selected cards get one selection toolbar: "Group 2 nodes" and "Delete 2 nodes"', async () => {
+  it('two selected cards get one selection toolbar: "Group 2 nodes" and "Remove 2 nodes"', async () => {
     const actions: EditorActions = {
       ...DEFAULT_EDITOR_ACTIONS,
       readOnly: false,
@@ -543,7 +543,7 @@ describe('TcNode', () => {
     const bar = screen.getByRole('toolbar', { name: 'Selection actions' });
     fireEvent.click(within(bar).getByRole('button', { name: 'Group 2 nodes' }));
     expect(actions.groupSelection).toHaveBeenCalledWith('Group');
-    fireEvent.click(within(bar).getByRole('button', { name: 'Delete 2 nodes' }));
+    fireEvent.click(within(bar).getByRole('button', { name: 'Remove 2 nodes' }));
     expect(actions.remove).toHaveBeenCalledWith(['keep', 'rm']);
   });
 
@@ -669,6 +669,7 @@ describe('TcNode: Run sub-workflow summary', () => {
     usesOutdatedSubworkflow: false,
     feedsLibrary: null,
     libraryInput: null,
+    trigger: null,
     usedBy: [],
     createdAt: '2026-10-16T10:00:00.000Z',
     updatedAt: '2026-10-16T10:00:00.000Z',

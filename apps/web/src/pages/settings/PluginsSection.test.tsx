@@ -47,10 +47,26 @@ describe('PluginsSection', () => {
     // The shared "Set on the server" panel starts closed.
     fireEvent.click(await screen.findByRole('button', { name: /Set on the server/ }));
     expect(screen.getByText('600 seconds')).toBeTruthy();
+    // Not editable on this page, and it says so.
+    expect(
+      screen.getByText(
+        "How long a plugin's finish step may run before it is stopped. Not editable here.",
+      ),
+    ).toBeTruthy();
     expect(screen.getByText('Separate user')).toBeTruthy();
     expect(screen.queryByRole('spinbutton', { name: /finish/i })).toBeNull();
     const link = screen.getByRole('link', { name: /catalogs are managed on the plugins page/i });
     expect(link.getAttribute('href')).toBe('/plugins');
+  });
+
+  it('a finish-step timeout stored in the database says where it comes from', async () => {
+    const loaded = settingsFixture();
+    loaded.plugins.finishRunTimeoutMs = { value: 120_000, source: { kind: 'database' } };
+    mocks.get.mockResolvedValue(loaded);
+    renderAt('/settings/plugins', <PluginsSection />);
+    fireEvent.click(await screen.findByRole('button', { name: /Set on the server/ }));
+    const row = screen.getByText('120 seconds').closest('.setting-row') as HTMLElement;
+    expect(row.querySelector('.setting-tag')?.textContent).toBe('Set here');
   });
 
   it('isolation turned off names its variable', async () => {

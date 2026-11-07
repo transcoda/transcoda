@@ -5276,7 +5276,8 @@ describe('pipeline: damaged sources (Render’s Damaged)', () => {
       expect(spawner.calls).toEqual([]);
       expect(passes()).toHaveLength(1);
       const args = passes()[0] ?? [];
-      expect(args).toContain('copy');
+      // Without "Decode video too" only the audio is read (by index; the video is not mapped).
+      expect(args.filter((_, i) => args[i - 1] === '-map')).toEqual(['0:1']);
       expect(args).toContain(file());
       expect(findJobResult(t.db, id)).toMatchObject({ sourceDamaged: true, replacedTo: null });
       expect(runCalls).toHaveLength(1);

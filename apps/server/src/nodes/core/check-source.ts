@@ -9,10 +9,11 @@ import type { CoreTools } from '../../engine/check-source.ts';
 import { filePort } from './common.ts';
 
 /**
- * Reads the whole file once (audio decoded, video copied unless "Decode video too") before
- * anything is encoded. OK continues; a file with source decode errors or cut off continues on
- * Damaged. A pass that cannot tell (an I/O error, a timeout) fails the job as a retryable failure,
- * never Damaged. The pass is the engine's (`ctx.core`, server-side only).
+ * Reads the whole file once (audio decoded, video too with "Decode video too"; never a cover)
+ * before anything is encoded. OK continues; a file with source decode errors or cut off continues
+ * on Damaged. A pass that cannot tell (an I/O error, a timeout) fails the job as a retryable
+ * failure, never Damaged; one stopped by the memory guard fails it without a retry (it would
+ * buffer again). The pass is the engine's (`ctx.core`, server-side only).
  */
 export const checkSource = defineNode({
   type: CHECK_SOURCE_TYPE,
@@ -52,6 +53,8 @@ export const checkSource = defineNode({
         findings: { reason: r.reason, ...(r.stream !== undefined ? { stream: r.stream } : {}) },
       };
     }
-    throw Object.assign(new Error(`check source failed: ${r.message}`), { retryable: true });
+    throw Object.assign(new Error(`check source failed: ${r.message}`), {
+      retryable: r.final !== true,
+    });
   },
 });

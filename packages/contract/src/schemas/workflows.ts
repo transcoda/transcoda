@@ -41,6 +41,11 @@ export const WorkflowSummarySchema = z.object({
    * always null for a sub-workflow.
    */
   libraryInput: z.object({ id: z.string(), name: z.string().nullable() }).nullable(),
+  /**
+   * What starts the newest version: its Library, Webhook or Manual input. null when it has none;
+   * always null for a sub-workflow.
+   */
+  trigger: z.enum(['library', 'webhook', 'manual']).nullable(),
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
 });

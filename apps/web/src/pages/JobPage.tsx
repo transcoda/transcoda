@@ -7,11 +7,12 @@ import {
   RUNNING_JOB_STATES,
   type WorkflowGraph,
 } from '@transcoda/shared';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'wouter';
 import { api, safe } from '../api/client.ts';
 import { describeError } from '../api/errors.ts';
 import { Dialog } from '../components/Dialog.tsx';
+import { Disclosure } from '../components/Disclosure.tsx';
 import { Icon } from '../components/Icon.tsx';
 import { Loading } from '../components/Loading.tsx';
 import { NotFound } from '../components/NotFound.tsx';
@@ -50,13 +51,14 @@ import {
   wouldText,
 } from '../jobs/jobText.ts';
 import { ProcessAgain } from '../jobs/ProcessAgain.tsx';
-import { damagedSideOf, type StepContext } from '../jobs/steps.ts';
+import { damagedSideOf, didText, type StepContext } from '../jobs/steps.ts';
 import { TestEncodeFile } from '../jobs/TestEncodeFile.tsx';
 import { TestOutputPanel } from '../jobs/TestOutputPanel.tsx';
 import { encodeStopped, useQueue } from '../jobs/useQueue.ts';
 import { useNodeParam } from '../jobs/useTryOnFile.ts';
 import { usePageTitle } from '../lib/pageTitle.ts';
 import { fmtDate } from '../lib/time.ts';
+import { usePhone } from '../lib/usePhone.ts';
 import { RestoreButton } from '../recycle/RestoreButton.tsx';
 
 type Live = Pick<JobDetail, 'state' | 'paused' | 'progress' | 'lane' | 'problems' | 'reason'>;
@@ -151,6 +153,20 @@ export function JobPage() {
 }
 
 /**
+ * On a phone the workflow drawing starts closed under a toggle (the steps list above it says what
+ * happened; the drawing is mostly zoom controls at that width); on a wider window it is shown as is.
+ */
+function PhoneFold({ title, children }: { title: string; children: ReactNode }) {
+  const phone = usePhone();
+  if (!phone) return <>{children}</>;
+  return (
+    <Disclosure title={title} className="phone-fold">
+      {children}
+    </Disclosure>
+  );
+}
+
+/**
  * One layout for every outcome: the header (crumb, state chip, file name with Process again /
  * Dry run again or Pause / Cancel on the right, one muted meta line, progress while active), the
  * Result right under it (its command, raw error and log collapsed inside), then Before and after,
@@ -224,9 +240,13 @@ function JobView({ id }: { id: string }) {
     return currentNode;
   }, [job, subgraphs, currentNode]);
   // A dry run changed nothing: its write steps read "would replace the original" on the canvas,
-  // never as done; one its size gate decides says the replace is conditional (#41).
+  // never as done; one its size gate decides says the replace is conditional (#41). A real run
+  // that wrote says it did ("replaced the original"), like its steps.
   const trace = useMemo(() => {
-    if (!data?.dryRun) return data?.trace;
+    if (!data?.dryRun) {
+      if (data?.state !== 'done') return data?.trace;
+      return data.trace.map((e) => ({ ...e, reason: didText(e.reason) }));
+    }
     const depends = data.state === 'dry_run' && data.dependsOnSize != null;
     return data.trace.map((e) => ({
       ...e,
@@ -485,30 +505,32 @@ function JobView({ id }: { id: string }) {
         />
       )}
       <FfmpegNotes job={job} jobLog={jobLog} raw={!showResult} />
-      <section className="panel trace-panel" aria-label="Workflow trace">
-        {job.graph ? (
-          <SubworkflowsContext.Provider value={workflows}>
-            <TraceCanvas
-              graph={job.graph}
-              source={source}
-              catalog={catalog}
-              selected={selected}
-              onSelect={select}
-              expanded={expanded}
-              onExpand={setExpanded}
-              subgraphs={subgraphs}
-              names={names}
-              activity={activity}
-              progress={running ? percent : null}
-              paused={job.paused}
-            />
-          </SubworkflowsContext.Provider>
-        ) : (
-          <p className="trace-child-note">
-            The workflow version this job ran can no longer be read.
-          </p>
-        )}
-      </section>
+      <PhoneFold title="Workflow">
+        <section className="panel trace-panel" aria-label="Workflow trace">
+          {job.graph ? (
+            <SubworkflowsContext.Provider value={workflows}>
+              <TraceCanvas
+                graph={job.graph}
+                source={source}
+                catalog={catalog}
+                selected={selected}
+                onSelect={select}
+                expanded={expanded}
+                onExpand={setExpanded}
+                subgraphs={subgraphs}
+                names={names}
+                activity={activity}
+                progress={running ? percent : null}
+                paused={job.paused}
+              />
+            </SubworkflowsContext.Provider>
+          ) : (
+            <p className="trace-child-note">
+              The workflow version this job ran can no longer be read.
+            </p>
+          )}
+        </section>
+      </PhoneFold>
 
       <Dialog
         open={confirmCancel}
