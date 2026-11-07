@@ -134,6 +134,7 @@ const workflow: WorkflowDetail = {
   usesOutdatedSubworkflow: false,
   feedsLibrary: null,
   libraryInput: null,
+  trigger: null,
   usedBy: [],
   createdAt: AT,
   updatedAt: AT,

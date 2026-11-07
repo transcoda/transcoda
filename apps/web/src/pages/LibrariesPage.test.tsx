@@ -59,6 +59,7 @@ function workflow(over: Partial<WorkflowSummary>): WorkflowSummary {
     usesOutdatedSubworkflow: false,
     feedsLibrary: null,
     libraryInput: null,
+    trigger: null,
     usedBy: [],
     createdAt: at,
     updatedAt: at,
