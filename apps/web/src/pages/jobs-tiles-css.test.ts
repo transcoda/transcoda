@@ -38,3 +38,13 @@ describe('Jobs stat tiles (#31)', () => {
     expect(rule('.stat-tile-button')).toMatch(/border:\s*0/);
   });
 });
+
+describe('Jobs stat tiles (#54)', () => {
+  it('values never break across lines, and "Saved today" is a plain tile with an accent value', () => {
+    expect(rule('.stat-value')).toMatch(/white-space:\s*nowrap/);
+    expect(rule('.stat-tile.has-accent-value .stat-value')).toMatch(
+      /color:\s*var\(--accent-text\)/,
+    );
+    expect(css).not.toMatch(/\.stat-tile\.has-accent-value\s*\{[^}]*background/);
+  });
+});

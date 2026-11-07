@@ -358,8 +358,8 @@ describe('RunPage', () => {
     const rows = within(table).getAllByRole('row').slice(1);
     const note = (i: number) => rows[i]?.querySelector('.run-file-note')?.textContent ?? null;
     expect(note(0)).toBe(`Processed on ${fmtDate(at)}: nothing to do`);
-    // "Nothing to do" without a reason of its own: the chip says it all.
-    expect(note(1)).toBeNull();
+    // "Nothing to do" without a reason of its own reads as on the Jobs list.
+    expect(note(1)).toBe('Already complies with every rule');
   });
 
   it('stays live while in_progress > 0 and refetches on run.changed', async () => {
@@ -529,18 +529,26 @@ describe('RunPage dry run', () => {
     const tiles = within(await screen.findByRole('list', { name: 'Outcomes' })).getAllByRole(
       'listitem',
     );
-    expect(tiles.slice(0, 2).map((t) => t.textContent)).toEqual([
+    // A fixed tile set: a plan-only dry run keeps no original, zero tiles stay (dimmed).
+    expect(tiles.map((t) => t.textContent)).toEqual([
       'Would replace1',
       'Depends on size2',
+      'Nothing to do1',
+      'Failed0',
+      'Skipped0',
     ]);
+    expect(tiles[4]?.className).toBe('stat-tile is-zero');
+    // 0 failed is good news: never dimmed.
+    expect(tiles[3]?.className).toBe('stat-tile');
     expect(screen.getByText('1 would replace · 2 depend on size · 1 nothing to do')).toBeTruthy();
     const rows = within(screen.getByRole('table', { name: 'Files' }))
       .getAllByRole('row')
       .slice(1);
     const chip = (i: number) => within(rows[i] as HTMLElement).getAllByRole('cell')[1]?.textContent;
     // No estimate claims what the gate will decide.
-    expect(chip(0)).toBe('Would replace if it saves ≥ 25%Dry run');
-    expect(chip(2)).toBe('Would replaceDry run');
+    expect(chip(0)).toBe('Would replace if it saves ≥ 25%');
+    // The heading carries the run's badge; no row repeats it.
+    expect(chip(2)).toBe('Would replace');
   });
 
   it('badges a dry run and says nothing was changed instead of "No file replaced"', async () => {
@@ -576,12 +584,15 @@ describe('RunPage dry run', () => {
     const tiles = within(await screen.findByRole('list', { name: 'Outcomes' })).getAllByRole(
       'listitem',
     );
-    // Same tiles as a real run (no Dry run tile, no saved tile, none at 0); "would" words, and
+    // The same fixed tiles as a real run (no Dry run tile, no saved tile); "would" words, and
     // the dry runs fold into the first.
     expect(tiles.map((t) => t.textContent)).toEqual([
       'Would replace2',
+      'Depends on size0',
       'Would keep original1',
       'Nothing to do1',
+      'Failed0',
+      'Skipped0',
     ]);
     const rows = within(screen.getByRole('table', { name: 'Files' }))
       .getAllByRole('row')
@@ -590,13 +601,13 @@ describe('RunPage dry run', () => {
       within(rows[i] as HTMLElement)
         .getAllByRole('cell')
         .map((c) => c.textContent);
-    // The dashed badge sits beside the verdict; the reason is the muted line under the name.
-    expect(cells(0)[1]).toBe('Would replaceDry run');
+    // The verdict alone (the heading has the badge); the reason is the muted line under the name.
+    expect(cells(0)[1]).toBe('Would replace');
     expect(cells(0)[0]).toBe('a.mkvWould drop 9 tracks');
     expect(cells(1)[0]).toBe('b.mkv');
-    expect(cells(2)[1]).toBe('Would keep originalDry run');
-    expect(cells(3)[1]).toBe('Nothing to doDry run');
-    expect(rows[0]?.querySelector('.badge-dry')).not.toBeNull();
+    expect(cells(2)[1]).toBe('Would keep original');
+    expect(cells(3)[1]).toBe('Nothing to do');
+    expect(rows[0]?.querySelector('.badge-dry')).toBeNull();
   });
 
   describe('estimated savings', () => {
@@ -628,7 +639,7 @@ describe('RunPage dry run', () => {
       renderAt('/runs/r1', <Route path="/runs/:id" component={RunPage} />);
       await screen.findByRole('table', { name: 'Files' });
       const cells = rowsOf()[0] as HTMLElement[];
-      expect(cells[1]?.textContent).toBe('Would replace · −34%Dry run');
+      expect(cells[1]?.textContent).toBe('Would replace · −34%');
       expect(cells[0]?.textContent).toBe('a.mkvConvert 1 video track; drop 1 subtitle track');
       expect(cells[2]?.textContent).toBe('2.41 GB → ≈1.59 GB');
     });
@@ -640,7 +651,7 @@ describe('RunPage dry run', () => {
       renderAt('/runs/r1', <Route path="/runs/:id" component={RunPage} />);
       await screen.findByRole('table', { name: 'Files' });
       const cells = rowsOf()[0] as HTMLElement[];
-      expect(cells[1]?.textContent).toBe('Would replaceDry run');
+      expect(cells[1]?.textContent).toBe('Would replace');
       expect(cells[0]?.textContent).toBe('a.mkv');
       expect(cells[2]?.textContent).toBe('2.41 GB');
     });
@@ -715,16 +726,57 @@ describe('RunPage dry run', () => {
       within(rows[i] as HTMLElement)
         .getAllByRole('cell')
         .map((c) => c.textContent);
-    expect(cells(0)[1]).toBe('Would replace · −40%Test encode');
-    expect(cells(0)[0]).toBe('a.mkvWould replace · 315 MB → 190 MB (−40%)');
+    // Outcome in the chip, sizes in the Size column; the note only says why, never repeats them.
+    expect(cells(0)[1]).toBe('Would replace · −40%');
+    expect(cells(0)[0]).toBe('a.mkv');
     expect(cells(0)[2]).toBe('315 MB → 190 MB');
-    expect(cells(1)[0]).toBe('b.mkvWould keep the original · saved only 3% (gate ≥ 10%)');
+    expect(cells(1)[0]).toBe('b.mkvSaved only 3% (gate ≥ 10%)');
     expect(cells(2)[0]).toBe('c.mkvEncode failed');
     const tiles = within(screen.getByRole('list', { name: 'Outcomes' })).getAllByRole('listitem');
     expect(tiles.map((t) => t.textContent).slice(0, 2)).toEqual([
       'Would replace1',
       'Would keep original1',
     ]);
+  });
+
+  it('the plan-only summary counts every file, skipped and failed too (#53)', async () => {
+    const base = settledRun();
+    mocks.get.mockResolvedValue({
+      ...base,
+      run: { ...base.run, dryRun: true },
+      counts: { ...zero, dry_run: 1, nothing_to_do: 1, skipped: 1, failed: 2, total: 5 },
+      files: [file('j1', 'a.mkv', 'dry_run', { beforeBytes: 1000 })],
+    });
+    renderAt('/runs/r1', <Route path="/runs/:id" component={RunPage} />);
+    expect(
+      await screen.findByText(
+        '1 would replace · 0 depend on size · 1 nothing to do · 1 skipped · 2 failed',
+      ),
+    ).toBeTruthy();
+  });
+
+  it('a running real run keeps a fixed tile set: Saved and zero outcomes dimmed, Queued and In progress while files wait (#53)', async () => {
+    const base = settledRun();
+    mocks.get.mockResolvedValue({
+      ...base,
+      counts: { ...zero, nothing_to_do: 1, queued: 2, total: 3 },
+      files: [file('j1', 'a.mkv', 'nothing_to_do')],
+    });
+    renderAt('/runs/r1', <Route path="/runs/:id" component={RunPage} />);
+    const tiles = within(await screen.findByRole('list', { name: 'Outcomes' })).getAllByRole(
+      'listitem',
+    );
+    expect(tiles.map((t) => t.textContent)).toEqual([
+      'Saved0 B',
+      'Replaced0',
+      'Kept original0',
+      'Nothing to do1',
+      'Failed0',
+      'Skipped0',
+      'Queued2',
+      'In progress0',
+    ]);
+    expect(tiles[0]?.className).toBe('stat-tile is-zero');
   });
 
   it('a real run has no badge', async () => {

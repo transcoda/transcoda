@@ -6280,6 +6280,8 @@ a.nav-item.is-active .nav-count {
 .jobs-title {
   display: flex;
   flex-direction: column;
+  /* The block takes the row's free width, so a lane's name ("Quick tasks") is never cut short. */
+  flex: 1;
   min-width: 0;
 }
 /* Who holds each lane, one row per lane: its name, then the file, cut short with an ellipsis. */
@@ -6831,6 +6833,12 @@ a.nav-item.is-active .nav-count {
 .stat-value {
   font-size: 24px;
   font-weight: 700;
+  /* "2 MB" never breaks across two lines on a phone. */
+  white-space: nowrap;
+}
+/* "Saved today" is a figure, not a filter: a plain tile, only its value in the accent colour. */
+.stat-tile.has-accent-value .stat-value {
+  color: var(--accent-text);
 }
 /* A zero that is not good news (nothing saved, nothing queued) is dimmed, not hidden. */
 .stat-tile.is-zero .stat-value {

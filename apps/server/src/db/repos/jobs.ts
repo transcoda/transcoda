@@ -528,6 +528,39 @@ export interface JobListFilter {
   problems?: true;
   /** Only plan-only dry runs whose outcome depends on the size gate. */
   dependsOnSize?: true;
+  /** true: only dry runs (plan-only and test encodes); false: only real runs. */
+  dryRun?: boolean;
+}
+
+/** The list's scope: what it and its counts cover (the state filter and paging do not apply). */
+export interface JobListScope {
+  libraryId?: string;
+  runId?: string;
+  /** true: only dry runs; false: only real runs. */
+  dryRun?: boolean;
+}
+
+/** The scope's SQL conditions on jobs `alias` (empty alias: the bare `jobs` table). */
+function scopeWhere(
+  scope: JobListScope,
+  alias: string,
+): { where: string[]; values: (string | number)[] } {
+  const col = (c: string) => (alias ? `${alias}.${c}` : c);
+  const where: string[] = [];
+  const values: (string | number)[] = [];
+  if (scope.runId !== undefined) {
+    where.push(`${col('run_id')} = ?`);
+    values.push(scope.runId);
+  }
+  if (scope.libraryId !== undefined) {
+    where.push(`${col('library_id')} = ?`);
+    values.push(scope.libraryId);
+  }
+  if (scope.dryRun !== undefined) {
+    where.push(`${col('dry_run')} = ?`);
+    values.push(scope.dryRun ? 1 : 0);
+  }
+  return { where, values };
 }
 
 export const JOB_LIST_LIMIT = 200;
@@ -596,16 +629,7 @@ interface Cursor {
 export function listJobs(db: Database, filter: JobListFilter): JobListRow[] {
   const limit = filter.limit ?? JOB_LIST_LIMIT;
   if (limit <= 0 || filter.states?.length === 0) return [];
-  const where: string[] = [];
-  const values: (string | number)[] = [];
-  if (filter.runId !== undefined) {
-    where.push('j.run_id = ?');
-    values.push(filter.runId);
-  }
-  if (filter.libraryId !== undefined) {
-    where.push('j.library_id = ?');
-    values.push(filter.libraryId);
-  }
+  const { where, values } = scopeWhere(filter, 'j');
   if (filter.states !== undefined) {
     where.push(`j.state IN (${placeholders(filter.states.length)})`);
     values.push(...filter.states);
@@ -660,21 +684,9 @@ export function listJobs(db: Database, filter: JobListFilter): JobListRow[] {
 }
 
 /** Jobs per state (every state present, zero when none). */
-export function countJobsByState(
-  db: Database,
-  filter: { libraryId?: string; runId?: string },
-): Record<JobState, number> {
+export function countJobsByState(db: Database, filter: JobListScope): Record<JobState, number> {
   const counts = Object.fromEntries(JOB_STATES.map((s) => [s, 0])) as Record<JobState, number>;
-  const where: string[] = [];
-  const values: string[] = [];
-  if (filter.libraryId !== undefined) {
-    where.push('library_id = ?');
-    values.push(filter.libraryId);
-  }
-  if (filter.runId !== undefined) {
-    where.push('run_id = ?');
-    values.push(filter.runId);
-  }
+  const { where, values } = scopeWhere(filter, '');
   const rows = db
     .prepare(
       `SELECT state, COUNT(*) AS n FROM jobs ${where.length > 0 ? `WHERE ${where.join(' AND ')}` : ''} GROUP BY state`,
@@ -685,20 +697,10 @@ export function countJobsByState(
 }
 
 /** Jobs whose result has problems, within the list's scope (run, library); no state filter. */
-export function countProblems(
-  db: Database,
-  filter: { libraryId?: string; runId?: string },
-): number {
-  const where: string[] = ['json_array_length(r.problems_json) > 0'];
-  const values: string[] = [];
-  if (filter.libraryId !== undefined) {
-    where.push('j.library_id = ?');
-    values.push(filter.libraryId);
-  }
-  if (filter.runId !== undefined) {
-    where.push('j.run_id = ?');
-    values.push(filter.runId);
-  }
+export function countProblems(db: Database, filter: JobListScope): number {
+  const scope = scopeWhere(filter, 'j');
+  const where = ['json_array_length(r.problems_json) > 0', ...scope.where];
+  const values = scope.values;
   const row = db
     .prepare(
       `SELECT COUNT(*) AS n FROM jobs j JOIN job_results r ON r.job_id = j.id WHERE ${where.join(' AND ')}`,
@@ -708,20 +710,10 @@ export function countProblems(
 }
 
 /** Plan-only dry runs whose outcome depends on size, within the list's scope; no state filter. */
-export function countDependsOnSize(
-  db: Database,
-  filter: { libraryId?: string; runId?: string },
-): number {
-  const where: string[] = [DEPENDS_ON_SIZE_SQL];
-  const values: string[] = [];
-  if (filter.libraryId !== undefined) {
-    where.push('j.library_id = ?');
-    values.push(filter.libraryId);
-  }
-  if (filter.runId !== undefined) {
-    where.push('j.run_id = ?');
-    values.push(filter.runId);
-  }
+export function countDependsOnSize(db: Database, filter: JobListScope): number {
+  const scope = scopeWhere(filter, 'j');
+  const where = [DEPENDS_ON_SIZE_SQL, ...scope.where];
+  const values = scope.values;
   const row = db
     .prepare(
       `SELECT COUNT(*) AS n FROM jobs j JOIN job_results r ON r.job_id = j.id WHERE ${where.join(' AND ')}`,

@@ -426,6 +426,7 @@ export class EngineService {
     const scope = {
       ...(filter.libraryId !== undefined ? { libraryId: filter.libraryId } : {}),
       ...(filter.runId !== undefined ? { runId: filter.runId } : {}),
+      ...(filter.dryRun !== undefined ? { dryRun: filter.dryRun } : {}),
     };
     const closed = closedLibraries(this.db, this.deps.now(), this.timeZone);
     return {

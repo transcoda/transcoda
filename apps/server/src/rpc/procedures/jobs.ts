@@ -95,6 +95,7 @@ export const list = os.jobs.list.use(requireScope('read')).handler(({ context, i
     ...(input.before !== undefined ? { before: input.before } : {}),
     ...(input.problems === true ? { problems: true as const } : {}),
     ...(input.dependsOnSize === true ? { dependsOnSize: true as const } : {}),
+    ...(input.dryRun !== undefined ? { dryRun: input.dryRun } : {}),
   });
   return { jobs: jobs.map(toJob), counts, problemCount, dependsOnSizeCount };
 });

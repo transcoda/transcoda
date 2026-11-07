@@ -33,7 +33,12 @@ import {
   wherePrefix,
 } from '../jobs/jobText.ts';
 import { QueueLanes, QueuePausedNote, QueueToggle } from '../jobs/QueueBar.tsx';
-import { stateChangeTracker, useJobsList, useProblemCount } from '../jobs/useJobsList.ts';
+import {
+  countsScopeOf,
+  stateChangeTracker,
+  useJobsList,
+  useProblemCount,
+} from '../jobs/useJobsList.ts';
 import { encodeStopped, useQueue } from '../jobs/useQueue.ts';
 import { fmtBytes } from '../lib/bytes.ts';
 import { usePageTitle } from '../lib/pageTitle.ts';
@@ -58,6 +63,51 @@ function useTodayStats() {
 }
 
 const isActive = (j: Job) => !isFinalState(j.state);
+
+/** The dry-run facet: a scope like the library, so the outcome chips' counts add up within it. */
+type RunKind = '' | 'real' | 'dry';
+const RUN_KINDS: Array<{ value: RunKind; label: string }> = [
+  { value: '', label: 'Real and dry runs' },
+  { value: 'real', label: 'Real runs' },
+  { value: 'dry', label: 'Dry runs' },
+];
+
+/**
+ * Jobs per state for "Cancel all", which covers real and dry runs alike: the list's own counts,
+ * or (while the dry-run facet narrows the list) the library's counts fetched apart. Counts are
+ * used only for the scope that produced them: right after a filter change the old answer is still
+ * held, and it must never stand for what the action will cancel (null hides Cancel all meanwhile).
+ */
+function useCancelCounts(
+  libraryId: string | null,
+  list: { counts: Record<JobState, number> | null; countsScope: string | null },
+  narrowed: boolean,
+): { counts: Record<JobState, number> | null; reload(): void } {
+  // Each answer carries the library it counts: useAsync keeps the last data while a call for a
+  // new library is in flight, and those counts must never stand for the new one.
+  const all = useAsync(
+    async () =>
+      narrowed
+        ? {
+            libraryId,
+            counts: (await api.jobs.list({ limit: 1, ...(libraryId ? { libraryId } : {}) })).counts,
+          }
+        : null,
+    [libraryId, narrowed],
+  );
+  const [changed] = useState(stateChangeTracker);
+  useRefetchOn(
+    (e) => narrowed && (e.type === 'run.changed' || (e.type === 'job.changed' && changed(e))),
+    all.reload,
+  );
+  // After Cancel all, the narrowed list's reload does not refresh these counts.
+  const reload = all.reload;
+  if (!narrowed) {
+    const counts = list.countsScope === countsScopeOf(libraryId, null) ? list.counts : null;
+    return { counts, reload };
+  }
+  return { counts: all.data && all.data.libraryId === libraryId ? all.data.counts : null, reload };
+}
 
 /** Pause / Resume / Cancel (with its confirmation) for one job. */
 function useJobControls(reload: () => void) {
@@ -124,18 +174,34 @@ type Controls = ReturnType<typeof useJobControls>;
 /** "Pause" alone is ambiguous in a list of rows: the accessible name adds the file. */
 const named = (word: string, job: Job) => `${word} ${job.fileName}`;
 
-function JobActions({ job, controls, block }: { job: Job; controls: Controls; block?: boolean }) {
+/**
+ * Pause / Resume and Cancel. While the whole queue is paused a job's own Pause would change
+ * nothing you can see, so only Cancel (and Resume for a job that is paused itself) is offered.
+ */
+function JobActions({
+  job,
+  controls,
+  queuePaused,
+  block,
+}: {
+  job: Job;
+  controls: Controls;
+  queuePaused: boolean;
+  block?: boolean;
+}) {
   const cls = block ? 'btn btn-ghost btn-sm btn-block' : 'btn btn-ghost btn-sm';
   return (
     <>
-      <button
-        type="button"
-        className={cls}
-        aria-label={named(job.paused ? 'Resume' : 'Pause', job)}
-        onClick={() => (job.paused ? controls.resume(job) : controls.pause(job))}
-      >
-        {job.paused ? 'Resume' : 'Pause'}
-      </button>
+      {job.paused || !queuePaused ? (
+        <button
+          type="button"
+          className={cls}
+          aria-label={named(job.paused ? 'Resume' : 'Pause', job)}
+          onClick={() => (job.paused ? controls.resume(job) : controls.pause(job))}
+        >
+          {job.paused ? 'Resume' : 'Pause'}
+        </button>
+      ) : null}
       <button
         type="button"
         className={cls}
@@ -280,7 +346,7 @@ function CancelAll({
       >
         <p>
           {`Every queued, running and paused job ${libraryId ? `in ${libraryName ?? 'this library'}` : 'in every library'} is cancelled.`}
-          {statusFiltered ? ' The status filter does not limit this.' : null}
+          {statusFiltered ? ' The status and run filters do not limit this.' : null}
         </p>
         <p>
           Running encodes stop now and their partial output is deleted. Their originals stay
@@ -365,7 +431,9 @@ function JobRow({
       </div>
       {withActions ? (
         <div className="job-actions">
-          {isActive(job) ? <JobActions job={job} controls={controls} /> : null}
+          {isActive(job) ? (
+            <JobActions job={job} controls={controls} queuePaused={queuePaused} />
+          ) : null}
         </div>
       ) : null}
     </div>
@@ -436,12 +504,20 @@ function StatTiles({
   active?: string | undefined;
   onSelect?(filterLabel: string): void;
 }) {
-  const tiles: Array<{ label: string; filter: string | null; value: string; zero: boolean }> = [
+  const tiles: Array<{
+    label: string;
+    filter: string | null;
+    value: string;
+    zero: boolean;
+    className?: string;
+  }> = [
     {
       label: 'Saved today',
       filter: null,
       value: stats ? fmtBytes(stats.savedBytes) : '—',
       zero: stats?.savedBytes === 0,
+      // A figure, not a filter: a plain tile whose value is the accent colour.
+      className: 'has-accent-value',
     },
     {
       label: 'Queued',
@@ -473,6 +549,7 @@ function StatTiles({
             label={t.label}
             value={t.value}
             zero={t.zero}
+            {...(t.className ? { className: t.className } : {})}
             {...(clickable
               ? {
                   onClick: () => onSelect(filter),
@@ -492,6 +569,8 @@ export function JobsPage() {
   const phone = usePhone();
   const [filterIndex, setFilterIndex] = useState(0);
   const [libraryId, setLibraryId] = useState<string | null>(null);
+  const [runKind, setRunKind] = useState<RunKind>('');
+  const dryRun = runKind === '' ? null : runKind === 'dry';
   const filter = FILTERS[filterIndex] ?? FILTERS[0];
   const states = filter && filter.states.length > 0 ? filter.states : null;
   const list = useJobsList({
@@ -499,6 +578,7 @@ export function JobsPage() {
     states,
     problems: filter?.problems === true,
     dependsOnSize: filter?.dependsOnSize === true,
+    dryRun,
   });
   const stats = useTodayStats();
   const history = useJobsHistory();
@@ -509,13 +589,18 @@ export function JobsPage() {
   const queuePaused = queue.status?.paused ?? false;
 
   const jobs = filter?.paused ? list.jobs.filter((j) => j.paused) : list.jobs;
+  const cancelCounts = useCancelCounts(libraryId, list, dryRun !== null);
+  const afterCancelAll = () => {
+    list.reload();
+    if (dryRun !== null) cancelCounts.reload();
+  };
   const cancelAll = (
     <CancelAll
-      counts={list.counts}
+      counts={cancelCounts.counts}
       libraryId={libraryId}
       libraryName={(libraries.data ?? []).find((l) => l.id === libraryId)?.name ?? null}
-      statusFiltered={filterIndex !== 0}
-      onDone={list.reload}
+      statusFiltered={filterIndex !== 0 || dryRun !== null}
+      onDone={afterCancelAll}
     />
   );
   const fileNameOf = (id: string) => list.jobs.find((j) => j.id === id)?.fileName ?? null;
@@ -552,11 +637,12 @@ export function JobsPage() {
       loading={list.loading}
       error={list.error}
       empty={jobs.length === 0}
-      filtered={filterIndex !== 0 || libraryId !== null}
+      filtered={filterIndex !== 0 || libraryId !== null || dryRun !== null}
       onRetry={list.reload}
       onShowAll={() => {
         setFilterIndex(0);
         setLibraryId(null);
+        setRunKind('');
       }}
     />
   );
@@ -570,6 +656,12 @@ export function JobsPage() {
           ...(libraries.data ?? []).map((l) => ({ value: l.id, label: l.name })),
         ]}
         onChange={(v) => setLibraryId(v || null)}
+      />
+      <ListboxSelect
+        label="Runs"
+        value={runKind}
+        options={RUN_KINDS}
+        onChange={(v) => setRunKind(v as RunKind)}
       />
       {FILTERS.map((f, i) => {
         const n = countOf(f);
@@ -624,7 +716,7 @@ export function JobsPage() {
                   ) : null}
                   <span className="phone-card-line">{phoneRunningLine(job)}</span>
                   <div className="phone-card-actions">
-                    <JobActions job={job} controls={controls} block />
+                    <JobActions job={job} controls={controls} queuePaused={queuePaused} block />
                   </div>
                 </div>
               );
@@ -649,7 +741,7 @@ export function JobsPage() {
                   </span>
                 )}
                 <div className="phone-card-actions">
-                  <JobActions job={job} controls={controls} block />
+                  <JobActions job={job} controls={controls} queuePaused={queuePaused} block />
                 </div>
               </div>
             ))}

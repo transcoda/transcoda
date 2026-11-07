@@ -440,6 +440,7 @@ describe('contract', () => {
       }).success,
     ).toBe(true);
     expect(JobsListInputSchema.parse({ problems: true }).problems).toBe(true);
+    expect(JobsListInputSchema.parse({ dryRun: false }).dryRun).toBe(false);
     expect(
       EngineEventSchema.safeParse({
         type: 'queue.changed',

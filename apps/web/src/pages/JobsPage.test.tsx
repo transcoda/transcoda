@@ -186,7 +186,7 @@ async function push(e: EngineEvent) {
 const rowOf = (fileName: string) =>
   screen.getByRole('link', { name: fileName }).closest('.job-row') as HTMLElement;
 
-/** The lanes rows as one line: "Encode lane: idle · Quick lane: idle". */
+/** The lanes rows as one line: "Encoder: idle · Quick tasks: idle". */
 const lanesText = (el: HTMLElement) =>
   Array.from(
     el.querySelectorAll('.lane'),
@@ -320,7 +320,7 @@ describe('JobsPage', () => {
     const dialog = await screen.findByRole('dialog', { name: 'Cancel 39 jobs?' });
     expect(
       within(dialog).getByText(
-        'Every queued, running and paused job in Movies is cancelled. The status filter does not limit this.',
+        'Every queued, running and paused job in Movies is cancelled. The status and run filters do not limit this.',
       ),
     ).toBeTruthy();
     fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel 39 jobs' }));
@@ -541,7 +541,7 @@ describe('JobsPage', () => {
     expect(within(running).getByRole('button', { name: 'Cancel Bluey S01E04.mp4' })).toBeTruthy();
     expect(within(running).queryByRole('link', { name: /^Details/ })).toBeNull();
     // A queued job while the queue runs waits for a lane.
-    expect(within(rowOf('Andor S02E07.mkv')).getByText('Waiting for a lane')).toBeTruthy();
+    expect(within(rowOf('Andor S02E07.mkv')).getByText('Waiting its turn')).toBeTruthy();
     expect(mocks.list).toHaveBeenCalledWith({ limit: 200 });
   });
 
@@ -729,7 +729,7 @@ describe('JobsPage', () => {
   it('Pause queue calls queue.pause and shows the paused banner; lanes line names the running file', async () => {
     await renderPage();
     expect(lanesText(await screen.findByTestId('lanes'))).toBe(
-      'Encode lane: Bluey S01E04.mp4 · Quick lane: idle',
+      'Encoder: Bluey S01E04.mp4 · Quick tasks: idle',
     );
     fireEvent.click(screen.getByRole('button', { name: 'Pause queue' }));
     await waitFor(() => expect(mocks.queuePause).toHaveBeenCalled());
@@ -751,11 +751,109 @@ describe('JobsPage', () => {
       encodeSlots: [],
     });
     expect(lanesText(screen.getByTestId('lanes'))).toBe(
-      'Encode lane: idle · Quick lane: Severance S02E01.mkv',
+      'Encoder: idle · Quick tasks: Severance S02E01.mkv',
     );
     expect(screen.getByRole('button', { name: 'Resume queue' })).toBeTruthy();
     // Nothing starts while the queue is paused: a queued row says so.
     expect(within(rowOf('Andor S02E07.mkv')).getByText('Queue paused')).toBeTruthy();
+  });
+
+  it("hides a job's own Pause while the whole queue is paused; Cancel stays (#54)", async () => {
+    await renderPage();
+    const andor = rowOf('Andor S02E07.mkv');
+    expect(within(andor).getByRole('button', { name: 'Pause Andor S02E07.mkv' })).toBeTruthy();
+    await push({ type: 'queue.changed', paused: true, lanes: QUEUE.lanes, encodeSlots: [] });
+    const paused = rowOf('Andor S02E07.mkv');
+    expect(within(paused).queryByRole('button', { name: 'Pause Andor S02E07.mkv' })).toBeNull();
+    expect(within(paused).getByRole('button', { name: 'Cancel Andor S02E07.mkv' })).toBeTruthy();
+  });
+
+  it('the Runs facet narrows the list and its counts to dry or real runs; Cancel all keeps counting both (#54)', async () => {
+    await renderPage();
+    fireEvent.click(screen.getByRole('button', { name: 'Runs Real and dry runs' }));
+    const listbox = screen.getByRole('listbox', { name: 'Runs' });
+    fireEvent.keyDown(listbox, { key: 'ArrowDown' });
+    fireEvent.keyDown(listbox, { key: 'ArrowDown' });
+    fireEvent.keyDown(listbox, { key: 'Enter' });
+    expect(screen.getByRole('button', { name: 'Runs Dry runs' })).toBeTruthy();
+    await waitFor(() => expect(mocks.list).toHaveBeenCalledWith({ limit: 200, dryRun: true }));
+    // "Cancel all" covers real and dry runs, so it counts them apart from the narrowed list.
+    await waitFor(() => expect(mocks.list).toHaveBeenCalledWith({ limit: 1 }));
+  });
+
+  it('Cancel all refreshes its own counts after cancelling while the Runs facet is on (#54)', async () => {
+    await renderPage();
+    fireEvent.click(screen.getByRole('button', { name: 'Runs Real and dry runs' }));
+    const runs = screen.getByRole('listbox', { name: 'Runs' });
+    fireEvent.keyDown(runs, { key: 'ArrowDown' });
+    fireEvent.keyDown(runs, { key: 'ArrowDown' });
+    fireEvent.keyDown(runs, { key: 'Enter' });
+    fireEvent.click(await screen.findByRole('button', { name: 'Cancel all' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Cancel 39 jobs?' });
+    const before = mocks.list.mock.calls.filter(([input]) => input?.limit === 1).length;
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel 39 jobs' }));
+    await waitFor(() => expect(mocks.cancelAll).toHaveBeenCalled());
+    // Without the event stream, only a reload tells Cancel all that nothing is left.
+    await waitFor(() =>
+      expect(mocks.list.mock.calls.filter(([input]) => input?.limit === 1).length).toBeGreaterThan(
+        before,
+      ),
+    );
+  });
+
+  it("Cancel all never shows another library's counts while the Runs facet is on (#54)", async () => {
+    await renderPage();
+    fireEvent.click(screen.getByRole('button', { name: 'Runs Real and dry runs' }));
+    const runs = screen.getByRole('listbox', { name: 'Runs' });
+    fireEvent.keyDown(runs, { key: 'ArrowDown' });
+    fireEvent.keyDown(runs, { key: 'ArrowDown' });
+    fireEvent.keyDown(runs, { key: 'Enter' });
+    await waitFor(() => expect(mocks.list).toHaveBeenCalledWith({ limit: 1 }));
+    expect(await screen.findByRole('button', { name: 'Cancel all' })).toBeTruthy();
+    // Shows' own counts never arrive: Cancel all must not keep offering every library's 39 jobs.
+    const base = mocks.list.getMockImplementation();
+    mocks.list.mockImplementation((input?: { limit?: number; libraryId?: string }) =>
+      input?.limit === 1 && input.libraryId === 'lib-shows' ? new Promise(() => {}) : base?.(input),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Library All libraries' }));
+    const libs = screen.getByRole('listbox', { name: 'Library' });
+    fireEvent.keyDown(libs, { key: 'ArrowDown' });
+    fireEvent.keyDown(libs, { key: 'ArrowDown' });
+    fireEvent.keyDown(libs, { key: 'Enter' });
+    await waitFor(() =>
+      expect(mocks.list).toHaveBeenCalledWith({ limit: 1, libraryId: 'lib-shows' }),
+    );
+    expect(screen.queryByRole('button', { name: 'Cancel all' })).toBeNull();
+  });
+
+  it("Cancel all never counts with the dry-run list's counts after the Runs facet is cleared (#54)", async () => {
+    await renderPage();
+    const base = mocks.list.getMockImplementation();
+    // The dry-run list counts one queued job; every job in the library is 39.
+    mocks.list.mockImplementation((input?: { limit?: number; dryRun?: boolean }) =>
+      input?.dryRun === true
+        ? Promise.resolve({ jobs: [], counts: counts({ queued: 1 }), problemCount: 0 })
+        : base?.(input),
+    );
+    const pick = (button: string, key: 'ArrowDown' | 'ArrowUp') => {
+      fireEvent.click(screen.getByRole('button', { name: button }));
+      const lb = screen.getByRole('listbox', { name: 'Runs' });
+      fireEvent.keyDown(lb, { key });
+      fireEvent.keyDown(lb, { key });
+      fireEvent.keyDown(lb, { key: 'Enter' });
+    };
+    pick('Runs Real and dry runs', 'ArrowDown');
+    await waitFor(() => expect(mocks.list).toHaveBeenCalledWith({ limit: 200, dryRun: true }));
+    expect(await screen.findByRole('button', { name: 'Cancel all' })).toBeTruthy();
+    // Back to real and dry runs; the unfiltered list's answer is held back.
+    mocks.list.mockImplementation((input?: { limit?: number; dryRun?: boolean }) =>
+      input?.limit === 200 && input.dryRun === undefined ? new Promise(() => {}) : base?.(input),
+    );
+    const calls = mocks.list.mock.calls.length;
+    pick('Runs Dry runs', 'ArrowUp');
+    await waitFor(() => expect(mocks.list.mock.calls.length).toBeGreaterThan(calls));
+    expect(screen.getByRole('button', { name: 'Runs Real and dry runs' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Cancel all' })).toBeNull();
   });
 
   it('Pause and Resume a single job', async () => {
@@ -915,7 +1013,7 @@ describe('JobsPage', () => {
     // Queued jobs are listed too, with their controls.
     const queued = screen.getByRole('region', { name: 'Queued' });
     expect(within(queued).getByText('Andor S02E07.mkv')).toBeTruthy();
-    expect(within(queued).getByText('Waiting for a lane')).toBeTruthy();
+    expect(within(queued).getByText('Waiting its turn')).toBeTruthy();
     expect(within(queued).getByRole('button', { name: 'Pause Andor S02E07.mkv' })).toBeTruthy();
     expect(within(queued).getByRole('button', { name: 'Cancel Andor S02E07.mkv' })).toBeTruthy();
     // The phone header and its Menu drawer belong to the shell now, not to this page.

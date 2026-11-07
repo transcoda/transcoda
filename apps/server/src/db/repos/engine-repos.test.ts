@@ -9,7 +9,9 @@ import {
   alreadyProcessedReason,
   appendTrace,
   claimRestoreJournal,
+  countDependsOnSize,
   countJobsByState,
+  countProblems,
   deleteRecycled,
   findJob,
   findJobListRow,
@@ -447,6 +449,20 @@ describe('jobs', () => {
     expect(seen).toEqual(expected);
     expect(listJobs(db, { before: 'f1' })).toEqual([]);
     expect(listJobs(db, { before: 'missing' })).toEqual([]);
+  });
+
+  it('listJobs and its counts take a dry-run scope: only dry runs, or only real runs', () => {
+    job('real');
+    job('fin', {}, at(1));
+    updateJob(db, 'fin', { state: 'done', finishedAt: at(3).toISOString() }, at(3));
+    insertJobResult(db, result('fin'));
+    job('dry', { dryRun: true }, at(5));
+    expect(listJobs(db, { dryRun: true }).map((r) => r.id)).toEqual(['dry']);
+    expect(listJobs(db, { dryRun: false }).map((r) => r.id)).toEqual(['real', 'fin']);
+    expect(countJobsByState(db, { dryRun: true })).toMatchObject({ queued: 1, done: 0 });
+    expect(countJobsByState(db, { dryRun: false })).toMatchObject({ queued: 1, done: 1 });
+    expect(countProblems(db, { dryRun: true })).toBe(0);
+    expect(countDependsOnSize(db, { dryRun: false })).toBe(0);
   });
 
   it('updateJob stamps finished_at when a job becomes final, once per finish', () => {

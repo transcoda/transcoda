@@ -19,9 +19,16 @@ export interface JobsFilter {
   problems?: boolean;
   /** true: only plan-only dry runs whose size gate decides after encoding. */
   dependsOnSize?: boolean;
+  /** A scope like the library: true only dry runs, false only real runs, null/absent both. */
+  dryRun?: boolean | null;
 }
 
 type JobChanged = Extract<EngineEvent, { type: 'job.changed' }>;
+
+/** The scope a list's counts cover (library and dry-run facet), as one comparable key. */
+export function countsScopeOf(libraryId: string | null, dryRun: boolean | null): string {
+  return `${libraryId ?? ''}|${dryRun ?? ''}`;
+}
 
 /**
  * A `job.changed` filter that is true when a job's state differs from the last one seen (or the
@@ -45,6 +52,8 @@ interface ListState {
    */
   active: Job[] | null;
   counts: Record<JobState, number> | null;
+  /** The scope `counts` cover ({@link countsScopeOf}); the last answer stays while a new one loads. */
+  countsScope: string | null;
   problemCount: number | null;
   dependsOnSizeCount: number | null;
   loading: boolean;
@@ -71,6 +80,8 @@ function patchJob(j: Job, e: JobChanged): Job {
 export function useJobsList(filter: JobsFilter): {
   jobs: Job[];
   counts: Record<JobState, number> | null;
+  /** The scope `counts` cover: compare with {@link countsScopeOf} before trusting them. */
+  countsScope: string | null;
   problemCount: number | null;
   dependsOnSizeCount: number | null;
   pausedCount: number;
@@ -81,11 +92,13 @@ export function useJobsList(filter: JobsFilter): {
   const { libraryId, states } = filter;
   const problems = filter.problems === true;
   const depends = filter.dependsOnSize === true;
-  const key = `${libraryId ?? ''}|${states?.join(',') ?? '*'}|${problems ? 'p' : ''}|${depends ? 'd' : ''}`;
+  const dryRun = filter.dryRun ?? null;
+  const key = `${libraryId ?? ''}|${states?.join(',') ?? '*'}|${problems ? 'p' : ''}|${depends ? 'd' : ''}|${dryRun ?? ''}`;
   const [state, setState] = useState<ListState>({
     jobs: [],
     active: null,
     counts: null,
+    countsScope: null,
     problemCount: null,
     dependsOnSizeCount: null,
     loading: true,
@@ -102,6 +115,7 @@ export function useJobsList(filter: JobsFilter): {
     const id = ++seq.current;
     const scope: JobsListInput = { limit: JOBS_LIST_MAX };
     if (libraryId) scope.libraryId = libraryId;
+    if (dryRun !== null) scope.dryRun = dryRun;
     const withStates: JobsListInput = states ? { ...scope, state: states } : scope;
     const input: JobsListInput = {
       ...withStates,
@@ -120,6 +134,7 @@ export function useJobsList(filter: JobsFilter): {
         jobs: page.jobs,
         active: active?.jobs ?? null,
         counts: page.counts,
+        countsScope: countsScopeOf(libraryId, dryRun),
         problemCount: page.problemCount,
         dependsOnSizeCount: page.dependsOnSizeCount ?? null,
         loading: false,
@@ -189,6 +204,7 @@ export function useJobsList(filter: JobsFilter): {
   return {
     jobs: state.jobs,
     counts: state.counts,
+    countsScope: state.countsScope,
     problemCount: state.problemCount,
     dependsOnSizeCount: state.dependsOnSizeCount,
     pausedCount: pausedFrom.filter((j) => j.paused).length,

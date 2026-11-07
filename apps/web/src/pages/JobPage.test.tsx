@@ -530,7 +530,7 @@ describe('JobPage', () => {
     });
     await open();
     expect(await screen.findByText('Queue paused')).toBeTruthy();
-    expect(screen.queryByText('Waiting for a lane')).toBeNull();
+    expect(screen.queryByText('Waiting its turn')).toBeNull();
     expect(screen.queryByText(/^At: /)).toBeNull();
   });
 

@@ -6,7 +6,7 @@ import type { Queue } from './useQueue.ts';
 export const QUEUE_PAUSED_TEXT = 'Queue paused — running jobs are frozen, nothing new starts';
 
 export interface LaneHolder {
-  /** "Encode lane", "Quick lane", or a GPU slot's label ("GPU 0 · RTX 3060"). */
+  /** "Encoder", "Quick tasks", or a GPU slot's label ("GPU 0 · RTX 3060"). */
   label: string;
   /** The job's file name, "busy" when it is not on the page, or "idle". */
   holder: string;
@@ -29,11 +29,11 @@ export function queueLanes(
   const encode =
     slots.length > 1
       ? slots.map((s) => ({ label: s.label, holder: lane(s.jobId) }))
-      : [{ label: 'Encode lane', holder: lane(status.lanes.encode ?? null) }];
-  return [...encode, { label: 'Quick lane', holder: lane(status.lanes.quick) }];
+      : [{ label: 'Encoder', holder: lane(status.lanes.encode ?? null) }];
+  return [...encode, { label: 'Quick tasks', holder: lane(status.lanes.quick) }];
 }
 
-/** The lanes in one line: "Encode lane: idle · Quick lane: idle". */
+/** The lanes in one line: "Encoder: idle · Quick tasks: idle". */
 export function queueLanesText(
   status: Queue['status'],
   fileNameOf: (jobId: string) => string | null,
