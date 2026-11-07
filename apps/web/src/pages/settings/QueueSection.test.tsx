@@ -91,6 +91,27 @@ describe('QueueSection', () => {
     );
   });
 
+  it('keeps focus on the same button while a row moves through the middle of three', async () => {
+    const s = twoGpus();
+    s.queue.gpus.push(gpu('intel:0000:09:00.0', 'Intel Arc B580 · 09:00.0', 'intel'));
+    mocks.get.mockResolvedValue(s);
+    renderAt('/settings/queue', <QueueSection />);
+    await screen.findByRole('group', { name: 'GPU order' });
+    const first = 'GPU 0 · NVIDIA GeForce RTX 3060';
+    const down = () => screen.getByRole('button', { name: `Move ${first} down` });
+    fireEvent.click(down());
+    // Now in the middle: its down button still works, so focus stays on it.
+    expect(orderRows()[1]).toContain(first);
+    expect(document.activeElement).toBe(down());
+    fireEvent.click(down());
+    // Now last: down is disabled, so focus moves to up on the same row.
+    expect(orderRows()[2]).toContain(first);
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: `Move ${first} up` }));
+    fireEvent.click(screen.getByRole('button', { name: `Move ${first} up` }));
+    expect(orderRows()[1]).toContain(first);
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: `Move ${first} up` }));
+  });
+
   it('marks a GPU that is gone', async () => {
     const s = twoGpus();
     s.queue.gpus.push(gpu('intel:0000:09:00.0', 'intel:0000:09:00.0 (not found)', 'intel', true));
