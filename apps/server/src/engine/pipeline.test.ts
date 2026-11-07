@@ -784,7 +784,7 @@ describe('pipeline', () => {
     // Auto, as before this setting: NVENC on ffmpeg's default GPU, no index.
     const auto = await commandFor('auto');
     expect(auto).toContain('-hwaccel cuda -i');
-    expect(auto).not.toContain('-gpu');
+    expect(auto).not.toMatch(/ -gpu[: ]/);
 
     // CPU only and a node that names an NVENC encoder: an error, never a quiet GPU encode.
     setSetting(t.db, 'engine.encodeDevice', 'cpu', t.clock.now());
