@@ -344,6 +344,24 @@ describe('renderArgs: GPU decode', () => {
     });
   });
 
+  it('a model with its own -hwaccel keeps it on a QSV device: no device of ours', () => {
+    const device = { kind: 'qsv', renderNode: '/dev/dri/renderD128' } as const;
+    for (const own of [
+      ['-hwaccel', 'qsv'],
+      ['-hwaccel', 'vaapi', '-hwaccel_output_format', 'vaapi'],
+    ]) {
+      const model = {
+        ...withStream(encode('hevc_qsv'), 0, { pixelFormat: 'yuv420p' }),
+        inputArgs: own,
+      };
+      const args = renderArgs({ model, input: '/in.mkv', output: '/o.mkv', device });
+      expect(args).not.toContain('-init_hw_device');
+      expect(args).not.toContain('-filter_hw_device');
+      expect(beforeInput(args).slice(-own.length)).toEqual(own);
+      expect(args.filter((a) => a === '-hwaccel')).toHaveLength(1);
+    }
+  });
+
   it('a QSV device leaves software encodes and copies alone', () => {
     const device = { kind: 'qsv', renderNode: '/dev/dri/renderD128' } as const;
     for (const model of [encode('libx265'), modelFromProbe(movie)]) {

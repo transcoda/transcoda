@@ -385,7 +385,8 @@ function qsvFrames(
  * A QSV device with a QSV encode opens that Intel GPU for the encoders instead. With `frames`
  * (see `qsvFrames`) the source also decodes on it into GPU frames (`-hwaccel_output_format qsv`;
  * ffmpeg decodes on the CPU where the GPU cannot); otherwise it decodes on the CPU. A model that
- * opens its own device keeps it.
+ * opens its own device or picks its own `-hwaccel` keeps it, and the QSV encoder then uses ffmpeg's
+ * default Intel device.
  */
 function gpuDeviceArgs(
   model: BuildModel,
@@ -396,7 +397,9 @@ function gpuDeviceArgs(
   const own = [...model.globalArgs, ...model.inputArgs];
   const encodes = (suffix: string) =>
     streams.some((s) => s.type === 'video' && s.mode === 'convert' && s.encoder?.endsWith(suffix));
-  if (device?.kind === 'qsv' && encodes('_qsv') && !own.includes('-init_hw_device')) {
+  // A model that brings its own device or hwaccel keeps its own setup, as for NVENC below.
+  const ownDevice = own.includes('-init_hw_device') || own.includes('-hwaccel');
+  if (device?.kind === 'qsv' && encodes('_qsv') && !ownDevice) {
     return [
       '-init_hw_device',
       `qsv=qsv:hw,child_device=${device.renderNode}`,
