@@ -1089,17 +1089,23 @@ describe('Scheduler with an NVIDIA and an Intel slot', () => {
     await flush();
     expect(executor.exec('a').device).toEqual(cuda(0));
     updateJob(db, 'a', { encodedOn: 'GPU 0' }, now());
+    // Paused, the requeued row stays queued, so this checks requeue itself clears the GPU
+    // (preparing clears it too).
+    scheduler.pauseQueue();
     executor.exec('a').d.resolve({
       requeue: { reason: 'GPU 0 failed (x); trying another GPU', failedGpus: ['nvidia:0'] },
     });
     await flush();
     expect(row('a')).toMatchObject({
-      state: 'probing',
+      state: 'queued',
       attempt: 1,
       reason: 'GPU 0 failed (x); trying another GPU',
       failedGpus: ['nvidia:0'],
       encodedOn: null,
     });
+    scheduler.resumeQueue();
+    await flush();
+    expect(row('a').state).toBe('probing');
     executor.ready('a', 'encode', 'gpu');
     await flush();
     expect(executor.executeOrder).toEqual(['a', 'a']);
