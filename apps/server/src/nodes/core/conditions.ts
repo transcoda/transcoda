@@ -1,6 +1,6 @@
 import { matchesGlob } from 'node:path';
 import { defineNode } from '@transcoda/sdk';
-import { isPicture } from '@transcoda/shared';
+import { fmtKbps, isPicture } from '@transcoda/shared';
 import { z } from 'zod';
 import { filePort, LanguageCodeSchema, languageInput, passElse } from './common.ts';
 import { list, matchesLanguage, tag } from './stream-rules.ts';
@@ -56,8 +56,10 @@ export const videoIs = defineNode({
     const tooFast =
       settings.maxBitrateKbps !== undefined &&
       (bitrateKbps === null || bitrateKbps > settings.maxBitrateKbps);
-    if (tooFast) wanted.push(`at most ${settings.maxBitrateKbps} kbps`);
-    const bitrateText = bitrateKbps === null ? 'bitrate unknown' : `${bitrateKbps} kbps`;
+    if (tooFast && settings.maxBitrateKbps !== undefined) {
+      wanted.push(`at most ${fmtKbps(settings.maxBitrateKbps)}`);
+    }
+    const bitrateText = bitrateKbps === null ? 'bitrate unknown' : fmtKbps(bitrateKbps);
     const what = [
       `video is ${codec}${height === null ? '' : ` ${height}p`}`,
       ...(tooFast ? [bitrateText] : []),

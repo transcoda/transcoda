@@ -85,6 +85,7 @@ export function TcHandle({
   connected,
   fit = null,
   named = false,
+  quiet = false,
   onPlus,
 }: {
   port: PortSpec;
@@ -93,6 +94,8 @@ export function TcHandle({
   /** An output of a node with several file outputs: its title names the port (`portLabel`). */
   named?: boolean | undefined;
   fit?: Fit | undefined;
+  /** The job trace: the title stays for the pointer, screen readers skip it. */
+  quiet?: boolean;
   onPlus?(port: PortSpec): void;
 }) {
   const shape = `tc-handle-${port.type === 'file' ? 'file' : 'data'}-${direction}`;
@@ -113,6 +116,7 @@ export function TcHandle({
         id={port.id}
         className={classes.join(' ')}
         title={`${label} ${direction}`}
+        {...(quiet && { 'aria-hidden': true })}
       />
       {direction === 'out' && !connected && onPlus && (
         <button

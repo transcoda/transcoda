@@ -208,6 +208,18 @@ describe('TraceCanvas', () => {
     });
     expect(container.querySelector('.react-flow__attribution')).toBeNull();
   });
+
+  it('hides the port labels and handles from screen readers (the cards say what each node did)', async () => {
+    await show({
+      source: { trace: TRACE, steps: PATH, jobState: 'done', currentNode: undefined },
+    });
+    const labels = [...card('vi').querySelectorAll('.tc-port-in, .tc-port-out')];
+    expect(labels.length).toBeGreaterThan(0);
+    for (const l of labels) expect(l.getAttribute('aria-hidden')).toBe('true');
+    const handles = [...card('vi').querySelectorAll('.tc-handle')];
+    expect(handles.length).toBeGreaterThan(0);
+    for (const h of handles) expect(h.getAttribute('aria-hidden')).toBe('true');
+  });
 });
 
 describe('fitTrace', () => {

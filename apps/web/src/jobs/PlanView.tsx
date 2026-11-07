@@ -9,6 +9,7 @@ import {
   keptSummary,
   type LanguageGroup,
   languageNameOf,
+  noteText,
   type PlanStream,
   shownDrops,
   sidecarSummary,
@@ -275,7 +276,7 @@ function OtherStreams({ plan, probe }: { plan: JobPlan; probe: ProbeSummary | nu
         {keyed(others).map(({ s, key }) => (
           <span key={key} className="plan-other-item">
             <b>{s.type === 'attachment' && s.title ? s.title : trackLabel(s, probe)}</b> ·{' '}
-            <span className="muted">{s.note || DONE_WORD[s.action]}</span>
+            <span className="muted">{noteText(s.note) || DONE_WORD[s.action]}</span>
           </span>
         ))}
         <span className="plan-other-item">

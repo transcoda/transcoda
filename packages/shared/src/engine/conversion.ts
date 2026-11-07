@@ -1,5 +1,10 @@
 import type { STREAM_TYPES } from './probe.ts';
 
+/** A bitrate as every screen and reason writes it: "640 kb/s", "13.7 Mb/s" (SI, like sizes). */
+export function fmtKbps(kbps: number): string {
+  return kbps >= 1000 ? `${(kbps / 1000).toFixed(1)} Mb/s` : `${Math.round(kbps)} kb/s`;
+}
+
 /**
  * What a plan note says an encode does. The engine writes a converted stream's note as
  * `convert <from>→<to> (<encoder>[ <crf|qp|cq|q> <n>][ <preset>][ <profile>][ [max ]<n>k][ <n>ch][ <pix_fmt>])`

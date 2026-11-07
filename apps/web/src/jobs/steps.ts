@@ -19,6 +19,7 @@ import {
   RENDER_TYPE,
 } from '@transcoda/shared';
 import type { Decision } from '../editor/trace/traceOverlay.ts';
+import { fmtKbps } from '../lib/rate.ts';
 import { languageNameOf } from './planText.ts';
 
 export type Badge =
@@ -226,17 +227,17 @@ function qualityName(encoder: string, capped: boolean): string {
 }
 
 /**
- * A video conversion's rate control: "CRF 24", "3000 kb/s" (a target bitrate) or
- * "CRF 24, at most 5000 kb/s" (a quality the source bitrate caps); null for neither.
+ * A video conversion's rate control: "CRF 24", "3.0 Mb/s" (a target bitrate) or
+ * "CRF 24, at most 5.0 Mb/s" (a quality the source bitrate caps); null for neither.
  */
 function videoRate(v: Converted): string | null {
-  const kbps = v.bitrateKbps === null ? null : `${v.bitrateKbps} kb/s`;
+  const kbps = v.bitrateKbps === null ? null : fmtKbps(v.bitrateKbps);
   if (v.quality === null) return kbps;
   const quality = `${qualityName(v.encoder ?? '', kbps !== null)} ${v.quality}`;
   return kbps === null ? quality : `${quality}, at most ${kbps}`;
 }
 
-/** "on the GPU (NVENC, QP 24)", "in software (libx265, CRF 24)", "in software (libx265, 3000 kb/s)". */
+/** "on the GPU (NVENC, QP 24)", "in software (libx265, CRF 24)", "in software (libx265, 3.0 Mb/s)". */
 function encodedHow(v: Converted): string {
   const e = v.encoder ?? '';
   const rate = videoRate(v);
@@ -469,7 +470,7 @@ function encodeVideo(d: Decision, c: TraceChanges, ctx: StepContext, past: boole
 function audioTarget(s: Converted): string {
   return [
     codecName(s.codec),
-    ...(s.bitrateKbps !== null ? [`${s.bitrateKbps} kb/s`] : []),
+    ...(s.bitrateKbps !== null ? [fmtKbps(s.bitrateKbps)] : []),
     ...(s.channels !== null ? [layout(s.channels)] : []),
   ].join(' ');
 }
@@ -721,11 +722,13 @@ function finishStep(d: Decision, ctx: StepContext, past: boolean): string {
       const folder = str(s.recycleFolder);
       const where = folder ? `the folder ${folder}` : "this library's recycle folder";
       if (ctx.dependsOnSize) {
-        return `If the size gate passes, replaces the original and moves it to ${where}; otherwise keeps it`;
+        return `Would replace the original and move it to ${where} if the size gate passes; otherwise keeps it`;
       }
       // A real job still running has not written yet: it says when, not where the original goes.
       if (!ctx.dryRun && !isFinalState(ctx.state))
         return 'Replaces the original once the result is verified';
+      // A dry run wrote nothing: its write steps say what a real run would do, as its flow does.
+      if (ctx.dryRun) return `Would replace the original and move it to ${where}`;
       if (!past) return `Replaces the original, which moves to ${where}`;
       return ctx.replacedTo === 'recycle'
         ? `Replaced the original, which is now in ${where}`
@@ -735,19 +738,21 @@ function finishStep(d: Decision, ctx: StepContext, past: boolean): string {
       const mode = str(s.mode) === 'move' ? 'move' : 'copy';
       const root = str(s.outputRoot) ?? 'the output folder';
       if (ctx.dependsOnSize) {
-        return `If the size gate passes, ${mode === 'move' ? 'moves' : 'copies'} the result to ${root}; otherwise keeps the original`;
+        return `Would ${mode} the result to ${root} if the size gate passes; otherwise keeps the original`;
       }
-      const verb = past
-        ? mode === 'move'
-          ? 'Moved'
-          : 'Copied'
-        : mode === 'move'
-          ? 'Moves'
-          : 'Copies';
+      const verb = ctx.dryRun
+        ? `Would ${mode}`
+        : past
+          ? mode === 'move'
+            ? 'Moved'
+            : 'Copied'
+          : mode === 'move'
+            ? 'Moves'
+            : 'Copies';
       return `${verb} the result to ${root}`;
     }
     case 'core:notify-webhook':
-      return `${past ? 'Sent' : 'Sends'} a ${str(s.method) ?? 'POST'} request to the webhook`;
+      return `${ctx.dryRun ? 'Would send' : past ? 'Sent' : 'Sends'} a ${str(s.method) ?? 'POST'} request to the webhook`;
     default:
       return reasonSentence(d);
   }
@@ -899,6 +904,18 @@ export function stepsSummary(list: readonly Step[]): {
     unchanged: list.filter((s) => s.badge === 'same' || s.badge === 'not-run').length,
     notes: list.reduce((n, s) => n + s.notes.length, 0),
   };
+}
+
+const DID: Record<string, string> = { replace: 'replaced', move: 'moved', copy: 'copied' };
+
+/**
+ * A write step's reason as a real run that wrote words it on the flow: "replace the original (…)"
+ * → "replaced the original (…)", "move the result to /out" → "moved the result to /out". The
+ * steps list says the same in the past tense; a dry run says "would …" (`wouldText`).
+ */
+export function didText(reason: string): string {
+  const m = /^(replace|move|copy) /.exec(reason);
+  return m?.[1] ? `${DID[m[1]]}${reason.slice(m[1].length)}` : reason;
 }
 
 /** The section's heading: what the workflow would do, did, is doing, or planned. */

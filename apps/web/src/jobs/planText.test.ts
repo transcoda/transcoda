@@ -5,6 +5,7 @@ import {
   dropLine,
   groupByLanguage,
   keptSummary,
+  noteText,
   shownDrops,
   sidecarSummary,
   sizeLine,
@@ -75,6 +76,23 @@ describe('planText', () => {
     expect(sizeLine(2_410_000_000, 790_000_000)).toBe('2.41 GB → 790 MB');
     expect(sizeLine(2_410_000_000, null)).toBe('2.41 GB');
     expect(sizeLine(null, null)).toBe('—');
+  });
+});
+
+describe('noteText', () => {
+  it('writes the bitrates of an encode the way every screen does', () => {
+    expect(noteText('convert h264→hevc (libx265 crf 24 medium max 3317k yuv420p)')).toBe(
+      'convert h264→hevc (libx265 crf 24 medium at most 3.3 Mb/s yuv420p)',
+    );
+    expect(noteText('convert dts→aac (aac 160k 2ch)')).toBe('convert dts→aac (aac 160 kb/s 2ch)');
+    expect(noteText('convert h264→hevc (hevc_qsv 3000k p5); default: first audio')).toBe(
+      'convert h264→hevc (hevc_qsv 3.0 Mb/s p5); default: first audio',
+    );
+  });
+
+  it('leaves a note without an encode alone', () => {
+    expect(noteText('copied, 4k source')).toBe('copied, 4k source');
+    expect(noteText('')).toBe('');
   });
 });
 

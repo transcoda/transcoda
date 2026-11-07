@@ -77,4 +77,12 @@ describe('branch rows (N2)', () => {
       expect(el.className).not.toMatch(/is-branch/);
     }
   });
+
+  it('a read-only editor (a past version, a narrow window) keeps the port labels and handles for screen readers', async () => {
+    // renderFlow uses the default, read-only actions; only the job trace hides them.
+    await renderFlow([tcNode('sg', 'core:size-gate', 2)], [], { nodeTypes, edgeTypes });
+    const ports = [...card('sg').querySelectorAll('.tc-port-in, .tc-port-out, .tc-handle')];
+    expect(ports.length).toBeGreaterThan(0);
+    for (const el of ports) expect(el.getAttribute('aria-hidden')).toBeNull();
+  });
 });
