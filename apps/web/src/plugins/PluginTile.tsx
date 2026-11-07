@@ -4,7 +4,7 @@ import { monogram, nodeNameOf } from './pluginGroups.ts';
 
 /**
  * The 40px tile in front of a plugin's name: its own SVG icon, shown only as an image (an SVG in
- * an `<img>` runs no script and loads nothing), or the title's first letter. Decorative: the name
+ * an `<img>` runs no script and loads nothing), or two letters of the title. Decorative: the name
  * next to it says which plugin it is.
  */
 export function PluginTile({ title, icon }: { title: string; icon: string | null }) {

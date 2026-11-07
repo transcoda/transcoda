@@ -51,9 +51,15 @@ export function cardDescription(title: string, description: string): string {
   return rest.endsWith('.') ? `${rest.slice(0, -1)} ${aside}.` : `${rest} ${aside}`;
 }
 
-/** The tile's letter when a plugin has no icon: the title's first character, as written. */
+/**
+ * The tile's letters when a plugin has no icon: the title's first two letters, the first one a
+ * capital ("So" for Sonarr, "Se" for Seerr, "Nt" for ntfy, "TM" for TMDB), so two plugins that
+ * start alike still look different.
+ */
 export function monogram(title: string): string {
-  return Array.from(title.trim())[0] ?? '?';
+  const [first, second = ''] = Array.from(title.trim().replace(/\s+/g, ''));
+  if (first === undefined) return '?';
+  return `${first.toUpperCase()}${second}`;
 }
 
 /** "Has subtitles" for `bazarr:has-subtitles`: a node name when the manifest has no title. */

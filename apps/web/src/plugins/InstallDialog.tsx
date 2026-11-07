@@ -1,12 +1,16 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { api, safe } from '../api/client.ts';
 import { Dialog } from '../components/Dialog.tsx';
 import { Icon } from '../components/Icon.tsx';
 import { InfoTip } from '../components/InfoTip.tsx';
+import { useToast } from '../components/Toast.tsx';
+import { copyShortcut, copyText } from '../lib/clipboard.ts';
 import { pluginFailure } from './errors.ts';
+import { cardDescription } from './pluginGroups.ts';
 import {
   ATTESTATION_TIP,
   CUSTOM_CATALOG_WARNING,
+  installFailureText,
   provenanceSignature,
   provenanceSource,
   SECURITY_PROMISE,
@@ -24,7 +28,38 @@ export interface Target {
   version: Version;
 }
 
-/** Where the build comes from and what a plugin can do, then Install (focus starts on Cancel). */
+/** The full checksum, wrapping, with a Copy button (on plain http the hash is selected instead). */
+function Checksum({ sha256 }: { sha256: string }) {
+  const toast = useToast();
+  const text = useRef<HTMLSpanElement>(null);
+  async function copy() {
+    const result = await copyText(sha256, text.current);
+    if (result === 'copied') toast.success('Copied');
+    else if (result === 'selected') toast.info(`Selected. Press ${copyShortcut()} to copy.`);
+    else toast.info(`Select the checksum and press ${copyShortcut()} to copy.`);
+  }
+  return (
+    <dd className="plugin-checksum">
+      <span ref={text} className="mono">
+        {sha256}
+      </span>
+      <button
+        type="button"
+        className="btn btn-sm btn-ghost"
+        aria-label="Copy the checksum"
+        onClick={() => void copy()}
+      >
+        <Icon name="copy" size={14} />
+        Copy
+      </button>
+    </dd>
+  );
+}
+
+/**
+ * What the plugin does, where the build comes from and what a plugin can do, then Install (focus
+ * starts on Cancel).
+ */
 export function InstallDialog({
   target,
   returnFocusTo,
@@ -58,10 +93,7 @@ export function InstallDialog({
     );
     setPending(false);
     if (err) {
-      const reason = pluginFailure(err).replace(/\.$/, '');
-      setError(
-        `${target.entry.title} didn't install: ${reason.charAt(0).toUpperCase()}${reason.slice(1)}. Its output is in the server log; try again once that is fixed.`,
-      );
+      setError(installFailureText(target.entry.title, pluginFailure(err)));
       return;
     }
     onInstalled(target.entry.name);
@@ -93,6 +125,11 @@ export function InstallDialog({
       }
     >
       {target ? (
+        <p className="plugin-install-about">
+          {cardDescription(target.entry.title, target.entry.description)}
+        </p>
+      ) : null}
+      {target ? (
         <dl className="plugin-facts" aria-label="Where this plugin comes from">
           <div>
             <dt>Source</dt>
@@ -103,16 +140,14 @@ export function InstallDialog({
             <dd>{provenanceSignature(target.catalog.keyIds)}</dd>
           </div>
           <div>
-            <dt>SHA-256</dt>
-            <dd className="mono" title={target.version.sha256}>
-              {target.version.sha256.slice(0, 12)}
-            </dd>
+            <dt>Checksum (SHA-256)</dt>
+            <Checksum sha256={target.version.sha256} />
           </div>
           {attestation ? (
             <div>
               <dt>
-                Attestation
-                <InfoTip label="What is an attestation?" text={ATTESTATION_TIP} />
+                Build proof
+                <InfoTip label="What is a build proof?" text={ATTESTATION_TIP} />
               </dt>
               <dd>
                 <a href={attestation} target="_blank" rel="noopener noreferrer">

@@ -197,7 +197,9 @@ function CatalogStatus({
       ) : null}
       {checked ? <span className="plugins-source-item">{checked}</span> : null}
       {blocked !== null && blocked > 0 ? (
-        <span className="plugins-source-item">{`${blocked} blocked`}</span>
+        <span className="plugins-source-item">
+          {`${blocked} blocked ${blocked === 1 ? 'version' : 'versions'}`}
+        </span>
       ) : null}
       <button
         type="button"

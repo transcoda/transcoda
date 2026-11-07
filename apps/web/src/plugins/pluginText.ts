@@ -28,7 +28,24 @@ export function stateLabel(p: PluginSummary, now: Date): string {
 
 /** The install dialog's Source row: where the build came from. */
 export function provenanceSource(official: boolean): string {
-  return official ? 'Built by CI' : 'From a custom catalog';
+  return official ? 'Official catalog, built from public source' : 'A custom catalog';
+}
+
+const capitalised = (s: string) => `${s.charAt(0).toUpperCase()}${s.slice(1)}`;
+
+/**
+ * What the install dialog says when an install failed: whose, why in plain words, and the next
+ * step. A plugin that exited on start reads "ntfy didn't start (exit code 1)".
+ */
+export function installFailureText(title: string, reason: string): string {
+  const next = 'See the server log or try again.';
+  const text = reason.trim().replace(/\.$/, '');
+  const crashed = /^plugin crashed on start:\s*/i.exec(text);
+  if (!crashed) return `${title} didn't install: ${capitalised(text)}. ${next}`;
+  const why = text.slice(crashed[0].length);
+  const code = /^exited with code (\S+)$/.exec(why);
+  if (code) return `${title} didn't start (exit code ${code[1]}). ${next}`;
+  return `${title} didn't start: ${capitalised(why)}. ${next}`;
 }
 
 /** The install dialog's Signature row: the catalog's signing keys, or "Unsigned". */
@@ -37,7 +54,7 @@ export function provenanceSignature(keyIds: readonly string[]): string {
   return `Signed with key${keyIds.length > 1 ? 's' : ''} ${keyIds.join(', ')}`;
 }
 
-/** The tooltip on the install dialog's Attestation row. */
+/** The tooltip on the install dialog's Build proof row. */
 export const ATTESTATION_TIP =
   'Proof from GitHub that this plugin was built from the public source in the transcoda-plugins repository, so the code you run in Transcoda is exactly the code you can read there.';
 
