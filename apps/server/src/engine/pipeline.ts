@@ -868,8 +868,7 @@ export class Pipeline implements JobExecutor {
     }
 
     const auto = autoStreams(model, built.autoPicks);
-    const fit = slotFitOf(model, auto);
-    this.prepared.set(job.id, {
+    const prepared: Prepared = {
       realPath,
       library,
       fp,
@@ -877,7 +876,6 @@ export class Pipeline implements JobExecutor {
       probe,
       model,
       autoStreams: auto,
-      fit,
       actions,
       gates,
       damaged,
@@ -908,8 +906,29 @@ export class Pipeline implements JobExecutor {
       warnings,
       outputProbe: null,
       written: null,
-    });
-    return { lane: laneFor(model, probe), fit };
+      fit: 'software',
+    };
+    prepared.fit = this.reachableFit(prepared, slotFitOf(model, auto));
+    this.prepared.set(job.id, prepared);
+    return { lane: laneFor(model, probe), fit: prepared.fit };
+  }
+
+  /**
+   * An auto job's fit, narrowed to the vendor it was built for when it cannot move to the other
+   * vendor's GPU (this ffmpeg lacks that encoder, or the moved model cannot render): otherwise it
+   * would take the other vendor's slot and encode as built there, NVENC on GPU 0 from the Intel slot.
+   */
+  private reachableFit(p: Prepared, fit: SlotFit): SlotFit {
+    if (fit !== 'gpu') return fit;
+    const encoders = [...p.autoStreams].map((i) => p.model.streams[i]?.encoder ?? '');
+    const nvidia = encoders.some((e) => e.endsWith('_nvenc'));
+    const intel = encoders.some((e) => e.endsWith('_qsv'));
+    if (nvidia === intel) return fit;
+    const caps = this.capabilitiesOf();
+    const usable = caps.encoders.filter((e) => encoderUsable(e, caps));
+    const moved = retarget(p.model, p.autoStreams, nvidia ? 'intel' : 'nvidia', usable);
+    if (moved && moved !== p.model && this.renderFor(p, moved)) return fit;
+    return nvidia ? 'nvidia' : 'intel';
   }
 
   // ---- execute ----
@@ -930,8 +949,8 @@ export class Pipeline implements JobExecutor {
       let encodedOn: string | null = null;
       if (device !== null && vendor !== null) {
         // Auto's encoders move to the slot's vendor; a named encoder never does. Null (ffmpeg
-        // lacks the target, which the slot rules prevent) or a target that cannot render: the
-        // job encodes as built.
+        // lacks the target) or a target that cannot render: the job encodes as built (prepare's
+        // fit keeps such a job off the other vendor's slots, so this is a last resort).
         const caps = this.capabilitiesOf();
         const usable = caps.encoders.filter((e) => encoderUsable(e, caps));
         const target = retarget(p.model, p.autoStreams, vendor, usable) ?? p.model;
