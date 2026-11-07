@@ -140,6 +140,42 @@ describe('readSettings: encoding device', () => {
     expect(readSettings(make({ capabilities: unnamed })).queue.gpus[0]?.label).toBe('GPU 0');
   });
 
+  it('gpus leaves out an Intel card that cannot encode, unless the stored order names it', () => {
+    // No QSV encoder in ffmpeg: the Arc cannot take encodes.
+    const noQsv = withGpus([RTX, ARC, { ...RTX, id: 'nvidia:1', index: 1 }]);
+    expect(readSettings(make({ capabilities: noQsv })).queue.gpus.map((g) => g.id)).toEqual([
+      'nvidia:0',
+      'nvidia:1',
+    ]);
+    // No render node: the same.
+    const { renderNode: _, ...noNode } = ARC;
+    const caps = withGpus([RTX, noNode], ['libx265', 'hevc_nvenc', 'hevc_qsv']);
+    expect(readSettings(make({ capabilities: caps })).queue.gpus.map((g) => g.id)).toEqual([
+      'nvidia:0',
+    ]);
+    // Named by the stored order: kept, so a save keeps its place, and said why it is unused.
+    setSetting(db, 'engine.gpuOrder', ['intel:0000:07:00.0', 'nvidia:0'], NOW);
+    expect(readSettings(make({ capabilities: noQsv })).queue.gpus[2]).toEqual({
+      id: 'intel:0000:07:00.0',
+      label: "Intel Arc A310 · 07:00.0 (can't encode)",
+      vendor: 'intel',
+      missing: true,
+    });
+  });
+
+  it('gpus includes the unnamed NVENC GPU 0 next to an Intel card', () => {
+    const caps = withGpus([ARC], ['libx265', 'hevc_nvenc', 'hevc_qsv']);
+    expect(readSettings(make({ capabilities: caps })).queue.gpus).toEqual([
+      { id: 'nvidia:0', label: 'GPU 0', vendor: 'nvidia', missing: false },
+      {
+        id: 'intel:0000:07:00.0',
+        label: 'Intel Arc A310 · 07:00.0',
+        vendor: 'intel',
+        missing: false,
+      },
+    ]);
+  });
+
   it('a corrupt stored gpuOrder reads as the default', () => {
     setSetting(db, 'engine.gpuOrder', ['gpu-please'], NOW);
     expect(readSettings(deps).queue.gpuOrder.source).toEqual({ kind: 'default' });

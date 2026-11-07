@@ -135,7 +135,7 @@ function GpuOrder({
         {rows.map((g, i) => (
           <li key={g.id} className="gpu-order-row">
             <span className="gpu-order-label">
-              {/* A GPU that is gone already says "(not found)" in its label. */}
+              {/* A GPU that is gone or cannot encode says so in its label. */}
               {g.label}
             </span>
             <button

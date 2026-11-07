@@ -15,8 +15,8 @@ import {
   devicePlan,
   encodeSlots,
   gpuLabel,
-  orderGpus,
   parseEncodeDevice,
+  usableGpus,
 } from '../capabilities/devices.ts';
 import type { Config } from '../config.ts';
 import type { Database } from '../db/open.ts';
@@ -165,23 +165,25 @@ function encodeDevices(caps: Capabilities, stored: string): Settings['queue']['e
 }
 
 /**
- * Every GPU the order can name, in the effective order: the detected ones, then ids that are only
- * in the stored order (gone), marked missing.
+ * Every GPU the order can name, in the effective order: the ones auto can encode on (as the encode
+ * slots see them), then ids that are only in the stored order, marked missing: gone, or detected
+ * but unable to encode.
  */
 function queueGpus(caps: Capabilities, order: string[]): Settings['queue']['gpus'] {
-  const detected = orderGpus(caps.available ? (caps.gpus ?? []) : [], order);
-  const out: Settings['queue']['gpus'] = detected.map((g) => ({
+  const out: Settings['queue']['gpus'] = usableGpus(caps, order).map((g) => ({
     id: g.id,
     label: gpuLabel(g),
     vendor: g.vendor,
     missing: false,
   }));
+  const detected = caps.available ? (caps.gpus ?? []) : [];
   for (const id of order) {
     if (out.some((g) => g.id === id)) continue;
+    const g = detected.find((x) => x.id === id);
     out.push({
       id,
-      label: `${id} (not found)`,
-      vendor: id.startsWith('intel:') ? 'intel' : 'nvidia',
+      label: g ? `${gpuLabel(g)} (can't encode)` : `${id} (not found)`,
+      vendor: g?.vendor ?? (id.startsWith('intel:') ? 'intel' : 'nvidia'),
       missing: true,
     });
   }

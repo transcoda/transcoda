@@ -264,6 +264,22 @@ function deviceGpuId(device: RenderDevice | null, caps: Capabilities): string | 
 }
 
 /**
+ * The GPUs auto can encode on, in the GPU order: NVIDIA ones when ffmpeg has NVENC (GPU 0 unnamed
+ * when nvidia-smi listed none, as devicePlan counts it), Intel ones with a render node when ffmpeg
+ * has a QSV encoder.
+ */
+export function usableGpus(caps: Capabilities, order: string[] = []): Gpu[] {
+  const listed = caps.available ? (caps.gpus ?? []) : [];
+  const unnamed: Gpu[] =
+    hasNvenc(caps) && !listed.some((g) => g.vendor === 'nvidia')
+      ? [{ id: 'nvidia:0', vendor: 'nvidia', index: 0, name: '' }]
+      : [];
+  return orderGpus([...unnamed, ...listed], order).filter((g) =>
+    g.vendor === 'nvidia' ? hasNvenc(caps) : hasQsv(caps) && g.renderNode !== undefined,
+  );
+}
+
+/**
  * The encode lane's slots: with `auto` and two or more usable GPUs (NVIDIA with NVENC in ffmpeg,
  * Intel with a QSV encoder), one per GPU in the GPU order, so encodes run side by side. Otherwise
  * the one slot there always was, on the pinned GPU if the setting names one (or on the only usable
@@ -274,15 +290,7 @@ export function encodeSlots(
   setting: EncodeDevice,
   order: string[] = [],
 ): EncodeSlot[] {
-  const listed = caps.available ? (caps.gpus ?? []) : [];
-  // NVENC without nvidia-smi: an unnamed GPU 0, as devicePlan counts it
-  const unnamed: Gpu[] =
-    hasNvenc(caps) && !listed.some((g) => g.vendor === 'nvidia')
-      ? [{ id: 'nvidia:0', vendor: 'nvidia', index: 0, name: '' }]
-      : [];
-  const gpus = orderGpus([...unnamed, ...listed], order).filter((g) =>
-    g.vendor === 'nvidia' ? hasNvenc(caps) : hasQsv(caps) && g.renderNode !== undefined,
-  );
+  const gpus = usableGpus(caps, order);
   if (setting.kind === 'auto' && gpus.length >= 2) {
     return gpus.flatMap((g): EncodeSlot[] => {
       if (g.vendor === 'nvidia') {
