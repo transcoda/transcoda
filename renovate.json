@@ -15,6 +15,10 @@
   "semanticCommitScope": null,
   "prBodyTemplate": "{{{header}}}{{{table}}}{{{warnings}}}{{{notes}}}{{{changelogs}}}{{{controls}}}",
   "osvVulnerabilityAlerts": true,
+  "vulnerabilityAlerts": {
+    "description": "Security fixes skip the Sunday schedule and get their own label so they stand out.",
+    "addLabels": ["security"]
+  },
   "lockFileMaintenance": {
     "enabled": true,
     "description": "Weekly refresh of transitive dependencies, which no other rule updates (Scorecard found fixed CVEs sitting in the lockfile). Runs in the same Sunday-evening window as everything else.",
