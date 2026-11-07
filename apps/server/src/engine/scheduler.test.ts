@@ -263,6 +263,14 @@ afterEach(async () => {
 });
 
 describe('Scheduler', () => {
+  it('a job that starts preparing names no GPU, even when a row queued before #59 still has one', async () => {
+    job('a', { queuedAt: 1 });
+    updateJob(db, 'a', { encodedOn: 'GPU 0' }, now());
+    scheduler.start();
+    await flush();
+    expect(row('a')).toMatchObject({ state: 'probing', encodedOn: null });
+  });
+
   it('runs at most one encode and one quick job at once, quick alongside encode', async () => {
     const seen: EngineEvent[] = [];
     const ac = new AbortController();
