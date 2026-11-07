@@ -3,7 +3,7 @@ import type { JsonValue } from '@transcoda/shared';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { type FieldDef, fieldsFor } from '../../model/schema-fields.ts';
 import { LanguagePicker } from '../LanguagePicker.tsx';
-import { defaultText, type FieldProps } from './Field.tsx';
+import { defaultText, type FieldProps, humanise } from './Field.tsx';
 import { LanguageField } from './LanguageField.tsx';
 import { LanguageListField } from './LanguageListField.tsx';
 import { RawJsonField } from './RawJsonField.tsx';
@@ -65,8 +65,9 @@ const ACCESSIBLE_LABEL: Record<string, string> = {
   overrides: 'Setting overrides (raw JSON)',
 };
 
+/** A value that is not the setting's default (a default reads "Default: …", without Clear). */
 const SAMPLE: Record<string, JsonValue> = {
-  flag: true,
+  flag: false,
   bitrate: 160,
   quality: 24,
   method: 'PUT',
@@ -396,7 +397,7 @@ describe('field controls', () => {
     const { onChange } = renderField({ def, value: 'keep' });
     fireEvent.click(screen.getByRole('radio', { name: 'Drop incompatible' }));
     expect(onChange).toHaveBeenLastCalledWith('drop-incompatible');
-    expect(screen.getByRole('radio', { name: 'keep' })).toBeTruthy();
+    expect(screen.getByRole('radio', { name: 'Keep' })).toBeTruthy();
     cleanup();
     const select = renderField({
       def: { ...def, spec: { kind: 'enum', options: ['already_target_codec'], control: 'select' } },
@@ -410,6 +411,65 @@ describe('field controls', () => {
       value: [],
     });
     expect(screen.getByRole('button', { name: 'Smart tv' })).toBeTruthy();
+  });
+
+  it('core option ids read as plain names', () => {
+    expect(humanise('hevc')).toBe('HEVC (H.265)');
+    expect(humanise('reencode')).toBe('Re-encode');
+    expect(humanise('stereo')).toBe('Stereo');
+    expect(humanise('already-target-codec')).toBe('Already target codec');
+    // A plugin's own single-word ids stay as stored.
+    expect(humanise('POST')).toBe('POST');
+  });
+
+  it('an invalid stored enum value selects nothing, never the default', () => {
+    const def: FieldDef = {
+      ...defOf('method'),
+      default: 'hevc',
+      spec: { kind: 'enum', options: ['hevc', 'h264'], control: 'segmented' },
+    };
+    renderField({ def, value: 'bogus', issue: 'Must be one of: hevc, h264' });
+    for (const radio of screen.getAllByRole('radio')) {
+      expect(radio.getAttribute('aria-checked'), radio.textContent ?? '').toBe('false');
+    }
+    expect(screen.getByText('Must be one of: hevc, h264')).toBeTruthy();
+    cleanup();
+    renderField({
+      def: { ...def, spec: { kind: 'enum', options: ['hevc', 'h264'], control: 'select' } },
+      value: 'bogus',
+    });
+    expect((screen.getByRole('combobox') as HTMLSelectElement).value).toBe('');
+  });
+
+  it('a stored default reads like an unset one: "Default: …" and no Clear', () => {
+    const def: FieldDef = {
+      ...defOf('method'),
+      default: 'hevc',
+      spec: { kind: 'enum', options: ['hevc', 'h264'], control: 'segmented' },
+    };
+    renderField({ def });
+    expect(screen.getByText('Default: HEVC (H.265)')).toBeTruthy();
+    // The default is the selected option, as the server applies it.
+    expect(screen.getByRole('radio', { name: 'HEVC (H.265)' }).getAttribute('aria-checked')).toBe(
+      'true',
+    );
+    cleanup();
+    renderField({ def, value: 'hevc' });
+    expect(screen.getByText('Default: HEVC (H.265)')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Clear HTTP method' })).toBeNull();
+    cleanup();
+    renderField({ def, value: 'h264' });
+    expect(screen.queryByText('Default: HEVC (H.265)')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Clear HTTP method' })).toBeTruthy();
+    cleanup();
+    renderField({ def: defOf('flag'), value: true });
+    expect(screen.getByText('Default: on')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Clear Keep cover images' })).toBeNull();
+    cleanup();
+    // A list stored as its empty default reads "not set", like the same list left unset.
+    renderField({ def: { ...defOf('targets'), default: [] }, value: [] });
+    expect(screen.getByText('not set')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Clear Targets' })).toBeNull();
   });
 
   it('an unset slider shows the default, muted, and says so', () => {

@@ -114,30 +114,44 @@ function chain(steps: GraphOp[]): GraphOp {
   };
 }
 
-/** The graph op that adds a palette item at `pos`. */
+/** What a palette item adds, selected once it is on the canvas (the values card is not). */
+type AddedSelection = { nodes: string[]; edges: string[]; group?: string } | null;
+
+/** The graph op that adds a palette item at `pos`, and the selection that shows the new item. */
 function addItem(
   item: PaletteItem,
   pos: Position,
   catalog: Catalog,
   view: ViewRect | undefined,
-): GraphOp {
-  if (item.kind === 'node')
-    return (g) => addNode(g, item.def.type, freeSpot(g, pos, view), catalog);
-  if (item.kind === 'end')
-    return (g) => addNode(g, SUBWORKFLOW_END_TYPE, freeSpot(g, pos, view), catalog);
-  if (item.kind === 'note') return (g) => addNote(g, pos, shortId());
-  if (item.kind === 'values') return (g) => addValuesCard(g, pos);
+): { op: GraphOp; select: AddedSelection } {
   const id = shortId();
+  const node = (nodeId: string): AddedSelection => ({ nodes: [nodeId], edges: [] });
+  if (item.kind === 'node')
+    return {
+      op: (g) => addNode(g, item.def.type, freeSpot(g, pos, view), catalog, { id }),
+      select: node(id),
+    };
+  if (item.kind === 'end')
+    return {
+      op: (g) => addNode(g, SUBWORKFLOW_END_TYPE, freeSpot(g, pos, view), catalog, { id }),
+      select: node(id),
+    };
+  if (item.kind === 'note')
+    return { op: (g) => addNote(g, pos, id), select: { nodes: [], edges: [], group: id } };
+  if (item.kind === 'values') return { op: (g) => addValuesCard(g, pos), select: null };
   const { workflow } = item;
-  return chain([
-    (g) => addNode(g, RUN_SUBWORKFLOW_TYPE, freeSpot(g, pos, view), catalog, { id }),
-    (g) =>
-      setSettings(g, id, {
-        subworkflowId: workflow.id,
-        version: workflow.currentVersion,
-        overrides: {},
-      }),
-  ]);
+  return {
+    op: chain([
+      (g) => addNode(g, RUN_SUBWORKFLOW_TYPE, freeSpot(g, pos, view), catalog, { id }),
+      (g) =>
+        setSettings(g, id, {
+          subworkflowId: workflow.id,
+          version: workflow.currentVersion,
+          overrides: {},
+        }),
+    ]),
+    select: node(id),
+  };
 }
 
 type SaveOutcome =
@@ -608,7 +622,10 @@ function Editor({
   const addFromPalette = useCallback(
     (item: PaletteItem, pos: Position) => {
       const cat = latest.current.catalog;
-      if (cat) apply(addItem(item, pos, cat, viewRect()));
+      if (!cat) return;
+      const { op, select } = addItem(item, pos, cat, viewRect());
+      // The new item becomes the selection: its inspector opens instead of the last one's.
+      if (apply(op) && select) dispatch({ type: 'select', ...select });
     },
     [apply, viewRect],
   );
@@ -629,17 +646,22 @@ function Editor({
             overrides: {},
           })
         : { ok: true, graph: g };
+    const selectNew = (added: boolean) => {
+      if (added) dispatch({ type: 'select', nodes: [newId], edges: [] });
+    };
     if (!from) {
-      apply(
-        chain([
-          (g) => addNode(g, def.type, freeSpot(g, centre(), view), cat, { id: newId }),
-          pinned,
-        ]),
+      selectNew(
+        apply(
+          chain([
+            (g) => addNode(g, def.type, freeSpot(g, centre(), view), cat, { id: newId }),
+            pinned,
+          ]),
+        ),
       );
       return;
     }
     const input = def.inputs.find((p) => p.type === from.port.type);
-    apply(
+    const added = apply(
       chain([
         (g) => {
           const origin = g.nodes.find((n) => n.id === from.nodeId);
@@ -660,6 +682,7 @@ function Editor({
             : { ok: true, graph: g },
       ]),
     );
+    selectNew(added);
   }
 
   const measuredSizes = useCallback(
@@ -1041,7 +1064,12 @@ function Editor({
                     activate={
                       hasActivation(state.workflow) &&
                       state.workflow.active?.version !== state.savedVersion
-                        ? { onClick: () => setActivating(state.savedVersion) }
+                        ? {
+                            active: state.workflow.active,
+                            // The past version's own errors, as the banner below names them.
+                            blockedReason: activateBlocked(false, state.issues)?.reason,
+                            onClick: () => setActivating(state.savedVersion),
+                          }
                         : null
                     }
                   />

@@ -334,7 +334,7 @@ export function ungroup(g: WorkflowGraph, groupId: string): OpResult {
 }
 
 /**
- * The editor's one delete (Delete/Backspace, the toolbar's Delete goes through `removeNodes`):
+ * The editor's one delete (Delete/Backspace, the toolbar's Remove node goes through `removeNodes`):
  * the selected edges are disconnected, a selected group is ungrouped (its members stay unless
  * selected too) and the selected nodes are removed with their edges, as one result.
  */

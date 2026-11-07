@@ -81,6 +81,14 @@ describe('Canvas', () => {
     }
   });
 
+  it('names the zoom controls in sentence case, like the rest of the canvas controls', async () => {
+    await renderCanvas(vi.fn(() => true));
+    for (const name of ['Zoom in', 'Zoom out', 'Fit view']) {
+      expect(screen.getByRole('button', { name }).getAttribute('title')).toBe(name);
+    }
+    expect(screen.queryByRole('button', { name: 'Zoom In' })).toBeNull();
+  });
+
   // `keep` sits at x 280; an arrow key nudges the selected node (React Flow, 5 px).
   it('a refused move puts the card back where the graph has it', async () => {
     const apply = vi.fn(() => false);

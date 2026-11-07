@@ -229,10 +229,37 @@ describe('PastVersionBanner', () => {
 
   it('offers "Activate vN" beside "Restore as new version"', () => {
     const onClick = vi.fn();
-    renderAt('/', <PastVersionBanner {...base} viewing={2} activate={{ onClick }} />);
+    renderAt('/', <PastVersionBanner {...base} viewing={2} activate={{ active: null, onClick }} />);
     expect(screen.getByRole('button', { name: 'Restore as new version' })).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Activate v2' }));
     expect(onClick).toHaveBeenCalledOnce();
+  });
+
+  it('says "Roll back to vN" below the active version, the verb the dialog uses', () => {
+    const active = { version: 5, runnable: true, activatedAt: '', activatedBy: 'u1' };
+    renderAt(
+      '/',
+      <PastVersionBanner {...base} viewing={2} activate={{ active, onClick: vi.fn() }} />,
+    );
+    expect(screen.getByRole('button', { name: 'Roll back to v2' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Activate v2' })).toBeNull();
+  });
+
+  it('a version with errors offers no activation it would refuse: disabled, with the reason', () => {
+    const onClick = vi.fn();
+    renderAt(
+      '/',
+      <PastVersionBanner
+        {...base}
+        viewing={2}
+        activate={{ active: null, blockedReason: 'Fix 1 error before activating', onClick }}
+      />,
+    );
+    const button = screen.getByRole('button', { name: 'Activate v2' }) as HTMLButtonElement;
+    expect(button.disabled).toBe(true);
+    expect(button.title).toBe('Fix 1 error before activating');
+    const describedBy = button.getAttribute('aria-describedby') ?? '';
+    expect(document.getElementById(describedBy)?.textContent).toBe('Fix 1 error before activating');
   });
 
   it('on the current version: "Viewing v3 — active" with "Edit it" and, when offered, Activate', () => {
@@ -245,7 +272,10 @@ describe('PastVersionBanner', () => {
     expect(screen.getByRole('link', { name: 'Edit it' })).toBeTruthy();
     expect(screen.queryByRole('button', { name: /Activate/ })).toBeNull();
     cleanup();
-    renderAt('/', <PastVersionBanner {...base} viewing={7} current={7} activate={{ onClick }} />);
+    renderAt(
+      '/',
+      <PastVersionBanner {...base} viewing={7} current={7} activate={{ active: null, onClick }} />,
+    );
     expect(screen.getByText('Viewing v7 — the current version')).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Edit it' })).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Activate v7' }));

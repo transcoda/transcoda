@@ -18,6 +18,7 @@ export function ListboxSelect({
   options,
   onChange,
   visibleLabel = false,
+  disabled = false,
 }: {
   /** The accessible name of the control (also the listbox's). */
   label: string;
@@ -29,6 +30,8 @@ export function ListboxSelect({
    * instead of being screen-reader text beside a compact one.
    */
   visibleLabel?: boolean;
+  /** A read-only form: the button shows the value and does not open. */
+  disabled?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
@@ -117,6 +120,7 @@ export function ListboxSelect({
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-labelledby={`${labelId} ${buttonId}`}
+        disabled={disabled}
         onClick={() => (open ? close() : openList())}
       >
         {options[selectedIndex]?.label}

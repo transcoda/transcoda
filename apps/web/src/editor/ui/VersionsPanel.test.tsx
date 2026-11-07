@@ -75,26 +75,26 @@ describe('VersionsPanel', () => {
     const panel = screen.getByRole('dialog', { name: 'Versions' });
     const links = await within(panel).findAllByRole('link');
     expect(links.map((l) => l.textContent)).toEqual([
-      'v8 · Layout only · 2 min ago',
-      'v7 · saved by you · 1 h ago · active',
-      'v6 · Updated Bump 1→2 · 3 h ago · automatic update',
-      'v5 · saved · 5 h ago · another user',
+      'v8 · Layout only · saved by you 2 min ago',
+      'v7 · saved by you 1 h ago · active',
+      'v6 · Updated Bump 1→2 · automatic update 3 h ago',
+      'v5 · saved by another user 5 h ago',
     ]);
     expect(links[1]?.querySelector('svg')).not.toBeNull();
     expect(links[0]?.querySelector('svg')).toBeNull();
     expect(links[0]?.getAttribute('href')).toBe('/workflows/wf1');
   });
 
-  it('lists versions newest first with note and relative time; the author only when it is not me ("automatic update", "another user", never a raw id)', async () => {
+  it('lists versions newest first with note and relative time; who saved it ("you", "automatic update", "another user", never a raw id)', async () => {
     renderPanel({ viewing: 7 });
     const panel = screen.getByRole('dialog', { name: 'Versions' });
     const links = await within(panel).findAllByRole('link');
     expect(mocks.versions).toHaveBeenCalledWith({ id: 'wf1' });
     expect(links.map((l) => l.textContent)).toEqual([
-      'v8 · Layout only · 2 min ago',
-      'v7 · saved by you · 1 h ago',
-      'v6 · Updated Bump 1→2 · 3 h ago · automatic update',
-      'v5 · saved · 5 h ago · another user',
+      'v8 · Layout only · saved by you 2 min ago',
+      'v7 · saved by you 1 h ago',
+      'v6 · Updated Bump 1→2 · automatic update 3 h ago',
+      'v5 · saved by another user 5 h ago',
     ]);
     expect(links.map((l) => l.getAttribute('href'))).toEqual([
       '/workflows/wf1',

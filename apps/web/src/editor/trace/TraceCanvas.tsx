@@ -18,7 +18,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Catalog } from '../../hooks/useCatalog.ts';
 import { usePhone } from '../../lib/usePhone.ts';
 import { DEFAULT_EDITOR_ACTIONS, EditorActionsContext } from '../flow/actions-context.ts';
-import { edgeTypes, nodeTypes } from '../flow/nodeTypes.ts';
+import { ARIA_LABELS, edgeTypes, nodeTypes } from '../flow/nodeTypes.ts';
 import { toFlow, withViewCollapse } from '../flow/toFlow.ts';
 import type { TcFlowEdge, TcFlowNode, TraceOverlay } from '../flow/types.ts';
 import { MIN_ZOOM } from '../ui/Canvas.tsx';
@@ -283,6 +283,7 @@ export function TraceCanvas({
                 zoomOnPinch={!phone}
                 zoomOnDoubleClick={!phone}
                 minZoom={MIN_ZOOM}
+                ariaLabelConfig={ARIA_LABELS}
                 colorMode="dark"
                 // No attribution link on the job page (React Flow is MIT licensed).
                 proOptions={{ hideAttribution: true }}

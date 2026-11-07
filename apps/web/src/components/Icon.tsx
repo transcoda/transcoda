@@ -1,6 +1,7 @@
 // Stroke icons, copied from the design handoff screens where drawn (alert, chevron-down,
-// chevron-up, trash, play, bypass); info, check-circle, x-circle, subworkflow, chevron-right,
-// history, search, pencil and pause are not drawn there and follow the same 24-unit stroke style.
+// chevron-up, trash, play; bypass is lucide's skip-forward); info, check-circle, x-circle,
+// subworkflow, chevron-right, history, search, pencil and pause are not drawn there and follow
+// the same 24-unit stroke style.
 // Node icons (catalogue names: languages, star, ..., log-out, and the plugin nodes' download,
 // refresh, user, bell, file-type) and the kind icons (kind-trigger is
 // lucide play, kind-condition git-branch, kind-action wand, kind-finish flag, kind-data database)
@@ -56,7 +57,8 @@ const PATHS = {
   /** Screen 06b's "After verification" badge. */
   shield: <path d="M12 3l7 3v6c0 4-3 7-7 9-4-2-7-5-7-9V6z" />,
   /** Screen 05's node toolbar "Bypass node". */
-  bypass: <path d="M3 12h4M17 12h4M7 12c2-6 8-6 10 0" />,
+  // lucide skip-forward: the file skips this step.
+  bypass: <path d="M5 4l10 8-10 8zM19 5v14" />,
   copy: (
     <>
       <rect x="8" y="8" width="12" height="12" rx="2" />

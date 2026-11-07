@@ -1924,8 +1924,7 @@ describe('validateWorkflow', () => {
       {
         severity: 'error',
         code: 'NODE_UNAVAILABLE',
-        message:
-          'Move or copy is unavailable here: no output roots configured (TRANSCODA_OUTPUT_ROOTS)',
+        message: 'Move or copy is unavailable here: needs an output folder (server setting)',
         nodeId: 'mc',
       },
     ]);
