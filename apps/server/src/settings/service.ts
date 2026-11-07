@@ -29,7 +29,7 @@ import {
   type SettingKey,
   setSetting,
 } from '../db/repos/settings.ts';
-import { findVersion, listWorkflows } from '../db/repos/workflows.ts';
+import { listCurrentVersions } from '../db/repos/workflows.ts';
 import { ALWAYS_ALLOWED_HOSTS } from '../http/host-check.ts';
 import type { Logger } from '../logger.ts';
 import { LIMIT_BOUNDS } from '../plugins/limits.ts';
@@ -204,10 +204,11 @@ function pinnedVendorWorkflows(
   );
   if (vendors.size < 2) return [];
   const out: Settings['queue']['pinnedVendorWorkflows'] = [];
-  for (const w of listWorkflows(db)) {
+  // One query for every workflow: the active version is `active` when it differs from the current one.
+  for (const { workflow: w, version, active } of listCurrentVersions(db)) {
     if (w.kind !== 'workflow' || w.activeVersion === null) continue;
-    const v = findVersion(db, w.id, w.activeVersion);
-    if (!v?.ok) continue;
+    const v = active ?? version;
+    if (!v.ok || v.row.version !== w.activeVersion) continue;
     for (const n of v.row.graph.nodes) {
       const encoder = (n.settings as { encoder?: unknown } | null)?.encoder;
       if (n.type !== 'core:encode-video' || n.bypassed) continue;

@@ -5,7 +5,7 @@ import { type Config, loadConfig } from '../config.ts';
 import type { Database } from '../db/open.ts';
 import { insertRecycled } from '../db/repos/jobs.ts';
 import { setSetting } from '../db/repos/settings.ts';
-import { insertWorkflow, setActiveVersion } from '../db/repos/workflows.ts';
+import { appendVersion, insertWorkflow, setActiveVersion } from '../db/repos/workflows.ts';
 import { createTestDb } from '../db/test-db.ts';
 import type { Logger } from '../logger.ts';
 import { readAppearance, readSettings, type SettingsDeps, updateSettings } from './service.ts';
@@ -503,6 +503,26 @@ describe('readSettings: pinnedVendorWorkflows', () => {
     expect(readSettings(make({ capabilities: both() })).queue.pinnedVendorWorkflows).toEqual([
       { id: 'w1', name: 'Archive', encoder: 'hevc_nvenc' },
     ]);
+  });
+
+  it('reads the active version, not a newer draft, with one versions query for every workflow', () => {
+    activate('w1', 'Archive', encodeGraph('hevc_nvenc'));
+    appendVersion(
+      db,
+      { workflowId: 'w1', baseVersion: 1, graph: encodeGraph('auto'), note: null, createdBy: 'u' },
+      NOW,
+    );
+    activate('w2', 'Second', encodeGraph('h264_qsv'));
+    activate('w3', 'Third', encodeGraph('auto'));
+    const prepare = vi.spyOn(db, 'prepare');
+    const pinned = readSettings(make({ capabilities: both() })).queue.pinnedVendorWorkflows;
+    const versionQueries = prepare.mock.calls.filter(([sql]) => sql.includes('workflow_versions'));
+    prepare.mockRestore();
+    expect(pinned).toEqual([
+      { id: 'w1', name: 'Archive', encoder: 'hevc_nvenc' },
+      { id: 'w2', name: 'Second', encoder: 'h264_qsv' },
+    ]);
+    expect(versionQueries).toHaveLength(1);
   });
 
   it('is empty unless GPUs of two vendors are usable', () => {
