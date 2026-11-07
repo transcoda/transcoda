@@ -593,6 +593,8 @@ export class Scheduler {
       reason: requeue.reason,
       lane: null,
       progress: null,
+      // Not encoding anywhere while it waits; the next encode writes its own GPU.
+      encodedOn: null,
       paused: false,
       finishedAt: null,
       ...(requeue.attempt !== undefined ? { attempt: requeue.attempt } : {}),

@@ -121,6 +121,12 @@ describe('JobPage', () => {
     expect(screen.queryByText(/^Encoded on/)).toBeNull();
   });
 
+  it('names no GPU while the job waits in the queue, even when an older row still has one (#59)', async () => {
+    mocks.jobs.get.mockResolvedValue(jobDetail({ state: 'queued', encodedOn: 'GPU 0' }));
+    await open();
+    expect(screen.queryByText(/on GPU 0/)).toBeNull();
+  });
+
   it("the trace's Run cards show their sub-workflow's name and pinned version", async () => {
     await open();
     await waitFor(() =>

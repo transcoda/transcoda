@@ -1080,6 +1080,7 @@ describe('Scheduler with an NVIDIA and an Intel slot', () => {
     executor.ready('a', 'encode', 'gpu');
     await flush();
     expect(executor.exec('a').device).toEqual(cuda(0));
+    updateJob(db, 'a', { encodedOn: 'GPU 0' }, now());
     executor.exec('a').d.resolve({
       requeue: { reason: 'GPU 0 failed (x); trying another GPU', failedGpus: ['nvidia:0'] },
     });
@@ -1089,6 +1090,7 @@ describe('Scheduler with an NVIDIA and an Intel slot', () => {
       attempt: 1,
       reason: 'GPU 0 failed (x); trying another GPU',
       failedGpus: ['nvidia:0'],
+      encodedOn: null,
     });
     executor.ready('a', 'encode', 'gpu');
     await flush();

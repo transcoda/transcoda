@@ -453,7 +453,7 @@ function JobView({ id }: { id: string }) {
             Run
           </Link>
           {` · ${jobWhenLine(job, !active)}`}
-          {job.encodedOn && (
+          {job.encodedOn && job.state !== 'queued' && (
             <>
               {' · '}
               <span>{`${active ? 'Encoding' : 'Encoded'} on ${job.encodedOn}`}</span>

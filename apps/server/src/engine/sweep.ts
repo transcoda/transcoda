@@ -67,7 +67,7 @@ const message = (err: unknown): string => (err instanceof Error ? err.message : 
 const STRAY_TMP = /^\.transcoda-(.+)\.tmp$/;
 
 /**
- * Requeues an interrupted job once: `queued` with `requeues + 1` while `requeues < 1` (not paused,
+ * Requeues an interrupted job once: `queued` with `requeues + 1` while `requeues < 1` (not paused, no GPU,
  * no finished time), else `failed`; both with `reason`, no lane and no progress. `attempt` is
  * unchanged. Refused (throws) while the job has a replace journal: the sweep settles that first.
  */
@@ -86,6 +86,7 @@ export function requeueOnce(db: Database, job: JobRow, reason: string, now: Date
             reason,
             lane: null,
             progress: null,
+            encodedOn: null,
             paused: false,
             finishedAt: null,
           },

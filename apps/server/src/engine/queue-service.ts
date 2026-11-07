@@ -565,6 +565,7 @@ export class QueueService {
           reason: null,
           lane: null,
           progress: null,
+          encodedOn: null,
           paused: false,
           finishedAt: null,
         },
