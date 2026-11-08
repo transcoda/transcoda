@@ -405,7 +405,9 @@ describe('renderArgs: GPU decode', () => {
       expect(args).not.toContain('-filter_hw_device');
       expect(beforeInput(args).slice(-own.length)).toEqual(own);
       expect(args.filter((a) => a === '-hwaccel')).toHaveLength(1);
-      expect(args.filter((a) => a === '-hwaccel_device').length).toBeLessThanOrEqual(1);
+      expect(args.filter((a) => a === '-hwaccel_device')).toHaveLength(
+        own.filter((a) => a === '-hwaccel_device').length,
+      );
     }
   });
 
