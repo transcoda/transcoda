@@ -9,6 +9,7 @@ import { resetCatalogCache } from '../hooks/useCatalog.ts';
 import { nodesFixture } from '../test/fixtures/catalog.ts';
 import { chainMainReplace, tiggerPoohMain, tiggerPoohSub } from '../test/fixtures/graphs.ts';
 import { renderAt } from '../test/render.tsx';
+import { transformOf } from '../test/transform.ts';
 
 const mocks = vi.hoisted(() => ({
   get: vi.fn(),
@@ -531,7 +532,7 @@ describe('EditorPage', () => {
     localStorage.setItem('tc.viewport.wf1', JSON.stringify({ x: 12, y: 34, zoom: 0.5 }));
     const { container } = await loadedEditor();
     const viewport = container.querySelector('.react-flow__viewport') as HTMLElement;
-    expect(viewport.style.transform).toBe('translate(12px,34px) scale(0.5)');
+    expect(transformOf(viewport)).toEqual({ x: 12, y: 34, scale: 0.5 });
   });
 
   it('a stored viewport that is not {x,y,zoom} is ignored', async () => {
