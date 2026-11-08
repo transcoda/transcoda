@@ -7,6 +7,7 @@ import { TokenService } from './auth/tokens.ts';
 import { effectiveCapabilities, readEncodeDevice } from './capabilities/devices.ts';
 import type { Exec } from './capabilities/ffmpeg.ts';
 import { GpuLoadSampler } from './capabilities/gpu-load.ts';
+import { IntelLoadReader } from './capabilities/intel-load.ts';
 import type { Config } from './config.ts';
 import type { Database } from './db/open.ts';
 import { listLibraries } from './db/repos/libraries.ts';
@@ -151,6 +152,7 @@ export function createAppDeps(input: AppDepsInput): AppDeps {
     gpuLoad: new GpuLoadSampler({
       gpus: () => (caps.available ? (caps.gpus ?? []) : []),
       log: input.log,
+      intel: new IntelLoadReader({ ffmpegPath: config.ffmpegPath }),
     }),
     appUpdate: new AppUpdateChecker({
       version: input.version,

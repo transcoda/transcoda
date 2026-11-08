@@ -50,18 +50,26 @@ const attempt = <T>(fn: () => T): T | undefined => {
   }
 };
 
+/** The name Linux gives an ffmpeg process (`/proc/<pid>/comm`): its file name, cut to 15 characters. */
+export function processNameOf(ffmpegPath: string): string {
+  return (ffmpegPath.split('/').pop() || 'ffmpeg').slice(0, 15);
+}
+
 /** Video-engine load per PCI address, from the change in each client's busy time between two calls. */
 export class IntelLoadReader {
   private readonly proc: ProcFs;
   private readonly now: () => number;
+  /** The `comm` of our ffmpeg processes; only those count. */
+  private readonly processName: string;
   /** Last busy time per `pdev|clientId`; a client missing from a scan is dropped. */
   private previous = new Map<string, number>();
   private previousAt: number | null = null;
   /** PCI addresses that have reported engine counters, so an idle card reads 0 rather than nothing. */
   private readonly known = new Set<string>();
 
-  constructor(opts: { proc?: ProcFs; now?: () => number } = {}) {
+  constructor(opts: { proc?: ProcFs; now?: () => number; ffmpegPath?: string } = {}) {
     this.proc = opts.proc ?? realProc;
+    this.processName = processNameOf(opts.ffmpegPath ?? 'ffmpeg');
     this.now = opts.now ?? (() => performance.now());
   }
 
@@ -73,7 +81,8 @@ export class IntelLoadReader {
     for (const pid of attempt(() => this.proc.readdir('/proc')) ?? []) {
       if (!/^\d+$/.test(pid)) continue;
       // only ffmpeg encodes count, and skipping every other process keeps the scan cheap on bare metal
-      if (attempt(() => this.proc.readFile(`/proc/${pid}/comm`))?.trim() !== 'ffmpeg') continue;
+      if (attempt(() => this.proc.readFile(`/proc/${pid}/comm`))?.trim() !== this.processName)
+        continue;
       for (const fd of attempt(() => this.proc.readdir(`/proc/${pid}/fd`)) ?? []) {
         const link = attempt(() => this.proc.readlink(`/proc/${pid}/fd/${fd}`));
         if (!link || !/^\/dev\/dri\/renderD\d+$/.test(link)) continue;

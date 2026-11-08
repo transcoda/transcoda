@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { IntelLoadReader, type ProcFs, parseDrmFdinfo } from './intel-load.ts';
+import { IntelLoadReader, type ProcFs, parseDrmFdinfo, processNameOf } from './intel-load.ts';
 
 const fdinfo = (client: string, videoNs: number, capacity = 2, pdev = '0000:07:00.0') =>
   `drm-driver:\ti915\ndrm-pdev:\t${pdev}\ndrm-client-id:\t${client}\n` +
@@ -167,5 +167,33 @@ describe('IntelLoadReader', () => {
     // only client 1 counts: 5 s busy of 5 s wall on 2 engines
     expect(reader.sample([pci]).get(pci)).toBe(50);
     expect(read).not.toContain('/proc/11/fd');
+  });
+
+  it('counts the configured ffmpeg by its process name, cut to the 15 characters Linux keeps', () => {
+    let t = 0;
+    let ns = 0;
+    const reader = new IntelLoadReader({
+      proc: {
+        readdir: (p) => fakeProc({ '10/3': { link: render, info: fdinfo('1', ns) } }).readdir(p),
+        readlink: (p) => fakeProc({ '10/3': { link: render, info: fdinfo('1', ns) } }).readlink(p),
+        readFile: (p) =>
+          fakeProc(
+            { '10/3': { link: render, info: fdinfo('1', ns) } },
+            { '10': 'ffmpeg-qsv-buil' },
+          ).readFile(p),
+      },
+      now: () => t,
+      ffmpegPath: '/opt/ff/ffmpeg-qsv-build',
+    });
+    reader.sample([pci]);
+    t = 5000;
+    ns = 5e9;
+    expect(reader.sample([pci]).get(pci)).toBe(50);
+  });
+
+  it('processNameOf: the file name of the ffmpeg path, cut to 15 characters', () => {
+    expect(processNameOf('ffmpeg')).toBe('ffmpeg');
+    expect(processNameOf('/usr/lib/jellyfin-ffmpeg/ffmpeg')).toBe('ffmpeg');
+    expect(processNameOf('/opt/ff/ffmpeg-qsv-build')).toBe('ffmpeg-qsv-buil');
   });
 });
