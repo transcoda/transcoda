@@ -362,10 +362,36 @@ describe('renderArgs: GPU decode', () => {
     });
   });
 
-  it('a model with its own -hwaccel keeps it on a QSV device: no device of ours', () => {
-    const device = { kind: 'qsv', renderNode: '/dev/dri/renderD128' } as const;
+  it('a model with its own -hwaccel qsv decodes and encodes on the chosen Intel GPU', () => {
+    const device = { kind: 'qsv', renderNode: '/dev/dri/renderD129' } as const;
     for (const own of [
       ['-hwaccel', 'qsv'],
+      ['-hwaccel', 'qsv', '-hwaccel_output_format', 'qsv'],
+    ]) {
+      const model = {
+        ...withStream(encode('hevc_qsv'), 0, { pixelFormat: 'yuv420p' }),
+        inputArgs: own,
+      };
+      const args = renderArgs({ model, input: '/in.mkv', output: '/o.mkv', device });
+      expect(beforeInput(args).slice(-(own.length + 6))).toEqual([
+        ...own,
+        '-init_hw_device',
+        'qsv=qsv:hw,child_device=/dev/dri/renderD129',
+        '-filter_hw_device',
+        'qsv',
+        '-hwaccel_device',
+        'qsv',
+      ]);
+      expect(args.filter((a) => a === '-hwaccel')).toHaveLength(1);
+      expect(args.filter((a) => a === '-init_hw_device')).toHaveLength(1);
+    }
+  });
+
+  it('a model that names its own QSV device, or a non-QSV -hwaccel, keeps its setup on a QSV device', () => {
+    const device = { kind: 'qsv', renderNode: '/dev/dri/renderD128' } as const;
+    for (const own of [
+      ['-hwaccel', 'qsv', '-hwaccel_device', '/dev/dri/renderD130'],
+      ['-init_hw_device', 'qsv=mine:hw', '-hwaccel', 'qsv'],
       ['-hwaccel', 'vaapi', '-hwaccel_output_format', 'vaapi'],
     ]) {
       const model = {
@@ -373,10 +399,13 @@ describe('renderArgs: GPU decode', () => {
         inputArgs: own,
       };
       const args = renderArgs({ model, input: '/in.mkv', output: '/o.mkv', device });
-      expect(args).not.toContain('-init_hw_device');
+      expect(args.filter((a) => a === '-init_hw_device')).toHaveLength(
+        own.filter((a) => a === '-init_hw_device').length,
+      );
       expect(args).not.toContain('-filter_hw_device');
       expect(beforeInput(args).slice(-own.length)).toEqual(own);
       expect(args.filter((a) => a === '-hwaccel')).toHaveLength(1);
+      expect(args.filter((a) => a === '-hwaccel_device').length).toBeLessThanOrEqual(1);
     }
   });
 

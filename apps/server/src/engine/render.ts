@@ -390,9 +390,10 @@ function qsvFrames(
  * With a device, the decode runs on the GPU that encodes (`-hwaccel_device`).
  * A QSV device with a QSV encode opens that Intel GPU for the encoders instead. With `frames`
  * (see `qsvFrames`) the source also decodes on it into GPU frames (`-hwaccel_output_format qsv`;
- * ffmpeg decodes on the CPU where the GPU cannot); otherwise it decodes on the CPU. A model that
- * opens its own device or picks its own `-hwaccel` keeps it, and the QSV encoder then uses ffmpeg's
- * default Intel device.
+ * ffmpeg decodes on the CPU where the GPU cannot); otherwise it decodes on the CPU. A model's own
+ * `-hwaccel qsv` without a device decodes on that same Intel GPU (`-hwaccel_device qsv`). A model
+ * that opens or names its own device, or picks another `-hwaccel`, keeps its setup, and the QSV
+ * encoder then uses ffmpeg's default Intel device.
  */
 function gpuDeviceArgs(
   model: BuildModel,
@@ -403,16 +404,21 @@ function gpuDeviceArgs(
   const own = [...model.globalArgs, ...model.inputArgs];
   const encodes = (suffix: string) =>
     streams.some((s) => s.type === 'video' && s.mode === 'convert' && s.encoder?.endsWith(suffix));
-  // A model that brings its own device or hwaccel keeps its own setup, as for NVENC below.
-  const ownDevice = own.includes('-init_hw_device') || own.includes('-hwaccel');
+  const hwaccel = own.includes('-hwaccel') ? own[own.indexOf('-hwaccel') + 1] : undefined;
+  // A model that opens or names its own device keeps its own setup, as for NVENC below.
+  const ownDevice = own.includes('-init_hw_device') || own.includes('-hwaccel_device');
   if (device?.kind === 'qsv' && encodes('_qsv') && !ownDevice) {
-    return [
+    const open = [
       '-init_hw_device',
       `qsv=qsv:hw,child_device=${device.renderNode}`,
       '-filter_hw_device',
       'qsv',
-      ...(frames ? ['-hwaccel', 'qsv', '-hwaccel_output_format', 'qsv'] : []),
     ];
+    // The model's own `-hwaccel qsv` decodes on the device we opened, so decode and encode share it.
+    if (hwaccel === 'qsv') return [...open, '-hwaccel_device', 'qsv'];
+    // Any other `-hwaccel` of the model's keeps its own setup.
+    if (hwaccel === undefined)
+      return [...open, ...(frames ? ['-hwaccel', 'qsv', '-hwaccel_output_format', 'qsv'] : [])];
   }
   if (own.includes('-hwaccel')) return [];
   if (!encodes('_nvenc')) return [];
