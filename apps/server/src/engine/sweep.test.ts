@@ -128,6 +128,7 @@ describe('requeueOnce', () => {
       {
         attempt: 2,
         lane: 'encode',
+        encodedOn: 'GPU 0',
         progress: {
           percent: 50,
           outTimeSeconds: 1,
@@ -148,6 +149,7 @@ describe('requeueOnce', () => {
       lane: null,
       progress: null,
       finishedAt: null,
+      encodedOn: null,
     });
     const second = requeueOnce(db, first, 'file changed during processing', now);
     expect(second).toMatchObject({

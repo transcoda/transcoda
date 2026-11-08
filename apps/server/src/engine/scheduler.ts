@@ -507,7 +507,12 @@ export class Scheduler {
   }
 
   private beginPrepare(job: JobRow): void {
-    const row = this.update(job.id, { state: 'probing', startedAt: this.now().toISOString() });
+    // No GPU until this run's encode picks one (a row queued before #59 may still name an old one).
+    const row = this.update(job.id, {
+      state: 'probing',
+      startedAt: this.now().toISOString(),
+      encodedOn: null,
+    });
     if (!row) return;
     const a = new ActiveJob(this, row);
     a.userPaused = row.paused;
@@ -593,6 +598,8 @@ export class Scheduler {
       reason: requeue.reason,
       lane: null,
       progress: null,
+      // Not encoding anywhere while it waits; the next encode writes its own GPU.
+      encodedOn: null,
       paused: false,
       finishedAt: null,
       ...(requeue.attempt !== undefined ? { attempt: requeue.attempt } : {}),

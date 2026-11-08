@@ -1114,7 +1114,12 @@ describe('QueueService.retryFailed', () => {
     const jobA = run.jobs.find((j) => j.path === a);
     const jobB = run.jobs.find((j) => j.path === b);
     if (!jobA || !jobB) throw new Error('no jobs');
-    updateJob(db, jobA.id, { state: 'failed', attempt: 2, reason: 'ffmpeg exited 1' }, new Date());
+    updateJob(
+      db,
+      jobA.id,
+      { state: 'failed', attempt: 2, reason: 'ffmpeg exited 1', encodedOn: 'GPU 0' },
+      new Date(),
+    );
     updateJob(db, jobB.id, { state: 'done' }, new Date());
     const dry = await queued(a, { dryRun: true });
     // The dry run is newer than the failed job of a: a has a newer job, so it is left alone…
@@ -1130,6 +1135,7 @@ describe('QueueService.retryFailed', () => {
       attempt: 3,
       reason: null,
       finishedAt: null,
+      encodedOn: null,
     });
     expect(findJob(db, jobB.id)?.state).toBe('done');
     expect(onQueued).toHaveBeenCalledTimes(1);
