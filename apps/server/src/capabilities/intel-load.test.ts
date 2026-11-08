@@ -191,9 +191,11 @@ describe('IntelLoadReader', () => {
     expect(reader.sample([pci]).get(pci)).toBe(50);
   });
 
-  it('processNameOf: the file name of the ffmpeg path, cut to 15 characters', () => {
+  it('processNameOf: the file name of the ffmpeg path, cut to 15 bytes', () => {
     expect(processNameOf('ffmpeg')).toBe('ffmpeg');
     expect(processNameOf('/usr/lib/jellyfin-ffmpeg/ffmpeg')).toBe('ffmpeg');
     expect(processNameOf('/opt/ff/ffmpeg-qsv-build')).toBe('ffmpeg-qsv-buil');
+    // Linux cuts by bytes: 'é' is two, so 'ffmpeg-ééééé' (17 bytes) keeps 'ffmpeg-éééé'.
+    expect(processNameOf('/opt/ffmpeg-ééééé')).toBe('ffmpeg-éééé');
   });
 });

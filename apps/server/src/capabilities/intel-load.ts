@@ -50,9 +50,11 @@ const attempt = <T>(fn: () => T): T | undefined => {
   }
 };
 
-/** The name Linux gives an ffmpeg process (`/proc/<pid>/comm`): its file name, cut to 15 characters. */
+/** The name Linux gives an ffmpeg process (`/proc/<pid>/comm`): its file name, cut to the 15 bytes Linux keeps. */
 export function processNameOf(ffmpegPath: string): string {
-  return (ffmpegPath.split('/').pop() || 'ffmpeg').slice(0, 15);
+  // Linux keeps 15 bytes, not characters; a cut multibyte character decodes as U+FFFD on both sides.
+  const name = ffmpegPath.split('/').pop() || 'ffmpeg';
+  return Buffer.from(name, 'utf8').subarray(0, 15).toString('utf8');
 }
 
 /** Video-engine load per PCI address, from the change in each client's busy time between two calls. */
