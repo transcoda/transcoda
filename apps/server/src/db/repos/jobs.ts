@@ -626,6 +626,10 @@ interface Cursor {
  * Jobs with their library, workflow and result, one page at a time: active jobs first
  * (priority DESC, queued_at, rowid), then final jobs (finished_at DESC, rowid DESC).
  */
+/** A problems_json column's length in SQL; a corrupt cell counts as no problems, as the row readers do. */
+const problemCountSql = (col: string): string =>
+  `CASE WHEN json_valid(${col}) THEN json_array_length(${col}) ELSE 0 END`;
+
 export function listJobs(db: Database, filter: JobListFilter): JobListRow[] {
   const limit = filter.limit ?? JOB_LIST_LIMIT;
   if (limit <= 0 || filter.states?.length === 0) return [];
@@ -634,7 +638,7 @@ export function listJobs(db: Database, filter: JobListFilter): JobListRow[] {
     where.push(`j.state IN (${placeholders(filter.states.length)})`);
     values.push(...filter.states);
   }
-  if (filter.problems === true) where.push('json_array_length(r.problems_json) > 0');
+  if (filter.problems === true) where.push(`${problemCountSql('r.problems_json')} > 0`);
   if (filter.dependsOnSize === true) where.push(DEPENDS_ON_SIZE_SQL);
   let cursor: Cursor | null = null;
   if (filter.before !== undefined) {
@@ -699,7 +703,7 @@ export function countJobsByState(db: Database, filter: JobListScope): Record<Job
 /** Jobs whose result has problems, within the list's scope (run, library); no state filter. */
 export function countProblems(db: Database, filter: JobListScope): number {
   const scope = scopeWhere(filter, 'j');
-  const where = ['json_array_length(r.problems_json) > 0', ...scope.where];
+  const where = [`${problemCountSql('r.problems_json')} > 0`, ...scope.where];
   const values = scope.values;
   const row = db
     .prepare(
@@ -749,7 +753,7 @@ export function jobStats(
          COALESCE(SUM(CASE WHEN outcome = 'done' AND NOT EXISTS (${ACTIVE_RESTORE_SQL('job_results')})
            THEN COALESCE(before_bytes, 0) - COALESCE(after_bytes, 0) ELSE 0 END), 0) AS savedBytes,
          (SELECT COUNT(*) FROM jobs WHERE state = 'failed' AND finished_at >= ?) AS failed,
-         COALESCE(SUM(json_array_length(problems_json) > 0), 0) AS problems
+         COALESCE(SUM(${problemCountSql('problems_json')} > 0), 0) AS problems
        FROM job_results WHERE created_at >= ?`,
     )
     .get(since, since) as { files: number; savedBytes: number; failed: number; problems: number };

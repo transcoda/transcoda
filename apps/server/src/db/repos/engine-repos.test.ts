@@ -206,6 +206,10 @@ describe('job GPU fields', () => {
     expect(findJobResult(db, 'bad')).toMatchObject({ warnings: [], problems: [] });
     expect(findJobListRow(db, 'bad')?.problems).toEqual([]);
     expect(listJobs(db, {}).map((r) => r.id)).toEqual(['bad']);
+    // The SQL reads of problems_json (filter, count, stats) treat the corrupt cell as no problems.
+    expect(listJobs(db, { problems: true })).toEqual([]);
+    expect(countProblems(db, {})).toBe(0);
+    expect(jobStats(db, at(-60).toISOString()).problems).toBe(0);
   });
 
   it('start empty and round-trip encodedOn and failedGpus through updateJob', () => {
