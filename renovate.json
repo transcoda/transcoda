@@ -3,6 +3,8 @@
   "extends": ["config:recommended", ":pinAllExceptPeerDependencies", ":semanticCommits"],
   "enabledManagers": ["npm", "nodenv", "dockerfile", "github-actions", "custom.regex"],
   "timezone": "America/New_York",
+  "schedule": ["* 17-23 * * 0"],
+  "updateNotScheduled": false,
   "minimumReleaseAge": "3 days",
   "minimumReleaseAgeBehaviour": "timestamp-optional",
   "internalChecksFilter": "strict",
@@ -13,10 +15,14 @@
   "semanticCommitScope": null,
   "prBodyTemplate": "{{{header}}}{{{table}}}{{{warnings}}}{{{notes}}}{{{changelogs}}}{{{controls}}}",
   "osvVulnerabilityAlerts": true,
+  "vulnerabilityAlerts": {
+    "description": "Security fixes skip the Sunday schedule and get their own label so they stand out.",
+    "addLabels": ["security"]
+  },
   "lockFileMaintenance": {
     "enabled": true,
-    "description": "Weekly refresh of transitive dependencies, which no other rule updates (Scorecard found fixed CVEs sitting in the lockfile).",
-    "schedule": ["* * * * 6"]
+    "description": "Weekly refresh of transitive dependencies, which no other rule updates (Scorecard found fixed CVEs sitting in the lockfile). Runs in the same Sunday-evening window as everything else.",
+    "schedule": ["* 17-23 * * 0"]
   },
   "packageRules": [
     {
