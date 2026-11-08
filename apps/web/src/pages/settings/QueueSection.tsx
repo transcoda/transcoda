@@ -1,5 +1,5 @@
 import { type Settings, TEST_ENCODE_KEEP_HOURS_MAX } from '@transcoda/contract';
-import { useEffect, useId, useRef, useState } from 'react';
+import { useId, useLayoutEffect, useRef, useState } from 'react';
 import { api } from '../../api/client.ts';
 import { Disclosure } from '../../components/Disclosure.tsx';
 import { Icon } from '../../components/Icon.tsx';
@@ -94,9 +94,9 @@ function GpuOrder({
     if (el) buttons.current.set(`${id}/${dir}`, el);
     else buttons.current.delete(`${id}/${dir}`);
   };
-  // The moved row and the button that was clicked; focus follows it after the re-render.
+  // The moved row and the button that was clicked; focus follows it before the browser paints.
   const [moved, setMoved] = useState<{ id: string; dir: 'up' | 'down' } | null>(null);
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!moved) return;
     const same = buttons.current.get(`${moved.id}/${moved.dir}`);
     const other = buttons.current.get(`${moved.id}/${moved.dir === 'up' ? 'down' : 'up'}`);
@@ -135,7 +135,7 @@ function GpuOrder({
         {rows.map((g, i) => (
           <li key={g.id} className="gpu-order-row">
             <span className="gpu-order-label">
-              {/* A GPU that is gone already says "(not found)" in its label. */}
+              {/* A GPU that is gone or cannot encode says so in its label. */}
               {g.label}
             </span>
             <button

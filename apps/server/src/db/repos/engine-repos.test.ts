@@ -196,6 +196,36 @@ describe('job GPU fields', () => {
     expect(findJobListRow(db, 'g')).toBeTruthy();
   });
 
+  it('reads corrupt warnings and problems_json cells as empty lists', () => {
+    job('bad');
+    updateJob(db, 'bad', { state: 'done', finishedAt: now.toISOString() }, now);
+    insertJobResult(db, result('bad', { warnings: ['w'], problems: ['p'] }));
+    db.prepare(
+      "UPDATE job_results SET warnings = 'not json', problems_json = '{' WHERE job_id = 'bad'",
+    ).run();
+    expect(findJobResult(db, 'bad')).toMatchObject({ warnings: [], problems: [] });
+    expect(findJobListRow(db, 'bad')?.problems).toEqual([]);
+    expect(listJobs(db, {}).map((r) => r.id)).toEqual(['bad']);
+    // The SQL reads of problems_json (filter, count, stats) treat the corrupt cell as no problems.
+    expect(listJobs(db, { problems: true })).toEqual([]);
+    expect(countProblems(db, {})).toBe(0);
+    expect(jobStats(db, at(-60).toISOString()).problems).toBe(0);
+    // Only text entries count, as the row reader keeps only strings; an object is no list.
+    for (const cell of ['[null]', '[1, {}]', '{"a": "b"}']) {
+      db.prepare('UPDATE job_results SET problems_json = ? WHERE job_id = ?').run(cell, 'bad');
+      expect(findJobListRow(db, 'bad')?.problems).toEqual([]);
+      expect(listJobs(db, { problems: true })).toEqual([]);
+      expect(countProblems(db, {})).toBe(0);
+      expect(jobStats(db, at(-60).toISOString()).problems).toBe(0);
+    }
+    db.prepare('UPDATE job_results SET problems_json = ? WHERE job_id = ?').run(
+      '[null, "p"]',
+      'bad',
+    );
+    expect(listJobs(db, { problems: true }).map((r) => r.id)).toEqual(['bad']);
+    expect(countProblems(db, {})).toBe(1);
+  });
+
   it('start empty and round-trip encodedOn and failedGpus through updateJob', () => {
     expect(job('g')).toMatchObject({ encodedOn: null, failedGpus: [] });
     const updated = updateJob(

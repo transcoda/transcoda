@@ -784,7 +784,7 @@ describe('pipeline', () => {
     // Auto, as before this setting: NVENC on ffmpeg's default GPU, no index.
     const auto = await commandFor('auto');
     expect(auto).toContain('-hwaccel cuda -i');
-    expect(auto).not.toContain('-gpu');
+    expect(auto).not.toMatch(/ -gpu[: ]/);
 
     // CPU only and a node that names an NVENC encoder: an error, never a quiet GPU encode.
     setSetting(t.db, 'engine.encodeDevice', 'cpu', t.clock.now());
@@ -911,18 +911,22 @@ describe('pipeline', () => {
       expect(args).toMatch(/-c:0 hevc_qsv .*-profile:0 main10 -filter:0 vpp_qsv=format=p010/);
     });
 
-    it('a target that cannot render encodes the built model on the slot, with a warning logged', async () => {
+    it('an auto job that cannot render for the Intel GPU prepares with fit nvidia and takes GPU 0, even with Intel first', async () => {
       await setup({ capabilities: mixed(['cuda']), nodes: [setProfile] });
+      const prepare = vi.spyOn(t.deps.engine.pipeline, 'prepare');
       // h264_qsv has no constrained-baseline profile.
       const wf = flow('h264', 'auto', ['constrained-baseline', 'yuv420p']);
       const { args, encodedOn } = await encode(wf, true, 'h264');
-      expect(args).toContain('-c:0 h264_nvenc');
+      await expect(prepare.mock.results[0]?.value).resolves.toEqual({
+        lane: 'encode',
+        fit: 'nvidia',
+      });
+      expect(args).toMatch(/-c:0 h264_nvenc .*-gpu:0 0/);
       expect(args).not.toContain('h264_qsv');
-      expect(serverLog.warn).toHaveBeenCalledWith(
+      expect(serverLog.warn).not.toHaveBeenCalledWith(
         expect.objectContaining({ msg: expect.stringContaining('encoding as built') }),
       );
-      // NVENC on the Intel slot does not encode on that GPU.
-      expect(encodedOn).toBeNull();
+      expect(encodedOn).toBe('GPU 0 · RTX 3060');
     });
 
     it('a software encode in a GPU slot records no GPU', async () => {
@@ -1008,15 +1012,18 @@ describe('pipeline', () => {
       expect((await settled(id)).state).toBe('done');
     });
 
-    it('a job that failed on GPU 0 and then on the Intel slot has no GPU left: software, as today, and records no GPU', async () => {
+    it('a job that failed on GPU 0 and then on the Intel slot (CPU decoding too) has no GPU left: software, and records no GPU', async () => {
       await setup({ capabilities: mixed(['cuda']) });
       const id = await started(hevc('auto'));
       await fails(NVENC_FAILED);
       await until('Intel spawn', () => spawner.calls.length === 2);
       await until('encodedOn', () => row(id).encodedOn === 'Intel Arc A310 · 07:00.0');
       await fails(QSV_FAILED);
-      await until('software spawn', () => spawner.calls.length === 3);
-      expect(spawner.calls[2]?.args).toContain('libx265');
+      await until('CPU-decode spawn', () => spawner.calls.length === 3);
+      expect(spawner.calls[2]?.args).toContain('hevc_qsv');
+      await fails(QSV_FAILED);
+      await until('software spawn', () => spawner.calls.length === 4);
+      expect(spawner.calls[3]?.args).toContain('libx265');
       await spawner.complete({ bytes: 600 });
       expect((await settled(id)).state).toBe('done');
       expect(row(id)).toMatchObject({
@@ -1027,8 +1034,59 @@ describe('pipeline', () => {
       expect(planNote(id)).toContain('libx265');
       expect(warnings(id)).toEqual([
         'GPU 0 · RTX 3060 failed (hevc_nvenc: OpenEncodeSessionEx failed: unsupported device (2)); trying another GPU',
+        'the Intel GPU encode failed (hevc_qsv: Error initializing an MFX session: -9.); retried with the source decoded on the CPU',
         'the GPU encode failed (hevc_qsv: Error initializing an MFX session: -9.); encoded in software instead',
       ]);
+    });
+
+    const intelOnly = (): Capabilities => {
+      const both = mixed([]);
+      if (!both.available) throw new Error('the test capabilities have ffmpeg');
+      return {
+        ...both,
+        encoders: both.encoders.filter((e) => !e.endsWith('_nvenc')),
+        gpus: (both.gpus ?? []).filter((g) => g.vendor === 'intel'),
+      };
+    };
+    const QSV_DECODE_FAILED = '[h264_qsv @ 0x5a] [error] Error querying IO surface';
+
+    it('an Intel-only job whose GPU decode fails retries on the same GPU decoding on the CPU, not in software', async () => {
+      await setup({ capabilities: intelOnly() });
+      const id = await started(hevc('auto'));
+      expect(spawner.calls[0]?.args.join(' ')).toContain('-hwaccel qsv -hwaccel_output_format qsv');
+      await fails(QSV_DECODE_FAILED);
+      await until('second spawn', () => spawner.calls.length === 2);
+      const args = spawner.calls[1]?.args.join(' ') ?? '';
+      expect(args).toContain('-c:0 hevc_qsv');
+      expect(args).toContain('child_device=/dev/dri/renderD128');
+      expect(args).not.toContain('-hwaccel');
+      expect(args).not.toContain('libx265');
+      await spawner.complete({ bytes: 600 });
+      expect((await settled(id)).state).toBe('done');
+      expect(row(id)).toMatchObject({
+        attempt: 1,
+        failedGpus: [],
+        encodedOn: 'Intel Arc A310 · 07:00.0',
+      });
+      expect(planNote(id)).toContain('hevc_qsv');
+      expect(warnings(id)).toEqual([
+        'the Intel GPU encode failed (h264_qsv: Error querying IO surface); retried with the source decoded on the CPU',
+      ]);
+    });
+
+    it('an Intel-only job that fails again with CPU decoding goes to software', async () => {
+      await setup({ capabilities: intelOnly() });
+      const id = await started(hevc('auto'));
+      await fails(QSV_DECODE_FAILED);
+      await until('CPU-decode spawn', () => spawner.calls.length === 2);
+      await fails(QSV_FAILED);
+      await until('software spawn', () => spawner.calls.length === 3);
+      expect(spawner.calls[2]?.args).toContain('libx265');
+      await spawner.complete({ bytes: 600 });
+      expect((await settled(id)).state).toBe('done');
+      expect(row(id).encodedOn).toBeNull();
+      expect(warnings(id)).toHaveLength(2);
+      expect(warnings(id)[1]).toMatch(/encoded in software instead$/);
     });
 
     it('after a restart, a job requeued from a failed GPU still carries its warning (from the row reason)', async () => {
@@ -1096,7 +1154,7 @@ describe('pipeline', () => {
       expect(encodedOn).toBe(name);
     });
 
-    it('a workflow that names hevc_nvenc takes the NVIDIA GPU and is not retargeted, even with Intel first', async () => {
+    it('a workflow that names hevc_nvenc is not retargeted to Quick Sync, even with Intel first', async () => {
       await setup({ capabilities: mixed(['cuda']) });
       const { args } = await encode(hevc('hevc_nvenc'), true);
       expect(args).toContain('-c:0 hevc_nvenc');
@@ -1125,13 +1183,18 @@ describe('pipeline', () => {
       await expect(prepare.mock.results[0]?.value).resolves.toEqual({ lane: 'encode', fit });
     });
 
-    it('without the CUDA hwaccel an auto QSV job on gpu:0 encodes as built', async () => {
+    it('without the CUDA hwaccel an auto QSV job prepares with fit intel and takes the Intel slot, even with GPU 0 first', async () => {
       await setup({ capabilities: mixed([]) });
+      const prepare = vi.spyOn(t.deps.engine.pipeline, 'prepare');
       const { args, encodedOn } = await encode(hevc('auto'), false);
+      await expect(prepare.mock.results[0]?.value).resolves.toEqual({
+        lane: 'encode',
+        fit: 'intel',
+      });
       expect(args).toContain('-c:0 hevc_qsv');
+      expect(args).toContain('child_device=/dev/dri/renderD128');
       expect(args).not.toContain('nvenc');
-      // QSV in the NVIDIA slot does not encode on that GPU.
-      expect(encodedOn).toBeNull();
+      expect(encodedOn).toBe('Intel Arc A310 · 07:00.0');
     });
   });
 

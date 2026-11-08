@@ -307,6 +307,24 @@ describe('renderArgs: GPU decode', () => {
       );
     });
 
+    it('gpuDecode false keeps the decode on the CPU but still opens the Intel GPU', () => {
+      const args = renderArgs({
+        model: qsv('yuv420p'),
+        input: '/in.mkv',
+        output: '/o.mkv',
+        device,
+        gpuDecode: false,
+      });
+      expect(beforeInput(args).slice(-4)).toEqual([
+        '-init_hw_device',
+        'qsv=qsv:hw,child_device=/dev/dri/renderD128',
+        '-filter_hw_device',
+        'qsv',
+      ]);
+      expect(args).not.toContain('-hwaccel');
+      expect(args).toContain('-pix_fmt:0');
+    });
+
     it('keeps decoding on the CPU (and -pix_fmt) where GPU frames would not fit', () => {
       const twoVideos = withStream(
         withStream(
@@ -342,6 +360,55 @@ describe('renderArgs: GPU decode', () => {
         if (model.streams[0]?.pixelFormat) expect(args).toContain('-pix_fmt:0');
       }
     });
+  });
+
+  it('a model with its own -hwaccel qsv decodes and encodes on the chosen Intel GPU', () => {
+    const device = { kind: 'qsv', renderNode: '/dev/dri/renderD129' } as const;
+    for (const own of [
+      ['-hwaccel', 'qsv'],
+      ['-hwaccel', 'qsv', '-hwaccel_output_format', 'qsv'],
+    ]) {
+      const model = {
+        ...withStream(encode('hevc_qsv'), 0, { pixelFormat: 'yuv420p' }),
+        inputArgs: own,
+      };
+      const args = renderArgs({ model, input: '/in.mkv', output: '/o.mkv', device });
+      expect(beforeInput(args).slice(-(own.length + 6))).toEqual([
+        ...own,
+        '-init_hw_device',
+        'qsv=qsv:hw,child_device=/dev/dri/renderD129',
+        '-filter_hw_device',
+        'qsv',
+        '-hwaccel_device',
+        'qsv',
+      ]);
+      expect(args.filter((a) => a === '-hwaccel')).toHaveLength(1);
+      expect(args.filter((a) => a === '-init_hw_device')).toHaveLength(1);
+    }
+  });
+
+  it('a model that names its own QSV device, or a non-QSV -hwaccel, keeps its setup on a QSV device', () => {
+    const device = { kind: 'qsv', renderNode: '/dev/dri/renderD128' } as const;
+    for (const own of [
+      ['-hwaccel', 'qsv', '-hwaccel_device', '/dev/dri/renderD130'],
+      ['-init_hw_device', 'qsv=mine:hw', '-hwaccel', 'qsv'],
+      ['-hwaccel', 'vaapi', '-hwaccel_output_format', 'vaapi'],
+    ]) {
+      const model = {
+        ...withStream(encode('hevc_qsv'), 0, { pixelFormat: 'yuv420p' }),
+        inputArgs: own,
+      };
+      const args = renderArgs({ model, input: '/in.mkv', output: '/o.mkv', device });
+      expect(args.filter((a) => a === '-init_hw_device')).toHaveLength(
+        own.filter((a) => a === '-init_hw_device').length,
+      );
+      expect(args).not.toContain('-filter_hw_device');
+      expect(beforeInput(args).slice(-own.length)).toEqual(own);
+      expect(args.filter((a) => a === '-hwaccel')).toHaveLength(1);
+      expect(args.filter((a) => a === '-hwaccel_device')).toHaveLength(
+        own.filter((a) => a === '-hwaccel_device').length,
+      );
+    }
   });
 
   it('a QSV device leaves software encodes and copies alone', () => {

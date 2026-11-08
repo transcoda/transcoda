@@ -287,6 +287,11 @@ export interface RenderInput {
   extraInputFiles?: ReadonlyMap<number, string>;
   /** Absent: ffmpeg's default device (the only GPU, or CUDA device 0). */
   device?: RenderDevice;
+  /**
+   * False: the source decodes on the CPU even where it could decode on the Intel GPU (the retry
+   * after that GPU could not decode it). Absent: see `qsvFrames`.
+   */
+  gpuDecode?: boolean;
 }
 
 /** ffmpeg demuxer for a sidecar subtitle codec (`ssa` is read by the ass demuxer). */
@@ -355,7 +360,8 @@ type QsvFrames = Map<StreamPlan, 'nv12' | 'p010'>;
  * 8- or 10-bit 4:2:0 format. GPU frames reach no CPU filter, so the format conversion is
  * `vpp_qsv=format=nv12|p010` on the GPU. Null keeps the CPU decode (measured on an Arc A310: the CPU
  * decode starved a parallel NVENC job on a 4-core box). A source the GPU cannot decode (4:2:2, say)
- * fails as a GPU failure, which tries another GPU, then software.
+ * fails as a GPU failure, which tries another GPU, then this GPU with `gpuDecode: false`, then
+ * software.
  */
 function qsvFrames(
   model: BuildModel,
@@ -384,8 +390,10 @@ function qsvFrames(
  * With a device, the decode runs on the GPU that encodes (`-hwaccel_device`).
  * A QSV device with a QSV encode opens that Intel GPU for the encoders instead. With `frames`
  * (see `qsvFrames`) the source also decodes on it into GPU frames (`-hwaccel_output_format qsv`;
- * ffmpeg decodes on the CPU where the GPU cannot); otherwise it decodes on the CPU. A model that
- * opens its own device keeps it.
+ * ffmpeg decodes on the CPU where the GPU cannot); otherwise it decodes on the CPU. A model's own
+ * `-hwaccel qsv` without a device decodes on that same Intel GPU (`-hwaccel_device qsv`). A model
+ * that opens or names its own device, or picks another `-hwaccel`, keeps its setup, and the QSV
+ * encoder then uses ffmpeg's default Intel device.
  */
 function gpuDeviceArgs(
   model: BuildModel,
@@ -396,14 +404,21 @@ function gpuDeviceArgs(
   const own = [...model.globalArgs, ...model.inputArgs];
   const encodes = (suffix: string) =>
     streams.some((s) => s.type === 'video' && s.mode === 'convert' && s.encoder?.endsWith(suffix));
-  if (device?.kind === 'qsv' && encodes('_qsv') && !own.includes('-init_hw_device')) {
-    return [
+  const hwaccel = own.includes('-hwaccel') ? own[own.indexOf('-hwaccel') + 1] : undefined;
+  // A model that opens or names its own device keeps its own setup, as for NVENC below.
+  const ownDevice = own.includes('-init_hw_device') || own.includes('-hwaccel_device');
+  if (device?.kind === 'qsv' && encodes('_qsv') && !ownDevice) {
+    const open = [
       '-init_hw_device',
       `qsv=qsv:hw,child_device=${device.renderNode}`,
       '-filter_hw_device',
       'qsv',
-      ...(frames ? ['-hwaccel', 'qsv', '-hwaccel_output_format', 'qsv'] : []),
     ];
+    // The model's own `-hwaccel qsv` decodes on the device we opened, so decode and encode share it.
+    if (hwaccel === 'qsv') return [...open, '-hwaccel_device', 'qsv'];
+    // Any other `-hwaccel` of the model's keeps its own setup.
+    if (hwaccel === undefined)
+      return [...open, ...(frames ? ['-hwaccel', 'qsv', '-hwaccel_output_format', 'qsv'] : [])];
   }
   if (own.includes('-hwaccel')) return [];
   if (!encodes('_nvenc')) return [];
@@ -499,7 +514,7 @@ export function renderArgs(r: RenderInput): string[] {
   // Covers in mkv become attachments after every mapped stream (see outputOrder).
   const streams = all.filter((s) => !isMkvCover(model, s));
   const covers = all.filter((s) => isMkvCover(model, s));
-  const frames = qsvFrames(model, streams, r.device);
+  const frames = r.gpuDecode === false ? null : qsvFrames(model, streams, r.device);
   const args = [
     '-nostdin',
     '-hide_banner',

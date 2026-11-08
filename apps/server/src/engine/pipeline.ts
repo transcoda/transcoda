@@ -247,6 +247,8 @@ interface Prepared {
   slot: EncodeSlot | null;
   /** Set once a failed GPU encode was rerun on the software encoder (only once per attempt). */
   softwareFallback?: boolean;
+  /** Set once a failed Intel GPU encode was rerun with the source decoded on the CPU (once per attempt). */
+  cpuDecode?: boolean;
   estimatedBytes: number | null;
   warnings: string[];
   /** What verify read of the output once it passed; null before (kept with the result). */
@@ -868,8 +870,7 @@ export class Pipeline implements JobExecutor {
     }
 
     const auto = autoStreams(model, built.autoPicks);
-    const fit = slotFitOf(model, auto);
-    this.prepared.set(job.id, {
+    const prepared: Prepared = {
       realPath,
       library,
       fp,
@@ -877,7 +878,6 @@ export class Pipeline implements JobExecutor {
       probe,
       model,
       autoStreams: auto,
-      fit,
       actions,
       gates,
       damaged,
@@ -908,8 +908,29 @@ export class Pipeline implements JobExecutor {
       warnings,
       outputProbe: null,
       written: null,
-    });
-    return { lane: laneFor(model, probe), fit };
+      fit: 'software',
+    };
+    prepared.fit = this.reachableFit(prepared, slotFitOf(model, auto));
+    this.prepared.set(job.id, prepared);
+    return { lane: laneFor(model, probe), fit: prepared.fit };
+  }
+
+  /**
+   * An auto job's fit, narrowed to the vendor it was built for when it cannot move to the other
+   * vendor's GPU (this ffmpeg lacks that encoder, or the moved model cannot render): otherwise it
+   * would take the other vendor's slot and encode as built there, NVENC on GPU 0 from the Intel slot.
+   */
+  private reachableFit(p: Prepared, fit: SlotFit): SlotFit {
+    if (fit !== 'gpu') return fit;
+    const encoders = [...p.autoStreams].map((i) => p.model.streams[i]?.encoder ?? '');
+    const nvidia = encoders.some((e) => e.endsWith('_nvenc'));
+    const intel = encoders.some((e) => e.endsWith('_qsv'));
+    if (nvidia === intel) return fit;
+    const caps = this.capabilitiesOf();
+    const usable = caps.encoders.filter((e) => encoderUsable(e, caps));
+    const moved = retarget(p.model, p.autoStreams, nvidia ? 'intel' : 'nvidia', usable);
+    if (moved && moved !== p.model && this.renderFor(p, moved)) return fit;
+    return nvidia ? 'nvidia' : 'intel';
   }
 
   // ---- execute ----
@@ -930,8 +951,8 @@ export class Pipeline implements JobExecutor {
       let encodedOn: string | null = null;
       if (device !== null && vendor !== null) {
         // Auto's encoders move to the slot's vendor; a named encoder never does. Null (ffmpeg
-        // lacks the target, which the slot rules prevent) or a target that cannot render: the
-        // job encodes as built.
+        // lacks the target) or a target that cannot render: the job encodes as built (prepare's
+        // fit keeps such a job off the other vendor's slots, so this is a last resort).
         const caps = this.capabilitiesOf();
         const usable = caps.encoders.filter((e) => encoderUsable(e, caps));
         const target = retarget(p.model, p.autoStreams, vendor, usable) ?? p.model;
@@ -1479,6 +1500,32 @@ export class Pipeline implements JobExecutor {
           this.deps.log.warn({ msg: 'GPU encode failed, trying another GPU', job: job.id });
           if (job.encodedOn !== null) this.update(job, ctl, { encodedOn: null });
           return { kind: 'requeue', reason, failedGpus: failed };
+        }
+        // The Intel GPU decoded the source into GPU frames and gave up (a 4:2:2 source, which its
+        // decoder cannot take): the same GPU once more with the source decoded on the CPU, before
+        // a full software encode.
+        const device = slot?.device;
+        if (
+          device?.kind === 'qsv' &&
+          !p.cpuDecode &&
+          !gpuStalled &&
+          p.args.includes('-hwaccel_output_format')
+        ) {
+          const args = this.renderFor({ ...p, cpuDecode: true }, p.model, device);
+          // Unchanged: the GPU frames were the model's own, so the same argv would fail again.
+          if (args && args.join('\0') !== p.args.join('\0')) {
+            p.cpuDecode = true;
+            p.args = args;
+            p.command = renderCommandLine(config.ffmpegPath, args);
+            p.warnings.push(
+              `the Intel GPU encode failed (${cause ?? why}); retried with the source decoded on the CPU`,
+            );
+            this.deps.log.warn({
+              msg: 'GPU decode failed, retrying with CPU decoding',
+              job: job.id,
+            });
+            return this.encode(job, ctl, p);
+          }
         }
         const soft = softwareFallback(p.model, this.capabilitiesOf().encoders);
         const args = soft && this.renderFor(p, soft);
@@ -2759,6 +2806,7 @@ function renderInputOf(p: Prepared): RenderInput {
     output: p.outputPath,
     coverFiles: p.coverFiles,
     extraInputFiles: p.extraInputFiles,
+    ...(p.cpuDecode ? { gpuDecode: false } : {}),
   };
 }
 

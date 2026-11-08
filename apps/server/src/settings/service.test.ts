@@ -5,7 +5,7 @@ import { type Config, loadConfig } from '../config.ts';
 import type { Database } from '../db/open.ts';
 import { insertRecycled } from '../db/repos/jobs.ts';
 import { setSetting } from '../db/repos/settings.ts';
-import { insertWorkflow, setActiveVersion } from '../db/repos/workflows.ts';
+import { appendVersion, insertWorkflow, setActiveVersion } from '../db/repos/workflows.ts';
 import { createTestDb } from '../db/test-db.ts';
 import type { Logger } from '../logger.ts';
 import { readAppearance, readSettings, type SettingsDeps, updateSettings } from './service.ts';
@@ -138,6 +138,42 @@ describe('readSettings: encoding device', () => {
     ]);
     const unnamed = withGpus([{ ...RTX, name: '' }]);
     expect(readSettings(make({ capabilities: unnamed })).queue.gpus[0]?.label).toBe('GPU 0');
+  });
+
+  it('gpus leaves out an Intel card that cannot encode, unless the stored order names it', () => {
+    // No QSV encoder in ffmpeg: the Arc cannot take encodes.
+    const noQsv = withGpus([RTX, ARC, { ...RTX, id: 'nvidia:1', index: 1 }]);
+    expect(readSettings(make({ capabilities: noQsv })).queue.gpus.map((g) => g.id)).toEqual([
+      'nvidia:0',
+      'nvidia:1',
+    ]);
+    // No render node: the same.
+    const { renderNode: _, ...noNode } = ARC;
+    const caps = withGpus([RTX, noNode], ['libx265', 'hevc_nvenc', 'hevc_qsv']);
+    expect(readSettings(make({ capabilities: caps })).queue.gpus.map((g) => g.id)).toEqual([
+      'nvidia:0',
+    ]);
+    // Named by the stored order: kept, so a save keeps its place, and said why it is unused.
+    setSetting(db, 'engine.gpuOrder', ['intel:0000:07:00.0', 'nvidia:0'], NOW);
+    expect(readSettings(make({ capabilities: noQsv })).queue.gpus[2]).toEqual({
+      id: 'intel:0000:07:00.0',
+      label: "Intel Arc A310 · 07:00.0 (can't encode)",
+      vendor: 'intel',
+      missing: true,
+    });
+  });
+
+  it('gpus includes the unnamed NVENC GPU 0 next to an Intel card', () => {
+    const caps = withGpus([ARC], ['libx265', 'hevc_nvenc', 'hevc_qsv']);
+    expect(readSettings(make({ capabilities: caps })).queue.gpus).toEqual([
+      { id: 'nvidia:0', label: 'GPU 0', vendor: 'nvidia', missing: false },
+      {
+        id: 'intel:0000:07:00.0',
+        label: 'Intel Arc A310 · 07:00.0',
+        vendor: 'intel',
+        missing: false,
+      },
+    ]);
   });
 
   it('a corrupt stored gpuOrder reads as the default', () => {
@@ -503,6 +539,26 @@ describe('readSettings: pinnedVendorWorkflows', () => {
     expect(readSettings(make({ capabilities: both() })).queue.pinnedVendorWorkflows).toEqual([
       { id: 'w1', name: 'Archive', encoder: 'hevc_nvenc' },
     ]);
+  });
+
+  it('reads the active version, not a newer draft, with one versions query for every workflow', () => {
+    activate('w1', 'Archive', encodeGraph('hevc_nvenc'));
+    appendVersion(
+      db,
+      { workflowId: 'w1', baseVersion: 1, graph: encodeGraph('auto'), note: null, createdBy: 'u' },
+      NOW,
+    );
+    activate('w2', 'Second', encodeGraph('h264_qsv'));
+    activate('w3', 'Third', encodeGraph('auto'));
+    const prepare = vi.spyOn(db, 'prepare');
+    const pinned = readSettings(make({ capabilities: both() })).queue.pinnedVendorWorkflows;
+    const versionQueries = prepare.mock.calls.filter(([sql]) => sql.includes('workflow_versions'));
+    prepare.mockRestore();
+    expect(pinned).toEqual([
+      { id: 'w1', name: 'Archive', encoder: 'hevc_nvenc' },
+      { id: 'w2', name: 'Second', encoder: 'h264_qsv' },
+    ]);
+    expect(versionQueries).toHaveLength(1);
   });
 
   it('is empty unless GPUs of two vendors are usable', () => {

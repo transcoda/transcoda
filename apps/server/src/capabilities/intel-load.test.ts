@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { IntelLoadReader, type ProcFs, parseDrmFdinfo } from './intel-load.ts';
+import { IntelLoadReader, type ProcFs, parseDrmFdinfo, processNameOf } from './intel-load.ts';
 
 const fdinfo = (client: string, videoNs: number, capacity = 2, pdev = '0000:07:00.0') =>
   `drm-driver:\ti915\ndrm-pdev:\t${pdev}\ndrm-client-id:\t${client}\n` +
@@ -22,8 +22,17 @@ describe('parseDrmFdinfo', () => {
   });
 });
 
-/** A fake /proc: `fds` maps `pid/fd` to its link and fdinfo text. */
-function fakeProc(fds: Record<string, { link: string; info: string }>): ProcFs {
+/** `/proc/<pid>/comm` reads as ffmpeg; every other file comes from `read`. */
+const asFfmpeg =
+  (read: (p: string) => string) =>
+  (p: string): string =>
+    p.endsWith('/comm') ? 'ffmpeg\n' : read(p);
+
+/** A fake /proc: `fds` maps `pid/fd` to its link and fdinfo text; `comms` names a pid's process (default ffmpeg). */
+function fakeProc(
+  fds: Record<string, { link: string; info: string }>,
+  comms: Record<string, string> = {},
+): ProcFs {
   const gone = () => {
     throw new Error('EACCES');
   };
@@ -38,7 +47,11 @@ function fakeProc(fds: Record<string, { link: string; info: string }>): ProcFs {
         .map((k) => k.split('/')[1] as string);
     },
     readlink: (p) => fds[p.replace('/proc/', '').replace('/fd/', '/')]?.link ?? gone(),
-    readFile: (p) => fds[p.replace('/proc/', '').replace('/fdinfo/', '/')]?.info ?? gone(),
+    readFile: (p) => {
+      const comm = /^\/proc\/(\d+)\/comm$/.exec(p);
+      if (comm) return `${comms[comm[1] as string] ?? 'ffmpeg'}\n`;
+      return fds[p.replace('/proc/', '').replace('/fdinfo/', '/')]?.info ?? gone();
+    },
   };
 }
 
@@ -67,7 +80,7 @@ describe('IntelLoadReader', () => {
       proc: {
         readdir: (p) => (p === '/proc' ? ['10'] : ['3', '4']),
         readlink: () => render,
-        readFile: () => fdinfo('42', ns),
+        readFile: asFfmpeg(() => fdinfo('42', ns)),
       },
       now: () => t,
     });
@@ -93,7 +106,7 @@ describe('IntelLoadReader', () => {
       proc: {
         readdir: (p) => (p === '/proc' ? ['10'] : ['3']),
         readlink: () => render,
-        readFile: () => fdinfo('1', ns, 1),
+        readFile: asFfmpeg(() => fdinfo('1', ns, 1)),
       },
       now: () => t,
     });
@@ -111,7 +124,7 @@ describe('IntelLoadReader', () => {
       proc: {
         readdir: (p) => (p === '/proc' ? ['10'] : present ? ['3'] : []),
         readlink: () => render,
-        readFile: () => fdinfo('42', ns),
+        readFile: asFfmpeg(() => fdinfo('42', ns)),
       },
       now: () => t,
     });
@@ -123,5 +136,66 @@ describe('IntelLoadReader', () => {
     ns = 9e9;
     t = 10_000;
     expect(reader.sample([pci]).get(pci)).toBe(0);
+  });
+
+  it('only reads the render-node fds of ffmpeg processes', () => {
+    let t = 0;
+    let ns = 0;
+    const read: string[] = [];
+    const proc = (): ProcFs =>
+      fakeProc(
+        {
+          '10/3': { link: render, info: fdinfo('1', ns) },
+          '11/3': { link: render, info: fdinfo('2', ns) },
+        },
+        { '11': 'Plex Transcoder' },
+      );
+    const reader = new IntelLoadReader({
+      proc: {
+        readdir: (p) => {
+          read.push(p);
+          return proc().readdir(p);
+        },
+        readlink: (p) => proc().readlink(p),
+        readFile: (p) => proc().readFile(p),
+      },
+      now: () => t,
+    });
+    reader.sample([pci]);
+    t = 5000;
+    ns = 5e9;
+    // only client 1 counts: 5 s busy of 5 s wall on 2 engines
+    expect(reader.sample([pci]).get(pci)).toBe(50);
+    expect(read).not.toContain('/proc/11/fd');
+  });
+
+  it('counts the configured ffmpeg by its process name, cut to the 15 characters Linux keeps', () => {
+    let t = 0;
+    let ns = 0;
+    const reader = new IntelLoadReader({
+      proc: {
+        readdir: (p) => fakeProc({ '10/3': { link: render, info: fdinfo('1', ns) } }).readdir(p),
+        readlink: (p) => fakeProc({ '10/3': { link: render, info: fdinfo('1', ns) } }).readlink(p),
+        readFile: (p) =>
+          fakeProc(
+            { '10/3': { link: render, info: fdinfo('1', ns) } },
+            { '10': 'ffmpeg-qsv-buil' },
+          ).readFile(p),
+      },
+      now: () => t,
+      ffmpegPath: '/opt/ff/ffmpeg-qsv-build',
+    });
+    reader.sample([pci]);
+    t = 5000;
+    ns = 5e9;
+    expect(reader.sample([pci]).get(pci)).toBe(50);
+  });
+
+  it('processNameOf: the file name of the ffmpeg path, cut to 15 bytes', () => {
+    expect(processNameOf('ffmpeg')).toBe('ffmpeg');
+    expect(processNameOf('/usr/lib/jellyfin-ffmpeg/ffmpeg')).toBe('ffmpeg');
+    expect(processNameOf('/opt/ff/ffmpeg-qsv-build')).toBe('ffmpeg-qsv-buil');
+    // Linux cuts by bytes: 'é' is two, so 'ffmpeg-ééééé' (17 bytes) keeps 'ffmpeg-éééé'.
+    expect(processNameOf('/opt/ffmpeg-ééééé')).toBe('ffmpeg-éééé');
   });
 });

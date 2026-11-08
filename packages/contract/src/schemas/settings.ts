@@ -61,7 +61,7 @@ export const SettingsSchema = z.object({
     encodeDevices: z.array(z.object({ id: z.string(), label: z.string(), missing: z.boolean() })),
     /** "GPU order": GPU ids, first is tried first; empty is the default order (NVIDIA, then Intel). */
     gpuOrder: editable(z.array(z.string())),
-    /** Every GPU the order can name: detected ones and stored ones that are gone (`missing`). */
+    /** Every GPU the order can name: the ones auto can encode on, and stored ones that are gone or cannot encode (`missing`). */
     gpus: z.array(
       z.object({
         id: z.string(),
