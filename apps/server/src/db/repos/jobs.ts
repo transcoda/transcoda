@@ -626,9 +626,13 @@ interface Cursor {
  * Jobs with their library, workflow and result, one page at a time: active jobs first
  * (priority DESC, queued_at, rowid), then final jobs (finished_at DESC, rowid DESC).
  */
-/** A problems_json column's length in SQL; a corrupt cell counts as no problems, as the row readers do. */
+/**
+ * A problems_json column's problem count in SQL, matching `parseStringList`: only the text entries of
+ * a valid array count, so a corrupt cell, a non-array or non-string entries count as no problems.
+ */
 const problemCountSql = (col: string): string =>
-  `CASE WHEN json_valid(${col}) THEN json_array_length(${col}) ELSE 0 END`;
+  `CASE WHEN json_valid(${col}) AND json_type(${col}) = 'array'
+     THEN (SELECT COUNT(*) FROM json_each(${col}) WHERE json_each.type = 'text') ELSE 0 END`;
 
 export function listJobs(db: Database, filter: JobListFilter): JobListRow[] {
   const limit = filter.limit ?? JOB_LIST_LIMIT;

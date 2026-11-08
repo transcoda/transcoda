@@ -210,6 +210,20 @@ describe('job GPU fields', () => {
     expect(listJobs(db, { problems: true })).toEqual([]);
     expect(countProblems(db, {})).toBe(0);
     expect(jobStats(db, at(-60).toISOString()).problems).toBe(0);
+    // Only text entries count, as the row reader keeps only strings; an object is no list.
+    for (const cell of ['[null]', '[1, {}]', '{"a": "b"}']) {
+      db.prepare('UPDATE job_results SET problems_json = ? WHERE job_id = ?').run(cell, 'bad');
+      expect(findJobListRow(db, 'bad')?.problems).toEqual([]);
+      expect(listJobs(db, { problems: true })).toEqual([]);
+      expect(countProblems(db, {})).toBe(0);
+      expect(jobStats(db, at(-60).toISOString()).problems).toBe(0);
+    }
+    db.prepare('UPDATE job_results SET problems_json = ? WHERE job_id = ?').run(
+      '[null, "p"]',
+      'bad',
+    );
+    expect(listJobs(db, { problems: true }).map((r) => r.id)).toEqual(['bad']);
+    expect(countProblems(db, {})).toBe(1);
   });
 
   it('start empty and round-trip encodedOn and failedGpus through updateJob', () => {
