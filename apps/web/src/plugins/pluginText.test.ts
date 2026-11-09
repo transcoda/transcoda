@@ -10,6 +10,7 @@ import {
   provenanceSource,
   removeConfirmText,
   SECURITY_PROMISE,
+  SERVER_LOG_DOCS,
   stateLabel,
   statusOf,
   testEffect,
@@ -101,21 +102,21 @@ describe('fixed copy', () => {
 });
 
 describe('installFailureText', () => {
-  it('a plugin that exited on start: the exit code and the next step', () => {
+  it('a plugin that exited on start: the exit code', () => {
     expect(installFailureText('ntfy', 'plugin crashed on start: exited with code 1')).toBe(
-      "ntfy didn't start (exit code 1). See the server log or try again.",
+      "ntfy didn't start (exit code 1).",
     );
   });
 
   it('another start failure keeps its reason as a sentence', () => {
     expect(installFailureText('ntfy', 'plugin crashed on start: did not start within 10 s')).toBe(
-      "ntfy didn't start: Did not start within 10 s. See the server log or try again.",
+      "ntfy didn't start: Did not start within 10 s.",
     );
   });
 
   it('any other reason reads as an install failure', () => {
     expect(installFailureText('Example', 'example 1.1.0 is not in that catalog.')).toBe(
-      "Example didn't install: Example 1.1.0 is not in that catalog. See the server log or try again.",
+      "Example didn't install: Example 1.1.0 is not in that catalog.",
     );
   });
 });
@@ -145,6 +146,11 @@ describe('docs/plugins.md', () => {
 
   it('quotes the custom catalog warning verbatim', () => {
     expect(guide).toContain(`> ${CUSTOM_CATALOG_WARNING}`);
+  });
+
+  it('has the Server log section the install error links to', () => {
+    expect(SERVER_LOG_DOCS.endsWith('/docs/plugins.md#server-log')).toBe(true);
+    expect(guide).toMatch(/^## Server log$/m);
   });
 });
 

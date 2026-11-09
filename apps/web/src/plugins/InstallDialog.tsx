@@ -14,6 +14,7 @@ import {
   provenanceSignature,
   provenanceSource,
   SECURITY_PROMISE,
+  SERVER_LOG_DOCS,
   webLink,
 } from './pluginText.ts';
 import type { CatalogView } from './usePlugins.ts';
@@ -174,7 +175,14 @@ export function InstallDialog({
       {error ? (
         <div className="alert alert-danger" role="alert">
           <Icon name="cross" strokeWidth={2.4} round />
-          <span>{error}</span>
+          <span>
+            {`${error} See the `}
+            <a href={SERVER_LOG_DOCS} target="_blank" rel="noopener noreferrer">
+              server log
+              <span className="sr-only"> (opens in a new tab)</span>
+            </a>
+            {' or try again.'}
+          </span>
         </div>
       ) : null}
     </Dialog>
