@@ -2,7 +2,7 @@
 
 Transcoda has always kept the original in the library's recycle folder before it replaces a file. Now you can use it without leaving Transcoda.
 
-The new **Recycle folder** page in the main menu shows what each library's recycle folder holds and when each file will be deleted. A file can go sooner if the recycle folder grows past its space limit, since the oldest originals are deleted first. From there you can restore an original, put Transcoda's version back if you change your mind, delete one file or empty the folder.
+The new **Recycle folder** page in the main menu shows what each library's recycle folder holds and when each file will be deleted. A file can go sooner if the recycle folder takes up more than its share of the disk, which can also happen when other files fill the disk up; the oldest originals are deleted first. From there you can restore an original, put Transcoda's version back if you change your mind, delete one file or empty the folder.
 
 ![The Recycle folder page: six originals in the Movies library's recycle folder, each with the day it will be deleted and a Restore original button](images/recycle-folder.png)
 
