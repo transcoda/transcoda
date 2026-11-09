@@ -6,6 +6,9 @@ import {
   mkdirSync,
   readdirSync,
   readFileSync,
+  renameSync,
+  rmdirSync,
+  rmSync,
   unlinkSync,
   writeFileSync,
 } from 'node:fs';
@@ -13,6 +16,14 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 export const TYPES = ['breaking', 'new', 'improved', 'fixed'];
+/** Optional prose and screenshots for a minor or major release, kept apart from the notes. */
+export const HIGHLIGHTS = 'highlights.md';
+export const IMAGES_DIR = 'images';
+/**
+ * Image links in the highlights: Markdown `](images/x.png)` or `](<images/my shot.png>)`, or HTML
+ * `src="images/x.png"`. Inside angle brackets the name runs to the `>` and may hold spaces.
+ */
+const IMAGE_LINK = /(\]\(<|\]\(|src=")images\/((?<=<images\/)[^>\n]+|[^)"\s]+)/g;
 const HEADINGS = { breaking: 'Breaking', new: 'New', improved: 'Improved', fixed: 'Fixed' };
 const SEMVER =
   /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$/;
@@ -106,12 +117,66 @@ function renderGroups(entries, level) {
     .join('\n');
 }
 
-export function renderChangelogSection(version, date, entries) {
-  return `## ${version} — ${date}\n\n${renderGroups(entries, 3)}`;
+/** A final x.y.0 release (minor or major). Patches and pre-releases leave the highlights alone. */
+export function takesHighlights(version) {
+  const m = SEMVER.exec(version);
+  return Boolean(m) && m[3] === '0' && m[4] === undefined;
 }
 
-export function renderReleaseBody(entries) {
-  return renderGroups(entries, 2);
+/** Where a release's screenshots live once it is cut, relative to the repo root. */
+export function releaseAssetsDir(version) {
+  return `docs/releases/${version}`;
+}
+
+/**
+ * Checks the highlights text against the files in .changes/images/ and points its image links at
+ * docs/releases/<version>/. Returns { text } or { errors }.
+ */
+export function prepareHighlights(text, images, version) {
+  const body = text.replace(/\r\n/g, '\n').trim();
+  const errors = [];
+  if (!body) errors.push(`.changes/${HIGHLIGHTS}: the text is empty.`);
+  if (/^#{1,3} /m.test(body)) {
+    errors.push(
+      `.changes/${HIGHLIGHTS}: use #### or smaller headings; #, ## and ### belong to the changelog.`,
+    );
+  }
+  const used = new Set();
+  for (const [, , link] of body.matchAll(IMAGE_LINK)) {
+    // A link may URL-escape the file name (`my%20shot.png`); the file on disk is `my shot.png`.
+    let name = link;
+    try {
+      name = decodeURIComponent(link);
+    } catch {
+      // Not valid escaping: compare the name as written.
+    }
+    used.add(name);
+    if (!images.includes(name)) {
+      errors.push(
+        `.changes/${HIGHLIGHTS}: image ${IMAGES_DIR}/${name} is not in .changes/${IMAGES_DIR}/.`,
+      );
+    }
+  }
+  for (const name of images) {
+    if (!used.has(name)) {
+      errors.push(`.changes/${IMAGES_DIR}/${name} is not used in .changes/${HIGHLIGHTS}.`);
+    }
+  }
+  if (errors.length > 0) return { errors };
+  const dir = releaseAssetsDir(version);
+  return { text: body.replace(IMAGE_LINK, (_, lead, name) => `${lead}${dir}/${name}`) };
+}
+
+function withHighlights(highlights, groups) {
+  return highlights ? `${highlights}\n\n${groups}` : groups;
+}
+
+export function renderChangelogSection(version, date, entries, highlights) {
+  return `## ${version} — ${date}\n\n${withHighlights(highlights, renderGroups(entries, 3))}`;
+}
+
+export function renderReleaseBody(entries, highlights) {
+  return withHighlights(highlights, renderGroups(entries, 2));
 }
 
 /** Inserts a section above the newest existing one (or creates the file with a header). */
@@ -171,7 +236,7 @@ export function run(argv, now = new Date()) {
   const changesDir = join(root, '.changes');
   const files = existsSync(changesDir)
     ? readdirSync(changesDir)
-        .filter((f) => f.endsWith('.md') && f !== 'README.md')
+        .filter((f) => f.endsWith('.md') && f !== 'README.md' && f !== HIGHLIGHTS)
         .sort()
     : [];
   if (files.length === 0) {
@@ -195,24 +260,110 @@ export function run(argv, now = new Date()) {
     );
   }
 
+  // Highlights and their screenshots go into minor and major releases only; a patch or
+  // pre-release leaves them in .changes/ for the next one.
+  const highlightsPath = join(changesDir, HIGHLIGHTS);
+  const imagesPath = join(changesDir, IMAGES_DIR);
+  const images = existsSync(imagesPath)
+    ? readdirSync(imagesPath)
+        .filter((f) => !f.startsWith('.'))
+        .sort()
+    : [];
+  const assetsRel = releaseAssetsDir(args.version);
+  let highlights;
+  if (takesHighlights(args.version)) {
+    if (existsSync(highlightsPath)) {
+      const prepared = prepareHighlights(read(highlightsPath), images, args.version);
+      if (prepared.errors) throw new ReleaseError(prepared.errors.join('\n'));
+      highlights = prepared.text;
+    } else if (images.length > 0) {
+      throw new ReleaseError(
+        `.changes/${IMAGES_DIR}/ has images but there is no .changes/${HIGHLIGHTS} to show them.`,
+      );
+    }
+    if (images.length > 0 && existsSync(join(root, assetsRel))) {
+      throw new ReleaseError(`${assetsRel}/ already exists.`);
+    }
+  }
+  const moved = highlights ? images : [];
+
   const entries = groupEntries(notes);
   const jsonPath = join(root, 'apps/server/src/changelog.json');
   const changelogPath = join(root, 'CHANGELOG.md');
   const json = updateChangelogJson(read(jsonPath), args.version, date, entries);
-  const section = renderChangelogSection(args.version, date, entries);
+  const section = renderChangelogSection(args.version, date, entries, highlights);
   const changelog = prependChangelog(read(changelogPath), section);
-  const body = renderReleaseBody(entries);
+  const body = renderReleaseBody(entries, highlights);
+  const highlightsNote = highlights
+    ? ` with highlights and ${moved.length} image(s) in ${assetsRel}/`
+    : existsSync(highlightsPath)
+      ? ` (.changes/${HIGHLIGHTS} kept for the next minor release)`
+      : '';
 
   if (args.dryRun) {
-    return `Dry run: nothing written. Would consume ${files.length} note(s) and set version ${args.version} in ${packages.length} package.json file(s).\n\n--- CHANGELOG.md (new section) ---\n${section}\n--- release-notes.md ---\n${body}\n--- apps/server/src/changelog.json ---\n${json}`;
+    return `Dry run: nothing written. Would consume ${files.length} note(s)${highlightsNote} and set version ${args.version} in ${packages.length} package.json file(s).\n\n--- CHANGELOG.md (new section) ---\n${section}\n--- release-notes.md ---\n${body}\n--- apps/server/src/changelog.json ---\n${json}`;
   }
-  mkdirSync(dirname(jsonPath), { recursive: true });
-  writeFileSync(changelogPath, changelog);
-  writeFileSync(join(root, 'release-notes.md'), body);
-  writeFileSync(jsonPath, json);
-  for (const p of packages) writeFileSync(p, withVersion(read(p), args.version));
-  for (const f of files) unlinkSync(join(changesDir, f));
-  return `Release ${args.version} (${date}): ${files.length} note(s) written to CHANGELOG.md, release-notes.md and apps/server/src/changelog.json; notes removed; version set in ${packages.length} package.json file(s).`;
+  // Every change below is undone if a later one fails, so a failed release can simply be run again.
+  // Each undo step is recorded before its change runs, since a write can fail half done.
+  const undo = [];
+  const write = (p, text) => {
+    const before = read(p);
+    undo.push(() => (before === undefined ? rmSync(p, { force: true }) : writeFileSync(p, before)));
+    writeFileSync(p, text);
+  };
+  const remove = (p) => {
+    const before = readFileSync(p);
+    unlinkSync(p);
+    undo.push(() => writeFileSync(p, before));
+  };
+  try {
+    if (moved.length > 0) {
+      const assetsDir = join(root, assetsRel);
+      const parents = [];
+      for (let d = assetsDir; !existsSync(d); d = dirname(d)) parents.push(d);
+      undo.push(() => {
+        for (const d of parents) if (existsSync(d)) rmdirSync(d);
+      });
+      mkdirSync(assetsDir, { recursive: true });
+      for (const f of moved) {
+        renameSync(join(imagesPath, f), join(assetsDir, f));
+        undo.push(() => renameSync(join(assetsDir, f), join(imagesPath, f)));
+      }
+    }
+    const jsonDir = dirname(jsonPath);
+    if (!existsSync(jsonDir)) {
+      undo.push(() => rmSync(jsonDir, { recursive: true, force: true }));
+      mkdirSync(jsonDir, { recursive: true });
+    }
+    write(changelogPath, changelog);
+    write(join(root, 'release-notes.md'), body);
+    write(jsonPath, json);
+    for (const p of packages) write(p, withVersion(read(p), args.version));
+    for (const f of files) remove(join(changesDir, f));
+    if (highlights) {
+      if (existsSync(imagesPath) && readdirSync(imagesPath).length === 0) {
+        rmdirSync(imagesPath);
+        undo.push(() => mkdirSync(imagesPath));
+      }
+      remove(highlightsPath);
+    }
+  } catch (error) {
+    const failed = [];
+    for (const step of undo.reverse()) {
+      try {
+        step();
+      } catch (undoError) {
+        failed.push(undoError.message);
+      }
+    }
+    if (failed.length > 0) {
+      throw new ReleaseError(
+        `${error.message}\nUndoing the release also failed, so check the working tree (git status):\n${failed.join('\n')}`,
+      );
+    }
+    throw error;
+  }
+  return `Release ${args.version} (${date}): ${files.length} note(s)${highlightsNote} written to CHANGELOG.md, release-notes.md and apps/server/src/changelog.json; notes removed; version set in ${packages.length} package.json file(s).`;
 }
 
 if (import.meta.main) {
