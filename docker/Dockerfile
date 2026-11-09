@@ -17,9 +17,14 @@ COPY apps/server/package.json apps/server/
 COPY apps/web/package.json apps/web/
 RUN pnpm install --frozen-lockfile
 COPY . .
+# A release tag's build passes TRANSCODA_RELEASE=true (version 0.4.0); any other build reports
+# <version>-dev+<commit> (see apps/server/src/build-version.ts). .git is not in the context.
+ARG TRANSCODA_RELEASE=false
+ARG TRANSCODA_COMMIT=
 # The fixtures flag also builds the sandbox denial plugin the image's CI job checks. `pnpm notices`
 # writes third-party.json and THIRD_PARTY_NOTICES.txt (fails on a licence outside the allow-list).
-RUN TRANSCODA_BUILD_FIXTURES=1 pnpm build && pnpm notices
+RUN TRANSCODA_BUILD_FIXTURES=1 TRANSCODA_RELEASE=${TRANSCODA_RELEASE} TRANSCODA_COMMIT=${TRANSCODA_COMMIT} \
+    pnpm build && pnpm notices
 
 # 2. Production node_modules for the server, resolved on the target platform.
 #    better-sqlite3 ships prebuilt binaries, so no compiler is needed (allowBuilds stays false).
