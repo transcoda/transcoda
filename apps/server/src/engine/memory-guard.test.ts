@@ -121,8 +121,8 @@ describe('decodeMemoryLimit', () => {
     expect(decodeMemoryLimit()).toBeNull();
     setDecodeMemoryLimit(undefined);
     const limit = decodeMemoryLimit();
-    expect(limit).toBeGreaterThanOrEqual(1 * GiB);
-    expect(limit).toBeLessThanOrEqual(4 * GiB);
+    expect(limit).toBeGreaterThanOrEqual(1 * GB);
+    expect(limit).toBeLessThanOrEqual(4 * GB);
   });
 });
 
