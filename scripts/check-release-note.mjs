@@ -22,7 +22,13 @@ const changed = execFileSync(
   },
 )
   .split('\n')
-  .filter((f) => /^\.changes\/[^/]+\.md$/.test(f) && f !== '.changes/README.md');
+  // highlights.md (prose and screenshots for a minor release) is not a note; see .changes/README.md.
+  .filter(
+    (f) =>
+      /^\.changes\/[^/]+\.md$/.test(f) &&
+      f !== '.changes/README.md' &&
+      f !== '.changes/highlights.md',
+  );
 
 if (changed.length === 0) {
   console.error(
