@@ -250,8 +250,8 @@ export function imageEntries(dockerfile: string, texts: HandTexts): Entry[] {
       text: normalise(
         [
           `Node.js ${nodeVersion} (the image's ${nodeImage} base; \`node --version\` in the`,
-          'container names the exact release) is licensed under the MIT licence and bundles',
-          'third-party components under their own licences. The full text, with every bundled',
+          'container names the exact release) is licensed under the MIT license and bundles',
+          'third-party components under their own licenses. The full text, with every bundled',
           `component, is the LICENSE file of that release, for example`,
           `https://github.com/nodejs/node/blob/${nodeTag}/LICENSE`,
         ].join('\n'),
@@ -268,7 +268,7 @@ export function imageEntries(dockerfile: string, texts: HandTexts): Entry[] {
         [
           `The image is based on Debian ${debian} (${nodeImage}) and adds Debian packages`,
           '(ca-certificates, tini, procps and the libraries jellyfin-ffmpeg needs). Each package',
-          'carries its own licence; its copyright file is in the image at',
+          'carries its own license; its copyright file is in the image at',
           '/usr/share/doc/<package>/copyright.',
         ].join('\n'),
       ),
@@ -306,7 +306,7 @@ export function render(entries: Entry[]): { json: string; notices: string } {
   const sorted = [...entries].sort(compareEntries);
   const texts = new Map<string, string>();
   const packages = sorted.map((e) => {
-    if (e.text === null) throw new Error(`${e.name}@${e.version}: no licence text found`);
+    if (e.text === null) throw new Error(`${e.name}@${e.version}: no license text found`);
     const key = textKey(e.text);
     texts.set(key, e.text);
     return {
@@ -331,8 +331,8 @@ export function render(entries: Entry[]): { json: string; notices: string } {
     '(GPL-3.0-only); see the LICENSE file of the source code,',
     'https://github.com/transcoda/transcoda/blob/main/LICENSE.',
     '',
-    'It is built on the components below. Each is listed with its version, its licence and',
-    'the full licence text.',
+    'It is built on the components below. Each is listed with its version, its license and',
+    'the full license text.',
   ].join('\n');
   const blocks = sorted.map((e) => {
     const where = e.homepage ? ` (${e.homepage})` : '';
@@ -348,9 +348,9 @@ export function problems(entries: Entry[]): string[] {
   for (const e of [...entries].sort(compareEntries)) {
     const id = `${e.name}@${e.version}`;
     if (e.origin === 'npm' && e.exception === undefined && !licenceAllowed(e.licence)) {
-      out.push(`${id}: licence '${e.licence}' is not allowed`);
+      out.push(`${id}: license '${e.licence}' is not allowed`);
     }
-    if (e.text === null) out.push(`${id}: no licence text found`);
+    if (e.text === null) out.push(`${id}: no license text found`);
   }
   return out;
 }
@@ -393,7 +393,7 @@ function main(argv: string[]): number {
   ];
   const found = problems(entries);
   if (found.length > 0) {
-    console.error('Third-party licence problems (see scripts/licences/overrides.json):');
+    console.error('Third-party license problems (see scripts/licences/overrides.json):');
     for (const p of found) console.error(`  - ${p}`);
     return 1;
   }
