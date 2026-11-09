@@ -8,6 +8,7 @@ import {
   readFileSync,
   renameSync,
   rmdirSync,
+  rmSync,
   unlinkSync,
   writeFileSync,
 } from 'node:fs';
@@ -302,27 +303,64 @@ export function run(argv, now = new Date()) {
   if (args.dryRun) {
     return `Dry run: nothing written. Would consume ${files.length} note(s)${highlightsNote} and set version ${args.version} in ${packages.length} package.json file(s).\n\n--- CHANGELOG.md (new section) ---\n${section}\n--- release-notes.md ---\n${body}\n--- apps/server/src/changelog.json ---\n${json}`;
   }
-  // Move the screenshots first: if that fails, put back any already moved and write nothing.
-  const done = [];
+  // Every change below is undone if a later one fails, so a failed release can simply be run again.
+  const undo = [];
+  const write = (p, text) => {
+    const before = read(p);
+    writeFileSync(p, text);
+    undo.push(() => (before === undefined ? unlinkSync(p) : writeFileSync(p, before)));
+  };
+  const remove = (p) => {
+    const before = readFileSync(p);
+    unlinkSync(p);
+    undo.push(() => writeFileSync(p, before));
+  };
   try {
-    if (moved.length > 0) mkdirSync(join(root, assetsRel), { recursive: true });
-    for (const f of moved) {
-      renameSync(join(imagesPath, f), join(root, assetsRel, f));
-      done.push(f);
+    if (moved.length > 0) {
+      const assetsDir = join(root, assetsRel);
+      const parents = [];
+      for (let d = assetsDir; !existsSync(d); d = dirname(d)) parents.push(d);
+      mkdirSync(assetsDir, { recursive: true });
+      undo.push(() => {
+        for (const d of parents) rmdirSync(d);
+      });
+      for (const f of moved) {
+        renameSync(join(imagesPath, f), join(assetsDir, f));
+        undo.push(() => renameSync(join(assetsDir, f), join(imagesPath, f)));
+      }
+    }
+    const jsonDir = dirname(jsonPath);
+    if (!existsSync(jsonDir)) {
+      mkdirSync(jsonDir, { recursive: true });
+      undo.push(() => rmSync(jsonDir, { recursive: true }));
+    }
+    write(changelogPath, changelog);
+    write(join(root, 'release-notes.md'), body);
+    write(jsonPath, json);
+    for (const p of packages) write(p, withVersion(read(p), args.version));
+    for (const f of files) remove(join(changesDir, f));
+    if (highlights) {
+      if (existsSync(imagesPath) && readdirSync(imagesPath).length === 0) {
+        rmdirSync(imagesPath);
+        undo.push(() => mkdirSync(imagesPath));
+      }
+      remove(highlightsPath);
     }
   } catch (error) {
-    for (const f of done) renameSync(join(root, assetsRel, f), join(imagesPath, f));
+    const failed = [];
+    for (const step of undo.reverse()) {
+      try {
+        step();
+      } catch (undoError) {
+        failed.push(undoError.message);
+      }
+    }
+    if (failed.length > 0) {
+      throw new ReleaseError(
+        `${error.message}\nUndoing the release also failed, so check the working tree (git status):\n${failed.join('\n')}`,
+      );
+    }
     throw error;
-  }
-  mkdirSync(dirname(jsonPath), { recursive: true });
-  writeFileSync(changelogPath, changelog);
-  writeFileSync(join(root, 'release-notes.md'), body);
-  writeFileSync(jsonPath, json);
-  for (const p of packages) writeFileSync(p, withVersion(read(p), args.version));
-  for (const f of files) unlinkSync(join(changesDir, f));
-  if (highlights) {
-    if (existsSync(imagesPath) && readdirSync(imagesPath).length === 0) rmdirSync(imagesPath);
-    unlinkSync(highlightsPath);
   }
   return `Release ${args.version} (${date}): ${files.length} note(s)${highlightsNote} written to CHANGELOG.md, release-notes.md and apps/server/src/changelog.json; notes removed; version set in ${packages.length} package.json file(s).`;
 }

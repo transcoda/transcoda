@@ -310,6 +310,23 @@ describe('cli highlights', () => {
     expect(read('.changes/images/x.png')).toBe('png x.png');
   });
 
+  it('undoes everything when a later write fails, so the release can be run again', () => {
+    note('a.md', 'new', 'One.');
+    highlights('![x](images/x.png)\n', ['x.png']);
+    writeFileSync(join(root, 'CHANGELOG.md'), '# Changelog\n\n## 0.3.0 — 2026-11-01\n\n- Old.\n');
+    mkdirSync(join(root, 'release-notes.md'));
+    const r = cli('0.4.0');
+    expect(r.status).not.toBe(0);
+    expect(read('CHANGELOG.md')).toBe('# Changelog\n\n## 0.3.0 — 2026-11-01\n\n- Old.\n');
+    expect(existsSync(join(root, 'apps/server/src/changelog.json'))).toBe(false);
+    expect(existsSync(join(root, 'docs/releases/0.4.0'))).toBe(false);
+    expect(read('.changes/images/x.png')).toBe('png x.png');
+    expect(existsSync(join(root, '.changes/a.md'))).toBe(true);
+    expect(existsSync(join(root, '.changes/highlights.md'))).toBe(true);
+    rmSync(join(root, 'release-notes.md'), { recursive: true });
+    expect(cli('0.4.0').status).toBe(0);
+  });
+
   it('refuses images without a highlights file', () => {
     note('a.md', 'new', 'One.');
     mkdirSync(join(root, '.changes/images'));
