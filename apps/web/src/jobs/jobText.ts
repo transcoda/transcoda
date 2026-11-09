@@ -169,8 +169,11 @@ export function estimateTag(
   return estimatePercent(job.result?.beforeBytes ?? null, after);
 }
 
-/** The size gate's reason (engine: `saved only ${saving.toFixed(1)}%, below ${min}%`). */
-const GATE_REASON = /^saved only (-?[\d.]+)%, below ([\d.]+)%$/;
+/**
+ * The size gate's reason (engine: `saved only ${saving.toFixed(1)}%, below ${min}%`). `min` is
+ * printed as JavaScript prints a number, so a tiny one comes in exponent form ("1e-7").
+ */
+const GATE_REASON = /^saved only (-?[\d.]+)%, below ([\d.]+(?:e[-+]?\d+)?)%$/;
 
 /** "3.0" → "3", "9.6" → "9.6", "-0.0" → "0": a percent as a person reads it. */
 const plainNumber = (s: string) => String(Math.abs(Number(s)) === 0 ? 0 : Number(s));

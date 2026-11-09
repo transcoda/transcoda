@@ -182,6 +182,10 @@ describe('jobText', () => {
     expect(reasonOf({ state: 'kept_original', reason: 'saved only -0.0%, below 5%' })).toBe(
       'saved only 0% (gate ≥ 5%)',
     );
+    // The engine prints the threshold as JavaScript does: a tiny one in exponent form.
+    expect(reasonOf({ state: 'kept_original', reason: 'saved only -1.0%, below 1e-7%' })).toBe(
+      'grew by 1% (gate ≥ 1e-7%)',
+    );
     expect(detailLine(job({ state: 'dry_run', reason: null }))).toBe('Plan ready');
     expect(detailLine(job({ state: 'cancelled' }))).toBe('Cancelled · original untouched');
     expect(detailLine(job({ state: 'already_processed', reason: 'already processed by v7' }))).toBe(
