@@ -70,8 +70,8 @@ export interface Config {
    */
   encodeStallMinutes: number;
   /**
-   * TRANSCODA_DECODE_MEMORY_GB in bytes (default null: half the memory available, at least 1 GB
-   * and at most 4 GB; 0 turns it off): a read-only ffmpeg pass (Check source, verify's decodes)
+   * TRANSCODA_DECODE_MEMORY_GB (or the older TRANSCODA_DECODE_MEMORY_GIB) in bytes (default null:
+   * half the memory available, at least 1 GB and at most 4 GB; 0 turns it off): a read-only ffmpeg pass (Check source, verify's decodes)
    * whose memory grows past this is stopped (memory-guard.ts).
    */
   decodeMemoryBytes: number | null;
@@ -119,6 +119,25 @@ function parseNonNegative(
 
 const GB = 1_000_000_000;
 const GIB = 2 ** 30;
+
+function unset(value: string | undefined): boolean {
+  return value === undefined || value.trim() === '';
+}
+
+/**
+ * The decode memory guard in bytes, or null for the default. TRANSCODA_DECODE_MEMORY_GB (SI) wins;
+ * when it is unset, the older TRANSCODA_DECODE_MEMORY_GIB (binary GiB, from 0.4.0) is read so an
+ * existing setup keeps the same limit.
+ */
+function decodeMemory(env: NodeJS.ProcessEnv): number | null {
+  const gb = env.TRANSCODA_DECODE_MEMORY_GB;
+  const gib = env.TRANSCODA_DECODE_MEMORY_GIB;
+  if (unset(gb) && !unset(gib)) {
+    return Math.round(parseNonNegative('TRANSCODA_DECODE_MEMORY_GIB', 'GiB', gib, 0) * GIB);
+  }
+  if (unset(gb)) return null;
+  return Math.round(parseNonNegative('TRANSCODA_DECODE_MEMORY_GB', 'GB', gb, 0) * GB);
+}
 
 type MinFreeVariable = 'TRANSCODA_HEALTH_MIN_FREE_GB' | 'TRANSCODA_HEALTH_MIN_FREE_GIB';
 
@@ -444,17 +463,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
       env.TRANSCODA_ENCODE_STALL_MINUTES,
       60,
     ),
-    decodeMemoryBytes:
-      env.TRANSCODA_DECODE_MEMORY_GB === undefined || env.TRANSCODA_DECODE_MEMORY_GB.trim() === ''
-        ? null
-        : Math.round(
-            parseNonNegative(
-              'TRANSCODA_DECODE_MEMORY_GB',
-              'GB',
-              env.TRANSCODA_DECODE_MEMORY_GB,
-              0,
-            ) * GB,
-          ),
+    decodeMemoryBytes: decodeMemory(env),
     ...minFree(env),
   };
 }

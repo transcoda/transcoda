@@ -81,6 +81,24 @@ describe('loadConfig', () => {
     }
   });
 
+  it('still reads the older TRANSCODA_DECODE_MEMORY_GIB (binary) when the GB variable is unset', () => {
+    expect(loadConfig({ TRANSCODA_DECODE_MEMORY_GIB: '2' }).decodeMemoryBytes).toBe(2 * 2 ** 30);
+    expect(loadConfig({ TRANSCODA_DECODE_MEMORY_GIB: '0' }).decodeMemoryBytes).toBe(0);
+    expect(
+      loadConfig({ TRANSCODA_DECODE_MEMORY_GIB: '2', TRANSCODA_DECODE_MEMORY_GB: '3' })
+        .decodeMemoryBytes,
+    ).toBe(3_000_000_000);
+    expect(
+      loadConfig({ TRANSCODA_DECODE_MEMORY_GIB: '2', TRANSCODA_DECODE_MEMORY_GB: '' })
+        .decodeMemoryBytes,
+    ).toBe(2 * 2 ** 30);
+    expect(() => loadConfig({ TRANSCODA_DECODE_MEMORY_GIB: 'abc' })).toThrow(
+      new ConfigError(
+        'TRANSCODA_DECODE_MEMORY_GIB must be 0 (off) or a positive number of GiB, got "abc"',
+      ),
+    );
+  });
+
   it.each([
     ['TRANSCODA_HEALTH_STALL_HOURS', '0'],
     ['TRANSCODA_HEALTH_STALL_HOURS', 'abc'],
