@@ -54,6 +54,19 @@ describe('AboutSection', () => {
     expect(screen.getByText('/usr/lib/jellyfin-ffmpeg/ffmpeg')).toBeTruthy();
   });
 
+  it('the Transcoda version links to its GitHub release; a -dev build without a commit does not', async () => {
+    render(<AboutSection />);
+    const link = await screen.findByRole('link', { name: '1.4.0' });
+    expect(link.getAttribute('href')).toBe(
+      'https://github.com/transcoda/transcoda/releases/tag/v1.4.0',
+    );
+    cleanup();
+    mocks.health.mockResolvedValue({ status: 'ok', version: '1.4.0-dev' });
+    render(<AboutSection />);
+    expect(await screen.findByText('1.4.0-dev')).toBeTruthy();
+    expect(screen.queryByRole('link', { name: '1.4.0-dev' })).toBeNull();
+  });
+
   it('found by name on the PATH, ffmpeg gets no second "ffmpeg" line', async () => {
     mocks.capabilities.mockResolvedValue({ ...(await mocks.capabilities()), path: 'ffmpeg' });
     const { container } = render(<AboutSection />);
