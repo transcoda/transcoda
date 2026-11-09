@@ -29,7 +29,7 @@ The Jobs page got calmer: the list fits above the fold, and every row opens its 
 ![The Jobs page with the 7-day charts next to the encoder](images/jobs.png)
 ```
 
-- Plain Markdown, no front matter. Use `###` or smaller headings; `#` and `##` belong to the changelog.
+- Plain Markdown, no front matter. Use `####` for headings; `#`, `##` and `###` belong to the changelog and the release page.
 - Link images as `images/<file>`, in Markdown or as `<img src="images/<file>" width="…">`. Every link must point to a file in `.changes/images/`, and every file there must be used.
 - Write for people who use Transcoda, as for notes. Keep screenshots small (crop them, compress PNGs); they stay in the repository.
 - A pull request that only adds highlights or screenshots gets the `no user-facing change` label.

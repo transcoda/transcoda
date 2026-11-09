@@ -132,9 +132,9 @@ export function prepareHighlights(text, images, version) {
   const body = text.replace(/\r\n/g, '\n').trim();
   const errors = [];
   if (!body) errors.push(`.changes/${HIGHLIGHTS}: the text is empty.`);
-  if (/^#{1,2} /m.test(body)) {
+  if (/^#{1,3} /m.test(body)) {
     errors.push(
-      `.changes/${HIGHLIGHTS}: use ### or smaller headings; # and ## belong to the changelog.`,
+      `.changes/${HIGHLIGHTS}: use #### or smaller headings; #, ## and ### belong to the changelog.`,
     );
   }
   const used = new Set();

@@ -234,8 +234,9 @@ describe('prepareHighlights', () => {
     ]);
     expect(prepareHighlights('  \n', [], '0.4.0').errors).toHaveLength(1);
     expect(prepareHighlights('## Big news\n\nText.', [], '0.4.0').errors).toHaveLength(1);
-    expect(prepareHighlights('### Big news\n\nText.', [], '0.4.0').text).toBe(
-      '### Big news\n\nText.',
+    expect(prepareHighlights('### Big news\n\nText.', [], '0.4.0').errors).toHaveLength(1);
+    expect(prepareHighlights('#### Big news\n\nText.', [], '0.4.0').text).toBe(
+      '#### Big news\n\nText.',
     );
   });
 });
