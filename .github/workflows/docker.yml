@@ -63,6 +63,10 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          # The version the app shows: plain for a release tag, <version>-dev+<commit> otherwise.
+          build-args: |
+            TRANSCODA_RELEASE=${{ steps.release.outputs.release }}
+            TRANSCODA_COMMIT=${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
           # BuildKit's own provenance would add an unsigned unknown/unknown manifest per arch;
