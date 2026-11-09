@@ -514,10 +514,15 @@ function StatTiles({
     {
       label: 'Saved today',
       filter: null,
-      value: stats ? fmtBytes(stats.savedBytes) : '—',
+      // Files that came out bigger are growth, said plainly: never a "−104 B" saving in green.
+      value: !stats
+        ? '—'
+        : stats.savedBytes < 0
+          ? `Grew ${fmtBytes(-stats.savedBytes)}`
+          : fmtBytes(stats.savedBytes),
       zero: stats?.savedBytes === 0,
-      // A figure, not a filter: a plain tile whose value is the accent colour.
-      className: 'has-accent-value',
+      // A figure, not a filter: a plain tile whose value is the accent colour (a saving only).
+      ...((stats?.savedBytes ?? 0) >= 0 ? { className: 'has-accent-value' } : {}),
     },
     {
       label: 'Queued',

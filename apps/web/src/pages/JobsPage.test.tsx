@@ -931,6 +931,16 @@ describe('JobsPage', () => {
     expect(dimmed).toEqual([true, true, false, false]);
   });
 
+  it('a day where files grew shows the growth plainly, not in the accent colour of a saving', async () => {
+    mocks.stats.mockResolvedValue({ savedBytes: -104, files: 2, queued: 0, failed: 0 });
+    await renderPage();
+    const tiles = await screen.findByRole('list', { name: 'Today' });
+    const value = await within(tiles).findByText('Grew 104 B');
+    const tile = value.closest('.stat-tile') as HTMLElement;
+    expect(tile.classList.contains('has-accent-value')).toBe(false);
+    expect(within(tile).getByText('Saved today')).toBeTruthy();
+  });
+
   it('an empty filter result offers "Show all", which clears the filters', async () => {
     mocks.list.mockImplementation(async (input?: { state?: string[] }) =>
       input?.state?.[0] === 'failed'

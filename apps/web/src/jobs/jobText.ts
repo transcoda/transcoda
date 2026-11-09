@@ -169,11 +169,27 @@ export function estimateTag(
   return estimatePercent(job.result?.beforeBytes ?? null, after);
 }
 
-/** The size gate's reason (engine: `saved only ${saving.toFixed(1)}%, below ${min}%`). */
-const GATE_REASON = /^saved only (-?[\d.]+)%, below ([\d.]+)%$/;
+/**
+ * The size gate's reason (engine: `saved only ${saving.toFixed(1)}%, below ${min}%`). `min` is
+ * printed as JavaScript prints a number, so a tiny one comes in exponent form ("1e-7").
+ */
+const GATE_REASON = /^saved only (-?[\d.]+)%, below ([\d.]+(?:e[-+]?\d+)?)%$/;
 
-/** "3.0" → "3", "9.6" → "9.6": a percent as a person reads it. */
-const plainNumber = (s: string) => String(Number(s));
+/** "3.0" → "3", "9.6" → "9.6", "-0.0" → "0": a percent as a person reads it. */
+const plainNumber = (s: string) => String(Math.abs(Number(s)) === 0 ? 0 : Number(s));
+
+/**
+ * The size gate's reason in a person's words: "saved only 3% (gate ≥ 10%)", or "grew by 2% (gate ≥
+ * 10%)" when the output came out bigger (a negative saving is not a small saving). Null for any
+ * other reason.
+ */
+function gateWords(reason: string | null | undefined): string | null {
+  const m = reason ? GATE_REASON.exec(reason) : null;
+  if (!m?.[1] || !m[2]) return null;
+  const saving = Number(plainNumber(m[1]));
+  const gate = `(gate ≥ ${plainNumber(m[2])}%)`;
+  return saving < 0 ? `grew by ${-saving}% ${gate}` : `saved only ${saving}% ${gate}`;
+}
 
 /**
  * What a test-encode dry run measured: the outcome ("Would replace", "Would keep the original") and
@@ -195,12 +211,9 @@ export function testEncodeOutcome(
     };
   }
   if (job.state === 'kept_original') {
-    const m = job.reason ? GATE_REASON.exec(job.reason) : null;
-    if (!m?.[1] || !m[2]) return null;
-    return {
-      word: 'Would keep the original',
-      detail: `saved only ${plainNumber(m[1])}% (gate ≥ ${plainNumber(m[2])}%)`,
-    };
+    const detail = gateWords(job.reason);
+    if (detail === null) return null;
+    return { word: 'Would keep the original', detail };
   }
   return null;
 }
@@ -290,6 +303,9 @@ export function reasonOf(job: Pick<Job, 'state' | 'reason'>): string | null {
   if (reason === 'still growing') {
     return 'Changed in the last few minutes: it is picked up once it stops changing';
   }
+  // The size gate's reason, as the test-encode results word it.
+  const gate = gateWords(reason);
+  if (gate !== null) return gate;
   if (state === 'already_processed' && reason) {
     const m = ALREADY.exec(reason);
     const outcome = m?.[1] as JobState | undefined;
@@ -458,9 +474,11 @@ export function detailLine(job: Job, opts: { queuePaused?: boolean; now?: Date }
       if (r.restored) return `${sizes} · original restored`;
       return r.replacedTo === 'recycle' ? `${sizes} · original in recycle folder` : sizes;
     }
-    case 'kept_original':
+    case 'kept_original': {
       // The "Kept original" chip says the file is untouched; the line only adds why.
-      return job.reason ? sentence(job.reason) : '';
+      const reason = reasonOf(job);
+      return reason ? sentence(reason) : '';
+    }
     case 'failed': {
       const reason = reasonOf(job);
       return reason ? `${sentence(reason)} · original untouched` : 'Original untouched';
