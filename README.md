@@ -146,13 +146,13 @@ Open `http://localhost:5173`; the first visit asks you to create the admin accou
 
 | Command | Does |
 | --- | --- |
-| `pnpm check` | typecheck, lint, dependency-direction check, licence check and tests (what CI runs; `pnpm ci` is a pnpm built-in, so the script is named `check`) |
+| `pnpm check` | typecheck, lint, dependency-direction check, license check and tests (what CI runs; `pnpm ci` is a pnpm built-in, so the script is named `check`) |
 | `pnpm test` / `pnpm typecheck` / `pnpm lint` | one step of the above |
 | `pnpm format` | Biome autofix |
 | `pnpm build` | production bundles for web and server |
 | `pnpm notices` | (not `pnpm licences`: that is a pnpm built-in) writes `apps/server/third-party.json` and `apps/server/THIRD_PARTY_NOTICES.txt` (git-ignored; the Docker build runs it) from the production dependencies of web and server, plus the image's jellyfin-ffmpeg, Node.js and Debian base and the vendored lucide icons |
 
-`pnpm check` (and so CI) fails when a production dependency's licence is outside the allow-list (`ALLOWED` in `scripts/third-party-notices.ts`: permissive licences and OFL-1.1 for the fonts; GPL, LGPL and AGPL fail) or when a package ships no licence text. An exception, a corrected licence or a hand-supplied text goes in `scripts/licences/overrides.json`, keyed by package name (or `name@version`) and always with a `reason`; text files live beside it.
+`pnpm check` (and so CI) fails when a production dependency's license is outside the allow-list (`ALLOWED` in `scripts/third-party-notices.ts`: permissive licenses and OFL-1.1 for the fonts; GPL, LGPL and AGPL fail) or when a package ships no license text. An exception, a corrected license or a hand-supplied text goes in `scripts/licences/overrides.json`, keyed by package name (or `name@version`) and always with a `reason`; text files live beside it.
 
 To run the production bundle without Docker: `pnpm build && TRANSCODA_CONFIG_DIR=./.local/prod-config TRANSCODA_WEB_DIR=apps/web/dist node apps/server/dist/main.js`.
 
