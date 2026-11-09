@@ -358,8 +358,9 @@ describe('readSettings', () => {
       variable: 'TRANSCODA_HEALTH_STALL_HOURS',
       set: true,
     });
-    expect(set.queue.minFreeGib).toMatchObject({
-      variable: 'TRANSCODA_HEALTH_MIN_FREE_GIB',
+    expect(set.queue.minFreeBytes).toMatchObject({
+      value: 5_000_000_000,
+      variable: 'TRANSCODA_HEALTH_MIN_FREE_GB',
       set: false,
     });
     expect(set.general.publicUrl).toMatchObject({ value: 'https://t.example.net', set: true });

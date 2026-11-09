@@ -5,7 +5,8 @@ import { z } from 'zod';
 import { filePort, LanguageCodeSchema, languageInput, passElse } from './common.ts';
 import { list, matchesLanguage, tag } from './stream-rules.ts';
 
-const MB = 1024 * 1024;
+/** Sizes are typed and reported in SI megabytes (10^6 bytes), like every size Transcoda prints. */
+const MB = 1_000_000;
 const DAY_MS = 86_400_000;
 
 const round1 = (n: number) => Math.round(n * 10) / 10;

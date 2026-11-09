@@ -570,7 +570,8 @@ describe('PluginProcess watchdog and stop', () => {
     await proc.start(init);
     await vi.advanceTimersByTimeAsync(1000);
     expect(children[0]?.signals).toEqual(['SIGKILL']);
-    expect(await proc.exit).toEqual({ kind: 'oom-rss', rssMb: 300 });
+    // 300 MiB reported in SI megabytes.
+    expect(await proc.exit).toEqual({ kind: 'oom-rss', rssMb: 315 });
   });
 
   it('stop sends SIGTERM, then SIGKILL after 5 s if the host hangs, and rejects calls retryable', async () => {

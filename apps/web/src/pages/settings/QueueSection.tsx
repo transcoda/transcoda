@@ -315,10 +315,14 @@ export function QueueSection() {
         <SettingRow
           label="Minimum free space"
           hint="The deep health check needs this much free space in the transcode folder"
-          source={{ kind: 'env', variable: queue.minFreeGib.variable, set: queue.minFreeGib.set }}
+          source={{
+            kind: 'env',
+            variable: queue.minFreeBytes.variable,
+            set: queue.minFreeBytes.set,
+          }}
         >
-          {/* SI like every other size; the variable itself is set in GiB. */}
-          {`${fmtBytes(queue.minFreeGib.value * 2 ** 30)} (${queue.minFreeGib.value} GiB)`}
+          {/* SI like every other size: TRANSCODA_HEALTH_MIN_FREE_GB is in GB (10^9 bytes). */}
+          {fmtBytes(queue.minFreeBytes.value)}
         </SettingRow>
       </ServerValues>
     </>

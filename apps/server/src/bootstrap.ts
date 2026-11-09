@@ -45,11 +45,11 @@ export async function createDeps(
   }
   // The memory guard of read-only ffmpeg passes (unset: its default, worked out on first use).
   setDecodeMemoryLimit(
-    config.decodeMemoryGiB === null
+    config.decodeMemoryBytes === null
       ? undefined
-      : config.decodeMemoryGiB === 0
+      : config.decodeMemoryBytes === 0
         ? null
-        : Math.round(config.decodeMemoryGiB * 2 ** 30),
+        : config.decodeMemoryBytes,
   );
   mkdirSync(config.configDir, { recursive: true });
   const secretKey = loadOrCreateSecretKey(config.configDir, config.secretKeyHex, (m) =>

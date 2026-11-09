@@ -467,12 +467,12 @@ describe('plugin nodes (remote definitions)', () => {
     });
   });
 
-  it('core refuses a migrated result its schema rejects or that is over 256 KB', async () => {
+  it('core refuses a migrated result its schema rejects or that is over 256 kB', async () => {
     await expect(
       applyPluginUpgrades(graph(1), registry(), async () => ({ value: 5 })),
     ).rejects.toThrow(/not valid for v3/);
     await expect(
       applyPluginUpgrades(graph(1), registry(), async () => ({ value: 'x'.repeat(300_000) })),
-    ).rejects.toThrow(/larger than 256 KB/);
+    ).rejects.toThrow(/larger than 256 kB/);
   });
 });

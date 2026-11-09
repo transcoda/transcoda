@@ -624,7 +624,8 @@ export class PluginProcess {
         .then((rss) => {
           if (this.status === 'exited') return;
           if (rss !== null && rss > deps.limits.rssMb * 1024 * 1024) {
-            this.killedBy ??= { kind: 'oom-rss', rssMb: Math.round(rss / (1024 * 1024)) };
+            // The limit is in MiB (like heapMb, Node's own unit); the reason reports SI MB.
+            this.killedBy ??= { kind: 'oom-rss', rssMb: Math.round(rss / 1_000_000) };
             this.kill();
             return;
           }

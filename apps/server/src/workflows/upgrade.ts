@@ -118,7 +118,7 @@ export function planNodeUpgrades(graph: WorkflowGraph, registry: NodeRegistry): 
 }
 
 /** The settings size a migration may produce (the plugin host enforces the same cap). */
-const MAX_MIGRATED_BYTES = 256 * 1024;
+const MAX_MIGRATED_BYTES = 256_000;
 
 export interface PluginNodeBehind {
   nodeId: string;
@@ -154,7 +154,7 @@ export function pluginNodesBehind(
  * Rewrites the plugin nodes `pluginNodesBehind` lists (limited to `only` types when given)
  * through the plugin host's `migrate`. Whole-graph atomic like `planNodeUpgrades`: a plugin node
  * with no path makes the plan `broken`. A throwing `migrate` propagates; so does a result core
- * cannot accept (settings the node's schema rejects, or over 256 KB).
+ * cannot accept (settings the node's schema rejects, or over 256 kB).
  */
 export async function applyPluginUpgrades(
   graph: WorkflowGraph,
@@ -182,7 +182,7 @@ export async function applyPluginUpgrades(
     const steps = migrationPath(def, original.typeVersion) as NodeMigration[];
     const settings = await migrate(original.type, original.typeVersion, original.settings);
     if (JSON.stringify(settings).length > MAX_MIGRATED_BYTES) {
-      throw new Error(`migrated settings of ${original.type} are larger than 256 KB`);
+      throw new Error(`migrated settings of ${original.type} are larger than 256 kB`);
     }
     const parsed = parseSettings(def, settings);
     if (!parsed.ok) {

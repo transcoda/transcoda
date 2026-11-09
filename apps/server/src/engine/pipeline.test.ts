@@ -531,7 +531,7 @@ beforeEach(async () => {
   execHook = null;
   execCalls.length = 0;
   execSignals.length = 0;
-  // Plenty of room: the replace needs 5 GiB beyond the output on the original's filesystem.
+  // Plenty of room: the replace needs 5 GB beyond the output on the original's filesystem.
   fsOps = { ...nodeFsOps, statfs: async () => ({ bavail: 1e9, bsize: 4096 }) };
   await setup();
 });
@@ -2599,14 +2599,14 @@ describe('pipeline: controller notes', () => {
       expect(spawner.calls).toEqual([]);
     });
 
-    it('a sidecar over 8 MiB is refused', async () => {
+    it('a sidecar over 8 MB is refused', async () => {
       const big = join(root, 'Show', 'a.de.srt');
-      await writeFile(big, Buffer.alloc(8 * 1024 * 1024 + 1, 65));
+      await writeFile(big, Buffer.alloc(8_000_001, 65));
       const id = await queue(file(), sidecarWorkflow(big));
       await t.deps.engine.start();
       expect(await settled(id)).toMatchObject({
         state: 'failed',
-        reason: 'render: subtitle file a.de.srt cannot be used: it is larger than 8388608 bytes',
+        reason: 'render: subtitle file a.de.srt cannot be used: it is larger than 8.00 MB',
       });
       expect(spawner.calls).toEqual([]);
     });
@@ -3096,7 +3096,7 @@ describe('pipeline: fix round (review)', () => {
     await until('waiting', () => row(id).reason !== null);
     expect(row(id)).toMatchObject({
       state: 'replacing',
-      reason: `waiting for 5.4 GB free on ${lib.path} (4 KB free)`,
+      reason: `waiting for 5.00 GB free on ${lib.path} (4.10 kB free)`,
     });
     const changed = published.filter((e) => e.type === 'job.changed' && e.jobId === id).at(-1);
     expect(changed).toMatchObject({ state: 'replacing', reason: row(id).reason });

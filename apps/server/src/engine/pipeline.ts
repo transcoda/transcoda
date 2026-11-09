@@ -1705,7 +1705,7 @@ export class Pipeline implements JobExecutor {
         // Each write commits on its own with synchronous = FULL (never inside a transaction).
         ...durableReplaceWrites(db, job.id, this.deps.now, this.deps.log),
         waitForSpace: this.deps.waitForSpace ?? pollForSpace,
-        // C4: the job says what it waits for ("waiting for 5.4 GB free on /media (5.1 GB free)"),
+        // C4: the job says what it waits for ("waiting for 5.40 GB free on /media (5.10 GB free)"),
         // refreshed on every check, and the reason is cleared when the wait is over.
         // Telling must never change how the replace ends: a failed write is a log line.
         onSpaceWait: (wait) => {

@@ -1,5 +1,6 @@
 import type { Dirent, Stats } from 'node:fs';
 import * as fsp from 'node:fs/promises';
+import { fmtBytes } from '@transcoda/shared';
 import type { Logger } from '../logger.ts';
 
 /**
@@ -93,7 +94,7 @@ export const nodeFsOps: FsOps = {
     try {
       const info = await input.stat();
       if (!info.isFile()) throw new Error('it is not a regular file');
-      if (info.size > maxBytes) throw new Error(`it is larger than ${maxBytes} bytes`);
+      if (info.size > maxBytes) throw new Error(`it is larger than ${fmtBytes(maxBytes)}`);
       const output = await fsp.open(dst, 'wx', 0o600);
       try {
         // Read at most maxBytes + 1 so a file that grew after the check is still refused.
@@ -103,7 +104,7 @@ export const nodeFsOps: FsOps = {
           const { bytesRead } = await input.read(buffer, 0, buffer.length, null);
           if (bytesRead === 0) break;
           total += bytesRead;
-          if (total > maxBytes) throw new Error(`it is larger than ${maxBytes} bytes`);
+          if (total > maxBytes) throw new Error(`it is larger than ${fmtBytes(maxBytes)}`);
           await output.write(buffer, 0, bytesRead);
         }
       } finally {

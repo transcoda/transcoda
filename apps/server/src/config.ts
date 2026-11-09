@@ -70,13 +70,18 @@ export interface Config {
    */
   encodeStallMinutes: number;
   /**
-   * TRANSCODA_DECODE_MEMORY_GIB (default null: half the memory available, at least 1 and at most
-   * 4 GiB; 0 turns it off): a read-only ffmpeg pass (Check source, verify's decodes) whose memory
-   * grows past this is stopped (memory-guard.ts).
+   * TRANSCODA_DECODE_MEMORY_GB (or the older TRANSCODA_DECODE_MEMORY_GIB) in bytes (default null:
+   * half the memory available, at least 1 GB and at most 4 GB; 0 turns it off): a read-only ffmpeg pass (Check source, verify's decodes)
+   * whose memory grows past this is stopped (memory-guard.ts).
    */
-  decodeMemoryGiB: number | null;
-  /** TRANSCODA_HEALTH_MIN_FREE_GIB (default 5): the deep health scratch-space check needs at least max(5, this). */
-  healthMinFreeGiB: number;
+  decodeMemoryBytes: number | null;
+  /**
+   * TRANSCODA_HEALTH_MIN_FREE_GB in bytes (default 5 GB): the deep health scratch-space check
+   * needs at least max(5 GB, this). The older TRANSCODA_HEALTH_MIN_FREE_GIB (binary GiB) is still
+   * read when the GB variable is unset; `healthMinFreeVariable` names the one in effect.
+   */
+  healthMinFreeBytes: number;
+  healthMinFreeVariable: MinFreeVariable;
   /** TRANSCODA_UPDATE_CHECK (default true): false never asks GitHub whether a newer release exists. */
   updateCheck: boolean;
 }
@@ -110,6 +115,55 @@ function parseNonNegative(
       `${name} must be 0 (off) or a positive number of ${unit}, got "${value}"`,
     );
   }
+}
+
+const GB = 1_000_000_000;
+const GIB = 2 ** 30;
+
+function unset(value: string | undefined): boolean {
+  return value === undefined || value.trim() === '';
+}
+
+/**
+ * The decode memory guard in bytes, or null for the default. TRANSCODA_DECODE_MEMORY_GB (SI) wins;
+ * when it is unset, the older TRANSCODA_DECODE_MEMORY_GIB (binary GiB, from 0.4.0) is read so an
+ * existing setup keeps the same limit.
+ */
+function decodeMemory(env: NodeJS.ProcessEnv): number | null {
+  const gb = env.TRANSCODA_DECODE_MEMORY_GB;
+  const gib = env.TRANSCODA_DECODE_MEMORY_GIB;
+  if (unset(gb) && !unset(gib)) {
+    return Math.round(parseNonNegative('TRANSCODA_DECODE_MEMORY_GIB', 'GiB', gib, 0) * GIB);
+  }
+  if (unset(gb)) return null;
+  return Math.round(parseNonNegative('TRANSCODA_DECODE_MEMORY_GB', 'GB', gb, 0) * GB);
+}
+
+type MinFreeVariable = 'TRANSCODA_HEALTH_MIN_FREE_GB' | 'TRANSCODA_HEALTH_MIN_FREE_GIB';
+
+/**
+ * The deep health's minimum free space in bytes, rounded to whole bytes. TRANSCODA_HEALTH_MIN_FREE_GB
+ * (SI, default 5) wins; when it is unset, the older TRANSCODA_HEALTH_MIN_FREE_GIB (binary GiB, kept
+ * so an existing setup still works) is read.
+ */
+function minFree(env: NodeJS.ProcessEnv): {
+  healthMinFreeBytes: number;
+  healthMinFreeVariable: MinFreeVariable;
+} {
+  const gb = env.TRANSCODA_HEALTH_MIN_FREE_GB;
+  const gib = env.TRANSCODA_HEALTH_MIN_FREE_GIB;
+  if ((gb === undefined || gb.trim() === '') && gib !== undefined && gib.trim() !== '') {
+    return {
+      healthMinFreeBytes: Math.round(
+        parsePositive('TRANSCODA_HEALTH_MIN_FREE_GIB', 'GiB', gib, 5) * GIB,
+      ),
+      healthMinFreeVariable: 'TRANSCODA_HEALTH_MIN_FREE_GIB',
+    };
+  }
+  return {
+    healthMinFreeBytes: Math.round(parsePositive('TRANSCODA_HEALTH_MIN_FREE_GB', 'GB', gb, 5) * GB),
+    healthMinFreeVariable: 'TRANSCODA_HEALTH_MIN_FREE_GB',
+  };
 }
 
 function list(value: string | undefined, lower: boolean): string[] {
@@ -409,20 +463,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
       env.TRANSCODA_ENCODE_STALL_MINUTES,
       60,
     ),
-    decodeMemoryGiB:
-      env.TRANSCODA_DECODE_MEMORY_GIB === undefined || env.TRANSCODA_DECODE_MEMORY_GIB.trim() === ''
-        ? null
-        : parseNonNegative(
-            'TRANSCODA_DECODE_MEMORY_GIB',
-            'GiB',
-            env.TRANSCODA_DECODE_MEMORY_GIB,
-            0,
-          ),
-    healthMinFreeGiB: parsePositive(
-      'TRANSCODA_HEALTH_MIN_FREE_GIB',
-      'GiB',
-      env.TRANSCODA_HEALTH_MIN_FREE_GIB,
-      5,
-    ),
+    decodeMemoryBytes: decodeMemory(env),
+    ...minFree(env),
   };
 }

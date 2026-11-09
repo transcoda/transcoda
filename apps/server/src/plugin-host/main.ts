@@ -58,7 +58,7 @@ type JsonObject = Record<string, JsonValue>;
 type Hook = 'decide' | 'build' | 'finish' | 'data' | 'run';
 
 const FATAL_EXIT_CODE = 70;
-const MAX_MIGRATED_BYTES = 256 * 1024;
+const MAX_MIGRATED_BYTES = 256_000;
 const bundlePath = process.argv[2] ?? '';
 const ownEntry = fileURLToPath(import.meta.url);
 
@@ -419,7 +419,7 @@ async function handle(msg: ServerMessage): Promise<JsonValue> {
       }
       const settings = toJson(parsed.value);
       if (JSON.stringify(settings).length > MAX_MIGRATED_BYTES) {
-        throw new Error(`migrated settings of ${def.type} are larger than 256 KB`);
+        throw new Error(`migrated settings of ${def.type} are larger than 256 kB`);
       }
       return { settings };
     }

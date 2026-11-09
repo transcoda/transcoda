@@ -2,7 +2,7 @@
 // except for the injected file system.
 import { constants, open } from 'node:fs/promises';
 import { basename, dirname, extname, join } from 'node:path';
-import { LANGUAGES, normalizeLanguage } from '@transcoda/shared';
+import { fmtBytes, LANGUAGES, normalizeLanguage } from '@transcoda/shared';
 import { errorCode, type FsOps } from '../../engine/fs-ops.ts';
 import { MAX_SIDECAR_BYTES, MEDIA_EXTENSIONS } from '../../engine/paths.ts';
 
@@ -144,7 +144,7 @@ const baseOf = (file: string) => file.slice(0, file.length - extname(file).lengt
 /**
  * Finds the sidecars of a video in its folder. Each subtitle file belongs to the sibling video
  * with the longest base name it parses against, so `Show.Part2.en.srt` is never `Show.mkv`'s.
- * Symlinks, directories, files whose realpath leaves the folder, empty files, files over 8 MiB
+ * Symlinks, directories, files whose realpath leaves the folder, empty files, files over 8 MB
  * and text files that are not UTF-8 (or UTF-16 with a BOM) are skipped with a reason.
  */
 export function fsSidecarSource(
@@ -196,7 +196,7 @@ export function fsSidecarSource(
         const real = await fs.realpath(path);
         if (dirname(real) !== realDir) return "outside the video's folder";
         if (st.size === 0) return 'empty';
-        if (st.size > MAX_SIDECAR_BYTES) return 'larger than 8 MiB';
+        if (st.size > MAX_SIDECAR_BYTES) return `larger than ${fmtBytes(MAX_SIDECAR_BYTES)}`;
         if (codec !== SIDECAR_EXTENSIONS.sup && !isText(await read(real, MAX_SIDECAR_BYTES))) {
           return NOT_UTF8;
         }

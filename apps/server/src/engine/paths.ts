@@ -10,9 +10,10 @@ import { defaultRecycleFolder } from './recycle.ts';
 
 /**
  * A sidecar subtitle larger than this is neither embedded nor copied for ffmpeg (real ones are
- * well under 1 MiB). Discovery skips it; the pipeline's copy refuses it.
+ * well under 1 MB). Discovery skips it; the pipeline's copy refuses it. 8 MB (SI), as the skip
+ * reason says.
  */
-export const MAX_SIDECAR_BYTES = 8 * 1024 * 1024;
+export const MAX_SIDECAR_BYTES = 8_000_000;
 
 /** Extensions queued from a folder (lower case); everything else is ignored. Shared with the web. */
 export { MEDIA_EXTENSIONS };

@@ -1,22 +1,20 @@
 // The memory guard: a long read-only ffmpeg pass (Check source, verify's decodes) whose resident
 // memory grows past a limit is stopped. A decode needs little memory (a 4K 10-bit HEVC film with
-// two audio tracks stays under 600 MiB); one that grows is buffering, typically the null muxer
+// two audio tracks stays under 650 MB); one that grows is buffering, typically the null muxer
 // queueing every decoded frame while it waits for a stream that never sends one (a cover stored
 // as a video track). Without the guard that fills the container and can thrash the whole host.
 
 import { readFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { totalmem } from 'node:os';
-
-const GiB = 2 ** 30;
-const MiB = 2 ** 20;
+import { fmtBytes, GB } from '@transcoda/shared';
 
 /** The guard reads the child's RSS this often (a runaway pass grows by roughly 50 MB/s). */
 export const MEMORY_CHECK_MS = 1_000;
-/** The default limit, at most: about seven times what a legitimate 4K decode needs. */
-export const DECODE_MEMORY_MAX_DEFAULT = 4 * GiB;
+/** The default limit, at most: about six times what a legitimate 4K decode needs. */
+export const DECODE_MEMORY_MAX_DEFAULT = 4 * GB;
 /** The default limit, at least (half of a very small container would stop real decodes). */
-export const DECODE_MEMORY_MIN_DEFAULT = 1 * GiB;
+export const DECODE_MEMORY_MIN_DEFAULT = 1 * GB;
 
 /** `VmRSS` of a `/proc/<pid>/status` in bytes; null when absent (a kernel thread, not Linux). */
 export function parseRss(status: string): number | null {
@@ -57,7 +55,7 @@ export function availableMemory(): number | null {
 
 /**
  * The default limit: half of the memory available (the server, an encode and other passes need
- * the rest), at least 1 GiB and at most 4 GiB. 4 GiB is about seven times what a 4K decode needs
+ * the rest), at least 1 GB and at most 4 GB. 4 GB is about six times what a 4K decode needs
  * and half of the 8 GB a typical container gets; a runaway pass reaches it within a minute or two.
  */
 export function defaultDecodeMemoryBytes(available: number | null): number {
@@ -71,7 +69,7 @@ export function defaultDecodeMemoryBytes(available: number | null): number {
 let configured: number | null | undefined;
 
 /**
- * Set at start-up from TRANSCODA_DECODE_MEMORY_GIB: bytes, null (the guard is off) or undefined
+ * Set at start-up from TRANSCODA_DECODE_MEMORY_GB: bytes, null (the guard is off) or undefined
  * (the default, worked out on first use).
  */
 export function setDecodeMemoryLimit(bytes: number | null | undefined): void {
@@ -84,14 +82,9 @@ export function decodeMemoryLimit(): number | null {
   return configured;
 }
 
-/** `4 GiB`, `1.5 GiB`, `512 MiB`. */
-function size(bytes: number): string {
-  if (bytes >= GiB) return `${Math.round((bytes / GiB) * 10) / 10} GiB`;
-  return `${Math.round(bytes / MiB)} MiB`;
-}
-
+/** "ffmpeg used more than 4.00 GB of memory and was stopped": SI, like every size Transcoda prints. */
 export function memoryLimitMessage(limitBytes: number): string {
-  return `ffmpeg used more than ${size(limitBytes)} of memory and was stopped`;
+  return `ffmpeg used more than ${fmtBytes(limitBytes)} of memory and was stopped`;
 }
 
 /**
