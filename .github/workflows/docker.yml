@@ -35,6 +35,12 @@ jobs:
       - id: release
         run: |
           if [[ "$GITHUB_REF" =~ ^refs/tags/v[0-9] ]]; then echo release=true; else echo release=false; fi >> "$GITHUB_OUTPUT"
+      # The app shows the plain version only when the tag is exactly v<package version> (the check
+      # release.yml makes); any other build, a mismatched tag included, shows <version>-dev+<commit>.
+      - id: version
+        run: |
+          pkg="$(jq -r .version apps/server/package.json)"
+          if [ "$GITHUB_REF" = "refs/tags/v$pkg" ]; then echo plain=true; else echo plain=false; fi >> "$GITHUB_OUTPUT"
       - uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
       - uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
@@ -65,7 +71,7 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           # The version the app shows: plain for a release tag, <version>-dev+<commit> otherwise.
           build-args: |
-            TRANSCODA_RELEASE=${{ steps.release.outputs.release }}
+            TRANSCODA_RELEASE=${{ steps.version.outputs.plain }}
             TRANSCODA_COMMIT=${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
