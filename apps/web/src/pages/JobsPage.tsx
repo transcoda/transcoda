@@ -259,12 +259,12 @@ function cancelAllResult(out: { cancelled: number; writing: number; failed: numb
   text: string;
 } {
   const parts: string[] = [];
-  if (out.cancelled > 0) parts.push(`Cancelled ${jobsWord(out.cancelled)}`);
-  else if (out.writing > 0 || out.failed > 0) parts.push('Nothing was cancelled');
+  if (out.cancelled > 0) parts.push(`Canceled ${jobsWord(out.cancelled)}`);
+  else if (out.writing > 0 || out.failed > 0) parts.push('Nothing was canceled');
   if (out.writing > 0) {
     parts.push(`${jobsWord(out.writing)} already replacing their file will finish`);
   }
-  if (out.failed > 0) parts.push(`${jobsWord(out.failed)} could not be cancelled`);
+  if (out.failed > 0) parts.push(`${jobsWord(out.failed)} could not be canceled`);
   if (parts.length === 0)
     return { tone: 'info', text: 'Nothing to cancel: those jobs already finished' };
   const tone = out.failed > 0 ? 'error' : out.cancelled > 0 ? 'success' : 'info';
@@ -345,7 +345,7 @@ function CancelAll({
         }
       >
         <p>
-          {`Every queued, running and paused job ${libraryId ? `in ${libraryName ?? 'this library'}` : 'in every library'} is cancelled.`}
+          {`Every queued, running and paused job ${libraryId ? `in ${libraryName ?? 'this library'}` : 'in every library'} is canceled.`}
           {statusFiltered ? ' The status and run filters do not limit this.' : null}
         </p>
         <p>

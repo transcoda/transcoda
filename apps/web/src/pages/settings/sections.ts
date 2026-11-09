@@ -41,6 +41,6 @@ export const SETTINGS_SECTIONS: readonly SettingsSection[] = [
     title: 'About',
     icon: 'info',
     Component: AboutSection,
-    subs: [{ id: 'licences', title: 'Open-source licences', Component: LicencesSection }],
+    subs: [{ id: 'licenses', title: 'Open-source licenses', Component: LicencesSection }],
   },
 ];

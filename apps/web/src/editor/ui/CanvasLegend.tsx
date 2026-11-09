@@ -65,7 +65,7 @@ export function CanvasLegend() {
   }
   return (
     <details ref={details} className="canvas-legend nopan nowheel">
-      <summary ref={toggle} className="canvas-legend-toggle" title="Colour key and shortcuts">
+      <summary ref={toggle} className="canvas-legend-toggle" title="Color key and shortcuts">
         <Icon name="info" size={16} />
         Key
       </summary>
@@ -97,7 +97,7 @@ export function CanvasLegend() {
           <span className="legend-item">
             <span className="legend-port is-pass">Yes</span>/
             <span className="legend-port is-else">No</span>
-            <span>branch outputs are labelled</span>
+            <span>branch outputs are labeled</span>
           </span>
         </Row>
         <Row label="States">
@@ -129,7 +129,7 @@ export function CanvasLegend() {
           </span>
           <Item swatch="is-group">group</Item>
         </Row>
-        <Row label="Node colours">
+        <Row label="Node colors">
           <Item swatch="is-kind is-trigger">trigger</Item>
           <Item swatch="is-kind is-condition">condition</Item>
           <Item swatch="is-kind is-action">action</Item>

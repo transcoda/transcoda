@@ -675,7 +675,7 @@ function notRun(d: Decision, ctx: StepContext, around: Around): string | null {
     return 'the job failed first';
   }
   if (ctx.state === 'failed') return null;
-  if (ctx.state === 'cancelled') return 'the job was cancelled first';
+  if (ctx.state === 'cancelled') return 'the job was canceled first';
   // A dry run's write steps never run: its sentence says what they would do.
   if (!ctx.dryRun && d.type !== null && WRITES.has(d.type)) {
     if (ctx.state === 'kept_original') return 'the original was kept';

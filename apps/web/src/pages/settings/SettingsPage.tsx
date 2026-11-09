@@ -49,7 +49,7 @@ function SectionBody({
  * Settings: a sub-nav beside the current section (640 px and wider). On a phone `/settings` is the
  * list of sections and each section has a way back to it. `/settings` on a wider window opens the
  * first section; an unknown section goes back to `/settings`. A sub-page
- * (`/settings/about/licences`) replaces its section's body and keeps the section current; an
+ * (`/settings/about/licenses`) replaces its section's body and keeps the section current; an
  * unknown one goes back to the section.
  */
 export function SettingsPage({

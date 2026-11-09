@@ -26,7 +26,7 @@ function LicenceEntry({ pkg, text }: { pkg: ThirdPartyPackage; text: string | un
                 {pkg.homepage}
               </a>
             ) : null}
-            <pre className="licence-text">{text ?? 'No licence text in this build.'}</pre>
+            <pre className="licence-text">{text ?? 'No license text in this build.'}</pre>
           </div>
         ) : null}
       </details>
@@ -67,7 +67,7 @@ export function LicencesSection() {
     return (
       <div className="licences">
         {intro}
-        <p className="about-error">The licence list could not be loaded.</p>
+        <p className="about-error">The license list could not be loaded.</p>
       </div>
     );
   }
@@ -76,7 +76,7 @@ export function LicencesSection() {
       <div className="licences">
         {intro}
         <p>
-          This build has no licence list. Run <code>pnpm licences</code> (developers) or use the
+          This build has no license list. Run <code>pnpm notices</code> (developers) or use the
           release image.
         </p>
       </div>
@@ -100,7 +100,7 @@ export function LicencesSection() {
           type="search"
           className="input"
           autoComplete="off"
-          placeholder="Name or licence"
+          placeholder="Name or license"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />

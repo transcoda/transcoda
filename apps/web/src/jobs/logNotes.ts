@@ -86,7 +86,7 @@ export function ffmpegNotes(log: string, probe: ProbeSummary | null): FfmpegNote
         title: 'Encode video pixel format',
         text: expected
           ? 'The 10-bit source is passed to NVENC as p010le. This is normal for NVIDIA hardware encoding and keeps 10-bit.'
-          : `${codec} can't take ${from}, so ffmpeg converted it to ${to}. Check the result if colours or bit depth matter.`,
+          : `${codec} can't take ${from}, so ffmpeg converted it to ${to}. Check the result if colors or bit depth matter.`,
       });
     }
   }

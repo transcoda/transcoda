@@ -147,8 +147,8 @@ export function AboutSection() {
           <Chips label="Hardware acceleration" items={ffmpeg.hwaccels} />
         </details>
       ) : null}
-      <GuardedLink href="/settings/about/licences" className="about-link">
-        <span>Open-source licences</span>
+      <GuardedLink href="/settings/about/licenses" className="about-link">
+        <span>Open-source licenses</span>
         <Icon name="chevron-right" />
       </GuardedLink>
     </div>

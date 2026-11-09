@@ -16,7 +16,7 @@ export const OUTCOME_LABEL: Record<OutcomeKey, { word: string; icon: IconName }>
   nothing_to_do: { word: 'Nothing to do', icon: 'state-noop' },
   kept_original: { word: 'Kept original', icon: 'undo' },
   failed: { word: 'Failed', icon: 'cross' },
-  cancelled: { word: 'Cancelled', icon: 'x-circle' },
+  cancelled: { word: 'Canceled', icon: 'x-circle' },
   // Never drawn as its own tile or word of a real run: a dry run is counted as the outcome it
   // would have had (see `outcomeWord`), and the "Dry run" badge marks the run.
   dry_run: { word: 'Would replace', icon: 'check' },
@@ -133,7 +133,7 @@ const SUMMARY_REST: ReadonlyArray<[OutcomeKey, string]> = [
   ['kept_original', 'would keep original'],
   ['skipped', 'skipped'],
   ['failed', 'failed'],
-  ['cancelled', 'cancelled'],
+  ['cancelled', 'canceled'],
   ['already_processed', 'already processed'],
   ['queued', 'queued'],
   ['in_progress', 'in progress'],
