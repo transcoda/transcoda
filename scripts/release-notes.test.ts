@@ -4,7 +4,13 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 // @ts-expect-error plain .mjs script without types
-import { compareVersions, parseNote, prependChangelog } from './release-notes.mjs';
+import {
+  compareVersions,
+  parseNote,
+  prepareHighlights,
+  prependChangelog,
+  takesHighlights,
+} from './release-notes.mjs';
 
 const script = join(import.meta.dirname, 'release-notes.mjs');
 let root: string;
@@ -14,6 +20,11 @@ const note = (name: string, type: string, text: string) =>
 const cli = (...args: string[]) =>
   spawnSync('node', [script, ...args, '--root', root], { encoding: 'utf8' });
 const read = (p: string) => readFileSync(join(root, p), 'utf8');
+const highlights = (text: string, images: string[] = []) => {
+  writeFileSync(join(root, '.changes/highlights.md'), text);
+  if (images.length > 0) mkdirSync(join(root, '.changes/images'));
+  for (const i of images) writeFileSync(join(root, '.changes/images', i), `png ${i}`);
+};
 
 beforeEach(() => {
   root = mkdtempSync(join(tmpdir(), 'relnotes-'));
@@ -191,5 +202,102 @@ describe('cli', () => {
     expect(existsSync(join(root, 'release-notes.md'))).toBe(false);
     expect(existsSync(join(root, 'apps/server/src/changelog.json'))).toBe(false);
     expect(existsSync(join(root, '.changes/a.md'))).toBe(true);
+  });
+});
+
+describe('takesHighlights', () => {
+  it('is true for final minor and major releases only', () => {
+    expect(['0.4.0', '1.0.0', '2.10.0'].map(takesHighlights)).toEqual([true, true, true]);
+    expect(['0.4.1', '1.0.0-rc.1', '0.4.0-beta'].map(takesHighlights)).toEqual([
+      false,
+      false,
+      false,
+    ]);
+  });
+});
+
+describe('prepareHighlights', () => {
+  it('points image links at docs/releases/<version>/', () => {
+    const r = prepareHighlights(
+      'Look:\n\n![Jobs](images/jobs.png)\n\n<img src="images/editor.png" width="600">\n',
+      ['editor.png', 'jobs.png'],
+      '0.4.0',
+    );
+    expect(r.text).toBe(
+      'Look:\n\n![Jobs](docs/releases/0.4.0/jobs.png)\n\n<img src="docs/releases/0.4.0/editor.png" width="600">',
+    );
+  });
+  it('reports missing and unused images, empty text and top-level headings', () => {
+    expect(prepareHighlights('![x](images/missing.png)', ['extra.png'], '0.4.0').errors).toEqual([
+      '.changes/highlights.md: image images/missing.png is not in .changes/images/.',
+      '.changes/images/extra.png is not used in .changes/highlights.md.',
+    ]);
+    expect(prepareHighlights('  \n', [], '0.4.0').errors).toHaveLength(1);
+    expect(prepareHighlights('## Big news\n\nText.', [], '0.4.0').errors).toHaveLength(1);
+    expect(prepareHighlights('### Big news\n\nText.', [], '0.4.0').text).toBe(
+      '### Big news\n\nText.',
+    );
+  });
+});
+
+describe('cli highlights', () => {
+  it('puts highlights and screenshots above the notes in a minor release', () => {
+    note('a.md', 'new', 'A new thing.');
+    highlights('A calmer Jobs page.\n\n![The Jobs page](images/jobs.png)\n', ['jobs.png']);
+    const r = cli('0.4.0', '--date', '2026-11-20');
+    expect(r.status).toBe(0);
+    const changelog = read('CHANGELOG.md');
+    expect(changelog).toContain(
+      '## 0.4.0 — 2026-11-20\n\nA calmer Jobs page.\n\n![The Jobs page](docs/releases/0.4.0/jobs.png)\n\n### New\n\n- A new thing.\n',
+    );
+    expect(read('release-notes.md')).toBe(
+      'A calmer Jobs page.\n\n![The Jobs page](docs/releases/0.4.0/jobs.png)\n\n## New\n\n- A new thing.\n',
+    );
+    expect(read('docs/releases/0.4.0/jobs.png')).toBe('png jobs.png');
+    expect(existsSync(join(root, '.changes/highlights.md'))).toBe(false);
+    expect(existsSync(join(root, '.changes/images'))).toBe(false);
+    // The in-app list stays plain text.
+    expect(JSON.parse(read('apps/server/src/changelog.json'))[0].entries).toEqual([
+      { type: 'new', text: 'A new thing.' },
+    ]);
+  });
+
+  it('leaves highlights for the next minor release on a patch or pre-release', () => {
+    for (const version of ['0.3.1', '0.4.0-rc.1']) {
+      note('a.md', 'fixed', 'Fixed.');
+      highlights('Later.\n\n![x](images/x.png)\n', ['x.png']);
+      const r = cli(version, '--date', '2026-11-20');
+      expect(r.status).toBe(0);
+      expect(r.stdout).toContain('kept for the next minor release');
+      expect(read('CHANGELOG.md')).not.toContain('Later.');
+      expect(existsSync(join(root, '.changes/highlights.md'))).toBe(true);
+      expect(existsSync(join(root, '.changes/images/x.png'))).toBe(true);
+      rmSync(join(root, '.changes/images'), { recursive: true });
+    }
+  });
+
+  it('refuses a broken image link, changing nothing', () => {
+    note('a.md', 'new', 'One.');
+    highlights('![x](images/typo.png)\n', ['x.png']);
+    const r = cli('0.4.0');
+    expect(r.status).toBe(1);
+    expect(r.stderr).toContain('images/typo.png is not in .changes/images/');
+    expect(existsSync(join(root, 'CHANGELOG.md'))).toBe(false);
+    expect(existsSync(join(root, '.changes/a.md'))).toBe(true);
+  });
+
+  it('refuses images without a highlights file', () => {
+    note('a.md', 'new', 'One.');
+    mkdirSync(join(root, '.changes/images'));
+    writeFileSync(join(root, '.changes/images/x.png'), 'png');
+    const r = cli('0.4.0');
+    expect(r.status).toBe(1);
+    expect(r.stderr).toContain('no .changes/highlights.md');
+  });
+
+  it('does not read highlights.md as a note', () => {
+    note('a.md', 'new', 'One.');
+    highlights('Prose without front matter.\n');
+    expect(cli('1.0.0').status).toBe(0);
   });
 });

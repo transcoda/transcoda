@@ -43,7 +43,8 @@ Each upcoming minor release has a GitHub milestone named after its version (`0.2
 You need maintainer rights. Every step except the tag runs through a normal pull request.
 
 1. **Check the milestone.** Move anything still open to the next milestone.
-2. **Make the release branch** from an up-to-date `main`:
+2. **For a minor or major release, write the highlights** (optional): a few paragraphs and screenshots in `.changes/highlights.md` and `.changes/images/`, added in the release pull request or earlier. They open the release notes on GitHub. How to write them is in [`.changes/README.md`](../.changes/README.md#highlights-for-a-minor-or-major-release).
+3. **Make the release branch** from an up-to-date `main`:
 
    ```sh
    git switch -c release/0.2.0 origin/main
@@ -51,10 +52,10 @@ You need maintainer rights. Every step except the tag runs through a normal pull
    pnpm release 0.2.0
    ```
 
-   This turns the notes in `.changes/` into a `CHANGELOG.md` section and the in-app "What's new" list (`apps/server/src/changelog.json`), deletes the notes, and sets the version in the app's `package.json` files. It refuses a version that isn't newer than the current one. Details in [`.changes/README.md`](../.changes/README.md).
+   This turns the notes in `.changes/` into a `CHANGELOG.md` section and the in-app "What's new" list (`apps/server/src/changelog.json`), puts any highlights at the top of a minor or major release's section with their screenshots in `docs/releases/<version>/`, deletes the notes, and sets the version in the app's `package.json` files. It refuses a version that isn't newer than the current one. Details in [`.changes/README.md`](../.changes/README.md).
 
-3. **Open the release pull request** titled `Release: 0.2.0`, with the `no user-facing change` label (the notes it removes are the release). Check `CHANGELOG.md` reads well, then squash-merge it.
-4. **Tag the merge commit** on `main` and push the tag:
+4. **Open the release pull request** titled `Release: 0.2.0`, with the `no user-facing change` label (the notes it removes are the release). Check `CHANGELOG.md` reads well and its screenshots show, then squash-merge it.
+5. **Tag the merge commit** on `main` and push the tag:
 
    ```sh
    git fetch origin
@@ -62,8 +63,8 @@ You need maintainer rights. Every step except the tag runs through a normal pull
    git push origin v0.2.0
    ```
 
-5. **Watch the workflows.** `release.yml` checks that the tag matches the version in `apps/server/package.json` and is on `main` (or a `release/*` branch), then publishes the GitHub Release with the `CHANGELOG.md` section. `docker.yml` builds and pushes the image tags above for amd64 and arm64.
-6. **Close the milestone** and create the next one, four weeks out.
+6. **Watch the workflows.** `release.yml` checks that the tag matches the version in `apps/server/package.json` and is on `main` (or a `release/*` branch), then publishes the GitHub Release with the `CHANGELOG.md` section, its screenshots linked to the tagged files. `docker.yml` builds and pushes the image tags above for amd64 and arm64.
+7. **Close the milestone** and create the next one, four weeks out.
 
 A patch release is the same, from `main`. If `main` already has features meant for the next minor release, branch the patch from the last release tag instead (`git switch -c release/0.2.1 v0.2.0`), cherry-pick the fixes, run `pnpm release 0.2.1`, push the branch and tag its head (keep the branch: the release check looks for it). Then copy the new `CHANGELOG.md` section and `changelog.json` entry to `main` in a pull request.
 
