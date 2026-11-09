@@ -2072,23 +2072,15 @@ a.nav-item.is-active:focus-visible,
   background: var(--raised);
 }
 
-/* Current: weight and a bar as well as the fill, so colour is not the only sign. The bar is a
-   straight square stroke inset from the item's rounded corners, so it never bends with them. */
+/* Current: the fill, bold text and a green icon, so colour is not the only sign. */
 .settings-nav-item.is-active {
   color: var(--text);
   background: var(--raised);
   font-weight: 700;
 }
 
-.settings-nav-item.is-active::before {
-  content: "";
-  position: absolute;
-  top: 10px;
-  bottom: 10px;
-  left: 0;
-  width: 3px;
-  border-radius: 0;
-  background: var(--accent-text);
+.settings-nav-item.is-active .icon {
+  color: var(--accent-text);
 }
 
 .settings-nav-item:focus-visible,

@@ -10,14 +10,13 @@ function rule(selector: string): string {
   return css.match(new RegExp(`(?:^|\\n)\\s*${escaped}\\s*\\{([^}]*)\\}`))?.[1] ?? '';
 }
 
-describe('settings nav: the current item (Jan: no curved highlight)', () => {
-  it('is marked by a straight square bar, not an inset shadow that bends with the corner', () => {
-    expect(rule('.settings-nav-item.is-active')).not.toContain('inset');
-    expect(rule('.settings-nav-item')).toContain('position: relative');
-    const bar = rule('.settings-nav-item.is-active::before');
-    expect(bar).toContain('position: absolute');
-    expect(bar).toContain('width: 3px');
-    expect(bar).toContain('border-radius: 0');
-    expect(bar).toContain('background: var(--accent-text)');
+describe('settings nav: the current item (Jan: green icon, no bar)', () => {
+  it('is marked by a green icon, bold text and the fill, with no bar or inset shadow', () => {
+    const active = rule('.settings-nav-item.is-active');
+    expect(active).not.toContain('inset');
+    expect(active).toContain('font-weight: 700');
+    expect(active).toContain('background: var(--raised)');
+    expect(rule('.settings-nav-item.is-active .icon')).toContain('color: var(--accent-text)');
+    expect(css).not.toContain('.settings-nav-item.is-active::before');
   });
 });

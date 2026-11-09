@@ -7,6 +7,7 @@ import { GuardedLink } from '../../lib/navigation.tsx';
 import { AppUpdatePanel } from './AppUpdatePanel.tsx';
 import { BackupsPanel } from './BackupsPanel.tsx';
 import { useSettings } from './useSettings.ts';
+import { versionLink } from './versionLink.ts';
 
 const notRead = 'Could not be read';
 
@@ -63,7 +64,7 @@ function Chips({ label, items }: { label: string; items: string[] }) {
 }
 
 /**
- * About: a newer release first (what it brings and how to update), then the Transcoda, Node and ffmpeg versions (ffmpeg's path when it is one), the database
+ * About: a newer release first (what it brings and how to update), then the Transcoda version (linked to its release or commit), Node and ffmpeg versions (ffmpeg's path when it is one), the database
  * backups, what ffmpeg can encode with (closed) and the way to the open-source licences.
  */
 export function AboutSection() {
@@ -76,6 +77,8 @@ export function AboutSection() {
 
   const node = settings.data?.about.node ?? (settings.error ? notRead : '…');
   const version = health.data?.version ?? (health.error ? notRead : '…');
+  // The release on GitHub, or the commit of a -dev build (see versionLink).
+  const link = versionLink(version);
   const ffmpeg = caps.data;
 
   return (
@@ -84,7 +87,15 @@ export function AboutSection() {
       <dl className="about-list">
         <div className="about-row">
           <dt>Transcoda</dt>
-          <dd className="mono">{version}</dd>
+          <dd className="mono">
+            {link ? (
+              <a href={link} target="_blank" rel="noreferrer" className="link-muted">
+                {version}
+              </a>
+            ) : (
+              version
+            )}
+          </dd>
         </div>
         <div className="about-row">
           <dt>Node</dt>
