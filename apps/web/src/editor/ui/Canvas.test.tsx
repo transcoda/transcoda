@@ -3,6 +3,7 @@ import { ReactFlowProvider } from '@xyflow/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { catalogFixture } from '../../test/fixtures/catalog.ts';
 import { chainMainReplace } from '../../test/fixtures/graphs.ts';
+import { transformOf } from '../../test/transform.ts';
 import { tidyUp } from '../model/layout.ts';
 import { Canvas, type GraphOp } from './Canvas.tsx';
 
@@ -93,13 +94,13 @@ describe('Canvas', () => {
   it('a refused move puts the card back where the graph has it', async () => {
     const apply = vi.fn(() => false);
     const { node } = await renderCanvas(apply);
-    expect(node.style.transform).toBe('translate(280px,0px)');
+    expect(transformOf(node)).toEqual({ x: 280, y: 0, scale: 1 });
     node.focus();
     await act(async () => {
       fireEvent.keyDown(node, { key: 'ArrowRight' });
     });
     expect(apply).toHaveBeenCalled();
-    expect(node.style.transform).toBe('translate(280px,0px)');
+    expect(transformOf(node)).toEqual({ x: 280, y: 0, scale: 1 });
   });
 
   it('an accepted move keeps the card at the new place until the graph catches up', async () => {
@@ -110,7 +111,7 @@ describe('Canvas', () => {
       fireEvent.keyDown(node, { key: 'ArrowRight' });
     });
     expect(apply).toHaveBeenCalled();
-    expect(node.style.transform).toBe('translate(285px,0px)');
+    expect(transformOf(node)).toEqual({ x: 285, y: 0, scale: 1 });
   });
 
   it('"Tidy up" applies the layout as one plain edit (its own undo step)', async () => {
