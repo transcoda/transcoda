@@ -2,7 +2,7 @@
 
 Transcoda has always kept the original in the library's recycle folder before it replaces a file. Now you can use it without leaving Transcoda.
 
-The new **Recycle folder** page in the main menu shows what each library's recycle folder holds and when each file will be deleted. From there you can restore an original, put Transcoda's version back if you change your mind, delete one file or empty the folder.
+The new **Recycle folder** page in the main menu shows what each library's recycle folder holds and when each file will be deleted. A file can go sooner if the recycle folder grows past its space limit, since the oldest originals are deleted first. From there you can restore an original, put Transcoda's version back if you change your mind, delete one file or empty the folder.
 
 ![The Recycle folder page: six originals in the Movies library's recycle folder, each with the day it will be deleted and a Restore original button](images/recycle-folder.png)
 
@@ -12,4 +12,4 @@ On a replaced file's job page, **Restore original** does the same for that one f
 
 #### Run a workflow again, on purpose
 
-Scan now skips files that an older version of the same workflow already processed, as long as they haven't changed since (a file copied to another disk counts as new), so activating a new version no longer runs it over your whole library again. When you do want that, **Process again** on a run's page queues its already processed files in one go.
+Scan now skips files that an older version of the same workflow already processed, as long as they haven't changed since (a file copied to another disk counts as new), so activating a new version no longer runs it over your whole library again. When you do want that, scan the library and use **Process again** on that scan's run page: it queues the files the scan skipped as already processed in one go.

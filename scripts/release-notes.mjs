@@ -8,6 +8,7 @@ import {
   readFileSync,
   renameSync,
   rmdirSync,
+  rmSync,
   unlinkSync,
   writeFileSync,
 } from 'node:fs';
@@ -18,8 +19,11 @@ export const TYPES = ['breaking', 'new', 'improved', 'fixed'];
 /** Optional prose and screenshots for a minor or major release, kept apart from the notes. */
 export const HIGHLIGHTS = 'highlights.md';
 export const IMAGES_DIR = 'images';
-/** Image links in the highlights: Markdown `](images/x.png)` or HTML `src="images/x.png"`. */
-const IMAGE_LINK = /(\]\(|src=")images\/([^)"\s]+)/g;
+/**
+ * Image links in the highlights: Markdown `](images/x.png)` or `](<images/my shot.png>)`, or HTML
+ * `src="images/x.png"`. Inside angle brackets the name runs to the `>` and may hold spaces.
+ */
+const IMAGE_LINK = /(\]\(<|\]\(|src=")images\/((?<=<images\/)[^>\n]+|[^)"\s]+)/g;
 const HEADINGS = { breaking: 'Breaking', new: 'New', improved: 'Improved', fixed: 'Fixed' };
 const SEMVER =
   /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$/;
@@ -138,7 +142,14 @@ export function prepareHighlights(text, images, version) {
     );
   }
   const used = new Set();
-  for (const [, , name] of body.matchAll(IMAGE_LINK)) {
+  for (const [, , link] of body.matchAll(IMAGE_LINK)) {
+    // A link may URL-escape the file name (`my%20shot.png`); the file on disk is `my shot.png`.
+    let name = link;
+    try {
+      name = decodeURIComponent(link);
+    } catch {
+      // Not valid escaping: compare the name as written.
+    }
     used.add(name);
     if (!images.includes(name)) {
       errors.push(
@@ -292,19 +303,65 @@ export function run(argv, now = new Date()) {
   if (args.dryRun) {
     return `Dry run: nothing written. Would consume ${files.length} note(s)${highlightsNote} and set version ${args.version} in ${packages.length} package.json file(s).\n\n--- CHANGELOG.md (new section) ---\n${section}\n--- release-notes.md ---\n${body}\n--- apps/server/src/changelog.json ---\n${json}`;
   }
-  mkdirSync(dirname(jsonPath), { recursive: true });
-  writeFileSync(changelogPath, changelog);
-  writeFileSync(join(root, 'release-notes.md'), body);
-  writeFileSync(jsonPath, json);
-  for (const p of packages) writeFileSync(p, withVersion(read(p), args.version));
-  for (const f of files) unlinkSync(join(changesDir, f));
-  if (highlights) {
+  // Every change below is undone if a later one fails, so a failed release can simply be run again.
+  // Each undo step is recorded before its change runs, since a write can fail half done.
+  const undo = [];
+  const write = (p, text) => {
+    const before = read(p);
+    undo.push(() => (before === undefined ? rmSync(p, { force: true }) : writeFileSync(p, before)));
+    writeFileSync(p, text);
+  };
+  const remove = (p) => {
+    const before = readFileSync(p);
+    unlinkSync(p);
+    undo.push(() => writeFileSync(p, before));
+  };
+  try {
     if (moved.length > 0) {
-      mkdirSync(join(root, assetsRel), { recursive: true });
-      for (const f of moved) renameSync(join(imagesPath, f), join(root, assetsRel, f));
+      const assetsDir = join(root, assetsRel);
+      const parents = [];
+      for (let d = assetsDir; !existsSync(d); d = dirname(d)) parents.push(d);
+      undo.push(() => {
+        for (const d of parents) if (existsSync(d)) rmdirSync(d);
+      });
+      mkdirSync(assetsDir, { recursive: true });
+      for (const f of moved) {
+        renameSync(join(imagesPath, f), join(assetsDir, f));
+        undo.push(() => renameSync(join(assetsDir, f), join(imagesPath, f)));
+      }
     }
-    if (existsSync(imagesPath) && readdirSync(imagesPath).length === 0) rmdirSync(imagesPath);
-    unlinkSync(highlightsPath);
+    const jsonDir = dirname(jsonPath);
+    if (!existsSync(jsonDir)) {
+      undo.push(() => rmSync(jsonDir, { recursive: true, force: true }));
+      mkdirSync(jsonDir, { recursive: true });
+    }
+    write(changelogPath, changelog);
+    write(join(root, 'release-notes.md'), body);
+    write(jsonPath, json);
+    for (const p of packages) write(p, withVersion(read(p), args.version));
+    for (const f of files) remove(join(changesDir, f));
+    if (highlights) {
+      if (existsSync(imagesPath) && readdirSync(imagesPath).length === 0) {
+        rmdirSync(imagesPath);
+        undo.push(() => mkdirSync(imagesPath));
+      }
+      remove(highlightsPath);
+    }
+  } catch (error) {
+    const failed = [];
+    for (const step of undo.reverse()) {
+      try {
+        step();
+      } catch (undoError) {
+        failed.push(undoError.message);
+      }
+    }
+    if (failed.length > 0) {
+      throw new ReleaseError(
+        `${error.message}\nUndoing the release also failed, so check the working tree (git status):\n${failed.join('\n')}`,
+      );
+    }
+    throw error;
   }
   return `Release ${args.version} (${date}): ${files.length} note(s)${highlightsNote} written to CHANGELOG.md, release-notes.md and apps/server/src/changelog.json; notes removed; version set in ${packages.length} package.json file(s).`;
 }
