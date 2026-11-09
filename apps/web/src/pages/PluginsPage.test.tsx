@@ -938,8 +938,14 @@ describe('PluginsPage catalog', () => {
     const alert = await within(dialog).findByRole('alert');
     // Whose install failed, why (as a sentence), and what to do next.
     expect(alert.textContent).toBe(
-      "Example didn't install: Bundle has no plugin default export. See the server log or try again.",
+      "Example didn't install: Bundle has no plugin default export. See the server log (opens in a new tab) or try again.",
     );
+    // The next step links to where the server log is and how to read it.
+    const log = within(alert).getByRole('link', { name: /^server log/ });
+    expect(log.getAttribute('href')).toBe(
+      'https://github.com/transcoda/transcoda/blob/main/docs/plugins.md#server-log',
+    );
+    expect(log.getAttribute('target')).toBe('_blank');
     expect(screen.getByRole('dialog', { name: 'Install Example 1.0.0?' })).toBeTruthy();
   });
 
