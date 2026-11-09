@@ -172,6 +172,16 @@ describe('jobText', () => {
     );
     expect(detailLine(job({ state: 'failed', reason: null }))).toBe('Original untouched');
     expect(detailLine(job({ state: 'kept_original', reason: null }))).toBe('');
+    // The size gate's reason, worded as the run page words it; a negative saving is growth.
+    expect(detailLine(job({ state: 'kept_original', reason: 'saved only 1.3%, below 15%' }))).toBe(
+      'Saved only 1.3% (gate ≥ 15%)',
+    );
+    expect(
+      detailLine(job({ state: 'kept_original', reason: 'saved only -18.9%, below 15%' })),
+    ).toBe('Grew by 18.9% (gate ≥ 15%)');
+    expect(reasonOf({ state: 'kept_original', reason: 'saved only -0.0%, below 5%' })).toBe(
+      'saved only 0% (gate ≥ 5%)',
+    );
     expect(detailLine(job({ state: 'dry_run', reason: null }))).toBe('Plan ready');
     expect(detailLine(job({ state: 'cancelled' }))).toBe('Cancelled · original untouched');
     expect(detailLine(job({ state: 'already_processed', reason: 'already processed by v7' }))).toBe(
@@ -549,7 +559,7 @@ describe('test-encode outcome', () => {
       'Would keep the original · saved only 9.6% (gate ≥ 12.5%)',
     );
     expect(testEncodeLine(keptWith('saved only -2.0%, below 10.0%'))).toBe(
-      'Would keep the original · saved only -2% (gate ≥ 10%)',
+      'Would keep the original · grew by 2% (gate ≥ 10%)',
     );
   });
 

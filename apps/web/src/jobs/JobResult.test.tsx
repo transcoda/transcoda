@@ -87,7 +87,7 @@ describe('JobResult', () => {
         }}
       />,
     );
-    expect(head(container)).toBe('Saved only 2.9%, below 20%');
+    expect(head(container)).toBe('Saved only 2.9% (gate ≥ 20%)');
     expect(container.querySelector('.job-result-meta')?.textContent).toBe('472 kB → 460 kB');
     const card = container.querySelector('.job-result');
     expect(card?.classList.contains('is-neutral')).toBe(true);
