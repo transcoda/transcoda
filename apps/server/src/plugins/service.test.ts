@@ -1335,7 +1335,7 @@ describe('cancelling a plugin call', () => {
       { text: 'x' } as never,
     ).catch((e: unknown) => e);
     expect(err).toMatchObject({
-      message: 'call to plugin example was cancelled',
+      message: 'call to plugin example was canceled',
       retryable: false,
     });
     // A live signal runs the call.
@@ -1562,10 +1562,10 @@ describe('plugin-aware updates [activation]', () => {
 
     const detail = t.deps.workflows.get(review);
     expect(detail?.currentVersion).toBe(3);
-    // 2→3 changes behaviour: the active version is held, not run unreviewed.
+    // 2→3 changes behavior: the active version is held, not run unreviewed.
     expect(detail?.active).toMatchObject({ version: 2, runnable: false });
     expect(detail?.activeIssues.map((i) => i.message)).toContain(
-      'plugin update changes behaviour of Thing; review and activate a new version',
+      'plugin update changes behavior of Thing; review and activate a new version',
     );
     expect(detail?.graph.nodes.find((n) => n.id === 't')).toMatchObject({
       typeVersion: 4,
@@ -1595,7 +1595,7 @@ describe('plugin-aware updates [activation]', () => {
     expect(refused.kind).toBe('workflow-invalid');
     expect(
       refused.kind === 'workflow-invalid' && refused.issues.map((i) => i.message).join(' '),
-    ).toContain('plugin update changes behaviour of Thing');
+    ).toContain('plugin update changes behavior of Thing');
     await rm(dir, { recursive: true, force: true });
     expect(t.deps.workflows.versions(review)?.[0]).toMatchObject({
       createdBy: 'system:upgrade',

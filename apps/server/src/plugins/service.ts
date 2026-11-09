@@ -76,7 +76,7 @@ export type UpdateCheckResult =
       ok: true;
       /**
        * Workflows whose active version (`version`) would stop running: its node version is
-       * dropped, or its migration path changes behaviour and needs a review first.
+       * dropped, or its migration path changes behavior and needs a review first.
        */
       wouldBreak: Array<
         WorkflowRef & { active: boolean; version: number; reason: 'dropped' | 'behaviour' }

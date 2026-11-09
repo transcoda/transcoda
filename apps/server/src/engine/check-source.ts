@@ -268,7 +268,7 @@ interface Seen {
  * time. Decoder errors before a stream's first output frame (a stream cut mid-GOP, audio starting
  * mid-frame; see {@link LEADING_SECONDS}) are ignored, as the encode does; the first later one is
  * damage only when `confirm` (a decode of the source from `at`, for `seconds`) reproduces it. An
- * abort rethrows (the job was cancelled or the server stops); every other failure of either pass is
+ * abort rethrows (the job was canceled or the server stops); every other failure of either pass is
  * `error`, never `damaged`.
  */
 export async function checkSource(input: {

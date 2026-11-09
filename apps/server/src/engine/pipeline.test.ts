@@ -1385,7 +1385,7 @@ describe('pipeline', () => {
     expect(await listAll(transcodeDir)).toEqual([]);
   });
 
-  it('cancel during encoding → cancelled, temp removed; cancel during replacing → done with reason "cancelled too late"', async () => {
+  it('cancel during encoding → cancelled, temp removed; cancel during replacing → done with reason "canceled too late"', async () => {
     const wf = workflow(
       line(node('in', 'core:input-manual'), toH264(), node('ro', 'core:replace-original')),
     );
@@ -1420,7 +1420,7 @@ describe('pipeline', () => {
     await spawner.complete({ bytes: 600 });
     expect(await settled(cancelId)).toMatchObject({
       state: 'done',
-      reason: 'cancelled too late',
+      reason: 'canceled too late',
     });
     expect((await stat(join(root, 'Show', 'b.mkv'))).size).toBe(600);
   });

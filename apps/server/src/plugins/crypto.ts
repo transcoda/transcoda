@@ -115,7 +115,7 @@ export function sealSettings(
     } else if (v === undefined || isSetMarker(v)) {
       const prev = previous?.[k];
       if (prev !== undefined) out[k] = prev;
-    } else if (v !== '') throw new Error(`settings field ${k} has an unrecognised shape`);
+    } else if (v !== '') throw new Error(`settings field ${k} has an unrecognized shape`);
     // empty string: removed
   }
   return out;

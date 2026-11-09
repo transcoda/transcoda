@@ -771,7 +771,7 @@ export class WorkflowService {
       }
     }
     log.info(
-      `workflow upgrades: ${summary.upgraded} upgraded (${summary.behaviour} with behaviour changes), ${summary.broken} broken, ${summary.unchanged} unchanged`,
+      `workflow upgrades: ${summary.upgraded} upgraded (${summary.behaviour} with behavior changes), ${summary.broken} broken, ${summary.unchanged} unchanged`,
     );
     return summary;
   }
@@ -848,7 +848,7 @@ export class WorkflowService {
     }
     if (summary.upgraded + summary.broken > 0) {
       log.info(
-        `plugin node upgrades: ${summary.upgraded} upgraded (${summary.behaviour} with behaviour changes), ${summary.broken} broken`,
+        `plugin node upgrades: ${summary.upgraded} upgraded (${summary.behaviour} with behavior changes), ${summary.broken} broken`,
       );
     }
     return summary;
@@ -881,7 +881,7 @@ export class WorkflowService {
       message:
         h.message ??
         (h.error === null
-          ? `${h.title} needs a review: its upgrade from version ${h.from} changes behaviour; save an upgraded version of the workflow and queue the file again`
+          ? `${h.title} needs a review: its upgrade from version ${h.from} changes behavior; save an upgraded version of the workflow and queue the file again`
           : `${h.title} could not be upgraded: ${h.error}`),
     }));
     for (const issue of this.issuesFor(graph, id, cache)) {

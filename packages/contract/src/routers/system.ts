@@ -56,7 +56,7 @@ export const system = {
       method: 'GET',
       path: '/system/licences',
       tags: ['system'],
-      summary: 'Third-party components and their licences',
+      summary: 'Third-party components and their licenses',
     })
     .errors(authedErrors)
     .output(LicencesOutputSchema),

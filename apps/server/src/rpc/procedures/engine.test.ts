@@ -856,7 +856,7 @@ describe('jobs', () => {
     expect(stopping.status).toBe(409);
     expect(await json(stopping)).toMatchObject({
       code: 'JOB_NOT_ACTIVE',
-      message: 'The server is stopping; nothing was cancelled',
+      message: 'The server is stopping; nothing was canceled',
     });
   });
 });

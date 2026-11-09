@@ -135,7 +135,7 @@ describe('loadWorkflowForJob', () => {
         code: 'NODE_OUTDATED',
         nodeId: 'b',
         message:
-          'Bump needs a review: its upgrade from version 2 changes behaviour; save an upgraded version of the workflow and queue the file again',
+          'Bump needs a review: its upgrade from version 2 changes behavior; save an upgraded version of the workflow and queue the file again',
       },
     ]);
   });

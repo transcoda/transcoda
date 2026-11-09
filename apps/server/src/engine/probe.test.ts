@@ -251,7 +251,7 @@ describe('parseProbe on hand-written streams', () => {
     ['a stream that is not an object', doc(['audio' as unknown as Record<string, unknown>])],
     ['a stream without an index', doc([{ codec_type: 'audio', codec_name: 'aac' }])],
   ])('rejects %s', (_name, json) => {
-    expect(() => parseProbe(json)).toThrow('unrecognised ffprobe output');
+    expect(() => parseProbe(json)).toThrow('unrecognized ffprobe output');
   });
 });
 
@@ -299,7 +299,7 @@ describe('probeFile with a fake exec', () => {
         ffprobePath: 'ffprobe',
         exec: async () => ({ stdout: 'garbage', stderr: '' }),
       }),
-    ).rejects.toThrow('unrecognised ffprobe output');
+    ).rejects.toThrow('unrecognized ffprobe output');
   });
 });
 
@@ -353,8 +353,8 @@ describe('probeFailure', () => {
     expect(
       probeFailure(Object.assign(new Error('spawn ffprobe ENOENT'), { code: 'ENOENT' }), path),
     ).toBe('ffprobe was not found');
-    expect(probeFailure(new Error('unrecognised ffprobe output'), path)).toBe(
-      'unrecognised ffprobe output',
+    expect(probeFailure(new Error('unrecognized ffprobe output'), path)).toBe(
+      'unrecognized ffprobe output',
     );
   });
 

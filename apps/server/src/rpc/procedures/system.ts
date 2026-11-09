@@ -56,7 +56,7 @@ async function loadLicences(deps: AppDeps): Promise<LicencesOutput> {
     result = { ...ThirdPartyFileSchema.parse(JSON.parse(raw)), available: true };
   } catch {
     deps.log.warn({
-      msg: 'third-party list is unreadable; licences are not shown',
+      msg: 'third-party list is unreadable; licenses are not shown',
       file: 'third-party.json',
     });
     return { available: false };

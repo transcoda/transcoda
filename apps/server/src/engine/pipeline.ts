@@ -1342,7 +1342,7 @@ export class Pipeline implements JobExecutor {
       w.problems.length > 0
         ? `finished with a problem: ${w.problems.join('; ')}`
         : w.lateCancel
-          ? 'cancelled too late'
+          ? 'canceled too late'
           : null;
     this.finish(
       findJob(this.deps.db, job.id) ?? job,
@@ -2662,7 +2662,7 @@ export class Pipeline implements JobExecutor {
     this.stopIfAborted(ctl);
   }
 
-  /** Throws Stop when the job was cancelled or the server is stopping. */
+  /** Throws Stop when the job was canceled or the server is stopping. */
   private stopIfAborted(ctl: JobControl): void {
     if (ctl.signal.aborted) throw new Stop();
   }

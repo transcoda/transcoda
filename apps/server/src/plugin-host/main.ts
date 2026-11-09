@@ -134,7 +134,7 @@ async function sendFetch(input: FetchInput): Promise<FetchResult> {
   fetchCounter += 1;
   const id = `fetch-${fetchCounter}`;
   if (currentCall.getStore()?.cancelled === true) {
-    return { ok: false, error: { kind: 'failed', message: 'the call was cancelled' } };
+    return { ok: false, error: { kind: 'failed', message: 'the call was canceled' } };
   }
   const clean = tokenizeJson(tokenize, toJson(input)) as FetchInput;
   const callId = currentCall.getStore()?.id ?? null;
@@ -146,7 +146,7 @@ async function sendFetch(input: FetchInput): Promise<FetchResult> {
 }
 
 function contextFor(job: { id: string; attempt: number } | null, dryRun: boolean): PluginContext {
-  if (limits === null) throw new Error('host is not initialised');
+  if (limits === null) throw new Error('host is not initialized');
   cache ??= createCache({ entries: limits.cacheEntries, bytes: limits.cacheBytes });
   return createHostContext({
     settings,
@@ -362,7 +362,7 @@ function hookContext(raw: JsonValue): Record<string, unknown> {
 }
 
 async function handle(msg: ServerMessage): Promise<JsonValue> {
-  if (plugin === null) throw new Error('host is not initialised');
+  if (plugin === null) throw new Error('host is not initialized');
   switch (msg.type) {
     case 'settings':
       applySettings(msg.settings);
@@ -484,14 +484,14 @@ async function onMessage(raw: unknown): Promise<void> {
   }
   if (msg.type === 'init') {
     if (initialised || plugin !== null) {
-      send(errorResult(msg.id, 'host is already initialised'));
+      send(errorResult(msg.id, 'host is already initialized'));
       return;
     }
     await init(msg);
     return;
   }
   if (!initialised) {
-    send(errorResult(msg.id, 'host is not initialised: waiting for init'));
+    send(errorResult(msg.id, 'host is not initialized: waiting for init'));
     return;
   }
   if (msg.type === 'cancel') {

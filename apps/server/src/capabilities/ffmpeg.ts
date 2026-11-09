@@ -98,7 +98,7 @@ export const defaultExec: Exec = makeExec({ timeout: 10_000, maxBuffer: 4 * 1024
 /** `ffmpeg version 9.0.2 Copyright ...` -> `9.0.2`. Throws when the output is not ffmpeg's. */
 export function parseVersion(stdout: string): string {
   const m = /^ffmpeg version (\S+)/m.exec(stdout);
-  if (!m?.[1]) throw new Error('unrecognised ffmpeg -version output');
+  if (!m?.[1]) throw new Error('unrecognized ffmpeg -version output');
   return m[1];
 }
 

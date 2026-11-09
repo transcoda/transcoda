@@ -736,7 +736,7 @@ describe('WorkflowService', () => {
     });
     expect(log.info).toHaveBeenCalledTimes(1);
     expect(log.info).toHaveBeenCalledWith(
-      'workflow upgrades: 1 upgraded (0 with behaviour changes), 0 broken, 2 unchanged',
+      'workflow upgrades: 1 upgraded (0 with behavior changes), 0 broken, 2 unchanged',
     );
     expect(log.warn).not.toHaveBeenCalled();
     expect(after.upgradeAll()).toEqual({ upgraded: 0, behaviour: 0, broken: 0, unchanged: 3 });
@@ -783,7 +783,7 @@ describe('WorkflowService', () => {
     expect(current(other)).toBe(3);
     expect(log.info).toHaveBeenCalledTimes(1);
     expect(log.info).toHaveBeenCalledWith(
-      'workflow upgrades: 1 upgraded (0 with behaviour changes), 2 broken, 0 unchanged',
+      'workflow upgrades: 1 upgraded (0 with behavior changes), 2 broken, 0 unchanged',
     );
     expect(log.warn).toHaveBeenCalledTimes(2);
     expect(log.warn).toHaveBeenCalledWith({
@@ -1409,7 +1409,7 @@ describe('plugin node upgrades', () => {
     serving(2, SAFE);
     const id = make('Main', 'workflow', mainWith(NODE_AT(1)));
     activate(id, 2);
-    serving(3, PLUGIN_LINKS); // the update: 2→3 changes behaviour
+    serving(3, PLUGIN_LINKS); // the update: 2→3 changes behavior
     const summary = await svc.upgradePluginNodes(['x:a'], migrate);
     expect(summary).toEqual({ upgraded: 1, behaviour: 1, broken: 0, unchanged: 0 });
     expect(migrate).toHaveBeenCalledWith('x:a', 1, { old: 'a' });
@@ -1417,7 +1417,7 @@ describe('plugin node upgrades', () => {
     expect(detail?.currentVersion).toBe(3);
     expect(detail?.active).toMatchObject({ version: 2, runnable: false });
     expect(detail?.activeIssues.map((i) => i.message)).toContain(
-      'plugin update changes behaviour of A; review and activate a new version',
+      'plugin update changes behavior of A; review and activate a new version',
     );
     expect(detail?.graph.nodes.find((n) => n.id === 'p')).toMatchObject({
       typeVersion: 3,
@@ -1521,7 +1521,7 @@ describe('plugin node upgrades', () => {
     const id = make('Main', 'workflow', mainWith(NODE_AT(1)));
     activate(id, 2);
     serving(3, PLUGIN_LINKS);
-    const text = 'plugin update changes behaviour of A; review and activate a new version';
+    const text = 'plugin update changes behavior of A; review and activate a new version';
     expect(svc.get(id)?.active).toMatchObject({ version: 2, runnable: false });
     const loaded = svc.loadForRun(id, 2);
     expect(loaded.kind).toBe('invalid');

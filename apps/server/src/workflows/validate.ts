@@ -105,7 +105,7 @@ function warning(
 }
 
 export const behaviourHoldText = (nodeTitle: string): string =>
-  `plugin update changes behaviour of ${nodeTitle}; review and activate a new version`;
+  `plugin update changes behavior of ${nodeTitle}; review and activate a new version`;
 
 /** The message for a node whose stored version is not this server's, or null when current. */
 function versionProblem(

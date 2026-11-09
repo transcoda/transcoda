@@ -286,7 +286,7 @@ describe('job tools', () => {
 
     const cancelled = await manage.callTool({ name: 'cancel_job', arguments: { id } });
     expect(cancelled.isError).toBeFalsy();
-    expect(text(cancelled)).toBe(`Cancelled job ${id}.`);
+    expect(text(cancelled)).toBe(`Canceled job ${id}.`);
     const again = await manage.callTool({ name: 'cancel_job', arguments: { id } });
     expect(again.isError).toBe(true);
     expect(text(again)).toMatch(/^JOB_NOT_ACTIVE: /);
@@ -301,7 +301,7 @@ describe('job tools', () => {
     const res = await manage.callTool({ name: 'cancel_all_jobs', arguments: {} });
     expect(res.isError).toBeFalsy();
     expect(res.structuredContent).toEqual({ cancelled: 2, writing: 0, failed: 0 });
-    expect(text(res)).toBe('Cancelled 2 jobs.');
+    expect(text(res)).toBe('Canceled 2 jobs.');
     for (const id of ids) expect(findJob(t.db, id as string)?.state).toBe('cancelled');
     const again = await manage.callTool({ name: 'cancel_all_jobs', arguments: {} });
     expect(again.structuredContent).toEqual({ cancelled: 0, writing: 0, failed: 0 });

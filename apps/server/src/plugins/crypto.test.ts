@@ -77,7 +77,7 @@ describe('sealSettings / openSettings / maskSettings', () => {
     expect(() => sealSettings(key, 'p', { a: { b: [1, forged] } }, secrets, null)).toThrow();
   });
 
-  it('refuses a secret field of an unrecognised shape instead of dropping it', () => {
+  it('refuses a secret field of an unrecognized shape instead of dropping it', () => {
     const prev = sealSettings(key, 'p', { apiKey: 'K1' }, secrets, null);
     for (const bad of [5, true, null, ['x'], { set: false }, { $enc: 'x' }]) {
       expect(() => sealSettings(key, 'p', { apiKey: bad as JsonValue }, secrets, prev)).toThrow();

@@ -87,7 +87,7 @@ describe('createDeps', () => {
       expect(deps.setupRequired()).toBe(true);
       expect(log.info).toHaveBeenCalledWith(
         expect.stringMatching(
-          /^workflow upgrades: 0 upgraded \(0 with behaviour changes\), 0 broken, 0 unchanged$/,
+          /^workflow upgrades: 0 upgraded \(0 with behavior changes\), 0 broken, 0 unchanged$/,
         ),
       );
     } finally {

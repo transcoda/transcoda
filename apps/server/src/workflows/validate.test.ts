@@ -1973,7 +1973,7 @@ describe('plugin nodes pinned to an older node version', () => {
       const issues = validateWorkflow(withA(v), pluginCtx(reg()));
       expect(codes(issues)).toEqual(['error:NODE_OUTDATED']);
       expect(issues[0]?.message).toBe(
-        'plugin update changes behaviour of A; review and activate a new version',
+        'plugin update changes behavior of A; review and activate a new version',
       );
     }
   });
@@ -1995,7 +1995,7 @@ describe('plugin nodes pinned to an older node version', () => {
     expect(r.held).toEqual([
       expect.objectContaining({
         nodeId: 'p',
-        message: 'plugin update changes behaviour of A; review and activate a new version',
+        message: 'plugin update changes behavior of A; review and activate a new version',
       }),
     ]);
     expect(r.graph.nodes.find((n) => n.id === 'p')).toMatchObject({
