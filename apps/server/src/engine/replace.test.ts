@@ -192,7 +192,7 @@ describe('paths', () => {
       '/m/tv/.transcoda-recycle/S1/a.mkv',
     );
     expect(recyclePathFor('/r', '/m/tv', '/m/tv/S1/a.mkv', 2)).toBe('/r/S1/a.mkv.2');
-    expect(FREE_SPACE_MARGIN_BYTES).toBe(5 * 1024 ** 3);
+    expect(FREE_SPACE_MARGIN_BYTES).toBe(5_000_000_000);
   });
 });
 
@@ -440,15 +440,15 @@ describe('replaceOriginal', () => {
     ]);
   });
 
-  it('a wait for space is worded with the free space in GB', () => {
+  it('a wait for space is worded in SI units, as the web prints every size', () => {
     expect(
       spaceWaitText({ path: '/media', neededBytes: 5_400_000_000, availableBytes: 5_100_000_000 }),
-    ).toBe('waiting for 5.4 GB free on /media (5.1 GB free)');
-    expect(spaceWaitText({ path: '/m', neededBytes: 5_368_733_184, availableBytes: 40_960 })).toBe(
-      'waiting for 5.4 GB free on /m (41 KB free)',
+    ).toBe('waiting for 5.40 GB free on /media (5.10 GB free)');
+    expect(spaceWaitText({ path: '/m', neededBytes: 5_000_040_960, availableBytes: 40_960 })).toBe(
+      'waiting for 5.00 GB free on /m (41.0 kB free)',
     );
     expect(spaceWaitText({ path: '/m', neededBytes: 2_500_000, availableBytes: 0 })).toBe(
-      'waiting for 2.5 MB free on /m (0 B free)',
+      'waiting for 2.50 MB free on /m (0 B free)',
     );
   });
 

@@ -44,7 +44,7 @@ export interface TranscodaPlugin {
   sdk: string;
   integration?: AnyIntegration | undefined;
   /**
-   * The plugin's own icon as SVG markup (at most 16 KiB); shown as an image in the 40px tile of
+   * The plugin's own icon as SVG markup (at most 16,384 characters); shown as an image in the 40px tile of
    * the Plugins page. Without one the page shows a monogram. Ship only a mark you may use.
    */
   icon?: string | undefined;

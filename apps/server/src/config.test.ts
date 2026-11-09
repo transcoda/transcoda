@@ -20,13 +20,38 @@ describe('loadConfig', () => {
   it('reads the deep health settings', () => {
     const d = loadConfig({});
     expect(d.healthStallHours).toBe(6);
-    expect(d.healthMinFreeGiB).toBe(5);
+    expect(d.healthMinFreeBytes).toBe(5_000_000_000);
+    expect(d.healthMinFreeVariable).toBe('TRANSCODA_HEALTH_MIN_FREE_GB');
     const c = loadConfig({
       TRANSCODA_HEALTH_STALL_HOURS: '0.5',
-      TRANSCODA_HEALTH_MIN_FREE_GIB: '12',
+      TRANSCODA_HEALTH_MIN_FREE_GB: '12',
     });
     expect(c.healthStallHours).toBe(0.5);
-    expect(c.healthMinFreeGiB).toBe(12);
+    expect(c.healthMinFreeBytes).toBe(12_000_000_000);
+  });
+
+  it('reads the minimum free space in SI GB, exact to the byte', () => {
+    expect(loadConfig({ TRANSCODA_HEALTH_MIN_FREE_GB: '2.5' }).healthMinFreeBytes).toBe(
+      2_500_000_000,
+    );
+    expect(loadConfig({ TRANSCODA_HEALTH_MIN_FREE_GB: '0.1' }).healthMinFreeBytes).toBe(
+      100_000_000,
+    );
+  });
+
+  it('still reads the older TRANSCODA_HEALTH_MIN_FREE_GIB (binary) when the GB variable is unset', () => {
+    const old = loadConfig({ TRANSCODA_HEALTH_MIN_FREE_GIB: '10' });
+    expect(old.healthMinFreeBytes).toBe(10 * 2 ** 30);
+    expect(old.healthMinFreeVariable).toBe('TRANSCODA_HEALTH_MIN_FREE_GIB');
+    const both = loadConfig({
+      TRANSCODA_HEALTH_MIN_FREE_GIB: '10',
+      TRANSCODA_HEALTH_MIN_FREE_GB: '7',
+    });
+    expect(both.healthMinFreeBytes).toBe(7_000_000_000);
+    expect(both.healthMinFreeVariable).toBe('TRANSCODA_HEALTH_MIN_FREE_GB');
+    expect(loadConfig({ TRANSCODA_HEALTH_MIN_FREE_GIB: '' }).healthMinFreeVariable).toBe(
+      'TRANSCODA_HEALTH_MIN_FREE_GB',
+    );
   });
 
   it('reads the encode stall guard: 60 minutes by default, 0 turns it off', () => {
@@ -43,14 +68,14 @@ describe('loadConfig', () => {
   });
 
   it('reads the decode memory guard: null (the default) when unset, 0 turns it off', () => {
-    expect(loadConfig({}).decodeMemoryGiB).toBeNull();
-    expect(loadConfig({ TRANSCODA_DECODE_MEMORY_GIB: '' }).decodeMemoryGiB).toBeNull();
-    expect(loadConfig({ TRANSCODA_DECODE_MEMORY_GIB: '2.5' }).decodeMemoryGiB).toBe(2.5);
-    expect(loadConfig({ TRANSCODA_DECODE_MEMORY_GIB: '0' }).decodeMemoryGiB).toBe(0);
+    expect(loadConfig({}).decodeMemoryBytes).toBeNull();
+    expect(loadConfig({ TRANSCODA_DECODE_MEMORY_GB: '' }).decodeMemoryBytes).toBeNull();
+    expect(loadConfig({ TRANSCODA_DECODE_MEMORY_GB: '2.5' }).decodeMemoryBytes).toBe(2_500_000_000);
+    expect(loadConfig({ TRANSCODA_DECODE_MEMORY_GB: '0' }).decodeMemoryBytes).toBe(0);
     for (const value of ['abc', '-1']) {
-      expect(() => loadConfig({ TRANSCODA_DECODE_MEMORY_GIB: value })).toThrow(
+      expect(() => loadConfig({ TRANSCODA_DECODE_MEMORY_GB: value })).toThrow(
         new ConfigError(
-          `TRANSCODA_DECODE_MEMORY_GIB must be 0 (off) or a positive number of GiB, got "${value}"`,
+          `TRANSCODA_DECODE_MEMORY_GB must be 0 (off) or a positive number of GB, got "${value}"`,
         ),
       );
     }
@@ -60,13 +85,14 @@ describe('loadConfig', () => {
     ['TRANSCODA_HEALTH_STALL_HOURS', '0'],
     ['TRANSCODA_HEALTH_STALL_HOURS', 'abc'],
     ['TRANSCODA_HEALTH_STALL_HOURS', '-1'],
+    ['TRANSCODA_HEALTH_MIN_FREE_GB', '0'],
+    ['TRANSCODA_HEALTH_MIN_FREE_GB', 'abc'],
     ['TRANSCODA_HEALTH_MIN_FREE_GIB', '0'],
     ['TRANSCODA_HEALTH_MIN_FREE_GIB', 'abc'],
   ])('rejects %s=%s', (name, value) => {
+    const unit = name.endsWith('HOURS') ? 'hours' : name.endsWith('GIB') ? 'GiB' : 'GB';
     expect(() => loadConfig({ [name]: value })).toThrow(
-      new ConfigError(
-        `${name} must be a positive number of ${name.endsWith('HOURS') ? 'hours' : 'GiB'}, got "${value}"`,
-      ),
+      new ConfigError(`${name} must be a positive number of ${unit}, got "${value}"`),
     );
   });
 

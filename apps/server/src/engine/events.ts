@@ -28,7 +28,7 @@ export type EngineEvent =
       currentNode: CurrentNode | null;
       /** The result's problems of a finished job (empty otherwise). */
       problems: string[];
-      /** The job's reason; while running, what it waits for ("waiting for 5.4 GB free on …"). */
+      /** The job's reason; while running, what it waits for ("waiting for 5.40 GB free on …"). */
       reason: string | null;
     }
   | { type: 'plugins.changed'; name: string; state: PluginState; stateReason: string | null }

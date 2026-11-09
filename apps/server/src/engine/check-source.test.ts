@@ -320,10 +320,10 @@ describe('checkSource', () => {
   });
 
   it('ffmpeg stopped by the memory guard is an error that is not worth retrying (never damaged)', async () => {
-    const memory = new MemoryLimitError(4 * 2 ** 30, `${LFE}\n`);
+    const memory = new MemoryLimitError(4_000_000_000, `${LFE}\n`);
     expect(await run(fakeExec({ errorAt: 60, stderr: [LFE], fail: { ...memory } }))).toEqual({
       kind: 'error',
-      message: 'ffmpeg used more than 4 GiB of memory and was stopped',
+      message: 'ffmpeg used more than 4.00 GB of memory and was stopped',
       final: true,
     });
     // In the locating pass too.
@@ -333,7 +333,7 @@ describe('checkSource', () => {
     }) as Exec;
     expect(await run(locating)).toEqual({
       kind: 'error',
-      message: 'ffmpeg used more than 4 GiB of memory and was stopped',
+      message: 'ffmpeg used more than 4.00 GB of memory and was stopped',
       final: true,
     });
   });

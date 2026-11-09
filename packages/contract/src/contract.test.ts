@@ -420,7 +420,7 @@ describe('contract', () => {
         lane: 'encode',
         currentNode: { workflowPath: [], nodeId: 'ev' },
         problems: ['finished with a problem: x'],
-        reason: 'waiting for 5.4 GB free on /media (5.1 GB free)',
+        reason: 'waiting for 5.40 GB free on /media (5.10 GB free)',
       }).success,
     ).toBe(true);
     expect(

@@ -244,10 +244,26 @@ describe('QueueSection', () => {
     expect(screen.queryByRole('textbox', { name: /stall/i })).toBeNull();
     expect(screen.queryByRole('spinbutton', { name: /stall/i })).toBeNull();
     expect(screen.getByText('6 hours')).toBeTruthy();
-    expect(screen.getByText('10.7 GB (10 GiB)')).toBeTruthy();
+    // SI, like every size in the app: no binary GiB beside it.
+    expect(screen.getByText('10.0 GB')).toBeTruthy();
+    expect(container.textContent).not.toContain('GiB');
     const vars = [...container.querySelectorAll('.setting-source code')].map((c) => c.textContent);
-    expect(vars).toEqual(['TRANSCODA_HEALTH_STALL_HOURS', 'TRANSCODA_HEALTH_MIN_FREE_GIB']);
+    expect(vars).toEqual(['TRANSCODA_HEALTH_STALL_HOURS', 'TRANSCODA_HEALTH_MIN_FREE_GB']);
     expect(container.textContent).toContain('Default · set TRANSCODA_HEALTH_STALL_HOURS to change');
+    expect(container.textContent).toContain('From TRANSCODA_HEALTH_MIN_FREE_GB');
+  });
+
+  it('free space set through the older GiB variable still reads in SI GB', async () => {
+    const fixture = settingsFixture();
+    fixture.queue.minFreeBytes = {
+      value: 10 * 2 ** 30,
+      variable: 'TRANSCODA_HEALTH_MIN_FREE_GIB',
+      set: true,
+    };
+    mocks.get.mockResolvedValue(fixture);
+    const { container } = renderAt('/settings/queue', <QueueSection />);
+    fireEvent.click(await screen.findByRole('button', { name: /Set on the server/ }));
+    expect(screen.getByText('10.7 GB')).toBeTruthy();
     expect(container.textContent).toContain('From TRANSCODA_HEALTH_MIN_FREE_GIB');
   });
 

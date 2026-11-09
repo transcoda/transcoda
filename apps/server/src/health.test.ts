@@ -11,7 +11,7 @@ import type { JobSpaceWait } from './engine/space-waits.ts';
 import { DEEP_HEALTH_CACHE_MS, HealthService } from './health.ts';
 
 const T0 = new Date('2026-03-01T12:00:00.000Z');
-const GIB = 1024 ** 3;
+const GB = 1_000_000_000;
 const okCaps: Capabilities = {
   available: true,
   path: 'ffmpeg',
@@ -27,7 +27,7 @@ function setup(
     freeBytes?: number;
     statfsThrows?: boolean;
     hang?: boolean;
-    minFreeGiB?: number;
+    minFreeBytes?: number;
     stallHours?: number;
     timeoutMs?: number;
     spaceWaits?: JobSpaceWait[];
@@ -43,7 +43,7 @@ function setup(
     config: {
       transcodeDir: '/secret/transcode/dir',
       healthStallHours: opts.stallHours ?? 6,
-      healthMinFreeGiB: opts.minFreeGiB ?? 5,
+      healthMinFreeBytes: opts.minFreeBytes ?? 5 * GB,
     },
     capabilities: () => opts.caps ?? okCaps,
     fs: {
@@ -51,7 +51,7 @@ function setup(
         statfsCalls++;
         if (opts.hang) await new Promise<never>(() => {});
         if (opts.statfsThrows) throw new Error('boom /secret/path');
-        return { bavail: (opts.freeBytes ?? 100 * GIB) / 4096, bsize: 4096 };
+        return { bavail: (opts.freeBytes ?? 100 * GB) / 4096, bsize: 4096 };
       },
     },
     ...(opts.spaceWaits && { spaceWaits: () => opts.spaceWaits ?? [] }),
@@ -146,15 +146,15 @@ describe('HealthService.deep', () => {
     expect(t.logs).toEqual([]);
   });
 
-  it('fails scratchSpace under 5 GiB, even when the minimum is set lower', async () => {
-    const t = setup({ freeBytes: 4 * GIB, minFreeGiB: 2 });
+  it('fails scratchSpace under 5 GB, even when the minimum is set lower', async () => {
+    const t = setup({ freeBytes: 4_999_999_488, minFreeBytes: 2 * GB });
     expect((await t.svc.deep()).scratchSpace).toBe('fail');
   });
 
   it('honours a higher minimum free space', async () => {
-    const t = setup({ freeBytes: 8 * GIB, minFreeGiB: 10 });
+    const t = setup({ freeBytes: 8 * GB, minFreeBytes: 10 * GB });
     expect((await t.svc.deep()).scratchSpace).toBe('fail');
-    expect((await setup({ freeBytes: 8 * GIB }).svc.deep()).scratchSpace).toBe('ok');
+    expect((await setup({ freeBytes: 8 * GB }).svc.deep()).scratchSpace).toBe('ok');
   });
 
   it('fails scratchSpace when statfs throws, logging without leaking into the result', async () => {
@@ -183,7 +183,7 @@ describe('HealthService.deep', () => {
         msg: 'deep health check failed',
         check: 'queue',
         error:
-          'job j9 is waiting for 5.4 GB free on /media/shows (5.1 GB free) since 2026-10-19T14:56:00.000Z',
+          'job j9 is waiting for 5.40 GB free on /media/shows (5.10 GB free) since 2026-10-19T14:56:00.000Z',
       }),
     ]);
     expect((await setup({ spaceWaits: [] }).svc.deep()).queue).toBe('ok');
@@ -193,7 +193,7 @@ describe('HealthService.deep', () => {
       expect.objectContaining({
         check: 'queue',
         error:
-          '2 jobs wait for free space: job j9 is waiting for 5.4 GB free on /media/shows (5.1 GB free) since 2026-10-19T14:56:00.000Z; job j10 is waiting for 5.4 GB free on /media/movies (5.1 GB free) since 2026-10-19T14:56:00.000Z',
+          '2 jobs wait for free space: job j9 is waiting for 5.40 GB free on /media/shows (5.10 GB free) since 2026-10-19T14:56:00.000Z; job j10 is waiting for 5.40 GB free on /media/movies (5.10 GB free) since 2026-10-19T14:56:00.000Z',
       }),
     ]);
   });

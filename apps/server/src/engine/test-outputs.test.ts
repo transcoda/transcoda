@@ -27,7 +27,7 @@ vi.mock('./preview.ts', async (importOriginal) => {
 });
 const build = vi.mocked(buildPreview);
 
-const GIB = 1024 ** 3;
+const GB = 1_000_000_000;
 const HOUR = 3_600_000;
 const start = new Date('2026-03-01T12:00:00.000Z');
 
@@ -39,7 +39,7 @@ let now: Date;
 /** What the fake statfs reports free; a function so a test can change it per call. */
 let free: () => number;
 let logged: unknown[];
-let minFreeGiB: number;
+let minFreeBytes: number;
 
 const log: Logger = {
   info: (e) => logged.push(e),
@@ -55,7 +55,7 @@ function store(): TestOutputStore {
   return new TestOutputStore({
     db,
     fs,
-    config: { transcodeDir: tc, healthMinFreeGiB: minFreeGiB },
+    config: { transcodeDir: tc, healthMinFreeBytes: minFreeBytes },
     now: () => now,
     log,
   });
@@ -137,9 +137,9 @@ beforeEach(async () => {
   );
   for (const id of ['a', 'b', 'c']) job(id);
   now = start;
-  free = () => 100 * GIB;
+  free = () => 100 * GB;
   logged = [];
-  minFreeGiB = 5;
+  minFreeBytes = 5 * GB;
 });
 
 afterEach(async () => {
@@ -150,9 +150,10 @@ afterEach(async () => {
 });
 
 describe('scratchMinFreeBytes', () => {
-  it('is the health minimum, never below 5 GiB', () => {
-    expect(scratchMinFreeBytes({ healthMinFreeGiB: 1 })).toBe(5 * GIB);
-    expect(scratchMinFreeBytes({ healthMinFreeGiB: 8 })).toBe(8 * GIB);
+  it('is the health minimum, never below 5 GB (SI)', () => {
+    expect(scratchMinFreeBytes({ healthMinFreeBytes: 1 * GB })).toBe(5 * GB);
+    expect(scratchMinFreeBytes({ healthMinFreeBytes: 8 * GB })).toBe(8 * GB);
+    expect(scratchMinFreeBytes({ healthMinFreeBytes: 10 * 2 ** 30 })).toBe(10 * 2 ** 30);
   });
 });
 
@@ -202,15 +203,15 @@ describe('TestOutputStore', () => {
   });
 
   it('keep deletes the output when scratch space would fall below the margin', async () => {
-    free = () => 5 * GIB - 1;
+    free = () => 5 * GB - 1;
     expect(await store().keep('a', await output('a'), 'mkv')).toBeNull();
     expect(exists(join(dir, 'a.mkv'))).toBe(false);
     expect(store().find('a')).toBeNull();
     expect(note('a')).toBe(TEST_OUTPUT_NOTES.scratchLow);
     expect(note('a')).toBe('not kept: scratch space low');
 
-    minFreeGiB = 8;
-    free = () => 7 * GIB;
+    minFreeBytes = 8 * GB;
+    free = () => 7 * GB;
     expect(await store().keep('b', await output('b'), 'mkv')).toBeNull();
     expect(exists(join(dir, 'b.mkv'))).toBe(false);
     expect(store().find('b')).toBeNull();
@@ -268,7 +269,7 @@ describe('TestOutputStore', () => {
           throw new Error('EIO');
         },
       },
-      config: { transcodeDir: tc, healthMinFreeGiB: 5 },
+      config: { transcodeDir: tc, healthMinFreeBytes: 5 * GB },
       now: () => now,
       log,
     });
@@ -288,7 +289,7 @@ describe('TestOutputStore', () => {
           throw new Error('EXDEV: cross-device link not permitted');
         },
       },
-      config: { transcodeDir: tc, healthMinFreeGiB: 5 },
+      config: { transcodeDir: tc, healthMinFreeBytes: 5 * GB },
       now: () => now,
       log,
     });
@@ -303,7 +304,7 @@ describe('TestOutputStore', () => {
       await store().keep(id, await output(id), 'mkv');
     }
     // Enough room once two outputs are gone.
-    free = () => (nodeFs.readdirSync(dir).length <= 1 ? 6 * GIB : 4 * GIB);
+    free = () => (nodeFs.readdirSync(dir).length <= 1 ? 6 * GB : 4 * GB);
     logged = [];
     expect(await store().makeRoom()).toBe(2);
     expect(store().find('b')).toBeNull();
@@ -485,9 +486,9 @@ describe('TestOutputStore', () => {
       await store().keep('a', await output('a'), 'mkv');
       const s = store();
       expect(await s.previewState('a', 600)).toBe('none');
-      free = () => 5 * GIB + 599;
+      free = () => 5 * GB + 599;
       expect(await s.previewState('a', 600)).toBe('scratchLow');
-      free = () => 100 * GIB;
+      free = () => 100 * GB;
       await writeFile(preview('a'), 'mp4');
       expect(await s.previewState('a', 600)).toBe('ready');
       expect(build).not.toHaveBeenCalled();

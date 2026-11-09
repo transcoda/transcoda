@@ -13,6 +13,7 @@ import {
 } from './memory-guard.ts';
 
 const GiB = 2 ** 30;
+const GB = 1_000_000_000;
 
 describe('parseRss', () => {
   it('reads VmRSS (kB) from /proc/<pid>/status; null without it', () => {
@@ -33,38 +34,38 @@ describe('parseCgroupLimit', () => {
 });
 
 describe('defaultDecodeMemoryBytes', () => {
-  it('is 4 GiB, or half the memory when that is less, never under 1 GiB', () => {
-    expect(defaultDecodeMemoryBytes(64 * GiB)).toBe(4 * GiB);
-    expect(defaultDecodeMemoryBytes(8 * GiB)).toBe(4 * GiB);
-    expect(defaultDecodeMemoryBytes(6 * GiB)).toBe(3 * GiB);
-    expect(defaultDecodeMemoryBytes(1 * GiB)).toBe(1 * GiB);
-    expect(defaultDecodeMemoryBytes(null)).toBe(4 * GiB);
+  it('is 4 GB, or half the memory when that is less, never under 1 GB (SI)', () => {
+    expect(defaultDecodeMemoryBytes(64 * GiB)).toBe(4 * GB);
+    expect(defaultDecodeMemoryBytes(8 * GiB)).toBe(4 * GB);
+    expect(defaultDecodeMemoryBytes(6 * GB)).toBe(3 * GB);
+    expect(defaultDecodeMemoryBytes(1 * GiB)).toBe(1 * GB);
+    expect(defaultDecodeMemoryBytes(null)).toBe(4 * GB);
   });
 });
 
 describe('memoryLimitMessage', () => {
-  it('says the limit in GiB, or MiB below one', () => {
-    expect(memoryLimitMessage(4 * GiB)).toBe(
-      'ffmpeg used more than 4 GiB of memory and was stopped',
+  it('says the limit in SI units, like every size the app prints', () => {
+    expect(memoryLimitMessage(4 * GB)).toBe(
+      'ffmpeg used more than 4.00 GB of memory and was stopped',
     );
-    expect(memoryLimitMessage(1.5 * GiB)).toBe(
-      'ffmpeg used more than 1.5 GiB of memory and was stopped',
+    expect(memoryLimitMessage(1.5 * GB)).toBe(
+      'ffmpeg used more than 1.50 GB of memory and was stopped',
     );
-    expect(memoryLimitMessage(512 * 2 ** 20)).toBe(
-      'ffmpeg used more than 512 MiB of memory and was stopped',
+    expect(memoryLimitMessage(512_000_000)).toBe(
+      'ffmpeg used more than 512 MB of memory and was stopped',
     );
   });
 });
 
 describe('MemoryLimitError', () => {
   it('is killed, carries the limit and stderr; recognised also when copied onto another error', () => {
-    const e = new MemoryLimitError(4 * GiB, 'some stderr\n');
+    const e = new MemoryLimitError(4 * GB, 'some stderr\n');
     expect(e).toMatchObject({
       name: 'MemoryLimitError',
       killed: true,
-      memoryLimitBytes: 4 * GiB,
+      memoryLimitBytes: 4 * GB,
       stderr: 'some stderr\n',
-      message: 'ffmpeg used more than 4 GiB of memory and was stopped',
+      message: 'ffmpeg used more than 4.00 GB of memory and was stopped',
     });
     expect(isMemoryLimitError(e)).toBe(true);
     expect(isMemoryLimitError(Object.assign(new Error('x'), { ...e }))).toBe(true);

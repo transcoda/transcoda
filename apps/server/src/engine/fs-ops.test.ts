@@ -188,7 +188,7 @@ describe('copyRegular', () => {
       'it is not a regular file',
     );
     await expect(nodeFsOps.copyRegular(a, join(root, 'big.srt'), 3)).rejects.toThrow(
-      'it is larger than 3 bytes',
+      'it is larger than 3 B',
     );
     for (const name of ['l.srt', 'd.srt', 'big.srt']) {
       await expect(stat(join(root, name))).rejects.toThrow();

@@ -452,7 +452,7 @@ export function detailLine(job: Job, opts: { queuePaused?: boolean; now?: Date }
         ? `Planned · waiting for ${job.lane === 'encode' ? 'the encoder' : 'quick tasks'}`
         : RUNNING_DETAIL.building;
     case 'replacing':
-      // C4: the replace waits for free space ("waiting for 5.4 GB free on /media (5.1 GB free)").
+      // C4: the replace waits for free space ("waiting for 5.40 GB free on /media (5.10 GB free)").
       return job.reason ? sentence(job.reason) : RUNNING_DETAIL.replacing;
     case 'verifying':
       return verifyDetail(job);

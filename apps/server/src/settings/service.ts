@@ -263,7 +263,7 @@ export function readSettings(deps: SettingsDeps): Settings {
         { id: 'quick', label: 'Quick' },
       ],
       stallHours: fromEnv(deps, 'TRANSCODA_HEALTH_STALL_HOURS', config.healthStallHours),
-      minFreeGib: fromEnv(deps, 'TRANSCODA_HEALTH_MIN_FREE_GIB', config.healthMinFreeGiB),
+      minFreeBytes: fromEnv(deps, config.healthMinFreeVariable, config.healthMinFreeBytes),
       testEncodeKeepHours: editable(deps, 'testEncodeKeepHours'),
       encodeDevice,
       encodeDevices: encodeDevices(deps.capabilities(), encodeDevice.value),

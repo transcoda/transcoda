@@ -30,14 +30,15 @@ export const TEST_OUTPUT_NOTES = {
   evicted: 'deleted: scratch space was needed',
 } as const;
 
-const GIB = 1024 ** 3;
+/** The scratch minimum never goes below this: 5 GB (SI). */
+export const SCRATCH_MIN_FREE_FLOOR_BYTES = 5_000_000_000;
 
 /**
- * The free space the transcode dir must keep: the deep health's scratch minimum, never below 5 GiB.
+ * The free space the transcode dir must keep: the deep health's scratch minimum, never below 5 GB.
  * Shared by the deep health and the test-output space guard.
  */
-export function scratchMinFreeBytes(config: Pick<Config, 'healthMinFreeGiB'>): number {
-  return Math.max(5, config.healthMinFreeGiB) * GIB;
+export function scratchMinFreeBytes(config: Pick<Config, 'healthMinFreeBytes'>): number {
+  return Math.max(SCRATCH_MIN_FREE_FLOOR_BYTES, config.healthMinFreeBytes);
 }
 
 export interface TestOutputRow {
@@ -71,7 +72,7 @@ const PART = '.part';
 export interface TestOutputStoreDeps {
   db: Database;
   fs: FsOps;
-  config: Pick<Config, 'transcodeDir' | 'healthMinFreeGiB'>;
+  config: Pick<Config, 'transcodeDir' | 'healthMinFreeBytes'>;
   now(): Date;
   log: Logger;
 }

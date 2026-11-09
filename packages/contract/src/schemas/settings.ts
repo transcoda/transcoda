@@ -51,8 +51,8 @@ export const SettingsSchema = z.object({
     lanes: z.array(z.object({ id: LaneSchema, label: z.string() })),
     /** TRANSCODA_HEALTH_STALL_HOURS */
     stallHours: fromEnv(z.number()),
-    /** TRANSCODA_HEALTH_MIN_FREE_GIB */
-    minFreeGib: fromEnv(z.number()),
+    /** TRANSCODA_HEALTH_MIN_FREE_GB (or the older TRANSCODA_HEALTH_MIN_FREE_GIB), in bytes. */
+    minFreeBytes: fromEnv(z.number()),
     /** "Test encodes kept for", hours; 0 deletes a test output right after measuring. */
     testEncodeKeepHours: editable(z.number()),
     /** "Encoding device": `auto`, `cpu`, `nvidia:<index>` or `intel:<pci>`; decoding follows it. */
