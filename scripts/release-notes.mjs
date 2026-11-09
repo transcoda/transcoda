@@ -18,8 +18,11 @@ export const TYPES = ['breaking', 'new', 'improved', 'fixed'];
 /** Optional prose and screenshots for a minor or major release, kept apart from the notes. */
 export const HIGHLIGHTS = 'highlights.md';
 export const IMAGES_DIR = 'images';
-/** Image links in the highlights: Markdown `](images/x.png)` or HTML `src="images/x.png"`. */
-const IMAGE_LINK = /(\]\(|src=")images\/([^)"\s]+)/g;
+/**
+ * Image links in the highlights: Markdown `](images/x.png)` or `](<images/my shot.png>)`, or HTML
+ * `src="images/x.png"`. Inside angle brackets the name runs to the `>` and may hold spaces.
+ */
+const IMAGE_LINK = /(\]\(<|\]\(|src=")images\/((?<=<images\/)[^>\n]+|[^)"\s]+)/g;
 const HEADINGS = { breaking: 'Breaking', new: 'New', improved: 'Improved', fixed: 'Fixed' };
 const SEMVER =
   /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$/;
@@ -138,7 +141,14 @@ export function prepareHighlights(text, images, version) {
     );
   }
   const used = new Set();
-  for (const [, , name] of body.matchAll(IMAGE_LINK)) {
+  for (const [, , link] of body.matchAll(IMAGE_LINK)) {
+    // A link may URL-escape the file name (`my%20shot.png`); the file on disk is `my shot.png`.
+    let name = link;
+    try {
+      name = decodeURIComponent(link);
+    } catch {
+      // Not valid escaping: compare the name as written.
+    }
     used.add(name);
     if (!images.includes(name)) {
       errors.push(
@@ -292,6 +302,18 @@ export function run(argv, now = new Date()) {
   if (args.dryRun) {
     return `Dry run: nothing written. Would consume ${files.length} note(s)${highlightsNote} and set version ${args.version} in ${packages.length} package.json file(s).\n\n--- CHANGELOG.md (new section) ---\n${section}\n--- release-notes.md ---\n${body}\n--- apps/server/src/changelog.json ---\n${json}`;
   }
+  // Move the screenshots first: if that fails, put back any already moved and write nothing.
+  const done = [];
+  try {
+    if (moved.length > 0) mkdirSync(join(root, assetsRel), { recursive: true });
+    for (const f of moved) {
+      renameSync(join(imagesPath, f), join(root, assetsRel, f));
+      done.push(f);
+    }
+  } catch (error) {
+    for (const f of done) renameSync(join(root, assetsRel, f), join(imagesPath, f));
+    throw error;
+  }
   mkdirSync(dirname(jsonPath), { recursive: true });
   writeFileSync(changelogPath, changelog);
   writeFileSync(join(root, 'release-notes.md'), body);
@@ -299,10 +321,6 @@ export function run(argv, now = new Date()) {
   for (const p of packages) writeFileSync(p, withVersion(read(p), args.version));
   for (const f of files) unlinkSync(join(changesDir, f));
   if (highlights) {
-    if (moved.length > 0) {
-      mkdirSync(join(root, assetsRel), { recursive: true });
-      for (const f of moved) renameSync(join(imagesPath, f), join(root, assetsRel, f));
-    }
     if (existsSync(imagesPath) && readdirSync(imagesPath).length === 0) rmdirSync(imagesPath);
     unlinkSync(highlightsPath);
   }

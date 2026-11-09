@@ -227,6 +227,16 @@ describe('prepareHighlights', () => {
       'Look:\n\n![Jobs](docs/releases/0.4.0/jobs.png)\n\n<img src="docs/releases/0.4.0/editor.png" width="600">',
     );
   });
+  it('reads URL-escaped and angle-bracket links, keeping their form', () => {
+    const r = prepareHighlights(
+      '![a](images/my%20shot.png)\n\n![b](<images/other shot.png>)\n',
+      ['my shot.png', 'other shot.png'],
+      '0.4.0',
+    );
+    expect(r.text).toBe(
+      '![a](docs/releases/0.4.0/my%20shot.png)\n\n![b](<docs/releases/0.4.0/other shot.png>)',
+    );
+  });
   it('reports missing and unused images, empty text and top-level headings', () => {
     expect(prepareHighlights('![x](images/missing.png)', ['extra.png'], '0.4.0').errors).toEqual([
       '.changes/highlights.md: image images/missing.png is not in .changes/images/.',
@@ -285,6 +295,19 @@ describe('cli highlights', () => {
     expect(r.stderr).toContain('images/typo.png is not in .changes/images/');
     expect(existsSync(join(root, 'CHANGELOG.md'))).toBe(false);
     expect(existsSync(join(root, '.changes/a.md'))).toBe(true);
+  });
+
+  it('changes nothing when the screenshots cannot be moved', () => {
+    note('a.md', 'new', 'One.');
+    highlights('![x](images/x.png)\n', ['x.png']);
+    mkdirSync(join(root, 'docs'));
+    writeFileSync(join(root, 'docs/releases'), 'not a folder');
+    const r = cli('0.4.0');
+    expect(r.status).not.toBe(0);
+    expect(existsSync(join(root, 'CHANGELOG.md'))).toBe(false);
+    expect(existsSync(join(root, '.changes/a.md'))).toBe(true);
+    expect(existsSync(join(root, '.changes/highlights.md'))).toBe(true);
+    expect(read('.changes/images/x.png')).toBe('png x.png');
   });
 
   it('refuses images without a highlights file', () => {
