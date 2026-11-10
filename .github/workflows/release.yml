@@ -41,6 +41,7 @@ jobs:
           echo "version=$version" >> "$GITHUB_OUTPUT"
       - name: Release notes from CHANGELOG.md
         env:
+          TAG: ${{ github.ref_name }}
           VERSION: ${{ steps.tag.outputs.version }}
         run: |
           set -eu
@@ -52,6 +53,10 @@ jobs:
           if [ ! -s notes.md ]; then
             echo "::error::CHANGELOG.md has no section for $VERSION"; exit 1
           fi
+          # Screenshots from .changes/highlights.md are committed under docs/releases/<version>/.
+          # A release body can't use repo-relative paths, so point them at this tag's raw files.
+          raw="https://raw.githubusercontent.com/$GITHUB_REPOSITORY/$TAG/docs/releases/"
+          sed -i -e "s#](docs/releases/#](${raw}#g" -e "s#](<docs/releases/#](<${raw}#g" -e "s#src=\"docs/releases/#src=\"${raw}#g" notes.md
           cat >> notes.md <<NOTES
 
           **Docker image:** \`ghcr.io/transcoda/transcoda:$VERSION\`
