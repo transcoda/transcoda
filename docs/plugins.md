@@ -225,3 +225,21 @@ A finish step runs after the file is replaced, so a failure never undoes the rep
 - A required step (Sonarr, Radarr) that fails in a way that may pass on a second try (a timeout, a server error, the service unreachable) is retried once after 10 seconds before it counts as a problem. Optional steps (Jellyfin, Bazarr, ntfy, Discord) are not retried.
 
 To fix it, read the text, correct the cause (the API key, a path mapping, a service that was down), use **Test connection** on the Plugins page, and run the file again. To repeat only a failed rescan, use the **Rescan** action in Sonarr or Radarr itself. Plugin crashes are visible on the Plugins page (`restarting in 12 s`, `stopped: …`), and the nodes of a plugin that is not running are marked in the editor.
+
+## Server log
+
+When a plugin doesn't install or doesn't start, the install dialog says so in one line ("ntfy didn't start (exit code 1)") and points here. The details are in the server log: Transcoda writes it to the container's output, and everything a plugin prints goes there too.
+
+With Docker Compose, from the folder with your `docker-compose.yml`:
+
+```sh
+docker compose logs --since 10m transcoda
+```
+
+With plain Docker (the example compose file names the container `transcoda`):
+
+```sh
+docker logs --since 10m transcoda
+```
+
+Add `-f` to keep following the log while you try the install again. In the image each line is JSON; a plugin's own lines read `"msg":"plugin log"` and name the plugin, for example `"plugin":"ntfy"`, so `docker logs transcoda 2>&1 | grep '"plugin":"ntfy"'` shows only that plugin. Outside Docker the same lines go to the terminal that runs the server, as plain text. Transcoda takes a plugin's secret settings (API keys, tokens) out of each line before it writes it, so a log you share for help doesn't carry them; check it for file paths you'd rather keep private.
