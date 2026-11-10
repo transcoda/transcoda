@@ -242,4 +242,13 @@ With plain Docker (the example compose file names the container `transcoda`):
 docker logs --since 10m transcoda
 ```
 
-Add `-f` to keep following the log while you try the install again. In the image each line is JSON; a plugin's own lines read `"msg":"plugin log"` and name the plugin, for example `"plugin":"ntfy"`, so `docker logs transcoda 2>&1 | grep '"plugin":"ntfy"'` shows only that plugin. Outside Docker the same lines go to the terminal that runs the server, as plain text. Transcoda takes a plugin's secret settings (API keys, tokens) out of each line before it writes it, so a log you share for help doesn't carry them; check it for file paths you'd rather keep private.
+Add `-f` to keep following the log while you try the install again. In the image each line is JSON; a plugin's own lines read `"msg":"plugin log"` and name the plugin, for example `"plugin":"ntfy"`. To see only that plugin:
+
+```sh
+docker compose logs transcoda 2>&1 | grep '"plugin":"ntfy"'   # Docker Compose
+docker logs transcoda 2>&1 | grep '"plugin":"ntfy"'           # plain Docker
+```
+
+Outside Docker the same lines go to the terminal that runs the server, as plain text.
+
+Transcoda takes a plugin's secret settings (API keys, tokens) out of each line before it writes it, but only where they appear whole: a plugin that logs part of a secret, such as the path of a Discord webhook URL, can still leave it readable. Read the log before you share it for help, and remove secrets, webhook URLs and file paths you'd rather keep private.
