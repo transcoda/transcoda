@@ -29,7 +29,7 @@ Scan now skips files that an older version of the same workflow already processe
 ### Improved
 
 - Settings → About links the Transcoda version to its release notes on GitHub. A development build links to the commit it was built from.
-- A build that isn't a release, such as the `main` image, now shows its version as `0.3.0-dev`, and the published images add the commit they were built from (for example `0.3.0-dev+16ce86f`), so it is no longer mistaken for the release.
+- A build that isn't a release, such as the `main` image, now shows `-dev` after the version of the last release, and the published `main` images also add the commit they were built from (for example `0.4.0-dev+16ce86f`), so it is no longer mistaken for the release. Release images show the plain version.
 - The Jobs page lists each lane on its own line, with long file names cut short, and a job that is encoding now shows a turning icon, while a planned job waiting for its turn shows an hourglass.
 - The workflow editor is easier to read: settings show plain option names and their defaults the same way for every node, a node you add is selected right away, and a past version you can't activate no longer offers to.
 - Bitrates read the same everywhere on the job page, such as "3.3 Mb/s" or "160 kb/s". Before and after shows frame rate and HDR on both sides and leaves out bitrates it doesn't know instead of showing a dash. Dry runs say what a real run would write, and finished jobs say what they wrote, in the steps and on the flow.

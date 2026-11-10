@@ -21,7 +21,7 @@
       },
       {
         "type": "improved",
-        "text": "A build that isn't a release, such as the `main` image, now shows its version as `0.3.0-dev`, and the published images add the commit they were built from (for example `0.3.0-dev+16ce86f`), so it is no longer mistaken for the release."
+        "text": "A build that isn't a release, such as the `main` image, now shows `-dev` after the version of the last release, and the published `main` images also add the commit they were built from (for example `0.4.0-dev+16ce86f`), so it is no longer mistaken for the release. Release images show the plain version."
       },
       {
         "type": "improved",
