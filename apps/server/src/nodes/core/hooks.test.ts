@@ -169,7 +169,7 @@ describe('core:video-is', () => {
 });
 
 describe('core:file-matches', () => {
-  const probe = probeOf([{}], { sizeBytes: 600 * 1024 * 1024 });
+  const probe = probeOf([{}], { sizeBytes: 600_000_000 });
   const tenDaysAgo = new Date(NOW - 10 * DAY).toISOString();
 
   it('matches size, age and glob, with findings', async () => {
@@ -202,7 +202,7 @@ describe('core:file-matches', () => {
   it('compares the rounded age and size it reports, and says "day" for one', async () => {
     // 1.04 days old reads (and compares) as 1 day: not older than 1 day.
     const mtime = new Date(NOW - 1.04 * DAY).toISOString();
-    const ctx = decideCtx(probeOf([{}], { sizeBytes: 100.04 * 1024 * 1024 }), { mtime });
+    const ctx = decideCtx(probeOf([{}], { sizeBytes: 100_040_000 }), { mtime });
     expect(await decide(fileMatches, ctx, { olderThanDays: 1 })).toMatchObject({
       port: 'else',
       reason: '1 day old, wanted older than 1 day → no',
@@ -1140,12 +1140,12 @@ describe('finish nodes', () => {
       checkSource,
       withCore({
         kind: 'error',
-        message: 'ffmpeg used more than 4 GiB of memory and was stopped',
+        message: 'ffmpeg used more than 4.00 GB of memory and was stopped',
         final: true,
       }),
     );
     await expect(final).rejects.toMatchObject({
-      message: 'check source failed: ffmpeg used more than 4 GiB of memory and was stopped',
+      message: 'check source failed: ffmpeg used more than 4.00 GB of memory and was stopped',
       retryable: false,
     });
     await expect(decide(checkSource, decideCtx(probe))).rejects.toThrow(

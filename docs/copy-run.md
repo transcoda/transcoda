@@ -16,7 +16,7 @@ Never point a Transcoda library at the real media. Everything below uses the cop
 
 ### Make the copies
 
-Pick about 20 files that cover your mix (H.264 and HEVC, several audio and subtitle tracks, an `.mp4` or two, one with a cover image, one you know is already small). Copy them with `rsync` into a dedicated folder with room to spare (the engine needs the output size plus 5 GiB free on that filesystem). The folder must be owned by the user the container runs as.
+Pick about 20 files that cover your mix (H.264 and HEVC, several audio and subtitle tracks, an `.mp4` or two, one with a cover image, one you know is already small). Copy them with `rsync` into a dedicated folder with room to spare (the engine needs the output size plus 5 GB free on that filesystem). The folder must be owned by the user the container runs as.
 
 ```sh
 # Replace SRC with the folder that holds the files you picked (read-only use).
@@ -187,7 +187,7 @@ tcd $TCD/api/v1/workflows/$id | jq '{name, active, valid}'
 RUN=$(tcd -X POST $TCD/api/v1/jobs -d '{"path":"/media","workflowId":"<id>"}' | jq -r .runId)
 ```
 
-You can watch it live. `GET /api/v1/events` is a stream of server-sent events: first a `queue.changed` snapshot (queue paused or not, the job in each lane), then `job.changed` (state, paused, progress, lane, the node the job is at and its reason, which says what a running job waits for, e.g. `waiting for 5.4 GB free on /media (5.1 GB free)`), `job.trace` (each node's decision as it is made), `run.changed`, `queue.changed`, a `ping` every 30 s, and `resync` when the stream fell behind and dropped events (refetch the run then):
+You can watch it live. `GET /api/v1/events` is a stream of server-sent events: first a `queue.changed` snapshot (queue paused or not, the job in each lane), then `job.changed` (state, paused, progress, lane, the node the job is at and its reason, which says what a running job waits for, e.g. `waiting for 5.40 GB free on /media (5.10 GB free)`), `job.trace` (each node's decision as it is made), `run.changed`, `queue.changed`, a `ping` every 30 s, and `resync` when the stream fell behind and dropped events (refetch the run then):
 
 ```sh
 curl -sN -H "Authorization: Bearer $TOKEN" -H "Accept: text/event-stream" $TCD/api/v1/events

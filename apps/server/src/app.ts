@@ -52,8 +52,11 @@ function hostNotAllowedBody(host: string | null, rpc: boolean): object {
   return rpc ? { json, meta: [] } : json;
 }
 
-/** Largest request body accepted on /api and /rpc (a 500-node graph is far below this). */
-export const MAX_BODY_BYTES = 2 * 1024 * 1024;
+/**
+ * Largest request body accepted on /api and /rpc (a 500-node graph is far below this): 2 MB (SI),
+ * the limit the editor names when a save is refused.
+ */
+export const MAX_BODY_BYTES = 2_000_000;
 
 const isRpcPath = (path: string) => path === '/rpc' || path.startsWith('/rpc/');
 

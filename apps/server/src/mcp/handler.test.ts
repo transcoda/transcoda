@@ -75,7 +75,7 @@ describe('/mcp handler', () => {
     expect((await rawMcp(t, INITIALIZE, bearer(token))).status).toBe(200);
   });
 
-  it('bodies over 2 MiB are 413 as a JSON-RPC error; no Mcp-Session-Id is ever issued', async () => {
+  it('bodies over 2 MB are 413 as a JSON-RPC error; no Mcp-Session-Id is ever issued', async () => {
     const t = createTestApp({ mcpTools: queueTools });
     const s = await login(t);
     const { token } = await createToken(t, s, { name: 'r', scopes: ['read'] });

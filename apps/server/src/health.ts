@@ -26,7 +26,7 @@ const CHECK_TIMEOUT_MS = 5_000;
 
 export interface HealthDeps {
   db: Database;
-  config: Pick<Config, 'transcodeDir' | 'healthStallHours' | 'healthMinFreeGiB'>;
+  config: Pick<Config, 'transcodeDir' | 'healthStallHours' | 'healthMinFreeBytes'>;
   capabilities(): Capabilities;
   fs: Pick<FsOps, 'statfs'>;
   /** The replaces waiting for free space now (the engine's `SpaceWaits`); absent: none. */

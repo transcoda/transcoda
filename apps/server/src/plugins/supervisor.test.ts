@@ -191,7 +191,7 @@ describe('PluginSupervisor crash handling', () => {
   });
 
   it('kills a process whose rss exceeds the limit and records oom-rss', async () => {
-    const { supervisor, children } = setup({}, () => {}, { rssOf: async () => 300 * 1024 * 1024 });
+    const { supervisor, children } = setup({}, () => {}, { rssOf: async () => 300_000_000 });
     await supervisor.add(runtime('example'));
     await vi.advanceTimersByTimeAsync(1_000);
     expect(children[0]?.signals).toContain('SIGKILL');

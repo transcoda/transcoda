@@ -580,7 +580,7 @@ describe('plugin host, node versions', () => {
       /migrations must be synchronous/,
     );
     expect(errorOf(await migrate(h, 'versioned:flaky', 1, { mode: 'big' }))).toMatch(
-      /larger than 256 KB/,
+      /larger than 256 kB/,
     );
     expect(await migrate(h, 'versioned:flaky', 1, { mode: 'ok' })).toMatchObject({
       ok: true,

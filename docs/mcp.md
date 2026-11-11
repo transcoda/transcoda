@@ -157,8 +157,8 @@ HTTP-level refusals:
 
 ## Limits
 
-- Request bodies are limited to 2 MiB (413 above that).
-- `get_job_log` returns at most 64 KiB, the API's tail.
+- Request bodies are limited to 2 MB (2,000,000 bytes; 413 above that).
+- `get_job_log` returns at most 65,536 characters, the API's tail.
 - `list_jobs` and `list_runs` return at most 200 per page.
 - There are no sessions and no resumable streams.
 - There is no rate limit beyond the API's. A token is as powerful as its scopes; revoke it on the tokens page.

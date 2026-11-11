@@ -1,5 +1,6 @@
 import type { Stats } from 'node:fs';
 import { basename, dirname, isAbsolute, join, relative } from 'node:path';
+import { fmtBytes } from '@transcoda/shared';
 import { type Database, durably } from '../db/open.ts';
 import { type RecycledInsert, type ReplaceJournal, updateJob } from '../db/repos/jobs.ts';
 import type { Logger } from '../logger.ts';
@@ -7,7 +8,7 @@ import { type Fingerprint, sameFingerprint } from './fingerprint.ts';
 import { errorCode, type FsOps, renameNoClobber, syncDir, syncDirs, syncFile } from './fs-ops.ts';
 import { recordRecycledRow } from './recycle.ts';
 /** Free space the original's filesystem must keep beyond the replacement's size. */
-export const FREE_SPACE_MARGIN_BYTES = 5 * 1024 ** 3;
+export const FREE_SPACE_MARGIN_BYTES = 5_000_000_000;
 
 export interface ReplaceInput {
   jobId: string;
@@ -67,18 +68,12 @@ export interface SpaceWait {
   availableBytes: number;
 }
 
-/** "5.4 GB", "41 KB": decimal units, as `df -H` and the web's sizes print them. */
-function bytesText(n: number): string {
-  if (n >= 1e12) return `${(n / 1e12).toFixed(1)} TB`;
-  if (n >= 1e9) return `${(n / 1e9).toFixed(1)} GB`;
-  if (n >= 1e6) return `${(n / 1e6).toFixed(1)} MB`;
-  if (n >= 1e3) return `${Math.round(n / 1e3)} KB`;
-  return `${n} B`;
-}
-
-/** "waiting for 5.4 GB free on /media (5.1 GB free)": the job's reason while it waits. */
+/**
+ * "waiting for 5.40 GB free on /media (5.10 GB free)": the job's reason while it waits. SI units
+ * with three significant digits, as the web prints every size.
+ */
 export function spaceWaitText(w: SpaceWait): string {
-  return `waiting for ${bytesText(w.neededBytes)} free on ${w.path} (${bytesText(w.availableBytes)} free)`;
+  return `waiting for ${fmtBytes(w.neededBytes)} free on ${w.path} (${fmtBytes(w.availableBytes)} free)`;
 }
 
 /** Default `waitForSpace`: re-check after 30 s, or at once when `signal` aborts. */

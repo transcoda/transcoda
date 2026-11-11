@@ -26,7 +26,7 @@ export const EngineEventSchema = z.discriminatedUnion('type', [
     lane: LaneSchema.nullable(),
     currentNode: CurrentNodeSchema.nullable(),
     problems: z.array(z.string()),
-    /** The job's reason; while running, what it waits for ("waiting for 5.4 GB free on …"). */
+    /** The job's reason; while running, what it waits for ("waiting for 5.40 GB free on …"). */
     reason: z.string().nullable(),
   }),
   z.object({ type: z.literal('job.trace'), jobId: z.string(), entry: TraceEntrySchema }),

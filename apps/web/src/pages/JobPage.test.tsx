@@ -330,10 +330,12 @@ describe('JobPage', () => {
         lane: 'encode',
         currentNode: null,
         problems: [],
-        reason: 'waiting for 5.4 GB free on /media (5.1 GB free)',
+        reason: 'waiting for 5.40 GB free on /media (5.10 GB free)',
       }),
     );
-    expect(await screen.findByText('Waiting for 5.4 GB free on /media (5.1 GB free)')).toBeTruthy();
+    expect(
+      await screen.findByText('Waiting for 5.40 GB free on /media (5.10 GB free)'),
+    ).toBeTruthy();
   });
 
   it('a dry run is badged in the header whatever its state, and a real run is not', async () => {

@@ -148,10 +148,10 @@ describe('fsSidecarSource', () => {
     expect(r.skipped).toEqual([]);
   });
 
-  it('skips a file larger than 8 MiB', async () => {
-    await writeFile(join(dir, 'Show.S01E01.de.sup'), Buffer.alloc(8 * 1024 * 1024 + 1, 1));
+  it('skips a file larger than 8 MB (SI)', async () => {
+    await writeFile(join(dir, 'Show.S01E01.de.sup'), Buffer.alloc(8_000_001, 1));
     const r = await source().find(join(dir, 'Show.S01E01.mkv'));
-    expect(r.skipped).toEqual([{ file: 'Show.S01E01.de.sup', reason: 'larger than 8 MiB' }]);
+    expect(r.skipped).toEqual([{ file: 'Show.S01E01.de.sup', reason: 'larger than 8.00 MB' }]);
   });
 
   it("skips a file whose realpath is outside the video's folder", async () => {

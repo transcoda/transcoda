@@ -20,7 +20,7 @@ export function settingsFixture(): Settings {
         { id: 'quick', label: 'Quick' },
       ],
       stallHours: { value: 6, variable: 'TRANSCODA_HEALTH_STALL_HOURS', set: false },
-      minFreeGib: { value: 10, variable: 'TRANSCODA_HEALTH_MIN_FREE_GIB', set: true },
+      minFreeBytes: { value: 10_000_000_000, variable: 'TRANSCODA_HEALTH_MIN_FREE_GB', set: true },
       testEncodeKeepHours: { value: 2, default: 2, source: { kind: 'default' } },
       encodeDevice: { value: 'auto', default: 'auto', source: { kind: 'default' } },
       encodeDevices: [
