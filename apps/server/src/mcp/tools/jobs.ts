@@ -157,7 +157,7 @@ const cancelJob = defineTool({
   output: controlOutput,
   async run({ api }, { id }) {
     await api.jobs.cancel({ id });
-    return { text: `Cancelled job ${id}.`, data: { ok: true as const, id } };
+    return { text: `Canceled job ${id}.`, data: { ok: true as const, id } };
   },
 });
 
@@ -177,7 +177,7 @@ const cancelAllJobs = defineTool({
       .describe('Only the jobs of this library; omit for every library'),
   },
   output: {
-    cancelled: z.number().int().describe('How many jobs were cancelled'),
+    cancelled: z.number().int().describe('How many jobs were canceled'),
     writing: z
       .number()
       .int()
@@ -186,10 +186,10 @@ const cancelAllJobs = defineTool({
   },
   async run({ api }, { libraryId }) {
     const out = await api.jobs.cancelAll(libraryId === undefined ? {} : { libraryId });
-    const parts = [`Cancelled ${jobsWord(out.cancelled)}.`];
+    const parts = [`Canceled ${jobsWord(out.cancelled)}.`];
     if (out.writing > 0)
       parts.push(`${jobsWord(out.writing)} already replacing their file will finish.`);
-    if (out.failed > 0) parts.push(`${jobsWord(out.failed)} could not be cancelled.`);
+    if (out.failed > 0) parts.push(`${jobsWord(out.failed)} could not be canceled.`);
     return { text: parts.join(' '), data: out };
   },
 });

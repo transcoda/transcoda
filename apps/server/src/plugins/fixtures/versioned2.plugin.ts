@@ -4,7 +4,7 @@ import { z } from 'zod';
 const file = { id: 'file', label: 'File', type: 'file' } as const;
 
 // The next release of `versioned`: `versioned:thing` moves to version 4 and no longer serves
-// version 1 (the 1→2 migration is gone); 2→3 changes behaviour, 3→4 is safe.
+// version 1 (the 1→2 migration is gone); 2→3 changes behavior, 3→4 is safe.
 const thing = defineNode({
   type: 'versioned:thing',
   version: 4,

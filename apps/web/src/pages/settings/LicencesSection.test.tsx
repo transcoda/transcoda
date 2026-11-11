@@ -114,8 +114,8 @@ describe('LicencesSection', () => {
   it('a build without a list says how to get one', async () => {
     mocks.licences.mockResolvedValue({ available: false });
     render(<LicencesSection />);
-    expect(await screen.findByText(/This build has no licence list/)).toBeTruthy();
-    expect(screen.getByText('pnpm licences').tagName).toBe('CODE');
+    expect(await screen.findByText(/This build has no license list/)).toBeTruthy();
+    expect(screen.getByText('pnpm notices').tagName).toBe('CODE');
     // No "components below" when there are none below.
     expect(document.body.textContent).not.toContain('components below');
     expect(document.querySelector('.section-intro')?.textContent).toBe(
@@ -127,6 +127,6 @@ describe('LicencesSection', () => {
   it('a failed request says the list could not be loaded', async () => {
     mocks.licences.mockRejectedValue(new Error('down'));
     render(<LicencesSection />);
-    expect(await screen.findByText('The licence list could not be loaded.')).toBeTruthy();
+    expect(await screen.findByText('The license list could not be loaded.')).toBeTruthy();
   });
 });

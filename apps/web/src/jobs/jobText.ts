@@ -72,7 +72,7 @@ export const VERDICT_WORD: Record<Verdict, string> = {
   skipped: 'Skipped',
   failed: 'Failed',
   dry: 'Dry run',
-  cancelled: 'Cancelled',
+  cancelled: 'Canceled',
   already: 'Already processed',
   attention: 'Needs attention',
   damaged: 'Damaged source',
@@ -499,7 +499,7 @@ export function detailLine(job: Job, opts: { queuePaused?: boolean; now?: Date }
         ? sentence(job.planSummary ?? job.reason ?? '')
         : 'Plan ready';
     case 'cancelled':
-      return 'Cancelled · original untouched';
+      return 'Canceled · original untouched';
     case 'already_processed': {
       const reason = reasonOf(job);
       return reason ? sentence(reason) : 'Already processed';
@@ -624,7 +624,7 @@ export const FILTERS: ReadonlyArray<{
   // every page words it (a dry run that would do nothing counts under Nothing to do).
   { label: 'Would replace', states: ['dry_run'] },
   { label: 'Depends on size', states: ['dry_run'], dependsOnSize: true },
-  { label: 'Cancelled', states: ['cancelled'] },
+  { label: 'Canceled', states: ['cancelled'] },
   { label: 'Needs attention', states: [], problems: true },
   { label: 'Paused', states: ['queued', ...RUNNING_JOB_STATES], paused: true },
 ];

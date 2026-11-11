@@ -285,7 +285,7 @@ describe('PluginProcess.call with a signal', () => {
     const err = (await call) as PluginCallError;
     expect(err).toBeInstanceOf(PluginCallError);
     expect(err.retryable).toBe(false);
-    expect(err.message).toBe('call to plugin example was cancelled');
+    expect(err.message).toBe('call to plugin example was canceled');
     expect(children[0]?.sent.at(-1)).toMatchObject({
       type: 'cancel',
       id: callId,
@@ -359,7 +359,7 @@ describe('PluginProcess.call with a signal', () => {
     const err = (await proc
       .call(callMsg, 1000, { signal: ctl.signal })
       .catch((e: unknown) => e)) as PluginCallError;
-    expect(err.message).toBe('call to plugin example was cancelled');
+    expect(err.message).toBe('call to plugin example was canceled');
     expect(children[0]?.sent.map((m) => m.type)).toEqual(['init']);
   });
 

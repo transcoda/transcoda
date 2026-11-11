@@ -14,7 +14,7 @@ Transcoda has a built-in [Model Context Protocol](https://modelcontextprotocol.i
 An agent can, depending on the scopes of its token:
 
 - diagnose jobs: list them, read a job's report and log tail, and see the queue status;
-- read workflows, their versions and the node catalogue, and validate a graph;
+- read workflows, their versions and the node catalog, and validate a graph;
 - see which plugins are installed and whether they run;
 - create, change, duplicate, rename and delete workflows;
 - start dry runs (plans) on a file or folder in a library, optionally test-encoding (`testEncode`: encode, verify and measure for real, still writing nothing to the library);
@@ -40,7 +40,7 @@ Open the UI, go to **Settings → API tokens** (`/settings/api-tokens`) and crea
 | --- | --- | --- |
 | Diagnose | `read` | all read tools |
 | Edit and try | `read`, `workflows:write`, `plan` | the above, plus creating and changing workflows and `dry_run` |
-| Operate | `read`, `workflows:write`, `plan`, `jobs:manage` | the above, plus pausing, resuming and cancelling jobs and the queue |
+| Operate | `read`, `workflows:write`, `plan`, `jobs:manage` | the above, plus pausing, resuming and canceling jobs and the queue |
 
 Scopes are exact and do not imply each other: a token that writes workflows also needs `read` to list or open them. `jobs:create` is accepted for `dry_run` but gives nothing more over MCP. A tool the token's scopes do not allow is absent from the tool list. Revoke a token on the same page.
 
@@ -97,11 +97,11 @@ The same rules as for the API apply: set `TRANSCODA_TRUSTED_PROXIES` for your pr
 | `pause_job` | `jobs:manage` | Pause a queued or running job; a running ffmpeg is stopped and its lane freed. |
 | `resume_job` | `jobs:manage` | Resume a paused job. |
 | `cancel_job` | `jobs:manage` | Cancel a job that has not finished. |
-| `cancel_all_jobs` | `jobs:manage` | Cancel every job that has not finished (queued, running or paused), optionally of one library (`libraryId`). Running ffmpeg processes are stopped and their partial output removed. A job already replacing its file finishes. Returns `cancelled`, `writing` (left to finish) and `failed` (could not be cancelled, still running). |
+| `cancel_all_jobs` | `jobs:manage` | Cancel every job that has not finished (queued, running or paused), optionally of one library (`libraryId`). Running ffmpeg processes are stopped and their partial output removed. A job already replacing its file finishes. Returns `cancelled`, `writing` (left to finish) and `failed` (could not be canceled, still running). |
 | `list_workflows` | `read` | List workflows with their kind, active and current version, and `feedsLibrary`: the library the active version's Library input takes files from, or null. |
 | `get_workflow` | `read` | One workflow with its graph (webhook URLs redacted), optionally at a version. |
 | `list_workflow_versions` | `read` | A workflow's version history with notes. |
-| `list_nodes` | `read` | The node catalogue; with `type`, one node with its settings schema. A full node carries `finishPhase` (null for a finish node that declares none). |
+| `list_nodes` | `read` | The node catalog; with `type`, one node with its settings schema. A full node carries `finishPhase` (null for a finish node that declares none). |
 | `validate_workflow` | `read` | Check a graph without saving it; returns `valid` and the issues. |
 | `create_workflow` | `workflows:write` | Create a workflow (optionally with a graph); it starts with no active version (dry runs only). |
 | `save_workflow` | `workflows:write` | Save a new version from `baseVersion`; a stale base is refused. A save never changes what runs; activating is human-only in the UI. |

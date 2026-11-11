@@ -190,7 +190,7 @@ function parseWith<T>(schema: z.ZodType<T>, raw: unknown): ParseResult<T> {
   } catch (e) {
     return {
       ok: false,
-      parseError: `message is not serialisable: ${String(e)}`.slice(0, MAX_PARSE_ERROR_CHARS),
+      parseError: `message is not serializable: ${String(e)}`.slice(0, MAX_PARSE_ERROR_CHARS),
     };
   }
   if (bytes > MAX_MESSAGE_BYTES) {

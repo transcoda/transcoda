@@ -223,11 +223,18 @@ describe('App', () => {
       expect(window.location.pathname).toBe('/settings/nope');
     });
 
-    it('/settings/about/licences shows the licences under About', async () => {
+    it('/settings/about/licenses shows the licenses under About', async () => {
+      window.history.pushState(null, '', '/settings/about/licenses');
+      renderApp();
+      expect(await screen.findByText('licences section')).toBeTruthy();
+      expect(screen.getByRole('heading', { level: 2, name: 'Open-source licenses' })).toBeTruthy();
+    });
+
+    it('the old /settings/about/licences address opens the licenses page', async () => {
       window.history.pushState(null, '', '/settings/about/licences');
       renderApp();
       expect(await screen.findByText('licences section')).toBeTruthy();
-      expect(screen.getByRole('heading', { level: 2, name: 'Open-source licences' })).toBeTruthy();
+      expect(window.location.pathname).toBe('/settings/about/licenses');
     });
 
     it('/settings/about shows About inside the shell, Settings current in the nav', async () => {

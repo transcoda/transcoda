@@ -112,7 +112,7 @@ export const PluginUpdateInputSchema = PluginNameInputSchema.extend({ version: z
 export const PluginUpdateCheckOutputSchema = z.object({
   /**
    * Workflows whose active version (`version`) would stop running after the update: `dropped`,
-   * the plugin no longer serves its node version; `behaviour`, its migration changes behaviour
+   * the plugin no longer serves its node version; `behaviour`, its migration changes behavior
    * and is held until a person reviews and activates a new version.
    */
   wouldBreak: z.array(

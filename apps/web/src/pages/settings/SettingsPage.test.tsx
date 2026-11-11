@@ -10,7 +10,7 @@ vi.mock('./sections.ts', () => ({
       icon: 'info',
       Component: () => <p>about body</p>,
       subs: [
-        { id: 'licences', title: 'Open-source licences', Component: () => <p>licences body</p> },
+        { id: 'licenses', title: 'Open-source licenses', Component: () => <p>licenses body</p> },
       ],
     },
   ],
@@ -57,19 +57,19 @@ describe('SettingsPage (desktop)', () => {
   });
 
   it('a sub-page shows its own h2 and keeps its section current in the sub-nav', () => {
-    renderAt('/settings/about/licences', <SettingsPage section="about" sub="licences" />);
+    renderAt('/settings/about/licenses', <SettingsPage section="about" sub="licenses" />);
     // Not in the nav, so its h2 shows.
     expect(
-      screen.getByRole('heading', { level: 2, name: 'Open-source licences' }).className,
+      screen.getByRole('heading', { level: 2, name: 'Open-source licenses' }).className,
     ).not.toContain('sr-only');
-    expect(screen.getByText('licences body')).toBeTruthy();
+    expect(screen.getByText('licenses body')).toBeTruthy();
     expect(screen.queryByText('about body')).toBeNull();
     const nav = screen.getByRole('navigation', { name: 'Settings' });
     const about = within(nav).getByRole('link', { name: 'About' });
     expect(about.classList.contains('is-active')).toBe(true);
     // The section is current, but the page is its sub-page.
     expect(about.getAttribute('aria-current')).toBe('true');
-    // A breadcrumb leads back to the section: "About / Open-source licences".
+    // A breadcrumb leads back to the section: "About / Open-source licenses".
     const crumbs = screen.getByRole('navigation', { name: 'Breadcrumb' });
     expect(within(crumbs).getByRole('link', { name: 'About' }).getAttribute('href')).toBe(
       '/settings/about',
@@ -134,9 +134,9 @@ describe('SettingsPage (phone)', () => {
   });
 
   it('a sub-page has a back link to its section', () => {
-    renderAt('/settings/about/licences', <SettingsPage section="about" sub="licences" />);
+    renderAt('/settings/about/licenses', <SettingsPage section="about" sub="licenses" />);
     const back = screen.getByRole('link', { name: 'About' });
     expect(back.getAttribute('href')).toBe('/settings/about');
-    expect(screen.getByRole('heading', { level: 2, name: 'Open-source licences' })).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 2, name: 'Open-source licenses' })).toBeTruthy();
   });
 });

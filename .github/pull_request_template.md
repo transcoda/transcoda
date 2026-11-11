@@ -24,9 +24,9 @@ or tick the box below. CI checks that one of the two is there.
 
 - [ ] Bug fix
 - [ ] New feature or node
-- [ ] Change to existing behaviour (describe what a user will notice)
+- [ ] Change to existing behavior (describe what a user will notice)
 - [ ] Docs only
-- [ ] Refactor, tests or tooling (no behaviour change)
+- [ ] Refactor, tests or tooling (no behavior change)
 
 ## How you tested it
 
@@ -43,11 +43,11 @@ say which sample files you used and what happened to the originals.
 ## Checklist
 
 - [ ] `pnpm check` passes locally (typecheck, lint, dependency rules, tests)
-- [ ] New behaviour has tests; bug fixes have a test that failed before the fix
+- [ ] New behavior has tests; bug fixes have a test that failed before the fix
 - [ ] Nothing here can rewrite or delete media without the existing safety checks (verify, recycle folder, dry run)
-- [ ] User-facing behaviour or settings changed → docs updated (`README.md`, `docs/`)
+- [ ] User-facing behavior or settings changed → docs updated (`README.md`, `docs/`)
 - [ ] Database changes come as a new numbered migration that keeps existing data
-- [ ] UI changes work with keyboard and screen reader, and nothing relies on hover or colour alone
+- [ ] UI changes work with keyboard and screen reader, and nothing relies on hover or color alone
 - [ ] No secrets, tokens or personal data in code, tests, logs or screenshots
 
 By submitting this pull request, I confirm that my contribution is my own work and may be distributed under the project's license ([GPL-3.0](../LICENSE)).

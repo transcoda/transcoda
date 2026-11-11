@@ -63,7 +63,7 @@ describe('UpdateDialog', () => {
       unknown: false,
     });
     expect(dialog.textContent).toContain(
-      "sonarr 1.1.0 changes the behaviour of nodes in these workflows' active versions. They stop running after the update until you review and activate the new version written for them:",
+      "sonarr 1.1.0 changes the behavior of nodes in these workflows' active versions. They stop running after the update until you review and activate the new version written for them:",
     );
     expect(dialog.textContent).toContain('TV cleanup (active v3)');
     expect(dialog.textContent).not.toContain('keeps running');

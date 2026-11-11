@@ -9,10 +9,10 @@ afterEach(cleanup);
 const css = readFileSync(join(__dirname, '../../styles.css'), 'utf8');
 
 describe('CanvasLegend', () => {
-  it('names the colour row "Node colours" (it shows node kinds, not icons)', () => {
+  it('names the colour row "Node colors" (it shows node kinds, not icons)', () => {
     const { container } = render(<CanvasLegend />);
     const labels = [...container.querySelectorAll('.legend-label')].map((l) => l.textContent);
-    expect(labels).toContain('Node colours');
+    expect(labels).toContain('Node colors');
     expect(labels).not.toContain('ICONS');
   });
 

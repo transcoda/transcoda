@@ -110,7 +110,7 @@ test('collect applies overrides: a hand text, a corrected licence, an accepted e
   });
   assert.equal(byId(entries, 'pkg-d@3.0.0').text, 'Hand-supplied licence text for pkg-d\n');
   assert.equal(byId(entries, 'pkg-c@0.1.0').licence, 'GPL-3.0-only');
-  assert.deepEqual(problems(entries), ["pkg-c@0.1.0: licence 'GPL-3.0-only' is not allowed"]);
+  assert.deepEqual(problems(entries), ["pkg-c@0.1.0: license 'GPL-3.0-only' is not allowed"]);
 });
 
 test('render dedups identical texts to one key', () => {
@@ -211,10 +211,10 @@ test('problems names a package without text and a licence outside the list; imag
     text: 'GPL\n',
   };
   assert.deepEqual(problems([...entries, gpl, ...imageEntries(fakeDockerfile, handTexts)]), [
-    "bad@1.0.0: licence 'GPL-2.0' is not allowed",
-    'pkg-d@3.0.0: no licence text found',
+    "bad@1.0.0: license 'GPL-2.0' is not allowed",
+    'pkg-d@3.0.0: no license text found',
   ]);
-  assert.throws(() => render(entries), /pkg-d@3\.0\.0: no licence text found/);
+  assert.throws(() => render(entries), /pkg-d@3\.0\.0: no license text found/);
 });
 
 test('the real overrides file has a reason for every entry and its texts exist', () => {

@@ -31,7 +31,7 @@ const OWN_FIELD_DISPOSITIONS = new Set(['default', 'forced', 'attached_pic']);
 type Obj = Record<string, unknown>;
 
 function fail(): never {
-  throw new Error('unrecognised ffprobe output');
+  throw new Error('unrecognized ffprobe output');
 }
 
 function isObj(v: unknown): v is Obj {

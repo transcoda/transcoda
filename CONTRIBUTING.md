@@ -9,7 +9,7 @@ Thanks for helping. Bug reports, ideas, docs fixes and code are all welcome.
 - **Found a security problem?** Don't open an issue. Follow [SECURITY.md](SECURITY.md).
 - **Want to write a plugin?** Plugins live in their own repository: [transcoda-plugins](https://github.com/transcoda/transcoda-plugins). The SDK is described in [`docs/plugin-sdk.md`](docs/plugin-sdk.md).
 
-Issues labelled [`good first issue`](https://github.com/transcoda/transcoda/labels/good%20first%20issue) are a good place to start.
+Issues labeled [`good first issue`](https://github.com/transcoda/transcoda/labels/good%20first%20issue) are a good place to start.
 
 ## Setting up
 

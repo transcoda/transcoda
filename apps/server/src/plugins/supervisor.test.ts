@@ -739,7 +739,7 @@ describe('PluginSupervisor calls with a signal', () => {
     const sent = children[0]?.sent.at(-1);
     ctl.abort();
     expect(await call).toMatchObject({
-      message: 'call to plugin example was cancelled',
+      message: 'call to plugin example was canceled',
       retryable: false,
     });
     expect(children[0]?.sent.at(-1)).toMatchObject({ type: 'cancel', id: sent?.id });

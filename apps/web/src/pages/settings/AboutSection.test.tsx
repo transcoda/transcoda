@@ -113,11 +113,11 @@ describe('AboutSection', () => {
     expect(container.querySelector('details')).toBeNull();
   });
 
-  it('links to the open-source licences', async () => {
+  it('links to the open-source licenses', async () => {
     render(<AboutSection />);
     await screen.findByText('8.1.3-Jellyfin');
-    const link = screen.getByRole('link', { name: 'Open-source licences' });
-    expect(link.getAttribute('href')).toBe('/settings/about/licences');
+    const link = screen.getByRole('link', { name: 'Open-source licenses' });
+    expect(link.getAttribute('href')).toBe('/settings/about/licenses');
   });
 
   it('shows the database backups with "Back up now"', async () => {

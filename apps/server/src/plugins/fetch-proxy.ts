@@ -143,7 +143,7 @@ function substituteInput(input: FetchInput, secrets: Map<string, string>): Fetch
     throw new Failure(
       fail(
         'refused',
-        `the request contains ${SECRET_PLACEHOLDER}, a secret that could not be recognised: send credentials with auth, and use a structured JSON body instead of a pre-serialised string`,
+        `the request contains ${SECRET_PLACEHOLDER}, a secret that could not be recognized: send credentials with auth, and use a structured JSON body instead of a pre-serialized string`,
       ),
     );
   }

@@ -1328,7 +1328,7 @@ describe('walk', () => {
         [edge('in', 'ro'), edge('ro', 'pn')],
       );
       // Like invalid settings of a core node: the walk throws, the node never runs.
-      await expect(walk(s.deps, input(old))).rejects.toThrow('plugin update changes behaviour');
+      await expect(walk(s.deps, input(old))).rejects.toThrow('plugin update changes behavior');
       expect(called).toBe(false);
     });
 

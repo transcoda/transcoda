@@ -223,7 +223,7 @@ describe('JobsPage', () => {
     const dialog = await screen.findByRole('dialog', { name: 'Cancel 39 jobs?' });
     expect(
       within(dialog).getByText(
-        'Every queued, running and paused job in every library is cancelled.',
+        'Every queued, running and paused job in every library is canceled.',
       ),
     ).toBeTruthy();
     expect(
@@ -241,7 +241,7 @@ describe('JobsPage', () => {
     expect(confirm.className).toContain('btn-danger');
     fireEvent.click(confirm);
     await waitFor(() => expect(mocks.cancelAll).toHaveBeenCalledWith({}));
-    expect(await screen.findByText('Cancelled 39 jobs')).toBeTruthy();
+    expect(await screen.findByText('Canceled 39 jobs')).toBeTruthy();
 
     cleanup();
     mocks.list.mockResolvedValue({
@@ -268,7 +268,7 @@ describe('JobsPage', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel 39 jobs' }));
     expect(
       await screen.findByText(
-        'Nothing was cancelled. 5 jobs already replacing their file will finish',
+        'Nothing was canceled. 5 jobs already replacing their file will finish',
       ),
     ).toBeTruthy();
 
@@ -278,19 +278,19 @@ describe('JobsPage', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel 39 jobs' }));
     expect(
       await screen.findByText(
-        'Cancelled 36 jobs. 1 job already replacing their file will finish. 2 jobs could not be cancelled',
+        'Canceled 36 jobs. 1 job already replacing their file will finish. 2 jobs could not be canceled',
       ),
     ).toBeTruthy();
 
     mocks.cancelAll.mockRejectedValueOnce(
-      new Error('The server is stopping; nothing was cancelled'),
+      new Error('The server is stopping; nothing was canceled'),
     );
     fireEvent.click(screen.getByRole('button', { name: 'Cancel all' }));
     dialog = await screen.findByRole('dialog', { name: 'Cancel 39 jobs?' });
     fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel 39 jobs' }));
     expect(
       await screen.findByText(
-        "Couldn't cancel the jobs: The server is stopping; nothing was cancelled",
+        "Couldn't cancel the jobs: The server is stopping; nothing was canceled",
       ),
     ).toBeTruthy();
 
@@ -320,7 +320,7 @@ describe('JobsPage', () => {
     const dialog = await screen.findByRole('dialog', { name: 'Cancel 39 jobs?' });
     expect(
       within(dialog).getByText(
-        'Every queued, running and paused job in Movies is cancelled. The status and run filters do not limit this.',
+        'Every queued, running and paused job in Movies is canceled. The status and run filters do not limit this.',
       ),
     ).toBeTruthy();
     fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel 39 jobs' }));

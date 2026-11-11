@@ -656,9 +656,7 @@ export class PluginProcess {
     }
     const { signal } = opts;
     if (signal?.aborted) {
-      return Promise.reject(
-        new PluginCallError(`call to plugin ${this.name} was cancelled`, false),
-      );
+      return Promise.reject(new PluginCallError(`call to plugin ${this.name} was canceled`, false));
     }
     const id = this.nextId();
     const hook = msg.type === 'call' ? msg.hook : msg.type;
@@ -716,7 +714,7 @@ export class PluginProcess {
     } catch {
       // The process is gone; its exit clears the reaper.
     }
-    p.reject(new PluginCallError(`call to plugin ${this.name} was cancelled`, false));
+    p.reject(new PluginCallError(`call to plugin ${this.name} was canceled`, false));
   }
 
   private onTimeout(p: Pending): void {
@@ -724,7 +722,7 @@ export class PluginProcess {
       // Nobody waits for it any more, but the plugin is still busy with it: loudly, kill it.
       const afterMs = p.graceMs ?? p.timeoutMs;
       this.deps.log.warn({
-        msg: 'cancelled plugin call did not stop within its grace period; killing the plugin',
+        msg: 'canceled plugin call did not stop within its grace period; killing the plugin',
         plugin: this.name,
         node: p.node ?? null,
         hook: p.hook,

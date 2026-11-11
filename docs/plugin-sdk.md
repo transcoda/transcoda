@@ -49,13 +49,13 @@ The manifest is read from the bundle itself (the default export's `name`, `versi
 - A plugin bumps its own major when it drops an SDK major. Core bumps the SDK major only when a hook signature or context field changes incompatibly; additive fields are minors.
 - A bundle whose default export is not a `definePlugin` object (built against SDK 0.x, or a module with only named exports) is refused: the install is rolled back with `plugin crashed on start: crashed: bundle has no plugin default export` and nothing is registered.
 - The manifest also lists each node's kind and title (`nodeInfo`), so the Plugins page can show what a plugin adds before it is installed; manifests built before that show the bare node types.
-- `icon` (optional) is the plugin's own mark as SVG markup, at most 16,384 characters, starting with `<svg` (an XML declaration before it is fine). The Plugins page shows it in a 40px tile, as an image only (it is never inserted into the page, so scripts and external references in it do nothing); without one the tile shows a monogram. Ship only a mark you may use: a product's logo is its owner's trademark, and an open-source licence for the code does not cover it.
+- `icon` (optional) is the plugin's own mark as SVG markup, at most 16,384 characters, starting with `<svg` (an XML declaration before it is fine). The Plugins page shows it in a 40px tile, as an image only (it is never inserted into the page, so scripts and external references in it do nothing); without one the tile shows a monogram. Ship only a mark you may use: a product's logo is its owner's trademark, and an open-source license for the code does not cover it.
 
 ## Node versions and migrations
 
-A node bumps `version` when its settings shape or behaviour changes. `migrations` must link every version the plugin shipped to the current one within a plugin major (`from → to` steps, each with a `risk` and a `note`). The manifest announces each node's version and its links (`nodeVersions`), so the catalog and the Plugins page can reason without starting a bundle.
+A node bumps `version` when its settings shape or behavior changes. `migrations` must link every version the plugin shipped to the current one within a plugin major (`from → to` steps, each with a `risk` and a `note`). The manifest announces each node's version and its links (`nodeVersions`), so the catalog and the Plugins page can reason without starting a bundle.
 
-The plugin host migrates settings at call time: a call carries the pinned `nodeVersion`, and the host walks the `migrations` chain to the current version before the hook runs (a chain that is missing, ambiguous or overshoots fails the call with `no migration path from v1 to v3 for <type>`, and the hook does not run). Steps must be synchronous and their result must validate against the current settings. The host also answers a `migrate` message (`nodeType`, `from`, `settings`) with the migrated, validated settings (at most 256 kB). Migration code never runs in core. A workflow pinned to an older node version keeps running when the path to the current version has only `safe` steps: core cannot validate those settings (it only knows the new schema), so it passes them as stored, the call carries the pinned version and the host migrates and validates them at call time. A path with a `behaviour` step is held like a core node's: the version reads `plugin update changes behaviour of <node>; review and activate a new version`, is not runnable, and nothing runs it until a person activates the new version the update wrote. After an install, update, enable or server start, core asks the host to `migrate` the plugin's nodes in each workflow's newest version and saves the result as a new version (the active version is never touched); the Update dialog (`plugins.updateCheck`) lists beforehand the workflows an update would break or give a version to review.
+The plugin host migrates settings at call time: a call carries the pinned `nodeVersion`, and the host walks the `migrations` chain to the current version before the hook runs (a chain that is missing, ambiguous or overshoots fails the call with `no migration path from v1 to v3 for <type>`, and the hook does not run). Steps must be synchronous and their result must validate against the current settings. The host also answers a `migrate` message (`nodeType`, `from`, `settings`) with the migrated, validated settings (at most 256 kB). Migration code never runs in core. A workflow pinned to an older node version keeps running when the path to the current version has only `safe` steps: core cannot validate those settings (it only knows the new schema), so it passes them as stored, the call carries the pinned version and the host migrates and validates them at call time. A path with a `behaviour` step is held like a core node's: the version reads `plugin update changes behavior of <node>; review and activate a new version`, is not runnable, and nothing runs it until a person activates the new version the update wrote. After an install, update, enable or server start, core asks the host to `migrate` the plugin's nodes in each workflow's newest version and saves the result as a new version (the active version is never touched); the Update dialog (`plugins.updateCheck`) lists beforehand the workflows an update would break or give a version to review.
 
 `risk: 'behaviour'` makes Transcoda write a new workflow version that a person must activate. Dropping a version from `migrations` is a plugin major bump: active versions that pin it cannot run until a person activates a newer workflow version (the Plugins page lists them before the update).
 
@@ -73,11 +73,11 @@ Each plugin has its own process. Transcoda applies these limits (defaults; store
 | A hook (`onJobDone`, `onJobFailed`, `afterReplace`) | 30 s |
 | Heap | 128 MB (`--max-old-space-size`); the process is killed at 256 MB RSS (`rssMb`, at most 2048) |
 | Plugins running at once | 16 (`maxHosts`, at most 256); a plugin started past it is `stopped` with `too many plugins running (at most 16); …` and is not retried until someone enables or restarts it |
-| A cancelled call (a job was cancelled) | the host gets 5 s (`cancelGraceMs`, never past the call's own timeout) to stop; a call still running then kills the process, which restarts |
+| A canceled call (a job was canceled) | the host gets 5 s (`cancelGraceMs`, never past the call's own timeout) to stop; a call still running then kills the process, which restarts |
 | Restart after a crash | 1 s, doubling to 60 s, back to 1 s after 5 min stable; given up (state `stopped`) after 3 crashes in 10 min |
 | One IPC message | 16 MB |
 | Bundle | 32 MB |
-| `ctx.plugin.fetch` | default 15 s per request (at most 5 min), 2 requests at a time, 10 requests per second, one honoured `Retry-After`, same-origin redirects only, response body at most 16 MB |
+| `ctx.plugin.fetch` | default 15 s per request (at most 5 min), 2 requests at a time, 10 requests per second, one honored `Retry-After`, same-origin redirects only, response body at most 16 MB |
 
 A call that exceeds its limit kills the process; the call fails (retryable once for a job's decide, build and finish) and the supervisor restarts the plugin. A `stopped` plugin stays stopped until someone presses Enable (or Restart) on its card; its nodes show "plugin not running" in the editor, and a workflow whose **active** version uses one cannot run until the plugin is back (`jobs.queue` is refused with `PLUGIN_UNAVAILABLE`, a queued job fails at start naming the plugin).
 
@@ -89,7 +89,7 @@ Every hook receives the plugin's context as `ctx.plugin`; the integration `test`
 - `fetch(input)`: the only way out. It reaches only the integration's `allowedOrigins`; failures throw `FetchRefused`, `FetchTimeout`, `FetchRateLimited` or `FetchFailed`; classify them with `fetchErrorKind(e)` (returns `'refused' | 'timeout' | 'rate-limited' | 'failed'`, or `null` for any other error), never with `instanceof` (the host and each bundle inline their own copy of the SDK, so the classes differ). See "Secrets and `fetch`" below.
 - `paths.toRemote(localPath)` / `paths.toLocal(remotePath)`: the user's path mappings (for example `/data/shows` in Sonarr is `/shows` here), longest segment-aware prefix wins.
 - `cache.get(key)` / `cache.set(key, value, ttlMs)`: a small in-process cache, at most 1,000 entries and 8 MB; a value over the byte cap is silently not stored.
-- `lang`: language-name normalisation (`'Japanese'` to `'ja'`).
+- `lang`: language-name normalization (`'Japanese'` to `'ja'`).
 - `log(level, message)`: forwarded to Transcoda's log tagged with the plugin name (secrets redacted); the process's stdout and stderr are forwarded too, at most 100 lines per second.
 - `dryRun`: true when the job is a dry run. A finish `run` is never called for a dry run; hooks never fire for one.
 - `job`: `{ id, attempt }` where there is a job.
@@ -110,7 +110,7 @@ What this does **not** protect, so write plugins accordingly:
 - Secrets shorter than 4 characters are not redacted by value (they would blank ordinary text).
 - A plugin's own error text is shown as written; only secrets are redacted from it, so do not put anything private in an error message.
 - The origin allow-list is the boundary for *where* a plugin may fetch. On top of it, the server resolves each request's host once per hop and connects to exactly the address it checked (so DNS rebinding cannot swap it): loopback, link-local, cloud-metadata and reserved addresses are always refused; a private (LAN, Docker, Tailscale, ULA) address is allowed only when the configured origin is itself private: a private IP, a single-label name such as `sonarr`, or a LAN suffix (`.lan`, `.local`, `.home.arpa`, `.internal`, `.ts.net`, …). A public name that resolves into the LAN is refused; configure the service by its LAN name or IP instead. Sonarr on the server's own host must be reached by its LAN address, not `localhost`.
-- Prefixed-base64 or JSON-pre-serialised secret forms cannot be tokenised: build the value with `auth` or a structured JSON body instead.
+- Prefixed-base64 or JSON-pre-serialized secret forms cannot be tokenised: build the value with `auth` or a structured JSON body instead.
 
 ## Finish steps and phases
 
@@ -121,7 +121,7 @@ Finish nodes run in phases: `render` (core only: the encode), `gate`, `write` (c
 - `required: false` (a warning): the failure message is recorded as a warning on the job.
 - `required: true`: the failure is a **problem** on the job. The job still ends `done`; the Jobs page lists it as "needs attention".
 - The plugin being down at that moment is retried once after 10 s; if it is still down the step fails the same way.
-- If the server is stopped or the job is cancelled during the steps, the remaining ones are skipped with the problem `the server stopped before the remaining finish actions`; the next start does not re-run the write.
+- If the server is stopped or the job is canceled during the steps, the remaining ones are skipped with the problem `the server stopped before the remaining finish actions`; the next start does not re-run the write.
 
 (`renameOutputs` on a node migration, which re-keys edges, is read for core nodes only; a plugin's migrations cannot rename ports and the field is ignored.)
 

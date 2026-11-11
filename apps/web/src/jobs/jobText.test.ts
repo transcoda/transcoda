@@ -187,7 +187,7 @@ describe('jobText', () => {
       'grew by 1% (gate ≥ 1e-7%)',
     );
     expect(detailLine(job({ state: 'dry_run', reason: null }))).toBe('Plan ready');
-    expect(detailLine(job({ state: 'cancelled' }))).toBe('Cancelled · original untouched');
+    expect(detailLine(job({ state: 'cancelled' }))).toBe('Canceled · original untouched');
     expect(detailLine(job({ state: 'already_processed', reason: 'already processed by v7' }))).toBe(
       'Already processed by v7',
     );
@@ -307,7 +307,7 @@ describe('jobText', () => {
       'Failed',
       'Would replace',
       'Depends on size',
-      'Cancelled',
+      'Canceled',
       'Needs attention',
       'Paused',
     ]);

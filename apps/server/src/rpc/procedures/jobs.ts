@@ -199,7 +199,7 @@ export const cancelAll = os.jobs.cancelAll
     const { db, engine, log } = context.deps;
     const { scheduler } = engine;
     if (scheduler.isStopping) {
-      throw errors.JOB_NOT_ACTIVE({ message: 'The server is stopping; nothing was cancelled' });
+      throw errors.JOB_NOT_ACTIVE({ message: 'The server is stopping; nothing was canceled' });
     }
     const jobs = jobsInStates(db, [...ACTIVE_JOB_STATES]).filter(
       (j) => input.libraryId === undefined || j.libraryId === input.libraryId,
@@ -217,7 +217,7 @@ export const cancelAll = os.jobs.cancelAll
       } catch (err) {
         out.failed++;
         log.error({
-          msg: 'cancel all: a job could not be cancelled',
+          msg: 'cancel all: a job could not be canceled',
           job: job.id,
           error: err instanceof Error ? err.message : String(err),
         });

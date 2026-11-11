@@ -134,7 +134,7 @@ export interface JobResultRow {
   problems: string[];
   /**
    * The probe verify read of the output, as the job page reads it (a JobProbe: no raw JSON); null
-   * when nothing was verified or the job failed or was cancelled after verify. Rows written before
+   * when nothing was verified or the job failed or was canceled after verify. Rows written before
    * that was decided may hold the whole ProbeResult (with `raw`).
    */
   outputProbe: JsonValue | null;

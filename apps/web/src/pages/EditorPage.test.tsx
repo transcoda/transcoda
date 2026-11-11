@@ -467,16 +467,16 @@ describe('EditorPage', () => {
     const remux = within(palette).getByRole('button', { name: 'Remux' });
     expect(remux.getAttribute('aria-disabled')).toBe('true');
   });
-  it('EditorPage with a failing nodes.list shows "Node catalogue unavailable — reload", renders nodes as unknown and disables Save', async () => {
+  it('EditorPage with a failing nodes.list shows "Node catalog unavailable — reload", renders nodes as unknown and disables Save', async () => {
     mocks.nodesList.mockRejectedValue(new ORPCError('UNAUTHORIZED', { status: 401 }));
     renderEditor();
-    const banner = await screen.findByText('Node catalogue unavailable — reload');
+    const banner = await screen.findByText('Node catalog unavailable — reload');
     expect(banner.closest('[role="status"]')).toBeTruthy();
     expect(await screen.findByRole('group', { name: /^Unknown core:keep-languages/ })).toBeTruthy();
     expect(screen.getByRole('group', { name: /^Unknown core:input-manual/ })).toBeTruthy();
     const save = screen.getByRole('button', { name: 'Save v4' }) as HTMLButtonElement;
     expect(save.disabled).toBe(true);
-    expect(save.title).toBe('Node catalogue unavailable');
+    expect(save.title).toBe('Node catalog unavailable');
     // Read-only: no toolbar, Delete does nothing, nothing is validated or saved.
     fireEvent.keyDown(document.body, { key: 'Delete' });
     expect(pill().textContent).toBe('v3 · Not active · saved 2 min ago');
@@ -485,7 +485,7 @@ describe('EditorPage', () => {
     mocks.nodesList.mockResolvedValue({ nodes: nodesFixture });
     fireEvent.click(screen.getByRole('button', { name: 'Reload' }));
     expect(await screen.findByRole('group', { name: /Action Keep languages/ })).toBeTruthy();
-    expect(screen.queryByText('Node catalogue unavailable — reload')).toBeNull();
+    expect(screen.queryByText('Node catalog unavailable — reload')).toBeNull();
   });
 
   it('EditorPage below 1024 px is read-only with the notice', async () => {

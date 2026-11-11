@@ -19,7 +19,7 @@ A plugin declares the SDK majors it supports (`'^1'`, later `'^1 || ^2'`); core 
 
 ## Limits
 
-Each plugin runs in its own sandboxed process: call timeout 30 s (decide, build, finish, data), 5 min for a finish `run`, 20 s for `test()`, 5 s for a trigger `handle`, 60 s to start, 30 s for hooks; heap 128 MB, killed at 256 MB RSS; restart backoff 1 s doubling to 60 s, given up after 3 crashes in 10 min; IPC message cap 16 MB; fetch: default 15 s (cap 5 min), 2 concurrent, 10 requests/s, one honoured `Retry-After`, same-origin redirects only, response body cap 16 MB; bundle at most 32 MB.
+Each plugin runs in its own sandboxed process: call timeout 30 s (decide, build, finish, data), 5 min for a finish `run`, 20 s for `test()`, 5 s for a trigger `handle`, 60 s to start, 30 s for hooks; heap 128 MB, killed at 256 MB RSS; restart backoff 1 s doubling to 60 s, given up after 3 crashes in 10 min; IPC message cap 16 MB; fetch: default 15 s (cap 5 min), 2 concurrent, 10 requests/s, one honored `Retry-After`, same-origin redirects only, response body cap 16 MB; bundle at most 32 MB.
 
 ## Testing helpers (`@transcoda/sdk/testing`)
 

@@ -27,9 +27,9 @@ When a catalog has a newer version the plugin's row says so and offers **Update*
 - **No workflow is affected.** Update runs as soon as you confirm.
 - **Unknown.** The release does not say which node versions it serves, so the dialog warns that workflows pinned to older versions may stop running.
 - **Review needed.** The newest version of some workflows uses nodes the update changes. Transcoda writes a new version of each for you to review where an upgrade exists. The versions that are active now are not touched, and they keep running. This applies to a safe-only update too: when a safe migration changes the newest saved settings, Transcoda may write a new workflow version with them, while the active version stays as it is and keeps running.
-- **Would stop running.** An active workflow version pins a node version that the update either no longer provides (reason: dropped) or changes in a way that alters what the node does (reason: behaviour). The dialog names each workflow and its active version, and the Update button turns red.
+- **Would stop running.** An active workflow version pins a node version that the update either no longer provides (reason: dropped) or changes in a way that alters what the node does (reason: behavior). The dialog names each workflow and its active version, and the Update button turns red.
 
-Plugin nodes carry a version, and a workflow version remembers the node version it was saved with. When an update only adds a setting or makes another change that cannot alter results (a *safe* migration), a workflow pinned to the older node version keeps running: the plugin migrates its settings every time the node runs. When a migration changes behaviour, Transcoda does not guess. The active version that uses the node is held: it shows `plugin update changes behaviour of <title>; review and activate a new version` and does not run (no job starts, so nothing runs with the wrong settings). The update also wrote a new version of that workflow with the migrated settings; open it, check it, and activate it. A dropped node version has no migration path, so the active version reads "no upgrade path" and does not run until you activate a version without it. Disabling or removing a plugin has a similar confirmation that names the workflows it affects.
+Plugin nodes carry a version, and a workflow version remembers the node version it was saved with. When an update only adds a setting or makes another change that cannot alter results (a *safe* migration), a workflow pinned to the older node version keeps running: the plugin migrates its settings every time the node runs. When a migration changes behavior, Transcoda does not guess. The active version that uses the node is held: it shows `plugin update changes behavior of <title>; review and activate a new version` and does not run (no job starts, so nothing runs with the wrong settings). The update also wrote a new version of that workflow with the migrated settings; open it, check it, and activate it. A dropped node version has no migration path, so the active version reads "no upgrade path" and does not run until you activate a version without it. Disabling or removing a plugin has a similar confirmation that names the workflows it affects.
 
 ## Official plugins
 
@@ -94,7 +94,7 @@ The node has optional inputs `ids` (from a Sonarr or Radarr node) and `title`, a
 
 > This product uses the TMDB API but is not endorsed or certified by TMDB.
 
-The logo (`apps/web/src/assets/tmdb.svg`) is TMDB's official logo from their brand page (https://www.themoviedb.org/about/logos-attribution), used unaltered and only to attribute the data; it remains TMDB's property and is not covered by Transcoda's licence.
+The logo (`apps/web/src/assets/tmdb.svg`) is TMDB's official logo from their brand page (https://www.themoviedb.org/about/logos-attribution), used unaltered and only to attribute the data; it remains TMDB's property and is not covered by Transcoda's license.
 
 ### ntfy
 
@@ -169,7 +169,7 @@ There are no path mappings: Seerr does not know files, so the nodes look titles 
 
 **Email addresses are never shown.** A Seerr user without a user name has their email address as display name. Such a name is replaced by `user #<id>` (`Example Movie: requested by user #3 on 2026-09-01`), so an address never reaches a job's trace, a notification or the API.
 
-**No "notify the requester" node.** Seerr's API cannot send a message to a chosen user. The only thing a client can write that users see is an issue (or an issue comment), which opens a problem report in Seerr and notifies the admins: not a clean "your title was optimised" message. Use ntfy or Discord to tell people instead.
+**No "notify the requester" node.** Seerr's API cannot send a message to a chosen user. The only thing a client can write that users see is an issue (or an issue comment), which opens a problem report in Seerr and notifies the admins: not a clean "your title was optimized" message. Use ntfy or Discord to tell people instead.
 
 ## The Keep my languages example with plugins
 

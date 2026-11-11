@@ -63,6 +63,10 @@ export function App() {
         <Route path="/settings/tokens">
           <Redirect to="/settings/api-tokens" replace />
         </Route>
+        {/* The licenses page's old URL (British spelling). */}
+        <Route path="/settings/about/licences">
+          <Redirect to="/settings/about/licenses" replace />
+        </Route>
         <Route path="/settings/:section?/:sub?">
           {(params) => (
             <RequireAuth>

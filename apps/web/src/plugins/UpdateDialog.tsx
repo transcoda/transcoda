@@ -79,7 +79,7 @@ export function UpdateDialog({
         <div id={note('held')} className="alert alert-danger update-block" role="note">
           <Icon name="cross" strokeWidth={2.4} round />
           <div>
-            <p>{`${name} ${version} changes the behaviour of nodes in these workflows' active versions. They stop running after the update until you review and activate the new version written for them:`}</p>
+            <p>{`${name} ${version} changes the behavior of nodes in these workflows' active versions. They stop running after the update until you review and activate the new version written for them:`}</p>
             <ul className="update-list" aria-label="Workflows held for review">
               {held.map((w) => (
                 <li key={w.id}>{`${w.name} (active v${w.version})`}</li>

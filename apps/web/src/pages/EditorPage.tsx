@@ -83,7 +83,7 @@ function versionParam(search: string): number | undefined {
 /** Below this width the editor is read-only (design: desktop-only, minimum 1024 px). */
 const NARROW_QUERY = '(max-width: 1023px)';
 const NARROW_NOTICE = 'The editor needs a wider window (1024 px). You can look, not edit.';
-const CATALOG_UNAVAILABLE = 'Node catalogue unavailable';
+const CATALOG_UNAVAILABLE = 'Node catalog unavailable';
 /** The key, zoom controls and minimap sit along the canvas bottom (44 px controls + 16 px margin + gap). */
 const BOTTOM_OVERLAYS = 72;
 
