@@ -42,7 +42,7 @@ Open the UI, go to **Settings → API tokens** (`/settings/api-tokens`) and crea
 | Edit and try | `read`, `workflows:write`, `plan` | the above, plus creating and changing workflows and `dry_run` |
 | Operate | `read`, `workflows:write`, `plan`, `jobs:manage` | the above, plus pausing, resuming and canceling jobs and the queue |
 
-Scopes are exact and do not imply each other: a token that writes workflows also needs `read` to list or open them. `jobs:create` is accepted for `dry_run` but gives nothing more over MCP. A tool the token's scopes do not allow is absent from the tool list. Revoke a token on the same page.
+Scopes are exact and do not imply each other: a token that writes workflows also needs `read` to list or open them. `jobs:create` is accepted for `dry_run` but gives nothing more over MCP. `metrics` is for [Prometheus and Home Assistant](metrics.md) and unlocks no tool. A tool the token's scopes do not allow is absent from the tool list. Revoke a token on the same page.
 
 ## Claude Code
 
