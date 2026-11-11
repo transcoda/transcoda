@@ -54,7 +54,9 @@ export class MetricsService {
 
   private snapshot(): Promise<Snapshot> {
     const now = this.deps.now().getTime();
-    if (this.cache && now - this.cache.at < METRICS_CACHE_MS) {
+    const age = this.cache ? now - this.cache.at : -1;
+    // A negative age means the clock moved backward: the snapshot's age is unknown, take a new one.
+    if (this.cache && age >= 0 && age < METRICS_CACHE_MS) {
       return Promise.resolve(this.cache.snapshot);
     }
     this.inflight ??= this.take().then(

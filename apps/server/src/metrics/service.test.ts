@@ -244,6 +244,16 @@ describe('MetricsService.exposition', () => {
   });
 });
 
+describe('MetricsService cache and scratch space', () => {
+  it('takes a new snapshot when the clock moves backward', async () => {
+    const { svc, scratchCalls } = service();
+    await svc.exposition();
+    now -= 60_000;
+    await svc.exposition();
+    expect(scratchCalls()).toBe(2);
+  });
+});
+
 describe('MetricsService.status', () => {
   it('sums the same snapshot into a small JSON for Home Assistant', async () => {
     lib('l1', 'Movies');
