@@ -2,6 +2,8 @@ import type { PluginUpdateCheckOutput } from '@transcoda/contract';
 import { type RefObject, useId } from 'react';
 import { Dialog } from '../components/Dialog.tsx';
 import { Icon } from '../components/Icon.tsx';
+import { NetworkHosts } from './NetworkHosts.tsx';
+import { type NetworkEntry, networkEntryText } from './pluginText.ts';
 
 /**
  * What an update would do to workflows, before it happens: the check's answer in words, with
@@ -14,6 +16,8 @@ export function UpdateDialog({
   onConfirm,
   onCancel,
   returnFocusTo,
+  network,
+  added = [],
 }: {
   name: string;
   version: string;
@@ -21,8 +25,16 @@ export function UpdateDialog({
   onConfirm(): void;
   onCancel(): void;
   returnFocusTo?: RefObject<HTMLElement | null>;
+  /** The hosts this version connects to (null: it predates the list); absent: not shown. */
+  network?: readonly NetworkEntry[] | null | undefined;
+  /** The entries of `network` the installed version does not have. */
+  added?: readonly NetworkEntry[];
 }) {
   const id = useId();
+  const addedWords = added.map((e) => {
+    const t = networkEntryText(e);
+    return 'setting' in e ? t.charAt(0).toLowerCase() + t.slice(1) : t;
+  });
   const dropped = check.wouldBreak.filter((w) => w.reason === 'dropped');
   const held = check.wouldBreak.filter((w) => w.reason === 'behaviour');
   const breaks = check.wouldBreak.length > 0;
@@ -33,6 +45,7 @@ export function UpdateDialog({
     held.length > 0 ? 'held' : null,
     check.needsReview.length > 0 ? 'review' : null,
     check.unknown ? 'unknown' : null,
+    added.length > 0 ? 'hosts' : null,
     nothing ? 'none' : null,
   ]
     .filter((k): k is string => k !== null)
@@ -113,7 +126,16 @@ export function UpdateDialog({
           </span>
         </div>
       ) : null}
+      {added.length > 0 ? (
+        <div id={note('hosts')} className="alert alert-warning update-block" role="note">
+          <Icon name="alert" size={16} round />
+          <span>
+            {`${name} ${version} connects to ${added.length === 1 ? 'a host' : 'hosts'} the installed version does not: ${addedWords.join(', ')}.`}
+          </span>
+        </div>
+      ) : null}
       {nothing ? <p id={note('none')}>No workflow is affected.</p> : null}
+      {network !== undefined ? <NetworkHosts network={network} added={added} /> : null}
     </Dialog>
   );
 }

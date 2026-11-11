@@ -32,7 +32,12 @@ import type { PluginSummary } from '@transcoda/contract';
 import { resetCatalogCache } from '../hooks/useCatalog.ts';
 import { EventsProvider } from '../hooks/useEvents.ts';
 import { REFETCH_COALESCE_MS } from '../hooks/useRefetchOn.ts';
-import { CUSTOM_CATALOG_WARNING } from '../plugins/pluginText.ts';
+import {
+  CUSTOM_CATALOG_WARNING,
+  NETWORK_NONE,
+  NETWORK_NOTE,
+  NETWORK_UNLISTED,
+} from '../plugins/pluginText.ts';
 import { fakeEventSource } from '../test/fakeEventStream.ts';
 import { catalogOutput, plugin, pluginDetail, serviceDetail } from '../test/fixtures/plugins.ts';
 import { renderAt } from '../test/render.tsx';
@@ -334,6 +339,37 @@ describe('PluginsPage installed plugins', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Update Example to 1.1.0' }));
     expect(await screen.findByRole('dialog', { name: 'Update example to 1.1.0' })).toBeTruthy();
     expect(mocks.plugins.update).not.toHaveBeenCalled();
+  });
+
+  it('Update opens the dialog when the new version connects to a host the installed one does not, and marks it', async () => {
+    const out = catalogOutput();
+    const entry = out.catalogs[0]?.plugins[0];
+    const installed = entry?.versions[0];
+    if (!entry || !installed?.network) throw new Error('fixture has no network');
+    entry.installed = '1.0.0';
+    entry.latest = '1.1.0';
+    entry.versions.push({
+      ...installed,
+      version: '1.1.0',
+      network: [...installed.network, { origin: 'https://api.example.test' }],
+    });
+    mocks.plugins.catalog.mockResolvedValue(out);
+    mocks.plugins.list.mockResolvedValue(listOf([plugin({ updateAvailable: '1.1.0' })]));
+    await open();
+    fireEvent.click(screen.getByRole('button', { name: 'Update Example to 1.1.0' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Update example to 1.1.0' });
+    expect(mocks.plugins.update).not.toHaveBeenCalled();
+    expect(
+      within(dialog).getByText(
+        'example 1.1.0 connects to a host the installed version does not: api.example.test.',
+      ),
+    ).toBeTruthy();
+    const hosts = within(dialog).getByRole('list', { name: 'Connects to' });
+    expect(
+      within(hosts)
+        .getAllByRole('listitem')
+        .map((li) => li.textContent),
+    ).toEqual(['The Example URL you enter in its settings', 'api.example.testnew']);
   });
 
   it('a failed check shows the reason in the row and does not update', async () => {
@@ -809,6 +845,45 @@ describe('PluginsPage updates', () => {
     ]);
   });
 
+  it('Update all skips a plugin whose new version connects to a new host and names it', async () => {
+    mocks.plugins.list.mockResolvedValue(three());
+    const sonarrUrl = { setting: 'url', label: 'Sonarr URL' };
+    const version = (v: string, network: unknown) => ({
+      ...catalogOutput().catalogs[0]?.plugins[0]?.versions[0],
+      version: v,
+      network,
+    });
+    mocks.plugins.catalog.mockResolvedValue(
+      catalogWith(
+        {
+          name: 'sonarr',
+          title: 'sonarr',
+          installed: '1.0.0',
+          latest: '2.0.0',
+          versions: [
+            version('1.0.0', [sonarrUrl]),
+            version('2.0.0', [sonarrUrl, { origin: 'https://api.example.test' }]),
+          ],
+        },
+        { name: 'radarr', title: 'radarr', installed: '1.0.0', latest: '3.0.0' },
+        { name: 'jellyfin', title: 'jellyfin', installed: '1.0.0', latest: '4.0.0' },
+      ),
+    );
+    renderAt(
+      '/plugins?show=updates',
+      <EventsProvider>
+        <PluginsPage />
+      </EventsProvider>,
+    );
+    fireEvent.click(await screen.findByRole('button', { name: 'Update all' }));
+    expect(
+      await screen.findByText('Updated 2; sonarr needs a look: it connects to a new host.'),
+    ).toBeTruthy();
+    expect(mocks.plugins.update).not.toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'sonarr' }),
+    );
+  });
+
   it('Update all with nothing to look at ends with a toast', async () => {
     mocks.plugins.list.mockResolvedValue(three());
     renderAt(
@@ -830,12 +905,15 @@ describe('updateAllSummary', () => {
         updated: 0,
         changes: ['Sonarr', 'Radarr'],
         unchecked: ['ntfy'],
+        hosts: ['Discord', 'Seerr'],
         failed: [{ title: 'Jellyfin', reason: 'offline' }],
       }),
     ).toBe(
-      "Nothing updated; Sonarr and Radarr need a look: they change nodes your workflows use; ntfy needs a look: it can't be checked against your workflows; Jellyfin failed: offline.",
+      "Nothing updated; Sonarr and Radarr need a look: they change nodes your workflows use; ntfy needs a look: it can't be checked against your workflows; Discord and Seerr need a look: they connect to new hosts; Jellyfin failed: offline.",
     );
-    expect(updateAllSummary({ updated: 2, changes: [], unchecked: [], failed: [] })).toBeNull();
+    expect(
+      updateAllSummary({ updated: 2, changes: [], unchecked: [], hosts: [], failed: [] }),
+    ).toBeNull();
   });
 });
 
@@ -859,6 +937,14 @@ describe('PluginsPage catalog', () => {
     expect(fact('Checksum (SHA-256)')).toBe(`${'abcdef0123456789'.repeat(4)}Copy`);
     expect(within(facts).getByRole('button', { name: 'Copy the checksum' })).toBeTruthy();
     expect(dialog.textContent).not.toContain(' · ');
+    // Where it may connect, with what that promises, before the promise itself.
+    const hosts = within(dialog).getByRole('list', { name: 'Connects to' });
+    expect(
+      within(hosts)
+        .getAllByRole('listitem')
+        .map((li) => li.textContent),
+    ).toEqual(['The Example URL you enter in its settings']);
+    expect(within(dialog).getByText(NETWORK_NOTE)).toBeTruthy();
     const link = within(dialog).getByRole('link', { name: /View on GitHub/ });
     expect(link.getAttribute('href')).toBe('https://github.com/transcoda/plugins/attestations/1');
     // Focus starts on Cancel, so the tooltip is not open when the dialog opens.
@@ -881,6 +967,47 @@ describe('PluginsPage catalog', () => {
       }),
     );
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+  });
+
+  it('the install dialog lists fixed hosts by name, says when a plugin connects nowhere, and when its build predates the list', async () => {
+    const withNetwork = (network: unknown) => {
+      const out = catalogOutput();
+      const v = out.catalogs[0]?.plugins[0]?.versions[0];
+      if (!v) throw new Error('fixture has no version');
+      v.network = network as typeof v.network;
+      return out;
+    };
+    const hostsIn = async (network: unknown) => {
+      cleanup();
+      mocks.plugins.list.mockResolvedValue(listOf([]));
+      mocks.plugins.catalog.mockResolvedValue(withNetwork(network));
+      view();
+      fireEvent.click(await screen.findByRole('button', { name: 'Install Example 1.0.0' }));
+      return screen.findByRole('dialog', { name: 'Install Example 1.0.0?' });
+    };
+
+    let dialog = await hostsIn([
+      { origin: 'https://discord.com' },
+      { origin: 'http://ntfy.example.com' },
+    ]);
+    const hosts = within(dialog).getByRole('list', { name: 'Connects to' });
+    expect(
+      within(hosts)
+        .getAllByRole('listitem')
+        .map((li) => li.textContent),
+    ).toEqual(['discord.com', 'http://ntfy.example.com']);
+
+    dialog = await hostsIn([]);
+    expect(
+      within(within(dialog).getByRole('list', { name: 'Connects to' })).getByRole('listitem')
+        .textContent,
+    ).toBe(NETWORK_NONE);
+    expect(within(dialog).getByText(NETWORK_NOTE)).toBeTruthy();
+
+    dialog = await hostsIn(null);
+    expect(within(dialog).queryByRole('list', { name: 'Connects to' })).toBeNull();
+    expect(within(dialog).getByText(NETWORK_UNLISTED)).toBeTruthy();
+    expect(within(dialog).queryByText(NETWORK_NOTE)).toBeNull();
   });
 
   it('the catalog is grouped by purpose, with cards showing the nodes a plugin adds', async () => {

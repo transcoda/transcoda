@@ -6,6 +6,7 @@ import { InfoTip } from '../components/InfoTip.tsx';
 import { useToast } from '../components/Toast.tsx';
 import { copyShortcut, copyText } from '../lib/clipboard.ts';
 import { pluginFailure } from './errors.ts';
+import { NetworkHosts } from './NetworkHosts.tsx';
 import { cardDescription } from './pluginGroups.ts';
 import {
   ATTESTATION_TIP,
@@ -160,6 +161,7 @@ export function InstallDialog({
           ) : null}
         </dl>
       ) : null}
+      {target ? <NetworkHosts network={target.version.network} /> : null}
       {target && !target.catalog.official && target.catalog.keyIds.length === 0 ? (
         <div className="alert alert-warning" role="note">
           <Icon name="alert" size={16} round />

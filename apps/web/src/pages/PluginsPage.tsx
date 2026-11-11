@@ -30,7 +30,7 @@ import { pluginFailure } from '../plugins/errors.ts';
 import { type Entry, InstallDialog, type Target } from '../plugins/InstallDialog.tsx';
 import { PluginRow } from '../plugins/PluginRow.tsx';
 import type { NodeChip } from '../plugins/PluginTile.tsx';
-import { testEffect, updateNeedsLook } from '../plugins/pluginText.ts';
+import { testEffect, updateHosts, updateNeedsLook } from '../plugins/pluginText.ts';
 import { type CatalogView, usePlugins } from '../plugins/usePlugins.ts';
 
 type Show = 'all' | 'installed' | 'updates';
@@ -48,6 +48,8 @@ interface UpdateAllResult {
   changes: string[];
   /** Updates whose effect on workflows could not be checked. */
   unchecked: string[];
+  /** Updates whose new version connects to a host the installed one does not. */
+  hosts: string[];
   failed: Array<{ title: string; reason: string }>;
 }
 
@@ -56,7 +58,14 @@ interface UpdateAllResult {
  * was updated (a toast says so).
  */
 export function updateAllSummary(r: UpdateAllResult): string | null {
-  if (r.changes.length === 0 && r.unchecked.length === 0 && r.failed.length === 0) return null;
+  if (
+    r.changes.length === 0 &&
+    r.unchecked.length === 0 &&
+    r.hosts.length === 0 &&
+    r.failed.length === 0
+  ) {
+    return null;
+  }
   const one = (list: readonly string[]) => list.length === 1;
   const parts = [r.updated > 0 ? `Updated ${r.updated}` : 'Nothing updated'];
   if (r.changes.length > 0) {
@@ -71,6 +80,13 @@ export function updateAllSummary(r: UpdateAllResult): string | null {
       one(r.unchecked)
         ? `${r.unchecked[0]} needs a look: it can't be checked against your workflows`
         : `${joinAnd(r.unchecked)} need a look: they can't be checked against your workflows`,
+    );
+  }
+  if (r.hosts.length > 0) {
+    parts.push(
+      one(r.hosts)
+        ? `${r.hosts[0]} needs a look: it connects to a new host`
+        : `${joinAnd(r.hosts)} need a look: they connect to new hosts`,
     );
   }
   for (const f of r.failed) parts.push(`${f.title} failed: ${f.reason}`);
@@ -347,8 +363,20 @@ export function PluginsPage() {
       name: p.name,
       version: p.updateAvailable ?? '',
       title: titleOf(p),
+      addsHost:
+        updateHosts(
+          entryOf(catalogs, p.name, p.catalogUrl)?.entry ?? null,
+          p.version,
+          p.updateAvailable ?? '',
+        ).added.length > 0,
     }));
-    const result: UpdateAllResult = { updated: 0, changes: [], unchecked: [], failed: [] };
+    const result: UpdateAllResult = {
+      updated: 0,
+      changes: [],
+      unchecked: [],
+      hosts: [],
+      failed: [],
+    };
     setAllSummary(null);
     for (const [i, t] of targets.entries()) {
       setUpdatingAll({ at: i + 1, of: targets.length });
@@ -364,6 +392,10 @@ export function PluginsPage() {
           ? result.unchecked
           : result.changes
         ).push(t.title);
+        continue;
+      }
+      if (t.addsHost) {
+        result.hosts.push(t.title);
         continue;
       }
       const [err] = await safe(api.plugins.update({ name: t.name, version: t.version }));
