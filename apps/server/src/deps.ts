@@ -10,7 +10,7 @@ import { GpuLoadSampler } from './capabilities/gpu-load.ts';
 import { IntelLoadReader } from './capabilities/intel-load.ts';
 import type { Config } from './config.ts';
 import type { Database } from './db/open.ts';
-import { findJob } from './db/repos/jobs.ts';
+import { findJob, findJobProbe } from './db/repos/jobs.ts';
 import { listLibraries } from './db/repos/libraries.ts';
 import { countUsers } from './db/repos/users.ts';
 import { EngineService } from './engine/engine.ts';
@@ -144,7 +144,17 @@ export function createAppDeps(input: AppDepsInput): AppDeps {
     now,
     jobTimes: (id) => {
       const job = findJob(db, id);
-      return job && { startedAt: job.startedAt, finishedAt: job.finishedAt };
+      if (!job) return null;
+      const probe = findJobProbe(db, id);
+      const media =
+        probe && typeof probe === 'object' && !Array.isArray(probe)
+          ? probe.durationSeconds
+          : undefined;
+      return {
+        startedAt: job.startedAt,
+        finishedAt: job.finishedAt,
+        ...(typeof media === 'number' ? { mediaSeconds: media } : {}),
+      };
     },
     slots: () => engine.scheduler.status().encodeSlots,
   });

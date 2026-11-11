@@ -32,7 +32,10 @@ function slots(busy: Record<string, string | null>): EngineEvent {
 }
 
 function setup(
-  times: Record<string, { startedAt: string | null; finishedAt: string | null }> = {},
+  times: Record<
+    string,
+    { startedAt: string | null; finishedAt: string | null; mediaSeconds?: number }
+  > = {},
 ) {
   let now = t0;
   const rec = new MetricsRecorder({
@@ -80,6 +83,33 @@ describe('MetricsRecorder job durations', () => {
     expect(s?.labels).toEqual({ lane: 'quick', outcome: 'failed' });
     expect(s?.counts.every((c) => c === 0)).toBe(true);
     expect(s?.count).toBe(1);
+  });
+
+  it('adds the media duration of the same observed jobs, by lane and outcome', () => {
+    const { rec } = setup({
+      a: {
+        startedAt: '2026-01-01T00:00:00.000Z',
+        finishedAt: '2026-01-01T02:00:00.000Z',
+        mediaSeconds: 7200,
+      },
+      b: {
+        startedAt: '2026-01-01T00:00:00.000Z',
+        finishedAt: '2026-01-01T00:30:00.000Z',
+        mediaSeconds: 3600,
+      },
+      c: { startedAt: null, finishedAt: '2026-01-01T00:30:00.000Z', mediaSeconds: 999 },
+      d: { startedAt: '2026-01-01T00:00:00.000Z', finishedAt: '2026-01-01T00:00:10.000Z' },
+    });
+    for (const id of ['a', 'b', 'c', 'd']) rec.handle(changed(id, 'encoding', 'encode'));
+    rec.handle(changed('a', 'done'));
+    rec.handle(changed('b', 'done'));
+    rec.handle(changed('c', 'done')); // no duration observed: no media either
+    rec.handle(changed('d', 'failed')); // never probed: observed with 0 media seconds
+    expect(rec.jobMediaSeconds()).toEqual([
+      { labels: { lane: 'encode', outcome: 'done' }, value: 10800 },
+      { labels: { lane: 'encode', outcome: 'failed' }, value: 0 },
+    ]);
+    expect(rec.jobDurations().find((h) => h.labels.outcome === 'done')?.sum).toBe(9000);
   });
 });
 

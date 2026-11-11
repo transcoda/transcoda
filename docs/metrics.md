@@ -52,7 +52,7 @@ Import [`examples/grafana/transcoda-dashboard.json`](../examples/grafana/transco
 
 ## Metrics
 
-All sizes are bytes (Grafana's `decbytes` unit shows them in SI units, 1 GB = 1,000,000,000 bytes). Totals that come from the database are gauges, not counters: they can go down (Restore original takes a file's saving back out; a deleted library drops out), so chart them with `delta()`, not `rate()` or `increase()`. The two metrics that are counted in memory since the server started (`transcoda_job_duration_seconds` and `transcoda_encoder_busy_seconds_total`) start again from zero at a restart, which `rate()` and `increase()` handle.
+All sizes are bytes (Grafana's `decbytes` unit shows them in SI units, 1 GB = 1,000,000,000 bytes). Totals that come from the database are gauges, not counters: they can go down (Restore original takes a file's saving back out; a deleted library drops out), so chart them with `delta()`, not `rate()` or `increase()`. The three metrics that are counted in memory since the server started (`transcoda_job_duration_seconds`, `transcoda_job_media_seconds_total` and `transcoda_encoder_busy_seconds_total`) start again from zero at a restart, which `rate()` and `increase()` handle.
 
 | Metric | Type | Labels | Meaning |
 |---|---|---|---|
@@ -67,6 +67,7 @@ All sizes are bytes (Grafana's `decbytes` unit shows them in SI units, 1 GB = 1,
 | `transcoda_saved_bytes` | gauge | `library` | Source minus output: the space saved. Matches "Saved all time" on the Jobs page. |
 | `transcoda_processed_media_seconds` | gauge | `library` | Duration of the videos encoded, replaced or kept original. |
 | `transcoda_job_duration_seconds` | histogram | `lane`, `outcome` | Start to finish of the jobs finished since the server started. Buckets from 10 seconds to 8 hours. |
+| `transcoda_job_media_seconds_total` | counter | `lane`, `outcome` | Video duration of the same jobs as `transcoda_job_duration_seconds` (0 for a job never probed), so the two divide into an encode speed. |
 | `transcoda_encoder_busy` | gauge | `encoder` | 1 while the encode slot runs a job. `encoder` is the slot: `encode` with one encoder, a GPU id (`nvidia:0`, `intel:…`) with several. |
 | `transcoda_encoder_busy_seconds_total` | counter | `encoder` | Seconds the encode slot ran a job since the server started. |
 | `transcoda_gpu_utilization_ratio` | gauge | `gpu`, `engine` | The GPU's video encoder or decoder load at the last sample, 0 to 1 (`engine`: `encoder`, `decoder`). The same readings as the Jobs page graph; absent without a GPU. |
@@ -86,8 +87,9 @@ Useful queries:
 # Net change in saved bytes per day, per library (a restore can make it negative)
 sum by (library) (delta(transcoda_saved_bytes[1d]))
 
-# Encode speed over the last hour (1 = real time)
-sum(delta(transcoda_processed_media_seconds[1h])) / sum(increase(transcoda_encoder_busy_seconds_total[1h]))
+# Encode speed of the encode-lane jobs replaced or kept original in the last 6 hours (1 = real time):
+# video duration over start-to-finish time of the same jobs
+sum(increase(transcoda_job_media_seconds_total{lane="encode", outcome=~"done|kept_original"}[6h])) / sum(increase(transcoda_job_duration_seconds_sum{lane="encode", outcome=~"done|kept_original"}[6h]))
 
 # Median encode-lane job duration over the last 6 hours
 histogram_quantile(0.5, sum by (le) (increase(transcoda_job_duration_seconds_bucket{lane="encode"}[6h])))

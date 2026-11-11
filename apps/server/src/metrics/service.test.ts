@@ -253,6 +253,52 @@ describe('MetricsService cache and scratch space', () => {
     expect(scratchCalls()).toBe(2);
   });
 
+  it('writes the media seconds of finished jobs next to their durations', async () => {
+    let at = t0;
+    const recorder = new MetricsRecorder({
+      now: () => new Date(at),
+      jobTimes: () => ({
+        startedAt: '2026-01-01T00:00:00.000Z',
+        finishedAt: '2026-01-01T01:00:00.000Z',
+        mediaSeconds: 5400,
+      }),
+      slots: () => [],
+    });
+    recorder.handle({
+      type: 'job.changed',
+      jobId: 'a',
+      runId: 'r',
+      libraryId: 'l',
+      workflowId: 'w',
+      state: 'encoding',
+      paused: false,
+      progress: null,
+      lane: 'encode',
+      currentNode: null,
+      problems: [],
+      reason: null,
+    });
+    recorder.handle({
+      type: 'job.changed',
+      jobId: 'a',
+      runId: 'r',
+      libraryId: 'l',
+      workflowId: 'w',
+      state: 'done',
+      paused: false,
+      progress: null,
+      lane: null,
+      currentNode: null,
+      problems: [],
+      reason: null,
+    });
+    at += 1;
+    const text = await service({ recorder }).svc.exposition();
+    const labels = { lane: 'encode', outcome: 'done' };
+    expect(value(text, 'transcoda_job_media_seconds_total', labels)).toBe(5400);
+    expect(value(text, 'transcoda_job_duration_seconds_sum', labels)).toBe(3600);
+  });
+
   it('gives up on a scratch-space read that does not settle', async () => {
     const { svc } = service({
       scratchFreeBytes: () => new Promise<number>(() => {}),

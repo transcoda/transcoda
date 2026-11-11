@@ -312,7 +312,7 @@
       "id": 12,
       "type": "timeseries",
       "title": "Encode speed",
-      "description": "Seconds of video encoded per second an encoder was busy (1x is real time), over the last hour. Counts every library.",
+      "description": "Video duration over start-to-finish time of the encode-lane jobs replaced or kept original in the last 6 hours (1x is real time). Both come from the same finished jobs; a job counts when it finishes. Counts every library.",
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "gridPos": { "h": 8, "w": 8, "x": 8, "y": 14 },
       "fieldConfig": { "defaults": { "unit": "x", "decimals": 1 }, "overrides": [] },
@@ -324,7 +324,7 @@
         {
           "refId": "A",
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-          "expr": "sum(delta(transcoda_processed_media_seconds[1h])) / (sum(increase(transcoda_encoder_busy_seconds_total[1h])) > 60)",
+          "expr": "sum(increase(transcoda_job_media_seconds_total{lane=\"encode\", outcome=~\"done|kept_original\"}[6h])) / (sum(increase(transcoda_job_duration_seconds_sum{lane=\"encode\", outcome=~\"done|kept_original\"}[6h])) > 0)",
           "legendFormat": "speed"
         }
       ]

@@ -79,6 +79,12 @@ export const METRICS = [
     labels: ['lane', 'outcome'],
   },
   {
+    name: 'transcoda_job_media_seconds_total',
+    type: 'counter',
+    help: 'Video duration of the jobs in transcoda_job_duration_seconds (0 for a job never probed).',
+    labels: ['lane', 'outcome'],
+  },
+  {
     name: 'transcoda_encoder_busy',
     type: 'gauge',
     help: '1 while the encode slot runs a job, else 0.',

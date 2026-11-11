@@ -11,18 +11,26 @@ export const JOB_DURATION_BUCKETS = [10, 30, 60, 300, 900, 1800, 3600, 7200, 144
 
 export interface RecorderDeps {
   now: () => Date;
-  /** The job's start and finish (ISO), or null for an unknown job. */
-  jobTimes: (jobId: string) => { startedAt: string | null; finishedAt: string | null } | null;
+  /**
+   * The job's start and finish (ISO) and its probed media duration (absent: never probed), or
+   * null for an unknown job.
+   */
+  jobTimes: (
+    jobId: string,
+  ) => { startedAt: string | null; finishedAt: string | null; mediaSeconds?: number } | null;
   /** The encode slots now, read once at construction. */
   slots: () => EncodeSlotStatus[];
 }
 
 type Histogram = HistogramFamily['samples'][number];
+type MediaSample = { labels: { lane: string; outcome: string }; value: number };
 
 export class MetricsRecorder {
   /** Jobs seen unfinished, with the last lane they held. */
   private readonly running = new Map<string, Lane | null>();
   private readonly durations = new Map<string, Histogram>();
+  /** Media seconds of the jobs in `durations`, same keys: a speed from the same jobs. */
+  private readonly media = new Map<string, MediaSample>();
   /** Per slot id: seconds busy before `since`, and since when it is busy (null: idle). */
   private readonly slots = new Map<string, { seconds: number; since: number | null }>();
 
@@ -47,11 +55,20 @@ export class MetricsRecorder {
     if (!times?.startedAt || !times.finishedAt) return;
     const seconds = (Date.parse(times.finishedAt) - Date.parse(times.startedAt)) / 1000;
     if (!Number.isFinite(seconds) || seconds < 0) return;
-    this.observe(lane ?? lastLane ?? 'none', state, seconds);
+    const media = times.mediaSeconds;
+    this.observe(
+      lane ?? lastLane ?? 'none',
+      state,
+      seconds,
+      media !== undefined && Number.isFinite(media) && media > 0 ? media : 0,
+    );
   }
 
-  private observe(lane: string, outcome: string, seconds: number): void {
+  private observe(lane: string, outcome: string, seconds: number, mediaSeconds: number): void {
     const key = `${lane}\u0000${outcome}`;
+    const m = this.media.get(key) ?? { labels: { lane, outcome }, value: 0 };
+    m.value += mediaSeconds;
+    this.media.set(key, m);
     let h = this.durations.get(key);
     if (!h) {
       h = {
@@ -89,6 +106,10 @@ export class MetricsRecorder {
 
   jobDurations(): Histogram[] {
     return [...this.durations.values()].map((h) => ({ ...h, counts: [...h.counts] }));
+  }
+
+  jobMediaSeconds(): MediaSample[] {
+    return [...this.media.values()].map((m) => ({ labels: { ...m.labels }, value: m.value }));
   }
 
   encoderBusy(): { encoder: string; busy: boolean; seconds: number }[] {

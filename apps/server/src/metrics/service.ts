@@ -48,6 +48,7 @@ interface Snapshot {
   scratchFreeBytes: number | null;
   encoders: ReturnType<MetricsRecorder['encoderBusy']>;
   durations: ReturnType<MetricsRecorder['jobDurations']>;
+  media: ReturnType<MetricsRecorder['jobMediaSeconds']>;
   gpus: GpuLoadOutput['gpus'];
 }
 
@@ -105,6 +106,7 @@ export class MetricsService {
       scratchFreeBytes,
       encoders: deps.recorder.encoderBusy(),
       durations: deps.recorder.jobDurations(),
+      media: deps.recorder.jobMediaSeconds(),
       gpus: deps.gpuLoad().gpus,
     };
   }
@@ -144,6 +146,7 @@ export class MetricsService {
       transcoda_output_bytes: perLib((r) => r.outputBytes),
       transcoda_saved_bytes: perLib((r) => r.savedBytes),
       transcoda_processed_media_seconds: perLib((r) => r.mediaSeconds),
+      transcoda_job_media_seconds_total: s.media,
       transcoda_encoder_busy: s.encoders.map((e) => ({
         labels: { encoder: e.encoder },
         value: e.busy ? 1 : 0,
