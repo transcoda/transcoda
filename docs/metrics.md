@@ -38,6 +38,8 @@ scrape_configs:
 
 With Prometheus in another container, `transcoda` is the container name and must be in `TRANSCODA_ALLOWED_HOSTS`. Behind a reverse proxy, scrape the proxy's address and scheme instead (`scheme: https`).
 
+These examples send the token over plain HTTP, which is fine on a host or a private container network. When the traffic crosses a network you don't trust, put Transcoda behind a reverse proxy with HTTPS, or anyone watching can copy the token and read your metrics and library names. The same applies to the Home Assistant example below.
+
 Try it by hand:
 
 ```sh
