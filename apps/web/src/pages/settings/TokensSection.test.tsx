@@ -211,6 +211,18 @@ describe('TokensSection', () => {
     expect(mocks.create).toHaveBeenCalledWith({ name: 'n', scopes: ['read', 'jobs:create'] });
   });
 
+  it('offers the metrics scope with its hint and sends it alone', async () => {
+    mocks.create.mockResolvedValue({ ...row, token: 'tcd_x' });
+    render(<TokensSection />);
+    await screen.findByText('ci-bot');
+    expect(screen.getByText(/counts for Prometheus, Home Assistant/)).toBeTruthy();
+    fireEvent.change(screen.getByLabelText(/^Name/), { target: { value: 'prometheus' } });
+    fireEvent.click(screen.getByLabelText('metrics'));
+    fireEvent.click(screen.getByRole('button', { name: 'Create token' }));
+    await waitFor(() => expect(mocks.create).toHaveBeenCalled());
+    expect(mocks.create).toHaveBeenCalledWith({ name: 'prometheus', scopes: ['metrics'] });
+  });
+
   it('keeps Create token disabled until there is a name and a scope, and says what is missing', async () => {
     render(<TokensSection />);
     await screen.findByText('ci-bot');
