@@ -792,6 +792,21 @@ describe('PluginsPage updates', () => {
     expect(screen.queryByRole('button', { name: 'Update all' })).toBeNull();
   });
 
+  it('Update all waits for the catalogs, which say whether an update adds a host', async () => {
+    mocks.plugins.list.mockResolvedValue(three());
+    mocks.plugins.catalog.mockReturnValue(new Promise(() => {}));
+    renderAt(
+      '/plugins?show=updates',
+      <EventsProvider>
+        <PluginsPage />
+      </EventsProvider>,
+    );
+    const button = await screen.findByRole('button', { name: 'Update all' });
+    expect((button as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(button);
+    expect(mocks.plugins.updateCheck).not.toHaveBeenCalled();
+  });
+
   it('Update all updates one after another, skips one that touches a workflow and names it at the end', async () => {
     mocks.plugins.list.mockResolvedValue(three());
     mocks.plugins.updateCheck.mockImplementation(async ({ name }: { name: string }) =>

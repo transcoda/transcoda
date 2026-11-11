@@ -358,7 +358,8 @@ export function PluginsPage() {
    * dialog can be opened from its card.
    */
   async function updateAll() {
-    if (updatingAll) return;
+    // Until the catalogs load, an update's new hosts are unknown, so none could be held back.
+    if (updatingAll || state.catalogs === undefined) return;
     const targets = updates.map((p) => ({
       name: p.name,
       version: p.updateAvailable ?? '',
@@ -534,7 +535,7 @@ export function PluginsPage() {
               <button
                 type="button"
                 className="btn btn-update"
-                disabled={updatingAll !== null}
+                disabled={updatingAll !== null || state.catalogs === undefined}
                 onClick={() => void updateAll()}
               >
                 {updatingAll ? `Updating ${updatingAll.at} of ${updatingAll.of}…` : 'Update all'}
