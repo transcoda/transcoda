@@ -295,6 +295,19 @@ describe('plugin definition', () => {
       defineIntegration({ ...base, allowedOrigins: ['https://api.example.com', '$settings.url'] }),
     ).not.toThrow();
   });
+
+  it('defineIntegration refuses more distinct allowedOrigins than a manifest can list', () => {
+    const base = { ...integration, settings: z.object({ url: url() }) };
+    const origins = (n: number) => Array.from({ length: n }, (_, i) => `https://h${i}.example.com`);
+    expect(() => defineIntegration({ ...base, allowedOrigins: origins(64) })).not.toThrow();
+    // Repeats count once, as in the manifest's network list.
+    expect(() =>
+      defineIntegration({ ...base, allowedOrigins: [...origins(64), 'https://h0.example.com'] }),
+    ).not.toThrow();
+    expect(() => defineIntegration({ ...base, allowedOrigins: origins(65) })).toThrow(
+      /more than 64/,
+    );
+  });
 });
 
 describe('plugin context helpers', () => {

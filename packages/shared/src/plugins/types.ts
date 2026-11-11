@@ -69,8 +69,10 @@ export const PluginNetworkEntrySchema = z.union([
   z.strictObject({ setting: z.string().min(1).max(200), label: z.string().min(1).max(200) }),
 ]);
 export type PluginNetworkEntry = z.infer<typeof PluginNetworkEntrySchema>;
+/** Most entries a manifest's network list holds; the SDK refuses an integration with more. */
+export const MAX_PLUGIN_NETWORK = 64;
 /** Empty: the plugin makes no requests through Transcoda's HTTP client. */
-export const PluginNetworkSchema = z.array(PluginNetworkEntrySchema).max(64);
+export const PluginNetworkSchema = z.array(PluginNetworkEntrySchema).max(MAX_PLUGIN_NETWORK);
 
 export const PluginManifestSchema = z.object({
   name: z
