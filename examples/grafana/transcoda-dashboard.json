@@ -227,7 +227,7 @@
       "id": 9,
       "type": "timeseries",
       "title": "Saved per day",
-      "description": "Bytes saved by the files replaced each day, per library.",
+      "description": "Net change in saved bytes each day, per library: savings from replaced files minus savings taken back out by restored originals, so a day with restores can go below zero.",
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 6 },
       "interval": "1d",

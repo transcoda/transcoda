@@ -83,7 +83,7 @@ There is no per-file or per-job label and no failure reason: those would make a 
 Useful queries:
 
 ```promql
-# Saved per day, per library
+# Net change in saved bytes per day, per library (a restore can make it negative)
 sum by (library) (delta(transcoda_saved_bytes[1d]))
 
 # Encode speed over the last hour (1 = real time)
