@@ -9,6 +9,7 @@ import { type ResolvedAuth, resolveAuth } from './http/auth-context.ts';
 import { BACKUP_DOWNLOAD_PATH, backupDownload } from './http/backup-download.ts';
 import { checkHost, hostnameOf } from './http/host-check.ts';
 import { JOB_LOG_PATH, jobLogResponse } from './http/job-log.ts';
+import { METRICS_PATH, metricsResponse } from './http/metrics.ts';
 import { isHttps, requestHost } from './http/request-info.ts';
 import { mountStatic } from './http/static.ts';
 import { TEST_OUTPUT_PATH, testOutputResponse } from './http/test-output.ts';
@@ -118,7 +119,8 @@ export function createApp(opts: AppOptions): Hono {
       path.startsWith('/api/') ||
       path === '/rpc' ||
       path.startsWith('/rpc/') ||
-      path === '/mcp';
+      path === '/mcp' ||
+      path === METRICS_PATH;
     if (guarded && !deps.setupRequired()) {
       const host = requestHost(c.req.raw, getRemoteAddr(c), deps.trustedProxies);
       if (checkHost(host, deps.allowedHosts()) !== 'ok') {
@@ -180,6 +182,12 @@ export function createApp(opts: AppOptions): Hono {
   app.get(JOB_LOG_PATH, async (c) => {
     const { ctx, resolved } = await buildCtx(c);
     return respond(c, jobLogResponse(c, deps, resolved, ctx.remoteAddr), ctx, resolved);
+  });
+
+  // (3e) Prometheus scrape: plain text beside the contract (token with `metrics`, or a session).
+  app.get(METRICS_PATH, async (c) => {
+    const { ctx, resolved } = await buildCtx(c);
+    return respond(c, await metricsResponse(c, deps, resolved), ctx, resolved);
   });
 
   // (4) REST.

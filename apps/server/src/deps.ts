@@ -10,6 +10,7 @@ import { GpuLoadSampler } from './capabilities/gpu-load.ts';
 import { IntelLoadReader } from './capabilities/intel-load.ts';
 import type { Config } from './config.ts';
 import type { Database } from './db/open.ts';
+import { findJob } from './db/repos/jobs.ts';
 import { listLibraries } from './db/repos/libraries.ts';
 import { countUsers } from './db/repos/users.ts';
 import { EngineService } from './engine/engine.ts';
@@ -20,6 +21,8 @@ import { HealthService } from './health.ts';
 import { createAllowedHosts } from './http/host-check.ts';
 import { parseTrustedProxies } from './http/request-info.ts';
 import type { Logger } from './logger.ts';
+import { MetricsRecorder } from './metrics/recorder.ts';
+import { MetricsService } from './metrics/service.ts';
 import { createCoreRegistry, NodeRegistry, type RegisteredNode } from './nodes/registry.ts';
 import { PluginHooksRunner } from './plugins/hooks.ts';
 import { loadLimits } from './plugins/limits.ts';
@@ -131,6 +134,33 @@ export function createAppDeps(input: AppDepsInput): AppDeps {
   restartGate.attachTarget(plugins.restartTarget());
   // A runner a test brought has its own target.
   if (ownHooks) hooks.attachTarget(plugins.hookTarget());
+  const fsOps = input.fsOps ?? nodeFsOps;
+  const gpuLoad = new GpuLoadSampler({
+    gpus: () => (caps.available ? (caps.gpus ?? []) : []),
+    log: input.log,
+    intel: new IntelLoadReader({ ffmpegPath: config.ffmpegPath }),
+  });
+  const recorder = new MetricsRecorder({
+    now,
+    jobTimes: (id) => {
+      const job = findJob(db, id);
+      return job && { startedAt: job.startedAt, finishedAt: job.finishedAt };
+    },
+    slots: () => engine.scheduler.status().encodeSlots,
+  });
+  engine.events.listen((e) => recorder.handle(e));
+  const metrics = new MetricsService({
+    db,
+    version: input.version,
+    now,
+    queuePaused: () => engine.scheduler.status().paused,
+    gpuLoad: () => gpuLoad.snapshot(),
+    scratchFreeBytes: async () => {
+      const { bavail, bsize } = await fsOps.statfs(config.transcodeDir);
+      return bavail * bsize;
+    },
+    recorder,
+  });
   return {
     config,
     db,
@@ -149,11 +179,7 @@ export function createAppDeps(input: AppDepsInput): AppDeps {
     limiter: new LoginRateLimiter({ now: () => now().getTime() }),
     setupRequired: () => countUsers(db) === 0,
     capabilities: () => caps,
-    gpuLoad: new GpuLoadSampler({
-      gpus: () => (caps.available ? (caps.gpus ?? []) : []),
-      log: input.log,
-      intel: new IntelLoadReader({ ffmpegPath: config.ffmpegPath }),
-    }),
+    gpuLoad,
     appUpdate: new AppUpdateChecker({
       version: input.version,
       enabled: config.updateCheck,
@@ -178,11 +204,12 @@ export function createAppDeps(input: AppDepsInput): AppDeps {
       now,
       log: input.log,
     },
+    metrics,
     health: new HealthService({
       db,
       config,
       capabilities: () => caps,
-      fs: input.fsOps ?? nodeFsOps,
+      fs: fsOps,
       spaceWaits: () => engine.spaceWaits.list(),
       now,
       log: input.log,
