@@ -33,19 +33,23 @@ export function provenanceSource(official: boolean): string {
 
 const capitalised = (s: string) => `${s.charAt(0).toUpperCase()}${s.slice(1)}`;
 
+/** docs/plugins.md on GitHub: where the server log is and how to read a plugin's lines in it. */
+export const SERVER_LOG_DOCS =
+  'https://github.com/transcoda/transcoda/blob/main/docs/plugins.md#server-log';
+
 /**
- * What the install dialog says when an install failed: whose, why in plain words, and the next
- * step. A plugin that exited on start reads "ntfy didn't start (exit code 1)".
+ * What the install dialog says when an install failed: whose and why, in plain words. A plugin
+ * that exited on start reads "ntfy didn't start (exit code 1).". The dialog adds the next step
+ * ("See the server log or try again.") with the log words as a link to {@link SERVER_LOG_DOCS}.
  */
 export function installFailureText(title: string, reason: string): string {
-  const next = 'See the server log or try again.';
   const text = reason.trim().replace(/\.$/, '');
   const crashed = /^plugin crashed on start:\s*/i.exec(text);
-  if (!crashed) return `${title} didn't install: ${capitalised(text)}. ${next}`;
+  if (!crashed) return `${title} didn't install: ${capitalised(text)}.`;
   const why = text.slice(crashed[0].length);
   const code = /^exited with code (\S+)$/.exec(why);
-  if (code) return `${title} didn't start (exit code ${code[1]}). ${next}`;
-  return `${title} didn't start: ${capitalised(why)}. ${next}`;
+  if (code) return `${title} didn't start (exit code ${code[1]}).`;
+  return `${title} didn't start: ${capitalised(why)}.`;
 }
 
 /** The install dialog's Signature row: the catalog's signing keys, or "Unsigned". */
