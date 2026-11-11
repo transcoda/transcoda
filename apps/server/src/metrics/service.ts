@@ -19,7 +19,25 @@ export interface MetricsServiceDeps {
   gpuLoad: () => GpuLoadOutput;
   /** Free bytes on the transcode folder; may throw. */
   scratchFreeBytes: () => Promise<number>;
+  /** How long to wait for `scratchFreeBytes` before reporting it unavailable. */
+  scratchTimeoutMs?: number;
   recorder: MetricsRecorder;
+}
+
+/** A stalled filesystem (a hung network mount) must not hold up the snapshot. */
+export const SCRATCH_TIMEOUT_MS = 2_000;
+
+/** The read's result, or null when it fails or takes longer than `ms`. */
+async function withTimeout(read: () => Promise<number>, ms: number): Promise<number | null> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<null>((resolve) => {
+    timer = setTimeout(() => resolve(null), ms);
+  });
+  try {
+    return await Promise.race([read().catch(() => null), timeout]);
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 interface Snapshot {
@@ -75,12 +93,10 @@ export class MetricsService {
 
   private async take(): Promise<Snapshot> {
     const { deps } = this;
-    let scratchFreeBytes: number | null = null;
-    try {
-      scratchFreeBytes = await deps.scratchFreeBytes();
-    } catch {
-      scratchFreeBytes = null;
-    }
+    const scratchFreeBytes = await withTimeout(
+      deps.scratchFreeBytes,
+      deps.scratchTimeoutMs ?? SCRATCH_TIMEOUT_MS,
+    );
     const totals = metricsTotals(deps.db);
     return {
       totals,

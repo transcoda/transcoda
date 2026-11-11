@@ -116,7 +116,7 @@ min_over_time(transcoda_queue_paused[1h]) == 1
 }
 ```
 
-`running` counts jobs probing through replacing; `failed` and `finished` are all time; `scratchFreeBytes` is `null` when the transcode folder cannot be read. The schema is in the OpenAPI spec (`/api/openapi.json`).
+`running` counts jobs probing through replacing; `failed` and `finished` are all time; `scratchFreeBytes` is `null` when the transcode folder cannot be read or does not answer within 2 seconds. The schema is in the OpenAPI spec (`/api/openapi.json`).
 
 Home Assistant's built-in [RESTful integration](https://www.home-assistant.io/integrations/rest/) can poll it. In `configuration.yaml`, with the token in `secrets.yaml` as `tcd_status_auth: "Bearer tcd_…"`:
 

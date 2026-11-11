@@ -252,6 +252,17 @@ describe('MetricsService cache and scratch space', () => {
     await svc.exposition();
     expect(scratchCalls()).toBe(2);
   });
+
+  it('gives up on a scratch-space read that does not settle', async () => {
+    const { svc } = service({
+      scratchFreeBytes: () => new Promise<number>(() => {}),
+      scratchTimeoutMs: 20,
+    });
+    const text = await svc.exposition();
+    expect(value(text, 'transcoda_scratch_free_bytes')).toBeUndefined();
+    now += METRICS_CACHE_MS;
+    expect((await svc.status()).scratchFreeBytes).toBeNull();
+  });
 });
 
 describe('MetricsService.status', () => {
