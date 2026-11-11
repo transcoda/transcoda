@@ -131,11 +131,13 @@ describe('plugin definition', () => {
       integration: 'svc',
       triggers: ['hook'],
       hooks: ['onJobDone', 'afterReplace'],
+      network: [{ setting: 'url', label: 'url' }],
     });
     expect(pluginManifest(definePlugin(plugin()))).toMatchObject({
       integration: null,
       triggers: [],
       hooks: [],
+      network: [],
     });
     expect(triggerMetadata(trigger)).toMatchObject({ id: 'hook', auth: { header: 'x-key' } });
   });
@@ -148,6 +150,35 @@ describe('plugin definition', () => {
     expect(() => definePlugin(plugin({ icon: `<svg>${'x'.repeat(20_000)}</svg>` }))).toThrow(
       TypeError,
     );
+  });
+
+  it('pluginManifest lists the network the integration may reach: fixed origins and url settings by label', () => {
+    const svc = defineIntegration({
+      id: 'svc',
+      title: 'Service',
+      settings: z.object({
+        url: url().describe('Service URL, for example http://svc:8080'),
+        mirror: url().optional().describe('  Mirror  '),
+        other: url(),
+      }),
+      allowedOrigins: [
+        'https://api.example.com',
+        '$settings.url',
+        '$settings.mirror',
+        '$settings.other',
+        'https://api.example.com',
+        '$settings.url',
+      ],
+      async test() {
+        return { ok: true, message: 'fine' };
+      },
+    });
+    expect(pluginManifest(definePlugin(plugin({ integration: svc }))).network).toEqual([
+      { origin: 'https://api.example.com' },
+      { setting: 'url', label: 'Service URL' },
+      { setting: 'mirror', label: 'Mirror' },
+      { setting: 'other', label: 'other' },
+    ]);
   });
 
   it('pluginManifest announces node versions and their migrations (from, to, risk only)', () => {

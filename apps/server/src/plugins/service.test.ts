@@ -52,6 +52,8 @@ interface Served {
   indexSdk?: string;
   /** Overrides the sha256 the index promises. */
   sha256?: string;
+  /** The index's network list (default: the manifest's; null: the entry has none). */
+  indexNetwork?: PluginManifest['network'] | null;
 }
 
 const served = new Map<string, Served>();
@@ -118,6 +120,9 @@ function index(): string {
           ? { signature: `${base}/${key(v.name, v.version)}.js.sig` }
           : {}),
         releasedAt: '2026-10-17T10:00:00.000Z',
+        ...((v.indexNetwork === undefined ? v.manifest.network : v.indexNetwork) != null
+          ? { network: v.indexNetwork ?? v.manifest.network }
+          : {}),
       })),
     })),
   });
@@ -180,6 +185,7 @@ async function manifestOf(fixture: FixtureName): Promise<PluginManifest> {
     integration: r.integration,
     triggers: r.triggers,
     hooks: r.hooks,
+    network: r.network,
   };
   manifests.set(fixture, m);
   return m;
@@ -196,6 +202,7 @@ async function serve(
     manifest?: Partial<PluginManifest>;
     indexSdk?: string;
     sha256?: string;
+    indexNetwork?: PluginManifest['network'] | null;
   } = {},
 ): Promise<Served> {
   const m = await manifestOf(fixture);
@@ -213,6 +220,7 @@ async function serve(
     manifest: { ...m, version, ...opts.manifest },
     ...(opts.indexSdk ? { indexSdk: opts.indexSdk } : {}),
     ...(opts.sha256 ? { sha256: opts.sha256 } : {}),
+    ...(opts.indexNetwork !== undefined ? { indexNetwork: opts.indexNetwork } : {}),
   };
   served.set(key(m.name, version), entry);
   return entry;
@@ -408,12 +416,12 @@ describe('install', () => {
     await serve('example', '0.1.0', { manifest: { sdk: '^2' }, indexSdk: '^1' });
     expect(await install(t, 'example')).toEqual({
       ok: false,
-      reason: 'sdk ^2 is not supported by this server (sdk 1.2.0)',
+      reason: 'sdk ^2 is not supported by this server (sdk 1.3.0)',
     });
     await serve('example', '0.1.0', { indexSdk: '^2' });
     expect(await install(t, 'example')).toEqual({
       ok: false,
-      reason: 'sdk ^2 is not supported by this server (sdk 1.2.0)',
+      reason: 'sdk ^2 is not supported by this server (sdk 1.3.0)',
     });
     await clean('example');
 
@@ -953,6 +961,35 @@ describe('what the Plugins page shows', () => {
     ]);
   });
 
+  it("lists each version's network hosts; an install whose catalog, manifest or bundle disagree on them is refused", async () => {
+    const real = [{ origin: 'https://api.example.test' }];
+    await serve('leaky');
+    const t = setup();
+    await t.deps.plugins.start();
+    const out = await t.deps.plugins.catalog(true);
+    expect(out.catalogs[0]?.plugins[0]?.versions[0]?.network).toEqual(real);
+    expect(await install(t, 'leaky')).toMatchObject({ ok: true });
+    await t.deps.plugins.remove('leaky');
+
+    const other = [{ origin: 'https://other.example.test' }];
+    await serve('leaky', '0.1.0', { indexNetwork: other });
+    expect(await install(t, 'leaky')).toEqual({
+      ok: false,
+      reason: 'the manifest lists other network hosts than the catalog entry',
+    });
+    await serve('leaky', '0.1.0', { manifest: { network: other } });
+    expect(await install(t, 'leaky')).toEqual({
+      ok: false,
+      reason: "the bundle's own manifest differs from the catalog entry in: network",
+    });
+    // A build listed before SDK 1.3.0 carries no list and still installs.
+    await serve('leaky', '0.1.0', { manifest: { network: undefined }, indexNetwork: null });
+    expect((await t.deps.plugins.catalog(true)).catalogs[0]?.plugins[0]?.versions[0]?.network).toBe(
+      null,
+    );
+    expect(await install(t, 'leaky')).toMatchObject({ ok: true });
+  });
+
   it('a catalog entry whose manifest cannot be read has no icon and no nodes, and the catalog still answers', async () => {
     // A manifest for another plugin is refused, as the installer refuses it.
     await serve('example', '0.1.0', { manifest: { name: 'other', icon: ICON } });
@@ -1253,6 +1290,8 @@ describe('secrets in plugin fetches', () => {
       await serve('fetcher', '0.1.0', {
         // The fixture allows no origin of its own: let it use the configured url.
         edit: (c) => c.replace('\tallowedOrigins: [],', '\tallowedOrigins: ["$settings.url"],'),
+        // ...which the manifest must then list, or the start is refused.
+        manifest: { network: [{ setting: 'url', label: 'url' }] },
       });
       const lines: unknown[] = [];
       const t = setup({

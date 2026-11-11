@@ -77,6 +77,7 @@ export {
   type HookJob,
   type PluginHooks,
   pluginManifest,
+  pluginNetwork,
   SDK_VERSION,
   type TranscodaPlugin,
 } from './plugin.ts';

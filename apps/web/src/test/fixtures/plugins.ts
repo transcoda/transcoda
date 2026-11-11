@@ -5,6 +5,9 @@ import type { PluginCatalogOutput } from '../../plugins/usePlugins.ts';
 
 const at = '2026-10-17T09:00:00.000Z';
 
+type Network =
+  PluginCatalogOutput['catalogs'][number]['plugins'][number]['versions'][number]['network'];
+
 export function plugin(over: Partial<PluginSummary> = {}): PluginSummary {
   return {
     name: 'example',
@@ -120,6 +123,7 @@ export function catalogOutput(over: Partial<PluginCatalogOutput['catalogs'][numb
                 signature: 'https://catalog.test/example-1.0.0.js.sig',
                 releasedAt: at,
                 blocked: null,
+                network: [{ setting: 'url', label: 'Example URL' }] as Network,
               },
               {
                 version: '2.0.0',
@@ -132,6 +136,7 @@ export function catalogOutput(over: Partial<PluginCatalogOutput['catalogs'][numb
                 signature: null,
                 releasedAt: at,
                 blocked: null,
+                network: null as Network,
               },
             ],
             icon: null,

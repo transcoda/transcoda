@@ -981,6 +981,7 @@ export class PluginService {
         signature: v.signature,
         releasedAt: v.releasedAt,
         blocked: this.blockedVersion(e.name, v),
+        network: v.network ?? null,
       })),
       icon: manifest?.icon ?? null,
       nodes: this.catalogNodes(e.name, manifest, installed !== null && installed === latest),

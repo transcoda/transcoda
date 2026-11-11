@@ -563,7 +563,14 @@ export class PluginProcess {
     const differs =
       expected === null
         ? []
-        : MANIFEST_KEYS.filter((k) => !isDeepStrictEqual(ready.manifest[k], expected[k]));
+        : [
+            ...MANIFEST_KEYS.filter((k) => !isDeepStrictEqual(ready.manifest[k], expected[k])),
+            // A manifest built before SDK 1.3.0 lists no network; only one that does must match.
+            ...(expected.network !== undefined &&
+            !isDeepStrictEqual(ready.manifest.network ?? [], expected.network)
+              ? ['network']
+              : []),
+          ];
     if (expected !== null && differs.length > 0) {
       const identity =
         ready.manifest.name !== expected.name || ready.manifest.version !== expected.version;

@@ -2,7 +2,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { PLUGIN_NAME_PATTERN } from '@transcoda/shared';
+import { PLUGIN_NAME_PATTERN, PluginNetworkSchema } from '@transcoda/shared';
 import semver from 'semver';
 import { z } from 'zod';
 import type { Logger } from '../logger.ts';
@@ -51,6 +51,8 @@ export function catalogIndexSchema(allowInsecure: boolean) {
             /** Detached signature of the bundle; null for catalogs that predate signing. */
             signature: httpsUrl.nullable().default(null),
             releasedAt: z.iso.datetime(),
+            /** Where the plugin may send requests (its manifest's `network`); absent before SDK 1.3.0. */
+            network: PluginNetworkSchema.optional(),
           }),
         ),
       }),

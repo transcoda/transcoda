@@ -49,6 +49,29 @@ export const PluginIconSchema = z
   // A lone surrogate cannot be URI-encoded: the page could not turn the icon into an image.
   .refine((s) => s.isWellFormed(), 'icon must be well-formed text');
 
+function isHttpOrigin(s: string): boolean {
+  try {
+    const u = new URL(s);
+    return (u.protocol === 'http:' || u.protocol === 'https:') && u.origin === s;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * One place a plugin's integration may send requests to, derived from its `allowedOrigins`: a
+ * fixed origin, or a url setting the user fills in (named by the setting's label).
+ */
+export const PluginNetworkEntrySchema = z.union([
+  z.strictObject({
+    origin: z.string().max(2048).refine(isHttpOrigin, 'origin must be an http(s) origin'),
+  }),
+  z.strictObject({ setting: z.string().min(1).max(200), label: z.string().min(1).max(200) }),
+]);
+export type PluginNetworkEntry = z.infer<typeof PluginNetworkEntrySchema>;
+/** Empty: the plugin makes no requests through Transcoda's HTTP client. */
+export const PluginNetworkSchema = z.array(PluginNetworkEntrySchema).max(64);
+
 export const PluginManifestSchema = z.object({
   name: z
     .string()
@@ -86,6 +109,11 @@ export const PluginManifestSchema = z.object({
   hooks: z.array(HookEventNameSchema),
   /** The plugin's own icon; absent: the UI shows a monogram. */
   icon: PluginIconSchema.optional(),
+  /**
+   * Where the plugin's integration may send requests (SDK 1.3.0+, derived from `allowedOrigins`);
+   * absent from older manifests.
+   */
+  network: PluginNetworkSchema.optional(),
 });
 export type PluginManifest = z.infer<typeof PluginManifestSchema>;
 

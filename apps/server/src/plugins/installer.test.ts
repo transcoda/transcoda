@@ -155,6 +155,30 @@ describe('Installer', () => {
     ).toMatchObject({ ok: false, reason: 'network', message: 'plugin urls must be https' });
   });
 
+  it('a catalog entry that lists a network must match the manifest; an entry without one takes any', async () => {
+    const i = installer();
+    const network = [{ setting: 'url', label: 'Server URL' }];
+    manifestBody = manifest({ network });
+    expect(await i.fetchManifest(req({ network }), SDK)).toMatchObject({ ok: true });
+    expect(await i.fetchManifest(req(), SDK)).toMatchObject({ ok: true });
+    const other = [{ origin: 'https://evil.example' }];
+    expect(await i.fetchManifest(req({ network: other }), SDK)).toEqual({
+      ok: false,
+      reason: 'manifest',
+      message: 'the manifest lists other network hosts than the catalog entry',
+    });
+    manifestBody = manifest();
+    expect(await i.fetchManifest(req({ network }), SDK)).toMatchObject({
+      ok: false,
+      reason: 'manifest',
+    });
+    expect(await i.download(req({ network: other }), SDK)).toMatchObject({
+      ok: false,
+      reason: 'manifest',
+    });
+    expect(readdirSync(pluginsDir)).toEqual([]);
+  });
+
   it('fetchManifest stops when its signal aborts: the request is cancelled, not left running', async () => {
     const seen: Array<AbortSignal | undefined> = [];
     const i = new Installer({
