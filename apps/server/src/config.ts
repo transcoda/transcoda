@@ -84,6 +84,8 @@ export interface Config {
   healthMinFreeVariable: MinFreeVariable;
   /** TRANSCODA_UPDATE_CHECK (default true): false never asks GitHub whether a newer release exists. */
   updateCheck: boolean;
+  /** TRANSCODA_METRICS (default true): false turns `/metrics` and `system.status` off (404). */
+  metrics: boolean;
 }
 
 function parsePositive(
@@ -361,10 +363,10 @@ export function parseIsolation(
   return { uid, gid, runDir, setprivPath: env.TRANSCODA_SETPRIV || '/usr/bin/setpriv' };
 }
 
-function parseUpdateCheck(value: string | undefined): boolean {
+function parseOnUnlessFalse(name: string, value: string | undefined): boolean {
   if (value === undefined || value === '' || value === 'true') return true;
   if (value === 'false') return false;
-  throw new ConfigError(`TRANSCODA_UPDATE_CHECK must be "true" or "false", got "${value}"`);
+  throw new ConfigError(`${name} must be "true" or "false", got "${value}"`);
 }
 
 function parseIsolationSwitch(value: string | undefined): boolean {
@@ -450,7 +452,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
       process.getgid?.() ?? null,
     ),
     pluginIsolationOff: parseIsolationSwitch(env.TRANSCODA_PLUGIN_ISOLATION),
-    updateCheck: parseUpdateCheck(env.TRANSCODA_UPDATE_CHECK),
+    updateCheck: parseOnUnlessFalse('TRANSCODA_UPDATE_CHECK', env.TRANSCODA_UPDATE_CHECK),
+    metrics: parseOnUnlessFalse('TRANSCODA_METRICS', env.TRANSCODA_METRICS),
     healthStallHours: parsePositive(
       'TRANSCODA_HEALTH_STALL_HOURS',
       'hours',

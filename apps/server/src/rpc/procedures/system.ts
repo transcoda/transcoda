@@ -33,6 +33,15 @@ export const gpuLoad = os.system.gpuLoad
   .use(requireScope('read'))
   .handler(({ context }) => context.deps.gpuLoad.snapshot());
 
+export const status = os.system.status
+  .use(({ context, next, errors }) => {
+    // Off with TRANSCODA_METRICS=false: answered before auth, like a route that does not exist.
+    if (!context.deps.config.metrics) throw errors.NOT_FOUND();
+    return next();
+  })
+  .use(requireScope('metrics'))
+  .handler(({ context }) => context.deps.metrics.status());
+
 export const update = os.system.update
   .use(requireScope('read'))
   .handler(({ context }) => context.deps.appUpdate.status());

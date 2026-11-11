@@ -16,6 +16,7 @@ const SCOPE_HINTS: Record<TokenScope, string> = {
   'jobs:create': 'queue files',
   'jobs:manage': 'cancel, retry',
   'workflows:write': 'can change what runs on files',
+  metrics: 'counts for Prometheus, Home Assistant',
 };
 
 function When({ iso, children }: { iso: string; children: string }) {

@@ -10,6 +10,7 @@ import {
   GpuLoadOutputSchema,
   HealthInputSchema,
   HealthOutputSchema,
+  StatusOutputSchema,
 } from '../schemas/system.ts';
 
 export const system = {
@@ -42,6 +43,16 @@ export const system = {
     })
     .errors(authedErrors)
     .output(GpuLoadOutputSchema),
+  /** Scope `metrics` (or a session); 404 when `TRANSCODA_METRICS=false`. */
+  status: oc
+    .route({
+      method: 'GET',
+      path: '/system/status',
+      tags: ['system'],
+      summary: 'Queue, jobs, encoders and bytes saved, summed up (for Home Assistant and the like)',
+    })
+    .errors(pickErrors('UNAUTHORIZED', 'FORBIDDEN', 'NOT_FOUND'))
+    .output(StatusOutputSchema),
   update: oc
     .route({
       method: 'GET',
