@@ -2,6 +2,56 @@
 
 All notable changes to Transcoda, newest first. Generated from the notes in `.changes/` when a release is cut.
 
+## 0.4.0 — 2026-11-10
+
+#### Get your original back
+
+Transcoda has always kept the original in the library's recycle folder before it replaces a file. Now you can use it without leaving Transcoda.
+
+The new **Recycle folder** page in the main menu shows what each library's recycle folder holds and when each file will be deleted. A file can go sooner if the recycle folder takes up more than its share of the disk, which can also happen when other files fill the disk up; the oldest originals are deleted first. From there you can restore an original, put Transcoda's version back if you change your mind, delete one file or empty the folder.
+
+![The Recycle folder page: six originals in the Movies library's recycle folder, each with the day it will be deleted and a Restore original button](docs/releases/0.4.0/recycle-folder.png)
+
+On a replaced file's job page, **Restore original** does the same for that one file. The workflow that converted it leaves the restored file alone from then on, so the next scan won't convert it again unless you ask with **Process again**.
+
+![A replaced file's job page: 367 MB down to 100 MB, with Restore original and Process again in the header](docs/releases/0.4.0/restore-original.png)
+
+#### Run a workflow again, on purpose
+
+Scan now skips files that an older version of the same workflow already processed, as long as they haven't changed since (a file copied to another disk counts as new), so activating a new version no longer runs it over your whole library again. When you do want that, scan the library and use **Process again** on that scan's run page: it queues the files the scan skipped as already processed in one go.
+
+### New
+
+- A run's page now has Process again, which queues the run's Already processed files once more in one go, and an Already processed file's note now points to Process again. On a job whose workflow has no active version, the job page offers only Dry run again.
+- A new Recycle folder page in the main menu shows what each library's recycle folder holds and when it will be deleted. From there you can restore an original, put Transcoda's version back after a restore, delete one file, or empty the folder.
+- A replaced file's job page has Restore original, which puts the original back from the recycle folder and moves Transcoda's version there instead. Transcoda leaves a restored file alone until you use Process again.
+
+### Improved
+
+- Settings → About links the Transcoda version to its release notes on GitHub. A development build links to the commit it was built from.
+- A build that isn't a release, such as the `main` image, now shows `-dev` after the version of the last release, and the published `main` images also add the commit they were built from (for example `0.4.0-dev+16ce86f`), so it is no longer mistaken for the release. Release images show the plain version.
+- The Jobs page lists each lane on its own line, with long file names cut short, and a job that is encoding now shows a turning icon, while a planned job waiting for its turn shows an hourglass.
+- The workflow editor is easier to read: settings show plain option names and their defaults the same way for every node, a node you add is selected right away, and a past version you can't activate no longer offers to.
+- Bitrates read the same everywhere on the job page, such as "3.3 Mb/s" or "160 kb/s". Before and after shows frame rate and HDR on both sides and leaves out bitrates it doesn't know instead of showing a dash. Dry runs say what a real run would write, and finished jobs say what they wrote, in the steps and on the flow.
+- The Jobs list can show only real runs or only dry runs, its lanes read "Encoder" and "Quick tasks", and a job's own Pause is hidden while the whole queue is paused. The run page keeps a steady set of tiles, its summary counts every file, and rows no longer repeat the outcome, sizes or the Dry run badge.
+- On the Libraries page, the workflow that feeds a library now opens with a click, Scan now names the library's run hours, and the "already finished" option reads the same in Scan now and Dry run. Dialog titles have a divider so scrolled content no longer slides under them, and on a phone a job's workflow drawing starts closed below its steps.
+- The plugin install dialog now says what a plugin does and shows its full checksum with a Copy button, and a plugin that fails to start says so plainly. In Settings, the Open-source licences page has a way back to About, and an API token's expiry date is spelled out.
+- The Workflows list now has a Trigger column that shows what starts each workflow: a library (by name), a webhook, or a file you pick by hand.
+- Scan now no longer queues files that an older version of the same workflow already processed, for example after you activate a new version. Use Process again to run such a file anyway. It also skips a file that another run is still processing, so two jobs never work on the same file at once.
+- In Settings, the current section is now marked by a green icon instead of a green bar.
+
+### Fixed
+
+- Check source and verify no longer read a cover image stored as a video track. On such files (for example one an earlier conversion turned from an attachment into a video track) the check could use more and more memory until the server slowed to a crawl. As a safety net, these checks are now stopped if ffmpeg uses more than 4 GiB of memory (or half of the container's memory, if that is less); the job then fails with a reason that says so, and the file is never marked as damaged. The limit can be changed or turned off with `TRANSCODA_DECODE_MEMORY_GIB`.
+- The editor's Tidy up and minimap buttons now show their icons instead of a solid block.
+- With an Intel GPU, a video its decoder can't read (such as 4:2:2) now still encodes on that GPU instead of falling back to the CPU, and a job no longer waits for a GPU it can't use. The GPU order in Settings now lists only the GPUs that can encode. A custom workflow that sets `-hwaccel qsv` now decodes and encodes on the Intel GPU the job was given.
+- A job that goes back to the queue (Retry failed, a restart, or another GPU after a failure) no longer says "Encoding on GPU" while it waits.
+- A file that came out bigger than its original is no longer shown as a saving. A kept file now reads "Grew by 18.9% (gate ≥ 15%)" instead of "saved only -18.9%". A day where files grew shows "Grew 104 B" in the Jobs header, without the green colour of a saving. The size gate's reason reads the same on the Jobs list, the run page and the job page.
+- A plugin's path mappings fit a phone screen: each mapping is its own block with a labelled field for each side, its buttons on their own row and the Test mapping answer below them. The help line above them now names the two paths in the order of the fields.
+- A file Transcoda can't read now fails with a plain reason, such as "The file couldn't be read: it isn't a valid video file", instead of the full ffprobe command and output. The command and output are in the job's log, and a long reason on the Jobs page is cut to two lines.
+- A mistyped Settings address now says "Page not found" in the browser tab too, and an unexpected sign-in failure reads "Couldn't sign in. Try again." like the other sign-in messages.
+- A run's page now says why its waiting files don't start, in the same words as the Jobs page: "Queue paused" while the queue is paused, and a Paused chip on a job you paused yourself.
+
 ## 0.3.0 — 2026-11-02
 
 ### New
