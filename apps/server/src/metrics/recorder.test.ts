@@ -100,6 +100,15 @@ describe('MetricsRecorder encoder busy time', () => {
     expect(rec.encoderBusy()[1]).toEqual({ encoder: 'nvidia:1', busy: true, seconds: 20 });
   });
 
+  it('retires a slot missing from a later snapshot at that moment', () => {
+    const { rec, advance } = setup();
+    rec.handle(slots({ encode: null, 'nvidia:1': 'a' }));
+    advance(20);
+    rec.handle(slots({ encode: null })); // the setting dropped nvidia:1 while it was busy
+    advance(60);
+    expect(rec.encoderBusy()).toEqual([{ encoder: 'encode', busy: false, seconds: 0 }]);
+  });
+
   it('starts from the slots busy at start', () => {
     let now = t0;
     const rec = new MetricsRecorder({

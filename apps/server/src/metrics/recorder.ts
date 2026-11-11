@@ -81,6 +81,10 @@ export class MetricsRecorder {
       }
       this.slots.set(s.id, slot);
     }
+    // A slot the encoding-device setting removed is gone from the snapshot: stop its clock now and
+    // drop it, so it is neither busy nor counted (Prometheus sees its series end).
+    const listed = new Set(list.map((s) => s.id));
+    for (const id of [...this.slots.keys()]) if (!listed.has(id)) this.slots.delete(id);
   }
 
   jobDurations(): Histogram[] {
