@@ -4,6 +4,7 @@ export const TOKEN_SCOPES = [
   'jobs:create',
   'jobs:manage',
   'workflows:write',
+  'metrics',
 ] as const;
 
 export type TokenScope = (typeof TOKEN_SCOPES)[number];

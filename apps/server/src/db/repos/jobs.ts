@@ -731,7 +731,7 @@ export function countDependsOnSize(db: Database, filter: JobListScope): number {
 }
 
 /** A restore still in effect for the result row `alias`: its file is the original again, so it saved nothing. */
-const ACTIVE_RESTORE_SQL = (alias: string): string =>
+export const ACTIVE_RESTORE_SQL = (alias: string): string =>
   `SELECT 1 FROM restores x WHERE x.job_id = ${alias}.job_id AND x.undone_at IS NULL`;
 
 /**

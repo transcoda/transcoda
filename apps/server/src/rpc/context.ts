@@ -10,6 +10,7 @@ import type { Config } from '../config.ts';
 import type { EngineService } from '../engine/engine.ts';
 import type { HealthService } from '../health.ts';
 import type { Logger } from '../logger.ts';
+import type { MetricsService } from '../metrics/service.ts';
 import type { NodeRegistry } from '../nodes/registry.ts';
 import type { PluginService } from '../plugins/service.ts';
 import type { SettingsDeps } from '../settings/service.ts';
@@ -56,6 +57,8 @@ export interface AppDeps {
   plugins: PluginService;
   /** Deep health check for monitors (`GET /system/health?deep=1`), cached for 10 s. */
   health: HealthService;
+  /** `/metrics` and `system.status`: one snapshot, cached for 5 s. */
+  metrics: MetricsService;
   /** What the settings service reads and writes through (`settings.get` / `settings.update`). */
   settings: SettingsDeps;
 }

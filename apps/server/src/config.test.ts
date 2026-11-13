@@ -434,6 +434,16 @@ describe('parseIsolation', () => {
     expect(() => loadConfig({ TRANSCODA_UPDATE_CHECK: 'no' })).toThrow(ConfigError);
   });
 
+  it('TRANSCODA_METRICS is on unless "false"; anything else stops the start', () => {
+    expect(loadConfig({}).metrics).toBe(true);
+    expect(loadConfig({ TRANSCODA_METRICS: '' }).metrics).toBe(true);
+    expect(loadConfig({ TRANSCODA_METRICS: 'true' }).metrics).toBe(true);
+    expect(loadConfig({ TRANSCODA_METRICS: 'false' }).metrics).toBe(false);
+    expect(() => loadConfig({ TRANSCODA_METRICS: 'off' })).toThrow(
+      new ConfigError('TRANSCODA_METRICS must be "true" or "false", got "off"'),
+    );
+  });
+
   it('TRANSCODA_PLUGIN_ISOLATION accepts only "off" (or nothing)', () => {
     expect(loadConfig({}).pluginIsolationOff).toBe(false);
     expect(loadConfig({ TRANSCODA_PLUGIN_ISOLATION: '' }).pluginIsolationOff).toBe(false);

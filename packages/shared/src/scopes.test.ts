@@ -11,7 +11,14 @@ describe('token scopes', () => {
     expect(isTokenScope(undefined)).toBe(false);
   });
 
-  it('has exactly five scopes', () => {
-    expect(TOKEN_SCOPES.length).toBe(5);
+  it('has exactly six scopes, metrics last', () => {
+    expect(TOKEN_SCOPES).toEqual([
+      'read',
+      'plan',
+      'jobs:create',
+      'jobs:manage',
+      'workflows:write',
+      'metrics',
+    ]);
   });
 });

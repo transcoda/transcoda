@@ -79,6 +79,27 @@ export class EngineEvents {
 
   publish(e: EngineEvent): void {
     this.publisher.publish('event', e);
+    for (const fn of this.listeners) {
+      try {
+        fn(e);
+      } catch {
+        // An in-process listener must not break publishing; it owns its own errors.
+      }
+    }
+  }
+
+  private readonly listeners = new Set<(e: EngineEvent) => void>();
+
+  /**
+   * In-process listener (the metrics recorder): called synchronously for every event, with no
+   * buffer and so no `resync`, until the returned function is called.
+   */
+  listen(fn: (e: EngineEvent) => void): () => void {
+    const wrapped = (e: EngineEvent): void => fn(e);
+    this.listeners.add(wrapped);
+    return () => {
+      this.listeners.delete(wrapped);
+    };
   }
 
   /**

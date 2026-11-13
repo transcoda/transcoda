@@ -69,6 +69,46 @@ export const GpuLoadOutputSchema = z.object({
 });
 export type GpuLoadOutput = z.infer<typeof GpuLoadOutputSchema>;
 
+/**
+ * `GET /system/status`: the `/metrics` numbers summed up, for pollers that cannot read the
+ * Prometheus format (Home Assistant's RESTful sensor). Counts and bytes only, never a path.
+ */
+export const StatusOutputSchema = z.object({
+  version: z.string(),
+  queuePaused: z.boolean(),
+  jobs: z.object({
+    /** Waiting to start. */
+    queued: z.number().int(),
+    /** Probing through replacing. */
+    running: z.number().int(),
+    /** Unfinished jobs paused one by one. */
+    paused: z.number().int(),
+    /** Finished `failed`, all time. */
+    failed: z.number().int(),
+    /** Finished with any outcome, all time. */
+    finished: z.number().int(),
+  }),
+  encoders: z.object({ busy: z.number().int(), total: z.number().int() }),
+  /** Over replaced files whose original was not restored (SI bytes). */
+  savedBytes: z.number(),
+  sourceBytes: z.number(),
+  outputBytes: z.number(),
+  recycleBytes: z.number(),
+  recycleFiles: z.number().int(),
+  /** Free space on the transcode folder; null when it could not be read. */
+  scratchFreeBytes: z.number().nullable(),
+  libraries: z.array(
+    z.object({
+      name: z.string(),
+      queued: z.number().int(),
+      running: z.number().int(),
+      savedBytes: z.number(),
+      recycleBytes: z.number(),
+    }),
+  ),
+});
+export type StatusOutput = z.infer<typeof StatusOutputSchema>;
+
 const ffmpegAvailable = z.object({
   available: z.literal(true),
   path: z.string(),
