@@ -4,9 +4,14 @@ import type { PluginSummary } from '@transcoda/contract';
 import { describe, expect, it } from 'vitest';
 import { plugin } from '../test/fixtures/plugins.ts';
 import {
+  addedHosts,
   blockedText,
   CUSTOM_CATALOG_WARNING,
   installFailureText,
+  NETWORK_NONE,
+  NETWORK_NOTE,
+  NETWORK_UNLISTED,
+  networkEntryText,
   provenanceSource,
   removeConfirmText,
   SECURITY_PROMISE,
@@ -238,5 +243,36 @@ describe('testSentence and testEffect', () => {
       testEffect('Sonarr', [{ kind: 'data', finishPhase: null }, finish('library-manager')]),
     ).toBe("Steps that need Sonarr won't work until it connects.");
     expect(testEffect('Thing', [])).toBe("Steps that need Thing won't work until it connects.");
+  });
+});
+
+describe('network hosts', () => {
+  it('words a fixed https origin as its host, keeps http and a port visible, and names a url setting', () => {
+    expect(networkEntryText({ origin: 'https://discord.com' })).toBe('discord.com');
+    expect(networkEntryText({ origin: 'https://api.example.com:8443' })).toBe(
+      'api.example.com:8443',
+    );
+    expect(networkEntryText({ origin: 'http://ntfy.example.com' })).toBe('http://ntfy.example.com');
+    expect(networkEntryText({ setting: 'url', label: 'Sonarr URL' })).toBe(
+      'The Sonarr URL you enter in its settings',
+    );
+  });
+
+  it('lists the hosts an update adds; nothing when the installed build predates the list', () => {
+    const sonarr = { setting: 'url', label: 'Sonarr URL' };
+    const tvdb = { origin: 'https://api.thetvdb.example' };
+    expect(addedHosts([sonarr], [sonarr, tvdb])).toEqual([tvdb]);
+    expect(addedHosts([sonarr, tvdb], [sonarr])).toEqual([]);
+    expect(addedHosts([sonarr], [{ setting: 'url', label: 'Server URL' }])).toEqual([]);
+    expect(addedHosts(null, [sonarr, tvdb])).toEqual([]);
+    expect(addedHosts([sonarr], null)).toEqual([]);
+  });
+
+  it('says what the list promises and what it does not', () => {
+    expect(NETWORK_NOTE).toBe(
+      "Transcoda's HTTP client lets this plugin reach only what is listed here. It can't stop a plugin that opens its own connections.",
+    );
+    expect(NETWORK_NONE).toBe('Nothing: it makes no network requests through Transcoda');
+    expect(NETWORK_UNLISTED).toBe('Not listed: this build predates host lists.');
   });
 });

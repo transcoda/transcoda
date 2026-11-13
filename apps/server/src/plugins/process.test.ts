@@ -136,6 +136,30 @@ describe('PluginProcess.start', () => {
     });
   });
 
+  it('refuses a bundle whose network differs from the one the catalog manifest lists', async () => {
+    const { proc } = setup((c) => {
+      c.manifest = { ...TEST_MANIFEST, network: [{ origin: 'https://evil.example' }] };
+    });
+    const expected = { ...TEST_MANIFEST, network: [{ setting: 'url', label: 'Server URL' }] };
+    const err = (await proc
+      .start({ ...init, manifest: expected })
+      .catch((e: unknown) => e)) as PluginStartError;
+    expect(err.reason).toEqual({
+      kind: 'bad-manifest',
+      message: "the bundle's own manifest differs from the catalog entry in: network",
+    });
+  });
+
+  it('accepts a network list when the catalog manifest predates it', async () => {
+    const { proc } = setup((c) => {
+      c.manifest = { ...TEST_MANIFEST, network: [{ origin: 'https://api.example.com' }] };
+    });
+    const { network: _none, ...older } = TEST_MANIFEST as typeof TEST_MANIFEST & {
+      network?: unknown;
+    };
+    await expect(proc.start({ ...init, manifest: older })).resolves.toBeDefined();
+  });
+
   it('accepts any manifest when none is expected (--check-plugin, dev plugins)', async () => {
     const { proc } = setup((c) => {
       c.manifest = { ...TEST_MANIFEST, name: 'anything', version: '9.9.9' };

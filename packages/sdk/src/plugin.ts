@@ -4,13 +4,14 @@ import {
   type HookEventName,
   PluginIconSchema,
   type PluginManifest,
+  type PluginNetworkEntry,
 } from '@transcoda/shared';
 import type { PluginContext } from './context.ts';
 import { type AnyIntegration, checkIntegration } from './integration.ts';
 import type { AnyNodeDefinition } from './node.ts';
 import type { AnyTrigger } from './trigger.ts';
 
-export const SDK_VERSION = '1.2.0';
+export const SDK_VERSION = '1.3.0';
 
 export interface HookJob {
   id: string;
@@ -109,5 +110,30 @@ export function pluginManifest(p: TranscodaPlugin): PluginManifest {
     triggers: (p.triggers ?? []).map((t) => t.id),
     hooks: HOOK_EVENT_NAMES.filter((h) => typeof p.hooks?.[h] === 'function') as HookEventName[],
     ...(p.icon !== undefined ? { icon: p.icon } : {}),
+    network: pluginNetwork(p.integration),
   };
+}
+
+/**
+ * Where the integration may send requests: its `allowedOrigins`, the fixed ones as origins and the
+ * `$settings.<field>` ones as that setting, named by its description up to the first comma (else
+ * the key). In order, without repeats. No integration: nothing.
+ */
+export function pluginNetwork(integration: AnyIntegration | undefined): PluginNetworkEntry[] {
+  if (!integration) return [];
+  const seen = new Set<string>();
+  const out: PluginNetworkEntry[] = [];
+  for (const entry of integration.allowedOrigins) {
+    if (seen.has(entry)) continue;
+    seen.add(entry);
+    if (!entry.startsWith('$settings.')) {
+      out.push({ origin: entry });
+      continue;
+    }
+    const key = entry.slice('$settings.'.length);
+    const described = integration.settings.shape[key]?.description;
+    const label = (typeof described === 'string' ? described.split(',')[0] : '')?.trim();
+    out.push({ setting: key, label: (label ? label : key).slice(0, 200) });
+  }
+  return out;
 }

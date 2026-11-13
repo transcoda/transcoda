@@ -3,6 +3,7 @@ import {
   PathMappingSchema,
   PLUGIN_NAME_PATTERN,
   PluginManifestSchema,
+  PluginNetworkSchema,
   PluginStateSchema,
 } from '@transcoda/shared';
 import { z } from 'zod';
@@ -144,6 +145,11 @@ export const PluginCatalogVersionSchema = z.object({
   releasedAt: z.string(),
   /** Set when the blocklist names this build: it cannot be installed. */
   blocked: BlockedSchema,
+  /**
+   * Where this build may send requests through Transcoda's HTTP client: fixed origins and url
+   * settings the user fills in; empty: none. Null: the build predates the list (SDK 1.3.0).
+   */
+  network: PluginNetworkSchema.nullable(),
 });
 export const PluginCatalogEntrySchema = z.object({
   name: PluginNameSchema,

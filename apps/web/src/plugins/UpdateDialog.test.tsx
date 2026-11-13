@@ -5,7 +5,9 @@ import { UpdateDialog } from './UpdateDialog.tsx';
 
 afterEach(cleanup);
 
-function show(check: Parameters<typeof UpdateDialog>[0]['check']) {
+type Props = Parameters<typeof UpdateDialog>[0];
+
+function show(check: Props['check'], hosts: Pick<Props, 'network' | 'added'> = {}) {
   const onConfirm = vi.fn();
   const onCancel = vi.fn();
   renderAt(
@@ -16,6 +18,7 @@ function show(check: Parameters<typeof UpdateDialog>[0]['check']) {
       check={check}
       onConfirm={onConfirm}
       onCancel={onCancel}
+      {...hosts}
     />,
   );
   return {
@@ -101,5 +104,45 @@ describe('UpdateDialog', () => {
     const { dialog } = show({ wouldBreak: [], needsReview: [], unknown: false });
     expect(within(dialog).getByText('No workflow is affected.')).toBeTruthy();
     expect(within(dialog).queryByRole('list')).toBeNull();
+  });
+
+  it('lists the hosts the version connects to and marks the ones it adds, in a note the dialog is described by', () => {
+    const sonarr = { setting: 'url', label: 'Sonarr URL' };
+    const tvdb = { origin: 'https://api.thetvdb.example' };
+    const { dialog } = show(
+      { wouldBreak: [], needsReview: [], unknown: false },
+      { network: [sonarr, tvdb], added: [tvdb] },
+    );
+    const hosts = within(dialog).getByRole('list', { name: 'Connects to' });
+    expect(
+      within(hosts)
+        .getAllByRole('listitem')
+        .map((li) => li.textContent),
+    ).toEqual(['The Sonarr URL you enter in its settings', 'api.thetvdb.examplenew']);
+    const note = within(dialog).getByText(
+      'sonarr 1.1.0 connects to a host the installed version does not: api.thetvdb.example.',
+    );
+    expect(note.closest('[role="note"]')).toBeTruthy();
+    expect(dialog.getAttribute('aria-describedby')).toContain(
+      note.closest('[role="note"]')?.id ?? 'missing',
+    );
+    // Nothing breaks, so Update stays the primary button.
+    expect(within(dialog).getByRole('button', { name: 'Update' }).className).toContain(
+      'btn-primary',
+    );
+  });
+
+  it('with no added host there is no note; a version without a list says so', () => {
+    let { dialog } = show(
+      { wouldBreak: [], needsReview: [], unknown: false },
+      { network: [{ origin: 'https://discord.com' }], added: [] },
+    );
+    expect(
+      within(dialog).queryByText(/connects to a host the installed version does not/),
+    ).toBeNull();
+    expect(dialog.textContent).not.toContain('new');
+    cleanup();
+    ({ dialog } = show({ wouldBreak: [], needsReview: [], unknown: false }, { network: null }));
+    expect(within(dialog).getByText('Not listed: this build predates host lists.')).toBeTruthy();
   });
 });

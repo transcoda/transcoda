@@ -1,10 +1,12 @@
 import { createHash, randomBytes } from 'node:crypto';
 import * as nodeFs from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
+import { isDeepStrictEqual } from 'node:util';
 import {
   PLUGIN_NAME_PATTERN,
   type PluginManifest,
   PluginManifestSchema,
+  type PluginNetworkEntry,
   RESERVED_PLUGIN_NAMES,
 } from '@transcoda/shared';
 import semver from 'semver';
@@ -67,6 +69,8 @@ export interface DownloadRequest {
   signature: string | null;
   /** The keys the bundle must be signed with; null: an unsigned install. */
   keys: readonly SigningKey[] | null;
+  /** The hosts the catalog entry lists; absent from older catalogs (then any manifest goes). */
+  network?: PluginNetworkEntry[] | undefined;
 }
 
 export type DownloadSuccess = {
@@ -194,7 +198,7 @@ export class Installer {
    * the server's sdk, nothing written. Used by the update pre-check.
    */
   async fetchManifest(
-    v: Pick<DownloadRequest, 'name' | 'version' | 'manifestUrl'>,
+    v: Pick<DownloadRequest, 'name' | 'version' | 'manifestUrl' | 'network'>,
     sdkVersion: string,
     /** Aborts the request (the catalog gives up on a slow manifest). */
     signal?: AbortSignal,
@@ -221,7 +225,7 @@ export class Installer {
   }
 
   private async loadManifest(
-    v: Pick<DownloadRequest, 'name' | 'version' | 'manifestUrl'>,
+    v: Pick<DownloadRequest, 'name' | 'version' | 'manifestUrl' | 'network'>,
     sdkVersion: string,
     signal?: AbortSignal,
   ): Promise<PluginManifest> {
@@ -625,7 +629,7 @@ export class Installer {
 
   private parseManifest(
     text: string,
-    v: Pick<DownloadRequest, 'name' | 'version'>,
+    v: Pick<DownloadRequest, 'name' | 'version' | 'network'>,
     sdkVersion: string,
   ): PluginManifest {
     let manifest: PluginManifest;
@@ -645,6 +649,14 @@ export class Installer {
       throw new Failure(
         'sdk',
         `sdk ${manifest.sdk} is not supported by this server (sdk ${sdkVersion})`,
+      );
+    }
+    // The dialog shows the catalog's list before install; the bundle is checked against this
+    // manifest at start, so the chain catalog → manifest → bundle holds.
+    if (v.network !== undefined && !isDeepStrictEqual(manifest.network, v.network)) {
+      throw new Failure(
+        'manifest',
+        'the manifest lists other network hosts than the catalog entry',
       );
     }
     return manifest;

@@ -1,4 +1,4 @@
-import { type JsonValue, PathMappingSchema } from '@transcoda/shared';
+import { type JsonValue, MAX_PLUGIN_NETWORK, PathMappingSchema } from '@transcoda/shared';
 import { z } from 'zod';
 import type { PluginContext } from './context.ts';
 
@@ -84,6 +84,12 @@ export function secretPaths(settingsSchema: JsonValue): string[] {
 /** The checks `defineIntegration` makes; `definePlugin` repeats them on a plain object. */
 export function checkIntegration(i: AnyIntegration): void {
   const keys = Object.keys(i.settings.shape);
+  // The manifest lists each distinct entry; refuse here rather than build a manifest no host loads.
+  if (new Set(i.allowedOrigins).size > MAX_PLUGIN_NETWORK) {
+    throw new TypeError(
+      `integration ${i.id}: allowedOrigins lists more than ${MAX_PLUGIN_NETWORK} distinct entries`,
+    );
+  }
   for (const entry of i.allowedOrigins) {
     if (entry.startsWith('$settings.')) {
       const key = entry.slice('$settings.'.length);

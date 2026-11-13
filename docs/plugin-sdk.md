@@ -1,6 +1,6 @@
 # Writing a Transcoda plugin
 
-For plugin authors. The SDK is `@transcoda/sdk` (version `1.2.0`; the surface is frozen for 1.x and the full reference is [`packages/sdk/README.md`](../packages/sdk/README.md)). A plugin is one self-contained JavaScript file, built from TypeScript, that Transcoda installs into `/config/plugins` and runs in its own sandboxed process. Official plugins live in the separate `transcoda-plugins` repository; its `plugins/example` is the smallest working one. Install the SDK from npm with `npm install --save-dev @transcoda/sdk zod` (plugins bundle it, so it is a dev dependency).
+For plugin authors. The SDK is `@transcoda/sdk` (version `1.3.0`; the surface is frozen for 1.x and the full reference is [`packages/sdk/README.md`](../packages/sdk/README.md)). A plugin is one self-contained JavaScript file, built from TypeScript, that Transcoda installs into `/config/plugins` and runs in its own sandboxed process. Official plugins live in the separate `transcoda-plugins` repository; its `plugins/example` is the smallest working one. Install the SDK from npm with `npm install --save-dev @transcoda/sdk zod` (plugins bundle it, so it is a dev dependency).
 
 ## What a plugin is
 
@@ -49,6 +49,7 @@ The manifest is read from the bundle itself (the default export's `name`, `versi
 - A plugin bumps its own major when it drops an SDK major. Core bumps the SDK major only when a hook signature or context field changes incompatibly; additive fields are minors.
 - A bundle whose default export is not a `definePlugin` object (built against SDK 0.x, or a module with only named exports) is refused: the install is rolled back with `plugin crashed on start: crashed: bundle has no plugin default export` and nothing is registered.
 - The manifest also lists each node's kind and title (`nodeInfo`), so the Plugins page can show what a plugin adds before it is installed; manifests built before that show the bare node types.
+- `network` (SDK 1.3) lists where the plugin may send requests, derived from the integration's `allowedOrigins`: `{ origin }` for a fixed origin, `{ setting, label }` for a `'$settings.<field>'` entry, named by the setting's description up to its first comma (`url().describe('Sonarr URL, for example http://sonarr:8989')` reads "Sonarr URL"), else by its key. `[]` means the plugin makes no requests (no integration, or no origins). There is nothing to write: it is the list `fetch` already enforces. The catalog carries it per version, and the install dialog shows it before install ("Connects to: discord.com", "The Sonarr URL you enter in its settings"); an update that adds a host always asks first. No wildcards: a plugin that needs a host the user chooses takes it from a url setting. The installer refuses a manifest whose list differs from its catalog entry, and a bundle whose own list differs from its manifest does not start. Manifests and catalogs from before 1.3 have no list; the dialog says so.
 - `icon` (optional) is the plugin's own mark as SVG markup, at most 16,384 characters, starting with `<svg` (an XML declaration before it is fine). The Plugins page shows it in a 40px tile, as an image only (it is never inserted into the page, so scripts and external references in it do nothing); without one the tile shows a monogram. Ship only a mark you may use: a product's logo is its owner's trademark, and an open-source license for the code does not cover it.
 
 ## Node versions and migrations
@@ -165,7 +166,7 @@ Outside production the logger prints each line's message followed by its structu
 
 ```sh
 node apps/server/dist/main.js --check-plugin path/to/bundle.js
-# {"ok":true,"name":"example","version":"1.0.0","sdk":"^1","compatible":true,"nodes":[...],"integration":null,"triggers":[],"hooks":[]}
+# {"ok":true,"name":"example","version":"1.0.0","sdk":"^1","compatible":true,"nodes":[...],"integration":null,"triggers":[],"hooks":[],"network":[]}
 ```
 
 Starts the bundle once in a sandboxed host with empty settings, prints one JSON line and exits 0 (`ok: true`) or 1. It touches no database, config directory or ffmpeg. The plugins repo's `scripts/host-check.mjs` runs it over every built bundle; it fails when a bundle does not start or its `sdk` range is not satisfied by this core. `--expect-denials --other-bundle <file>` is the image's sandbox check (see below).

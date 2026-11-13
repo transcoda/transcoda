@@ -178,6 +178,55 @@ export function updateNeedsLook(check: PluginUpdateCheckOutput): boolean {
   return check.wouldBreak.length > 0 || check.needsReview.length > 0 || check.unknown;
 }
 
+/** One place a plugin may send requests to: a fixed origin, or a url setting by its label. */
+export type NetworkEntry = { origin: string } | { setting: string; label: string };
+
+/** `discord.com` (an https origin by its host), `http://…` in full, or the setting in words. */
+export function networkEntryText(e: NetworkEntry): string {
+  if ('setting' in e) return `The ${e.label} you enter in its settings`;
+  return e.origin.startsWith('https://') ? e.origin.slice('https://'.length) : e.origin;
+}
+
+/** An entry's identity: a setting by its key (not its label), an origin as written. */
+export const networkKey = (e: NetworkEntry): string =>
+  'setting' in e ? `setting:${e.setting}` : `origin:${e.origin}`;
+
+/**
+ * The entries of `next` that `installed` does not have (a setting counts by its key, not its
+ * label). Nothing when either list is unknown: a build from before the lists says nothing.
+ */
+export function addedHosts(
+  installed: readonly NetworkEntry[] | null,
+  next: readonly NetworkEntry[] | null,
+): NetworkEntry[] {
+  if (installed === null || next === null) return [];
+  const known = new Set(installed.map(networkKey));
+  return next.filter((e) => !known.has(networkKey(e)));
+}
+
+/**
+ * What an update from `installed` to `target` does to the hosts, from the plugin's catalog entry:
+ * the target's list (undefined when the catalog does not list the target) and what it adds.
+ */
+export function updateHosts(
+  entry: { versions: ReadonlyArray<{ version: string; network: NetworkEntry[] | null }> } | null,
+  installed: string,
+  target: string,
+): { network: NetworkEntry[] | null | undefined; added: NetworkEntry[] } {
+  const find = (v: string) => entry?.versions.find((x) => x.version === v);
+  const next = find(target);
+  return {
+    network: next?.network,
+    added: addedHosts(find(installed)?.network ?? null, next?.network ?? null),
+  };
+}
+
+/** Under the hosts: what Transcoda enforces, and the limit the security promise states. */
+export const NETWORK_NOTE =
+  "Transcoda's HTTP client lets this plugin reach only what is listed here. It can't stop a plugin that opens its own connections.";
+export const NETWORK_NONE = 'Nothing: it makes no network requests through Transcoda';
+export const NETWORK_UNLISTED = 'Not listed: this build predates host lists.';
+
 /** "Test failed 2 min ago: connection refused" (the plugin's own message, never a secret). */
 export function testSentence(
   last: NonNullable<PluginSettingsGetOutput['lastTest']>,

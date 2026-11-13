@@ -9621,6 +9621,45 @@ button.job-step-more:hover {
 .plugin-install-about {
   margin: 0;
 }
+/* Install and Update dialogs: the hosts a build may reach, then what that promises. */
+.plugin-network {
+  font-size: var(--fs-small);
+}
+.plugin-network-title {
+  margin: 0 0 4px;
+  font-size: var(--fs-small);
+  font-weight: 600;
+  color: var(--muted);
+}
+.plugin-network-list {
+  margin: 0;
+  padding-left: 1.2em;
+  overflow-wrap: anywhere;
+}
+.plugin-network-list li + li {
+  margin-top: 2px;
+}
+/* A host an update adds: an amber "new" pill after it. */
+.plugin-network-new {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--st-dry);
+  color: var(--st-dry-ink);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 16px;
+  vertical-align: 1px;
+}
+.plugin-network-note,
+.plugin-network-unlisted {
+  margin: 6px 0 0;
+  color: var(--muted);
+}
+.plugin-network-unlisted {
+  margin-top: 0;
+}
 /* On a phone each fact stacks: its label above, the value (and the whole checksum) full width. */
 @media (max-width: 639px) {
   .plugin-facts {

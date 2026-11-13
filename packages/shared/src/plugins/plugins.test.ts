@@ -80,6 +80,23 @@ describe('plugin vocabulary', () => {
     ).toBe(false);
   });
 
+  it('PluginManifestSchema takes an optional network list of origins and url settings', () => {
+    const network = [{ origin: 'https://discord.com' }, { setting: 'url', label: 'Sonarr URL' }];
+    expect(PluginManifestSchema.parse({ ...manifest, network }).network).toEqual(network);
+    expect(PluginManifestSchema.parse({ ...manifest, network: [] }).network).toEqual([]);
+    expect(PluginManifestSchema.parse(manifest).network).toBeUndefined();
+    for (const bad of [
+      [{ origin: 'https://discord.com/api' }],
+      [{ origin: 'ftp://example.com' }],
+      [{ origin: '*.example.com' }],
+      [{ setting: 'url' }],
+      [{ setting: 'url', label: '' }],
+      [{ origin: 'https://discord.com', setting: 'url', label: 'x' }],
+    ]) {
+      expect(PluginManifestSchema.safeParse({ ...manifest, network: bad }).success).toBe(false);
+    }
+  });
+
   it('PluginManifestSchema refuses the reserved names catalog and catalogs', () => {
     expect(PluginManifestSchema.safeParse({ ...manifest, name: 'catalog' }).success).toBe(false);
     expect(PluginManifestSchema.safeParse({ ...manifest, name: 'catalogs' }).success).toBe(false);

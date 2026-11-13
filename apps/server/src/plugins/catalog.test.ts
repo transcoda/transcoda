@@ -188,6 +188,23 @@ describe('CatalogClient', () => {
     expect(other.hits[0]?.headers.authorization).toBeUndefined();
   });
 
+  it("carries a version's network list through list() and find(); an entry without one has none", async () => {
+    const withNetwork = structuredClone(index);
+    const network = [{ origin: 'https://discord.com' }, { setting: 'url', label: 'Server URL' }];
+    (withNetwork.plugins[0]?.versions[0] as Record<string, unknown>).network = network;
+    const file = join(dir, 'net.json');
+    writeFileSync(file, JSON.stringify(withNetwork));
+    const url = pathToFileURL(file).href;
+    const r = await client().list([url]);
+    expect(r.entries[0]?.versions[0]?.network).toEqual(network);
+    expect(r.entries[0]?.versions[1]?.network).toBeUndefined();
+    expect((await client().find([url], 'example', '1.0.0'))?.network).toEqual(network);
+    // A malformed list makes the index invalid, like any other bad field.
+    (withNetwork.plugins[0]?.versions[0] as Record<string, unknown>).network = [{ origin: '*' }];
+    writeFileSync(file, JSON.stringify(withNetwork));
+    expect((await client().list([url])).entries).toEqual([]);
+  });
+
   it('refuses a catalog whose version is not valid semver or whose urls are not https', async () => {
     const bad = (mut: (v: Record<string, unknown>) => void) => {
       const copy = structuredClone(index);

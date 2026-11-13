@@ -17,6 +17,7 @@ import {
   removeConfirmText,
   stateLabel,
   statusOf,
+  updateHosts,
   updateNeedsLook,
   usedByText,
   webLink,
@@ -155,7 +156,9 @@ export function PluginRow({
       setError(pluginFailure(err));
       return;
     }
-    if (oneClick && !updateNeedsLook(check)) {
+    // A version that reaches a new host always asks, so the host is seen before it is reached.
+    const addsHost = updateHosts(entry, plugin.version, version).added.length > 0;
+    if (oneClick && !updateNeedsLook(check) && !addsHost) {
       // The Update button is gone once updated: focus goes to the row's heading.
       if (await runUpdate(version)) heading.current?.focus();
       return;
@@ -367,6 +370,7 @@ export function PluginRow({
             name={name}
             version={updating.version}
             check={updating.check}
+            {...updateHosts(entry, plugin.version, updating.version)}
             returnFocusTo={updateReturn}
             onConfirm={() => void confirmUpdate()}
             onCancel={() => setUpdating(null)}

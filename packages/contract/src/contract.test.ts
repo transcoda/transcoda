@@ -28,6 +28,7 @@ import {
   NodeKindSchema,
   PluginCatalogAddInputSchema,
   PluginCatalogOutputSchema,
+  PluginCatalogVersionSchema,
   PluginDetailSchema,
   PluginRemoveInputSchema,
   PluginSettingsGetOutputSchema,
@@ -884,7 +885,15 @@ describe('plugin schemas', () => {
       signature: null,
       releasedAt: '2026-10-17',
       blocked: null,
+      network: null,
     };
+    const version = PluginCatalogVersionSchema;
+    expect(version.safeParse({ ...v, network: undefined }).success).toBe(false);
+    expect(
+      version.safeParse({ ...v, network: [{ setting: 'url', label: 'Sonarr URL' }] }).success,
+    ).toBe(true);
+    expect(version.safeParse({ ...v, network: [] }).success).toBe(true);
+    expect(version.safeParse({ ...v, network: [{ origin: '*.example.com' }] }).success).toBe(false);
     expect(
       PluginCatalogOutputSchema.safeParse({
         catalogs: [

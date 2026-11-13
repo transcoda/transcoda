@@ -71,6 +71,7 @@ describe('plugin host, example plugin', () => {
       integration: null,
       triggers: [],
       hooks: [],
+      network: [],
     });
     const nodes = h.ready.nodes as Array<{ type: string; hooks: string[]; finishPhase: unknown }>;
     expect(nodes.map((n) => [n.type, n.hooks, n.finishPhase])).toEqual([

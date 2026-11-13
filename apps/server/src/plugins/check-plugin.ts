@@ -39,6 +39,8 @@ export type CheckResult =
       triggers: string[];
       /** Job hooks the bundle declares. */
       hooks: PluginManifest['hooks'];
+      /** Where the integration may send requests (derived from its `allowedOrigins`). */
+      network: NonNullable<PluginManifest['network']>;
       probes?: number;
       /** What the OS says the host process was while it ran (Linux only); null when unknown. */
       isolation: {
@@ -150,6 +152,7 @@ export async function checkPluginBundle(
       integration: m.integration,
       triggers: m.triggers,
       hooks: m.hooks,
+      network: m.network ?? [],
       // Taken while the host is up.
       isolation: await processIdentity(proc.pid),
     };
