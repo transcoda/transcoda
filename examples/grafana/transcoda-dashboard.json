@@ -113,7 +113,16 @@
       "description": "Bytes saved by replaced files. A restored original takes its saving back out.",
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "gridPos": { "h": 4, "w": 4, "x": 8, "y": 1 },
-      "fieldConfig": { "defaults": { "unit": "decbytes" }, "overrides": [] },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "decbytes",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 0 }]
+          }
+        },
+        "overrides": []
+      },
       "options": {
         "reduceOptions": { "calcs": ["lastNotNull"] },
         "colorMode": "value",
@@ -296,7 +305,7 @@
         "overrides": []
       },
       "options": {
-        "legend": { "displayMode": "hidden", "placement": "bottom" },
+        "legend": { "showLegend": false, "displayMode": "list", "placement": "bottom" },
         "tooltip": { "mode": "single" }
       },
       "targets": [
@@ -315,9 +324,9 @@
       "description": "Video duration over start-to-finish time of the encode-lane jobs replaced or kept original in the last 6 hours (1x is real time). Both come from the same finished jobs; a job counts when it finishes. Counts every library.",
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "gridPos": { "h": 8, "w": 8, "x": 8, "y": 14 },
-      "fieldConfig": { "defaults": { "unit": "x", "decimals": 1 }, "overrides": [] },
+      "fieldConfig": { "defaults": { "unit": "suffix:×", "decimals": 1 }, "overrides": [] },
       "options": {
-        "legend": { "displayMode": "hidden", "placement": "bottom" },
+        "legend": { "showLegend": false, "displayMode": "list", "placement": "bottom" },
         "tooltip": { "mode": "single" }
       },
       "targets": [
@@ -510,7 +519,17 @@
       "title": "Saved per library",
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "gridPos": { "h": 8, "w": 8, "x": 0, "y": 40 },
-      "fieldConfig": { "defaults": { "unit": "decbytes", "min": 0 }, "overrides": [] },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "decbytes",
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 0 }]
+          }
+        },
+        "overrides": []
+      },
       "options": {
         "orientation": "horizontal",
         "displayMode": "basic",
@@ -532,7 +551,14 @@
       "title": "Recycle folder per library",
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "gridPos": { "h": 8, "w": 8, "x": 8, "y": 40 },
-      "fieldConfig": { "defaults": { "unit": "decbytes", "min": 0 }, "overrides": [] },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "decbytes",
+          "min": 0,
+          "color": { "mode": "fixed", "fixedColor": "blue" }
+        },
+        "overrides": []
+      },
       "options": {
         "orientation": "horizontal",
         "displayMode": "basic",
@@ -555,7 +581,15 @@
       "description": "Files Transcoda has seen in each library.",
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "gridPos": { "h": 8, "w": 8, "x": 16, "y": 40 },
-      "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "min": 0 }, "overrides": [] },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "min": 0,
+          "color": { "mode": "fixed", "fixedColor": "blue" }
+        },
+        "overrides": []
+      },
       "options": {
         "orientation": "horizontal",
         "displayMode": "basic",
