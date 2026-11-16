@@ -945,6 +945,7 @@ describe('plugin schemas', () => {
       installedAt: '2026-10-17T12:00:00.000Z',
       updatedAt: '2026-10-17T12:00:00.000Z',
       icon: null,
+      network: [{ origin: 'https://discord.com' }],
       usedBy: [{ id: 'w1', name: 'TV cleanup', active: true }],
       lastTest: { at: '2026-10-17T12:00:00.000Z', ok: false, kind: 'unreachable' },
     };
