@@ -2,7 +2,7 @@
 # Build from the repo root: docker build -f docker/Dockerfile -t transcoda:dev .
 
 # Pinned by digest (multi-arch index) next to its tag; Renovate updates both together.
-ARG NODE_IMAGE=node:24.22.2-bookworm-slim@sha256:01d566e8d94d8c619591d78652babfccd3c6992a3dffa9ed5ab39e11cf6c70e9
+ARG NODE_IMAGE=node:24.22.3-bookworm-slim@sha256:dc26ae92c9fb15cf6b1d63e20f0944b2efe0f115b20e00be48fb23fceb061c54
 
 # 1. Build the web UI and the server bundle on the build host's platform.
 FROM --platform=$BUILDPLATFORM ${NODE_IMAGE} AS build
