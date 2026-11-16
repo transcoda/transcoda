@@ -792,6 +792,7 @@ export class Scheduler {
     const failed = this.update(a.job.id, {
       state: 'failed',
       reason: `internal error: ${errorMessage(err)}`,
+      failureCode: 'internal',
       lane: null,
       progress: null,
     });

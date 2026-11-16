@@ -141,6 +141,10 @@ export class MetricsService {
         labels: { library: lib(f.libraryId), outcome: f.outcome },
         value: f.jobs,
       })),
+      transcoda_jobs_failed: s.totals.failed.map((f) => ({
+        labels: { library: lib(f.libraryId), reason: f.reason },
+        value: f.jobs,
+      })),
       transcoda_job_retries: perLib((r) => r.retries),
       transcoda_source_bytes: perLib((r) => r.sourceBytes),
       transcoda_output_bytes: perLib((r) => r.outputBytes),

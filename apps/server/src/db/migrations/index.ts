@@ -16,6 +16,7 @@ import { sourceDamaged } from './0014_source_damaged.ts';
 import { outputFingerprint } from './0015_output_fingerprint.ts';
 import { libraryWatch } from './0016_library_watch.ts';
 import { restore } from './0017_restore.ts';
+import { failureCode } from './0018_failure_code.ts';
 
 export const migrations: Migration[] = [
   initial,
@@ -35,4 +36,5 @@ export const migrations: Migration[] = [
   outputFingerprint,
   libraryWatch,
   restore,
+  failureCode,
 ];

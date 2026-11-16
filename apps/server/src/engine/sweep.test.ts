@@ -204,6 +204,7 @@ describe('startupSweep without journals', () => {
     expect(second.interrupted).toEqual(['enc']);
     expect(findJob(db, 'enc')).toMatchObject({
       state: 'failed',
+      failureCode: 'interrupted',
       reason: 'interrupted',
       requeues: 1,
     });
@@ -376,6 +377,7 @@ describe('startupSweep: the replace journal, decided from the disk', () => {
     expect(r.conflicts).toEqual(['b']);
     expect(findJob(db, 'b')).toMatchObject({
       state: 'failed',
+      failureCode: 'replace',
       reason: `replace left two copies: ${p.originalPath}, ${p.copyPath}`,
       replaceJournal: null,
     });
@@ -426,6 +428,7 @@ describe('startupSweep: the replace journal, decided from the disk', () => {
     expect(r.rolledBack).toEqual(['d']);
     expect(findJob(db, 'd')).toMatchObject({
       state: 'failed',
+      failureCode: 'interrupted',
       reason: 'interrupted; original restored',
       requeues: 0,
       replaceJournal: null,
@@ -441,6 +444,7 @@ describe('startupSweep: the replace journal, decided from the disk', () => {
     expect(r.conflicts).toEqual(['e']);
     expect(findJob(db, 'e')).toMatchObject({
       state: 'failed',
+      failureCode: 'replace',
       reason: 'original missing',
       replaceJournal: null,
     });
@@ -451,7 +455,11 @@ describe('startupSweep: the replace journal, decided from the disk', () => {
     await layout('f', { O: false, T: false, C: false });
     const r = await startupSweep(db, sweepDeps());
     expect(r.conflicts).toEqual(['f']);
-    expect(findJob(db, 'f')).toMatchObject({ state: 'failed', reason: 'original missing' });
+    expect(findJob(db, 'f')).toMatchObject({
+      state: 'failed',
+      failureCode: 'replace',
+      reason: 'original missing',
+    });
   });
 
   it('O = the replacement and C = the original (crash before the cleaning intent) → completed', async () => {
@@ -504,10 +512,32 @@ describe('startupSweep: the replace journal, decided from the disk', () => {
     expect(r.conflicts).toEqual(['k']);
     expect(findJob(db, 'k')).toMatchObject({
       state: 'failed',
+      failureCode: 'replace',
       reason: `could not restore the original: refusing to rename over an existing path: ${p.originalPath}; the original is at ${p.copyPath}`,
     });
     expect(await readFile(p.originalPath, 'utf8')).toBe('appeared');
     expect(sha(await readFile(p.copyPath))).toBe(sha(ORIG));
+  });
+
+  it('a recovery that throws fails the job with replace and keeps the journal for the next start', async () => {
+    const p = await layout('x', { O: false, T: false, C: true });
+    const fs: FsOps = {
+      ...nodeFsOps,
+      rename: async () => {
+        throw Object.assign(new Error('injected'), { code: 'EIO' });
+      },
+      link: async () => {
+        throw Object.assign(new Error('injected'), { code: 'EIO' });
+      },
+    };
+    const r = await startupSweep(db, sweepDeps({ fs }));
+    expect(r.conflicts).toEqual(['x']);
+    expect(findJob(db, 'x')).toMatchObject({
+      state: 'failed',
+      failureCode: 'replace',
+      reason: `replace recovery failed: injected; the original is at ${p.originalPath} or ${p.copyPath}`,
+      replaceJournal: p.j,
+    });
   });
 
   it('a journaled job keeps its tmp out of the stray removal', async () => {
@@ -524,6 +554,7 @@ describe('startupSweep: the replace journal, decided from the disk', () => {
     expect(r).toMatchObject({ conflicts: ['u'], completed: [], rolledBack: [], tempRemoved: 0 });
     expect(findJob(db, 'u')).toMatchObject({
       state: 'failed',
+      failureCode: 'replace',
       reason: `library root unavailable: ${lib}`,
       replaceJournal: p.j,
     });
@@ -607,6 +638,7 @@ describe('startupSweep: the replace journal, decided from the disk', () => {
     expect(r.rolledBack).toEqual(['r2']);
     expect(findJob(db, 'r2')).toMatchObject({
       state: 'failed',
+      failureCode: 'interrupted',
       reason: 'interrupted; original restored',
       requeues: 0,
       replaceJournal: null,

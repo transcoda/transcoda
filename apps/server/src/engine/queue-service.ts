@@ -563,6 +563,7 @@ export class QueueService {
           attempt: attempt + 1,
           failedGpus: [],
           reason: null,
+          failureCode: null,
           lane: null,
           progress: null,
           encodedOn: null,

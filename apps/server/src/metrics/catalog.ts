@@ -1,8 +1,8 @@
 // Every metric `/metrics` serves, in the order it serves them. The docs (docs/metrics.md) and the
 // Grafana dashboard (examples/grafana) are checked against this list by tests.
 //
-// Labels come only from small, fixed sets: library names, job states and outcomes, lanes, encode
-// slots and GPUs. Never a path, a job id, a file or a failure message.
+// Labels come only from small, fixed sets: library names, job states and outcomes, failure codes,
+// lanes, encode slots and GPUs. Never a path, a job id, a file or a failure message.
 
 export interface MetricDef {
   name: string;
@@ -41,6 +41,12 @@ export const METRICS = [
     type: 'gauge',
     help: 'Finished jobs by outcome, all time.',
     labels: ['library', 'outcome'],
+  },
+  {
+    name: 'transcoda_jobs_failed',
+    type: 'gauge',
+    help: 'Failed jobs by failure code, all time; unknown for failures recorded before codes existed.',
+    labels: ['library', 'reason'],
   },
   {
     name: 'transcoda_job_retries',

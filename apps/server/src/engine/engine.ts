@@ -506,7 +506,14 @@ export class EngineService {
       updateJob(
         db,
         job.id,
-        { state: 'done', reason: null, replaceJournal: null, lane: null, progress: null },
+        {
+          state: 'done',
+          reason: null,
+          failureCode: null,
+          replaceJournal: null,
+          lane: null,
+          progress: null,
+        },
         now,
       );
       // The replace finished: whatever the job recorded before (a failure) is replaced.

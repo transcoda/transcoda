@@ -818,6 +818,7 @@ describe('Scheduler', () => {
     await flush();
     expect(row('a')).toMatchObject({
       state: 'failed',
+      failureCode: 'internal',
       reason: 'internal error: prepare ended without a final state',
     });
   });
@@ -940,7 +941,11 @@ describe('Scheduler', () => {
     await flush();
     executor.exec('a').d.reject(new Error('executor broke'));
     await flush();
-    expect(row('a')).toMatchObject({ state: 'failed', reason: 'internal error: executor broke' });
+    expect(row('a')).toMatchObject({
+      state: 'failed',
+      failureCode: 'internal',
+      reason: 'internal error: executor broke',
+    });
     expect(scheduler.status().lanes.encode).toBe('b');
     expect(errors).toContainEqual(
       expect.objectContaining({ msg: 'scheduler task failed', error: 'publish broke' }),

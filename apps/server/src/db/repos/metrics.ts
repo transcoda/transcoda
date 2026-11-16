@@ -1,6 +1,6 @@
 // Aggregates behind `/metrics` and `system.status`: counts and sums per live library, never a
 // path or a job. Deleted libraries are left out of every list.
-import { ACTIVE_JOB_STATES, type JobState, type Lane } from '@transcoda/shared';
+import { ACTIVE_JOB_STATES, type FailureCode, type JobState, type Lane } from '@transcoda/shared';
 import type { Database } from '../open.ts';
 import { ACTIVE_RESTORE_SQL } from './jobs.ts';
 import type { RunSource } from './runs.ts';
@@ -11,6 +11,8 @@ export interface MetricsTotals {
   active: { libraryId: string; state: JobState; lane: Lane | null; jobs: number; paused: number }[];
   /** Finished jobs per final state, all time. */
   finished: { libraryId: string; outcome: JobState; jobs: number }[];
+  /** Failed jobs per failure code (`unknown`: failed before codes were recorded), all time. */
+  failed: { libraryId: string; reason: FailureCode | 'unknown'; jobs: number }[];
   perLibrary: {
     libraryId: string;
     /** Attempts beyond the first, over every job. */
@@ -53,6 +55,16 @@ export function metricsTotals(db: Database): MetricsTotals {
     )
     .all() as MetricsTotals['finished'];
 
+  // Grouped by the expression, not the alias: `reason` is also a column of jobs (the free text).
+  const failed = db
+    .prepare(
+      `SELECT library_id AS libraryId, COALESCE(failure_code, 'unknown') AS reason, COUNT(*) AS jobs
+       FROM jobs WHERE state = 'failed' AND library_id ${LIVE}
+       GROUP BY library_id, COALESCE(failure_code, 'unknown')
+       ORDER BY library_id, COALESCE(failure_code, 'unknown')`,
+    )
+    .all() as MetricsTotals['failed'];
+
   const perLibrary = db
     .prepare(
       `SELECT l.id AS libraryId,
@@ -89,5 +101,5 @@ export function metricsTotals(db: Database): MetricsTotals {
     )
     .all() as MetricsTotals['runs'];
 
-  return { libraries, active, finished, perLibrary, runs };
+  return { libraries, active, finished, failed, perLibrary, runs };
 }
