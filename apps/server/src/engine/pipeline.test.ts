@@ -5074,7 +5074,10 @@ describe('pipeline: damaged sources (Render’s Damaged)', () => {
     await spawner.complete({ bytes: 600, stderr, code: 1 });
     await until('second spawn', () => spawner.calls.length === 2);
     await spawner.complete({ bytes: 600, stderr, code: 1 });
-    expect(await settled(id)).toMatchObject({ state: 'failed', failureCode: 'encode', attempt: 2 });
+    // ffmpeg exited after a read error: counted as the source, not the encoder.
+    const job = await settled(id);
+    expect(job).toMatchObject({ state: 'failed', failureCode: 'source_unreadable', attempt: 2 });
+    expect(job.reason).toMatch(/^encode could not read the source: .*Input\/output error/);
     expect(findJobResult(t.db, id)?.sourceDamaged).toBe(false);
     expect(runCalls).toEqual([]);
     expect(calledUrls()).toEqual([]);

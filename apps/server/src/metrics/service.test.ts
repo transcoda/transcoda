@@ -219,12 +219,18 @@ describe('MetricsService.exposition', () => {
     const rows = parseExposition(text)
       .samples.filter((s) => s.name === 'transcoda_jobs_failed')
       .map((s) => [s.labels.library, s.labels.reason, s.value]);
-    expect(rows).toEqual([
+    expect(rows.filter(([, , v]) => v !== 0)).toEqual([
       ['Movies', 'encode', 2],
-      ['Movies', 'unknown', 1],
       ['Movies', 'verify', 1],
+      ['Movies', 'unknown', 1],
       ['Shows', 'verify', 1],
     ]);
+    // Every code is listed at 0 too, so delta() sees a library's first failure; unknown only
+    // where it has jobs.
+    expect(rows.filter(([l]) => l === 'Movies')).toHaveLength(9);
+    expect(rows.filter(([l]) => l === 'Shows')).toHaveLength(8);
+    expect(rows).toContainEqual(['Shows', 'interrupted', 0]);
+    expect(rows).not.toContainEqual(['Shows', 'unknown', 0]);
     // The codes add up to the failed outcome.
     expect(value(text, 'transcoda_jobs_finished', { library: 'Movies', outcome: 'failed' })).toBe(
       4,

@@ -1564,6 +1564,13 @@ export class Pipeline implements JobExecutor {
           return this.encode(row, ctl, p);
         }
       }
+      // ffmpeg often exits non-zero after a read error: the source is the cause, not the encoder.
+      const unreadable = [...demuxerErrors, ...sourceErrors].find((e) => READ_FAILURE.test(e.line));
+      if (unreadable) {
+        return fail(
+          retryable('source_unreadable', `encode could not read the source: ${unreadable.line}`),
+        );
+      }
       return fail(retryable('encode', cause ? `${why}: ${cause}` : why));
     }
     if (leading > 0) {

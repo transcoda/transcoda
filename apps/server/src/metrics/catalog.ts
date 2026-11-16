@@ -45,7 +45,7 @@ export const METRICS = [
   {
     name: 'transcoda_jobs_failed',
     type: 'gauge',
-    help: 'Failed jobs by failure code, all time; unknown for failures recorded before codes existed.',
+    help: 'Jobs whose final state is failed, by failure code; unknown for failures recorded before codes existed.',
     labels: ['library', 'reason'],
   },
   {

@@ -1,7 +1,7 @@
 // One snapshot of the numbers behind `/metrics` and `system.status`: a few aggregate queries plus
 // the engine's in-memory state, cached so a tight scrape interval cannot load the database.
 import type { GpuLoadOutput, StatusOutput } from '@transcoda/contract';
-import { RUNNING_JOB_STATES } from '@transcoda/shared';
+import { FAILURE_CODES, RUNNING_JOB_STATES } from '@transcoda/shared';
 import type { Database } from '../db/open.ts';
 import { type MetricsTotals, metricsTotals } from '../db/repos/metrics.ts';
 import { METRICS, type MetricName } from './catalog.ts';
@@ -141,10 +141,7 @@ export class MetricsService {
         labels: { library: lib(f.libraryId), outcome: f.outcome },
         value: f.jobs,
       })),
-      transcoda_jobs_failed: s.totals.failed.map((f) => ({
-        labels: { library: lib(f.libraryId), reason: f.reason },
-        value: f.jobs,
-      })),
+      transcoda_jobs_failed: failedByCode(s.totals, lib),
       transcoda_job_retries: perLib((r) => r.retries),
       transcoda_source_bytes: perLib((r) => r.sourceBytes),
       transcoda_output_bytes: perLib((r) => r.outputBytes),
@@ -253,4 +250,26 @@ export class MetricsService {
       })),
     };
   }
+}
+
+/**
+ * Every failure code for every live library, 0 included, so a library's first failure is a step
+ * from 0 that `delta()` sees (a series that appears at 1 has no change to show). `unknown` (failed
+ * before codes were recorded) only where it has jobs.
+ */
+function failedByCode(
+  t: MetricsTotals,
+  lib: (id: string) => string,
+): { labels: Labels; value: number }[] {
+  const count = new Map(t.failed.map((f) => [`${f.libraryId}\0${f.reason}`, f.jobs]));
+  const out: { labels: Labels; value: number }[] = [];
+  for (const l of t.libraries) {
+    const library = lib(l.id);
+    for (const reason of [...FAILURE_CODES, 'unknown'] as const) {
+      const jobs = count.get(`${l.id}\0${reason}`) ?? 0;
+      if (reason === 'unknown' && jobs === 0) continue;
+      out.push({ labels: { library, reason }, value: jobs });
+    }
+  }
+  return out;
 }

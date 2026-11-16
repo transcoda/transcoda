@@ -61,7 +61,7 @@ All sizes are bytes (Grafana's `decbytes` unit shows them in SI units, 1 GB = 1,
 | `transcoda_jobs` | gauge | `library`, `state`, `lane` | Jobs not finished yet. `state`: `queued`, `probing`, `deciding`, `building`, `encoding`, `verifying`, `replacing`. `lane`: `encode`, `quick`, or empty before a job has one. Only combinations with at least one job are listed. |
 | `transcoda_jobs_paused` | gauge | `library` | Unfinished jobs paused one by one. |
 | `transcoda_jobs_finished` | gauge | `library`, `outcome` | Finished jobs, all time. `outcome`: `done` (replaced), `kept_original`, `nothing_to_do`, `failed`, `cancelled`, `dry_run`, `skipped`, `already_processed`. |
-| `transcoda_jobs_failed` | gauge | `library`, `reason` | Failed jobs, all time, by failure code (see [Failure codes](#failure-codes)). Sums to the `failed` row of `transcoda_jobs_finished`. Only codes with at least one job are listed. |
+| `transcoda_jobs_failed` | gauge | `library`, `reason` | Jobs whose final state is failed, by failure code (see [Failure codes](#failure-codes)). Sums to the `failed` row of `transcoda_jobs_finished`. Retry failed takes jobs back out, so the count can go down and `delta()` is a net change. Every code is listed for every library, 0 included; `unknown` only when it has jobs. |
 | `transcoda_job_retries` | gauge | `library` | Attempts beyond the first, summed over all jobs. |
 | `transcoda_source_bytes` | gauge | `library` | Size of the originals of replaced files, restored ones left out. |
 | `transcoda_output_bytes` | gauge | `library` | Size of their replacements. |
@@ -111,8 +111,11 @@ sum(increase(transcoda_job_media_seconds_total{lane="encode", outcome=~"done|kep
 # Median encode-lane job duration over the last 6 hours
 histogram_quantile(0.5, sum by (le) (increase(transcoda_job_duration_seconds_bucket{lane="encode"}[6h])))
 
-# Jobs failed in the last day, by failure code
+# Net change in failed jobs over the last day, by failure code (retries count against it)
 sum by (reason) (delta(transcoda_jobs_failed[1d]))
+
+# Failed jobs right now, by failure code
+sum by (reason) (transcoda_jobs_failed)
 
 # Alert: the queue has been paused for an hour
 min_over_time(transcoda_queue_paused[1h]) == 1
