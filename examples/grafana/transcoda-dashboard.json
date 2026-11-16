@@ -71,7 +71,14 @@
       "description": "Jobs waiting to start.",
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "gridPos": { "h": 4, "w": 4, "x": 0, "y": 1 },
-      "fieldConfig": { "defaults": { "unit": "short", "decimals": 0 }, "overrides": [] },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "fixed", "fixedColor": "blue" },
+          "unit": "short",
+          "decimals": 0
+        },
+        "overrides": []
+      },
       "options": {
         "reduceOptions": { "calcs": ["lastNotNull"] },
         "colorMode": "none",
@@ -92,7 +99,14 @@
       "description": "Jobs probing, deciding, building, encoding, verifying or replacing.",
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "gridPos": { "h": 4, "w": 4, "x": 4, "y": 1 },
-      "fieldConfig": { "defaults": { "unit": "short", "decimals": 0 }, "overrides": [] },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "fixed", "fixedColor": "blue" },
+          "unit": "short",
+          "decimals": 0
+        },
+        "overrides": []
+      },
       "options": {
         "reduceOptions": { "calcs": ["lastNotNull"] },
         "colorMode": "none",
@@ -143,7 +157,10 @@
       "description": "Size of the replaced originals still in the recycle folders.",
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "gridPos": { "h": 4, "w": 4, "x": 12, "y": 1 },
-      "fieldConfig": { "defaults": { "unit": "decbytes" }, "overrides": [] },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "fixed", "fixedColor": "blue" }, "unit": "decbytes" },
+        "overrides": []
+      },
       "options": {
         "reduceOptions": { "calcs": ["lastNotNull"] },
         "colorMode": "none",
