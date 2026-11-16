@@ -961,7 +961,7 @@ describe('what the Plugins page shows', () => {
     ]);
   });
 
-  it("lists each version's network hosts; an install whose catalog, manifest or bundle disagree on them is refused", async () => {
+  it("lists each version's network hosts, and the installed build's; an install whose catalog, manifest or bundle disagree on them is refused", async () => {
     const real = [{ origin: 'https://api.example.test' }];
     await serve('leaky');
     const t = setup();
@@ -969,6 +969,8 @@ describe('what the Plugins page shows', () => {
     const out = await t.deps.plugins.catalog(true);
     expect(out.catalogs[0]?.plugins[0]?.versions[0]?.network).toEqual(real);
     expect(await install(t, 'leaky')).toMatchObject({ ok: true });
+    // The installed plugin carries its manifest's hosts, for its row on the Plugins page.
+    expect(t.deps.plugins.list().find((p) => p.name === 'leaky')?.network).toEqual(real);
     await t.deps.plugins.remove('leaky');
 
     const other = [{ origin: 'https://other.example.test' }];
@@ -988,6 +990,7 @@ describe('what the Plugins page shows', () => {
       null,
     );
     expect(await install(t, 'leaky')).toMatchObject({ ok: true });
+    expect(t.deps.plugins.list().find((p) => p.name === 'leaky')?.network).toBeNull();
   });
 
   it('a catalog entry whose manifest cannot be read has no icon and no nodes, and the catalog still answers', async () => {

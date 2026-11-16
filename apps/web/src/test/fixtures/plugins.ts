@@ -24,6 +24,7 @@ export function plugin(over: Partial<PluginSummary> = {}): PluginSummary {
     installedAt: at,
     updatedAt: at,
     icon: null,
+    network: [],
     usedBy: [],
     lastTest: null,
     ...over,
