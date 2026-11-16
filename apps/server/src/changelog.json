@@ -1,5 +1,35 @@
 [
   {
+    "version": "0.5.0",
+    "date": "2026-11-15",
+    "entries": [
+      {
+        "type": "new",
+        "text": "The install dialog shows which hosts a plugin connects to, such as discord.com or the server address you enter in its settings. An update that connects to a new host asks first and marks that host as new. This needs both versions to list their hosts in the catalog; versions built before host lists show \"Not listed\" and update without that question."
+      },
+      {
+        "type": "new",
+        "text": "Chart Transcoda in Grafana: the server now serves Prometheus metrics at `/metrics` (queue, jobs by state and outcome, space saved per library, hours of video encoded, encoder and GPU load, recycle folder size), and a ready-made Grafana dashboard is in `examples/grafana`. Create an API token with the new `metrics` scope for Prometheus to read it; set `TRANSCODA_METRICS=false` to turn it off."
+      },
+      {
+        "type": "new",
+        "text": "Home Assistant and other pollers can read a short status summary at `/api/v1/system/status` (queue, running jobs, space saved, free scratch space) with a `metrics` token. The metrics guide has a copy-paste sensor setup."
+      },
+      {
+        "type": "improved",
+        "text": "UI text now uses American spelling consistently, for example \"canceled\", \"color\" and \"license\". The Open-source licenses page moved to a new address; the old one still opens it."
+      },
+      {
+        "type": "improved",
+        "text": "When a plugin doesn't install or doesn't start, the error in the install dialog now links to a short guide on finding the server log and the plugin's own lines in it."
+      },
+      {
+        "type": "improved",
+        "text": "Every size in Transcoda now uses the same decimal units (1 GB = 1,000,000,000 bytes): Settings shows the minimum free space as \"5.00 GB\" instead of GiB, and the File matches step reads its MB values the same way. Set the minimum free space with the new `TRANSCODA_HEALTH_MIN_FREE_GB`; the older `TRANSCODA_HEALTH_MIN_FREE_GIB` still works. Likewise the decode memory limit is now set with `TRANSCODA_DECODE_MEMORY_GB`, and `TRANSCODA_DECODE_MEMORY_GIB` still works. The default margins are now 5 GB instead of 5 GiB."
+      }
+    ]
+  },
+  {
     "version": "0.4.0",
     "date": "2026-11-10",
     "entries": [

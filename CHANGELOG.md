@@ -2,6 +2,32 @@
 
 All notable changes to Transcoda, newest first. Generated from the notes in `.changes/` when a release is cut.
 
+## 0.5.0 — 2026-11-15
+
+#### Chart Transcoda in Grafana
+
+Transcoda now serves Prometheus metrics: the queue, jobs by state and outcome, space saved per library, hours of video encoded, encoder and GPU load, and the recycle folder's size. Point Prometheus at `/metrics` with an API token that has only the new `metrics` scope, then import the ready-made dashboard from `examples/grafana`. The metrics guide in `docs/metrics.md` walks through both, plus a Home Assistant sensor that reads a short status summary.
+
+![The Transcoda dashboard in Grafana: queued and running jobs, space saved, recycle folder and free scratch space on top, then encoder load, GPU video engines and job duration over the last hour](docs/releases/0.5.0/grafana-dashboard.png)
+
+#### See where a plugin connects before you install it
+
+The install dialog now lists the hosts a plugin connects to, such as api.themoviedb.org, or the server address you enter in its settings for Sonarr, Radarr and the other media apps. Transcoda's HTTP client lets a plugin reach only what is listed there. An update that would connect to a new host asks first and marks that host as new.
+
+![The install dialog for the TMDB plugin: source, signature, checksum and build proof, then "Connects to" with api.themoviedb.org](docs/releases/0.5.0/plugin-hosts.png)
+
+### New
+
+- The install dialog shows which hosts a plugin connects to, such as discord.com or the server address you enter in its settings. An update that connects to a new host asks first and marks that host as new. This needs both versions to list their hosts in the catalog; versions built before host lists show "Not listed" and update without that question.
+- Chart Transcoda in Grafana: the server now serves Prometheus metrics at `/metrics` (queue, jobs by state and outcome, space saved per library, hours of video encoded, encoder and GPU load, recycle folder size), and a ready-made Grafana dashboard is in `examples/grafana`. Create an API token with the new `metrics` scope for Prometheus to read it; set `TRANSCODA_METRICS=false` to turn it off.
+- Home Assistant and other pollers can read a short status summary at `/api/v1/system/status` (queue, running jobs, space saved, free scratch space) with a `metrics` token. The metrics guide has a copy-paste sensor setup.
+
+### Improved
+
+- UI text now uses American spelling consistently, for example "canceled", "color" and "license". The Open-source licenses page moved to a new address; the old one still opens it.
+- When a plugin doesn't install or doesn't start, the error in the install dialog now links to a short guide on finding the server log and the plugin's own lines in it.
+- Every size in Transcoda now uses the same decimal units (1 GB = 1,000,000,000 bytes): Settings shows the minimum free space as "5.00 GB" instead of GiB, and the File matches step reads its MB values the same way. Set the minimum free space with the new `TRANSCODA_HEALTH_MIN_FREE_GB`; the older `TRANSCODA_HEALTH_MIN_FREE_GIB` still works. Likewise the decode memory limit is now set with `TRANSCODA_DECODE_MEMORY_GB`, and `TRANSCODA_DECODE_MEMORY_GIB` still works. The default margins are now 5 GB instead of 5 GiB.
+
 ## 0.4.0 — 2026-11-10
 
 #### Get your original back
