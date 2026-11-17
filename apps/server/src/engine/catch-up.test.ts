@@ -1,6 +1,7 @@
 import { mkdir, rm, utimes, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { Capabilities } from '@transcoda/contract';
+import { parseFileName } from '@transcoda/shared';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Database } from '../db/open.ts';
 import { insertJobResult, listJobs, updateJob } from '../db/repos/jobs.ts';
@@ -15,6 +16,7 @@ import { EngineEvents } from './events.ts';
 import { fingerprintKey, fingerprintOf } from './fingerprint.ts';
 import { tempDir } from './fixtures.ts';
 import { nodeFsOps } from './fs-ops.ts';
+import type { MediaResolver } from './media-info.ts';
 import { QueueService } from './queue-service.ts';
 
 const caps: Capabilities = {
@@ -527,5 +529,48 @@ describe('LibraryCatchUp watching', () => {
       { timeout: 5000, interval: 50 },
     );
     watched.stop();
+  });
+});
+
+describe('catch-up media info', () => {
+  /** A queue service over the same db whose resolver counts the paths it is asked about. */
+  function counting(): { service: QueueService; resolved: string[] } {
+    const resolved: string[] = [];
+    const resolver: MediaResolver = {
+      resolve: async (path, libraryRoot) => {
+        resolved.push(path);
+        return parseFileName(path, libraryRoot);
+      },
+    };
+    const service = new QueueService({
+      db,
+      workflows,
+      events: new EngineEvents(),
+      now: () => new Date(),
+      fs: nodeFsOps,
+      settleMinutes: 3,
+      onQueued: vi.fn(),
+      mediaResolver: () => resolver,
+    });
+    return { service, resolved };
+  }
+
+  it('resolves only the new file when three are already seen', async () => {
+    for (const n of ['A', 'B', 'C']) await settled(join(root, `${n}.mkv`));
+    await scanNow(lib);
+    const added = await settled(join(root, 'D.mkv'));
+    const { service, resolved } = counting();
+    const r = await service.queueNew(root, 'u1');
+    expect(r.kind).toBe('queued');
+    expect(resolved).toEqual([added]);
+  });
+
+  it('resolves nothing when nothing is new', async () => {
+    for (const n of ['A', 'B', 'C']) await settled(join(root, `${n}.mkv`));
+    await scanNow(lib);
+    const { service, resolved } = counting();
+    const r = await service.queueNew(root, 'u1');
+    expect(r.kind).toBe('nothing-new');
+    expect(resolved).toEqual([]);
   });
 });

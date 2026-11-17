@@ -7,8 +7,10 @@ import {
   type Issue,
   type JobPlan,
   type JobState,
+  parseFileName,
   planSummary,
   type RunHours,
+  type StoredJobMedia,
 } from '@transcoda/shared';
 import type { Database } from '../db/open.ts';
 import {
@@ -33,10 +35,12 @@ import {
 } from '../db/repos/libraries.ts';
 import { findRun, insertRun, listRuns, type RunRow, runCounts } from '../db/repos/runs.ts';
 import { findFeeder, findWorkflow } from '../db/repos/workflows.ts';
+import type { Logger } from '../logger.ts';
 import type { WorkflowService } from '../workflows/service.ts';
 import type { EngineEvents } from './events.ts';
 import { type Fingerprint, fingerprintKey } from './fingerprint.ts';
 import { errorCode, type FsOps, nodeFsOps } from './fs-ops.ts';
+import { createMediaResolver, type MediaResolver } from './media-info.ts';
 import {
   checkPath,
   isMediaFile,
@@ -151,6 +155,10 @@ export interface QueueServiceDeps {
   events: EngineEvents;
   now(): Date;
   fs?: FsOps;
+  /** For debug detail only (a media lookup that failed); default: no logging. */
+  log?: Logger;
+  /** One resolver per queue call (it caches folder listings); default {@link createMediaResolver}. */
+  mediaResolver?: () => MediaResolver;
   /** Default {@link SETTLE_MINUTES}; 0 turns the "still growing" check off. */
   settleMinutes?: number;
   /** Called once per queued run and after a change to a library's run hours (the scheduler's tick). */
@@ -163,6 +171,9 @@ export interface QueueServiceDeps {
 type Candidate =
   | { path: string; skip: SkipReason; fp?: undefined }
   | { path: string; skip: null; fp: Fingerprint };
+
+/** How many files have their media info looked up at once. */
+const MEDIA_CONCURRENCY = 8;
 
 const ACTIVE_SQL = ACTIVE_JOB_STATES.map((s) => `'${s}'`).join(',');
 /** The reason of a real job skipped because another real job still held its file. */
@@ -366,6 +377,8 @@ export class QueueService {
       candidates.push(c);
     }
 
+    const media = await this.resolveMedia(candidates, library, newOnly);
+
     const { db } = this;
     const written = db.transaction(() => {
       const workflow = this.resolveWorkflow(workflowId, input.dryRun, input.workflowVersion);
@@ -455,6 +468,7 @@ export class QueueService {
             state,
             priority: input.priority,
             reason,
+            media: media.get(c.path) ?? parseFileName(c.path, library.path),
           },
           now,
         );
@@ -467,6 +481,47 @@ export class QueueService {
     this.deps.events.publish({ type: 'run.changed', runId: run.id });
     this.deps.onQueued();
     return { kind: 'queued', run, jobs };
+  }
+
+  /**
+   * The media info of the candidates worth looking up, 8 at a time. A catch-up scan lists every
+   * file on each pass, so with `newOnly` a skipped file or one already seen costs no sidecar read.
+   * A lookup that fails is logged and left out: the job then gets the file-name media.
+   */
+  private async resolveMedia(
+    candidates: Candidate[],
+    library: LibraryRow,
+    newOnly: boolean,
+  ): Promise<Map<string, StoredJobMedia>> {
+    const out = new Map<string, StoredJobMedia>();
+    const todo = candidates.filter(
+      (c) => !newOnly || (c.skip === null && !fileSeen(this.db, c.path, fingerprintKey(c.fp))),
+    );
+    if (todo.length === 0) return out;
+    const resolver = (this.deps.mediaResolver ?? (() => this.defaultResolver()))();
+    let next = 0;
+    const worker = async (): Promise<void> => {
+      while (next < todo.length) {
+        const c = todo[next++];
+        if (c === undefined) return;
+        try {
+          out.set(c.path, await resolver.resolve(c.path, library.path));
+        } catch (err) {
+          this.deps.log?.debug?.({
+            msg: 'media info failed; using the file name',
+            file: basename(c.path),
+            why: err instanceof Error ? err.message : String(err),
+          });
+        }
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(MEDIA_CONCURRENCY, todo.length) }, worker));
+    return out;
+  }
+
+  private defaultResolver(): MediaResolver {
+    const silent: Logger = { info() {}, warn() {}, error() {} };
+    return createMediaResolver({ fs: this.fs, log: this.deps.log ?? silent });
   }
 
   /** Creates a library at the realpath of an existing directory that no other root nests with. */

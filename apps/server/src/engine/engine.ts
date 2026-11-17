@@ -200,6 +200,7 @@ export class EngineService {
       events: this.events,
       now: deps.now,
       fs: deps.fs,
+      log: deps.log,
       ...(deps.settleMinutes !== undefined ? { settleMinutes: deps.settleMinutes } : {}),
       onQueued: () => this.scheduler.tick(),
       onLibrariesChanged: () => this.catchUp.syncWatchers(),

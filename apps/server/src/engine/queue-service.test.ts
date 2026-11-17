@@ -1,6 +1,7 @@
 import { link, mkdir, rm, stat, symlink, utimes, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { Capabilities } from '@transcoda/contract';
+import { parseFileName } from '@transcoda/shared';
 import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from 'vitest';
 import type { Database } from '../db/open.ts';
 import { findJob, insertJobResult, type JobResultRow, updateJob } from '../db/repos/jobs.ts';
@@ -13,6 +14,7 @@ import { type EngineEvent, EngineEvents } from './events.ts';
 import { fingerprintKey, fingerprintOf } from './fingerprint.ts';
 import { tempDir } from './fixtures.ts';
 import { type FsOps, nodeFsOps } from './fs-ops.ts';
+import type { MediaResolver } from './media-info.ts';
 import { type QueueInput, QueueService } from './queue-service.ts';
 
 const caps: Capabilities = {
@@ -1169,5 +1171,97 @@ describe('QueueService.retryFailed', () => {
     updateJob(db, id, { state: 'failed', failedGpus: ['nvidia:0'] }, new Date());
     expect(svc.retryFailed()).toEqual({ retried: 1 });
     expect(findJob(db, id)).toMatchObject({ state: 'queued', attempt: 2, failedGpus: [] });
+  });
+});
+
+describe('QueueService media info', () => {
+  const MOVIE_NFO = '<movie><title>Sherlock Jr.</title><year>1924</year></movie>';
+
+  /** A second service over the same db and library, with the given resolver. */
+  function withResolver(mediaResolver: () => MediaResolver): QueueService {
+    return new QueueService({
+      db,
+      workflows,
+      events,
+      now: () => new Date(),
+      settleMinutes: 3,
+      onQueued,
+      mediaResolver,
+    });
+  }
+
+  it('a folder with movie.nfo and poster.jpg: the job carries the nfo title and the poster', async () => {
+    const dir = join(root, 'Sherlock Jr. (1924)');
+    await mkdir(dir);
+    await writeFile(join(dir, 'movie.nfo'), MOVIE_NFO);
+    await writeFile(join(dir, 'poster.jpg'), 'img');
+    const file = await settled(join(dir, 'Sherlock Jr. (1924).mkv'));
+    const r = await queued(dir);
+    expect(r.jobs[0]?.media).toMatchObject({
+      title: 'Sherlock Jr.',
+      year: 1924,
+      source: 'sidecar',
+      posterPath: join(dir, 'poster.jpg'),
+    });
+    expect(r.jobs[0]?.path).toBe(file);
+  });
+
+  it('a file with no sidecars: the media is what the file name says', async () => {
+    const file = await settled(join(root, 'Show', 'The General (1926).mkv'));
+    const r = await queued(file);
+    expect(r.jobs[0]?.media).toEqual(parseFileName(file, lib.path));
+  });
+
+  it('a skipped candidate still has media', async () => {
+    const growing = join(root, 'Show', 'Season 1', 'e3.mkv');
+    await writeFile(growing, 'x');
+    const r = await queued(growing);
+    expect(r.jobs[0]?.state).toBe('skipped');
+    expect(r.jobs[0]?.media).toEqual(parseFileName(growing, lib.path));
+  });
+
+  it('a resolver that throws still queues the job, with the file-name media', async () => {
+    const file = await settled(join(root, 'Show', 'The General (1926).mkv'));
+    const failing = withResolver(() => ({
+      resolve: () => Promise.reject(new Error('boom')),
+    }));
+    const r = await failing.queue(input(file));
+    if (r.kind !== 'queued') throw new Error('expected queued');
+    expect(r.jobs[0]?.state).toBe('queued');
+    expect(r.jobs[0]?.media).toEqual(parseFileName(file, lib.path));
+  });
+
+  it('processAgain jobs get media', async () => {
+    const a = await settled(join(root, 'Show', 'a.mkv'));
+    const first = await queued(a);
+    const job = first.jobs[0];
+    if (!job) throw new Error('no job');
+    updateJob(db, job.id, { state: 'done' }, new Date());
+    doneResult(job.id, fingerprintKey(await fingerprintOf(a)));
+    cancelQueued();
+    const scan = await queued(a);
+    expect(scan.jobs[0]?.state).toBe('already_processed');
+    const r = await svc.processAgain(scan.run.id, { dryRun: false, createdBy: 'u2' });
+    if (r.kind !== 'queued') throw new Error(`expected queued, got ${JSON.stringify(r)}`);
+    expect(r.jobs[0]?.media).toEqual(parseFileName(a, lib.path));
+  });
+
+  it('resolves at most 8 files at a time', async () => {
+    for (let i = 0; i < 20; i++) await settled(join(root, 'Show', `f${i}.mkv`));
+    let running = 0;
+    let peak = 0;
+    const slow = withResolver(() => ({
+      resolve: async (path, libraryRoot) => {
+        running++;
+        peak = Math.max(peak, running);
+        await new Promise((r) => setTimeout(r, 5));
+        running--;
+        return parseFileName(path, libraryRoot);
+      },
+    }));
+    const r = await slow.queue(input(join(root, 'Show')));
+    if (r.kind !== 'queued') throw new Error('expected queued');
+    expect(r.jobs).toHaveLength(20);
+    expect(peak).toBe(8);
   });
 });
