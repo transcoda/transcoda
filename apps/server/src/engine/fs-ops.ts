@@ -50,6 +50,10 @@ export interface FsOps {
 export const errorCode = (err: unknown): string | undefined =>
   err instanceof Error && 'code' in err ? String(err.code) : undefined;
 
+/** The error's code (`ENOENT`) when it has one: a system error's message names full paths. */
+export const why = (err: unknown): string =>
+  errorCode(err) ?? (err instanceof Error ? err.message : String(err));
+
 async function fsync(p: string): Promise<void> {
   const fh = await fsp.open(p, 'r');
   try {

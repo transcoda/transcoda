@@ -113,7 +113,7 @@ describe('createMediaResolver', () => {
 
   it('prefers <stem>.nfo over movie.nfo and <stem>-poster over poster', async () => {
     const dir = '/lib/The General';
-    const { fs } = fakeFs({
+    const { fs, calls } = fakeFs({
       [`${dir}/The General.mkv`]: 'video',
       [`${dir}/The General.nfo`]: movieNfo('The General', 1926),
       [`${dir}/movie.nfo`]: movieNfo('Wrong', 1999),
@@ -130,6 +130,10 @@ describe('createMediaResolver', () => {
         posterPath: `${dir}/The General-poster.png`,
       }),
     );
+    // <stem>.nfo is read once (not again as a movie after the episode check); movie.nfo never.
+    expect(calls.filter((c) => c.op === 'readText').map((c) => c.path)).toEqual([
+      `${dir}/The General.nfo`,
+    ]);
   });
 
   it('makes a file the parser could not place a movie when a movie .nfo says so', async () => {

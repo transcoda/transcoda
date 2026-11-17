@@ -94,4 +94,18 @@ describe('readNfo', () => {
     expect(readNfo('<MOVIE><title>T</title></MOVIE>')?.root).toBe('movie');
     expect(readNfo('<movie><title>&#x110000;</title></movie>')?.title).toBe('&#x110000;');
   });
+
+  it.each([
+    ['unclosed openings', `<movie>${'<title>'.repeat(150_000)}`],
+    ['openings closed once at the end', `<movie>${'<title>'.repeat(150_000)}</title></movie>`],
+    ['openings without >', `<movie>${'<title '.repeat(150_000)}>x</title></movie>`],
+    ['nested content', `<movie>${'<title><b>'.repeat(100_000)}</title></movie>`],
+    ['comments before the root', `${'<!---->'.repeat(150_000)}<movie><title>T</title></movie>`],
+    ['unclosed CDATA', `<movie>${'<title><![CDATA['.repeat(60_000)}`],
+  ])('reads a ~1 MB file of %s in linear time', (_what, text) => {
+    expect(text.length).toBeGreaterThan(900_000);
+    const started = performance.now();
+    readNfo(text);
+    expect(performance.now() - started).toBeLessThan(500);
+  });
 });

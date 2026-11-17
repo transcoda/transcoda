@@ -3,7 +3,7 @@
 import { basename, dirname, extname, join } from 'node:path';
 import { isSeasonFolder, parseFileName, type StoredJobMedia } from '@transcoda/shared';
 import type { Logger } from '../logger.ts';
-import { errorCode, type FsOps } from './fs-ops.ts';
+import { type FsOps, why } from './fs-ops.ts';
 import { type Nfo, type NfoRoot, readNfo } from './nfo.ts';
 import { isWithin } from './paths.ts';
 
@@ -20,9 +20,7 @@ export interface MediaResolver {
 /** A folder's entries by lower-cased name → real name; null when it cannot be listed. */
 type Listing = Map<string, string> | null;
 
-/** The error's code (`ENOENT`) when it has one: a system error's message names full paths. */
-const why = (err: unknown): string =>
-  errorCode(err) ?? (err instanceof Error ? err.message : String(err));
+const withRoot = (nfo: Nfo | null, want: NfoRoot): Nfo | null => (nfo?.root === want ? nfo : null);
 
 /** One resolver per queue call: it caches directory listings and parsed tvshow.nfo by folder. */
 export function createMediaResolver(deps: { fs: FsOps; log: Logger }): MediaResolver {
@@ -67,19 +65,13 @@ export function createMediaResolver(deps: { fs: FsOps; log: Logger }): MediaReso
   const isOwnRealPath = async (p: string, root: string): Promise<boolean> =>
     p !== root && isWithin(p, root) && (await fs.realpath(p)) === p;
 
-  /** The `.nfo` `name` in `dir` when it parses with root `want`; null on any problem. */
-  const nfoAt = async (
-    dir: string,
-    name: string,
-    want: NfoRoot,
-    root: string,
-  ): Promise<Nfo | null> => {
+  /** The `.nfo` `name` in `dir` when it parses (any of the three roots); null on any problem. */
+  const nfoAt = async (dir: string, name: string, root: string): Promise<Nfo | null> => {
     const p = await find(dir, name, root);
     if (p === null) return null;
     try {
       if (!(await isOwnRealPath(p, root))) return null;
-      const nfo = readNfo(await fs.readText(p, NFO_MAX_BYTES));
-      return nfo?.root === want ? nfo : null;
+      return readNfo(await fs.readText(p, NFO_MAX_BYTES));
     } catch (err) {
       debug('could not read a .nfo file', p, err);
       return null;
@@ -90,7 +82,7 @@ export function createMediaResolver(deps: { fs: FsOps; log: Logger }): MediaReso
   const showAt = (dir: string, root: string): Promise<Nfo | null> => {
     let cached = shows.get(dir);
     if (cached === undefined) {
-      cached = nfoAt(dir, 'tvshow.nfo', 'tvshow', root);
+      cached = nfoAt(dir, 'tvshow.nfo', root).then((nfo) => withRoot(nfo, 'tvshow'));
       shows.set(dir, cached);
     }
     return cached;
@@ -129,10 +121,11 @@ export function createMediaResolver(deps: { fs: FsOps; log: Logger }): MediaReso
       const dir = dirname(path);
       const stem = basename(path, extname(path));
 
-      // Episode .nfo beside the file.
-      const episodeNfo = await step('could not read the episode .nfo', path, () =>
-        nfoAt(dir, `${stem}.nfo`, 'episodedetails', root),
+      // <stem>.nfo beside the file, read once: an episode's or a movie's.
+      const stemNfo = await step('could not read the .nfo beside the file', path, () =>
+        nfoAt(dir, `${stem}.nfo`, root),
       );
+      const episodeNfo = withRoot(stemNfo, 'episodedetails');
       const episodeUsable =
         episodeNfo !== null &&
         (episodeNfo.title ?? episodeNfo.showTitle ?? episodeNfo.season ?? episodeNfo.episode) !==
@@ -185,13 +178,11 @@ export function createMediaResolver(deps: { fs: FsOps; log: Logger }): MediaReso
       }
 
       // Movie .nfo: <stem>.nfo, else movie.nfo.
-      const movie = await step('could not read the movie .nfo', path, async () => {
-        for (const name of [`${stem}.nfo`, 'movie.nfo']) {
-          const nfo = await nfoAt(dir, name, 'movie', root);
-          if (nfo !== null) return nfo;
-        }
-        return null;
-      });
+      const movie =
+        withRoot(stemNfo, 'movie') ??
+        (await step('could not read movie.nfo', path, async () =>
+          withRoot(await nfoAt(dir, 'movie.nfo', root), 'movie'),
+        ));
       if (movie !== null && (movie.title !== null || movie.year !== null)) {
         media.kind = 'movie';
         media.source = 'sidecar';

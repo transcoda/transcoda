@@ -15,7 +15,8 @@ const ROOTS = new Set<string>(['movie', 'tvshow', 'episodedetails']);
 const MAX_VALUE_LENGTH = 300;
 const NAMED: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'" };
 /** Before the root element: an XML declaration, processing instructions, comments, a doctype. */
-const PROLOG = /^(?:<\?[\s\S]*?\?>|<!--[\s\S]*?-->|<!DOCTYPE[^>]*>|\s+)/i;
+const PROLOG = /(?:<\?[\s\S]*?\?>|<!--[\s\S]*?-->|<!DOCTYPE[^>]*>|\s+)/iy;
+const ROOT = /<([A-Za-z_][\w.-]*)(?=[\s/>]|$)/y;
 const CDATA = /<!\[CDATA\[([\s\S]*?)\]\]>/g;
 
 function decodeEntities(text: string): string {
@@ -37,20 +38,54 @@ function decodeContent(content: string): string {
   return out + decodeEntities(content.slice(last));
 }
 
+const isSpace = (c: string | undefined): boolean =>
+  c === ' ' || c === '\t' || c === '\n' || c === '\r';
+
+/** `text` with only A–Z lower-cased, so every index still matches the original. */
+const asciiLower = (text: string): string => text.replace(/[A-Z]+/g, (c) => c.toLowerCase());
+
 /**
  * The trimmed text of the first `<tag>…</tag>` whose content holds no element (only text and
- * CDATA), capped at 300 characters; null when there is none or it is empty.
+ * CDATA), capped at 300 characters; null when there is none or it is empty. `lower` is
+ * `asciiLower(body)`. One forward scan: linear in the length of `body`, whatever it holds.
  */
-function tagText(body: string, tag: string): string | null {
-  const re = new RegExp(`<${tag}(?:\\s[^>]*?)?(?<!/)>([\\s\\S]*?)</${tag}\\s*>`, 'gi');
-  for (const m of body.matchAll(re)) {
-    const content = m[1] as string;
-    if (content.replace(CDATA, '').includes('<')) continue;
-    const value = decodeContent(content).trim();
-    if (value === '') return null;
-    return Array.from(value).slice(0, MAX_VALUE_LENGTH).join('');
+function tagText(body: string, lower: string, tag: string): string | null {
+  const open = `<${tag}`;
+  const close = `</${tag}`;
+  let pos = 0;
+  let gt = -1; // the first '>' at or after the current opening (only moves forward)
+  for (;;) {
+    const start = lower.indexOf(open, pos);
+    if (start === -1) return null;
+    pos = start + 1;
+    const after = lower[start + open.length];
+    if (after !== '>' && !isSpace(after)) continue;
+    if (gt < start) gt = lower.indexOf('>', start);
+    if (gt === -1) return null;
+    // An opening tag holds no '<' and is not self-closing.
+    const lt = lower.indexOf('<', start + 1);
+    if ((lt !== -1 && lt < gt) || body[gt - 1] === '/') continue;
+    // The content: text and CDATA up to the next '<', which must be the closing tag.
+    let i = gt + 1;
+    for (;;) {
+      const next = lower.indexOf('<', i);
+      if (next === -1) return null;
+      if (lower.startsWith('<![cdata[', next)) {
+        const end = body.indexOf(']]>', next + 9);
+        if (end === -1) return null;
+        i = end + 3;
+        continue;
+      }
+      const tail = lower[next + close.length];
+      if (lower.startsWith(close, next) && (tail === '>' || isSpace(tail))) {
+        const value = decodeContent(body.slice(gt + 1, next)).trim();
+        if (value === '') return null;
+        return Array.from(value).slice(0, MAX_VALUE_LENGTH).join('');
+      }
+      pos = next;
+      break;
+    }
   }
-  return null;
 }
 
 function intIn(text: string | null, min: number, max: number): number | null {
@@ -62,21 +97,28 @@ function intIn(text: string | null, min: number, max: number): number | null {
 /** null for anything that is not XML with one of the three roots. Never throws. */
 export function readNfo(text: string): Nfo | null {
   try {
-    let rest = text.replace(/^﻿/, '');
-    for (let m = PROLOG.exec(rest); m !== null && m[0] !== ''; m = PROLOG.exec(rest)) {
-      rest = rest.slice(m[0].length);
+    const body = text.replace(/^\uFEFF/, '');
+    // Sticky regexes step over the prolog without copying the text.
+    let at = 0;
+    for (;;) {
+      PROLOG.lastIndex = at;
+      if (!PROLOG.test(body) || PROLOG.lastIndex === at) break;
+      at = PROLOG.lastIndex;
     }
-    const root = /^<([A-Za-z_][\w.-]*)(?=[\s/>]|$)/.exec(rest)?.[1]?.toLowerCase();
+    ROOT.lastIndex = at;
+    const root = ROOT.exec(body)?.[1]?.toLowerCase();
     if (root === undefined || !ROOTS.has(root)) return null;
-    const premiered = tagText(rest, 'premiered');
+    const lower = asciiLower(body);
+    const tag = (name: string): string | null => tagText(body, lower, name);
+    const premiered = tag('premiered');
     return {
       root: root as NfoRoot,
-      title: tagText(rest, 'title'),
-      showTitle: tagText(rest, 'showtitle'),
-      season: intIn(tagText(rest, 'season'), 0, 9999),
-      episode: intIn(tagText(rest, 'episode'), 0, 9999),
+      title: tag('title'),
+      showTitle: tag('showtitle'),
+      season: intIn(tag('season'), 0, 9999),
+      episode: intIn(tag('episode'), 0, 9999),
       year:
-        intIn(tagText(rest, 'year'), 1800, 2200) ??
+        intIn(tag('year'), 1800, 2200) ??
         intIn(premiered === null ? null : (/^\d{4}/.exec(premiered)?.[0] ?? null), 1800, 2200),
     };
   } catch {
