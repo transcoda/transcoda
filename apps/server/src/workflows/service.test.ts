@@ -44,7 +44,7 @@ const NOW = new Date('2026-10-16T20:00:00.000Z');
 const USER = 'user-1';
 
 let db: Database;
-let log: { [K in keyof Logger]: Mock<Logger[K]> };
+let log: { [K in keyof Logger]: Mock<NonNullable<Logger[K]>> };
 let svc: WorkflowService;
 
 function makeSvc(defs: AnyNodeDefinition[], capabilities: Capabilities = caps): WorkflowService {

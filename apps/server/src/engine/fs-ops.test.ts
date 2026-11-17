@@ -208,3 +208,21 @@ describe('copyRegular', () => {
     5_000,
   );
 });
+
+describe('readText', () => {
+  it('reads a small regular file as UTF-8', async () => {
+    const nfo = join(root, 'movie.nfo');
+    await writeFile(nfo, '<movie><title>Sherlock Jr.</title></movie>');
+    expect(await nodeFsOps.readText(nfo, 100)).toBe('<movie><title>Sherlock Jr.</title></movie>');
+  });
+
+  it('refuses a symlink to a file, a directory and a file over the limit', async () => {
+    const link = join(root, 'link.nfo');
+    await symlink(a, link);
+    await expect(nodeFsOps.readText(link, 100)).rejects.toThrow('it is a symbolic link');
+    await expect(nodeFsOps.readText(join(root, 'x'), 100)).rejects.toThrow(
+      'it is not a regular file',
+    );
+    await expect(nodeFsOps.readText(a, 3)).rejects.toThrow('it is larger than 3 B');
+  });
+});
