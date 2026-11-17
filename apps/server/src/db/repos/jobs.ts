@@ -9,8 +9,10 @@ import {
   type JobState,
   type JsonValue,
   type Lane,
+  parseFileName,
   planSummary,
   RUNNING_JOB_STATES,
+  type StoredJobMedia,
   type TraceEntry,
   TraceEntrySchema,
 } from '@transcoda/shared';
@@ -79,6 +81,8 @@ export interface JobRow {
   reason: string | null;
   /** Why a `failed` job failed (null for any other state, and for failures recorded before migration 0018). */
   failureCode: FailureCode | null;
+  /** What the Jobs list shows for the file, read when the job was queued; null for older jobs. */
+  media: StoredJobMedia | null;
   replaceJournal: ReplaceJournal | null;
   restoreJournal: RestoreJournal | null;
   /** The path the walk took (partial up to the failing node on a walk failure); null before. */
@@ -89,7 +93,9 @@ export interface JobRow {
   updatedAt: string;
 }
 
-export interface JobListRow extends JobRow {
+export interface JobListRow extends Omit<JobRow, 'media'> {
+  /** The stored media, or what the file name says when there is none (or it can't be read). */
+  media: StoredJobMedia;
   fileName: string;
   libraryName: string;
   workflowName: string;
@@ -228,7 +234,7 @@ export type JobInsert = Pick<
   | 'testEncode'
   | 'state'
   | 'priority'
-> & { reason?: string | null };
+> & { reason?: string | null; media?: StoredJobMedia | null };
 
 export type JobPatch = Partial<
   Pick<
@@ -274,6 +280,7 @@ interface DbJob {
   progress: string | null;
   reason: string | null;
   failure_code: FailureCode | null;
+  media: string | null;
   replace_journal: string | null;
   restore_journal: string | null;
   walk_path: string | null;
@@ -355,6 +362,16 @@ const parseStringList = (s: string): string[] => {
     return [];
   }
 };
+/** The stored media; a corrupt cell reads as none, so one bad row cannot break every job read. */
+const parseMedia = (s: string | null): StoredJobMedia | null => {
+  if (s === null) return null;
+  try {
+    const v: unknown = JSON.parse(s);
+    return typeof v === 'object' && v !== null && !Array.isArray(v) ? (v as StoredJobMedia) : null;
+  } catch {
+    return null;
+  }
+};
 const toJson = (v: unknown): string | null => (v === null ? null : JSON.stringify(v));
 const placeholders = (n: number): string => Array.from({ length: n }, () => '?').join(', ');
 const ACTIVE_SQL = ACTIVE_JOB_STATES.map((s) => `'${s}'`).join(',');
@@ -381,6 +398,7 @@ const toJob = (r: DbJob): JobRow => ({
   progress: parseJson<JobProgress>(r.progress),
   reason: r.reason,
   failureCode: r.failure_code,
+  media: parseMedia(r.media),
   replaceJournal: parseJson<ReplaceJournal>(r.replace_journal),
   restoreJournal: parseJson<RestoreJournal>(r.restore_journal),
   walkPath: parseJson<WalkStep[]>(r.walk_path),
@@ -444,8 +462,8 @@ export function insertJob(db: Database, input: JobInsert, now: Date): JobRow {
   const ts = now.toISOString();
   db.prepare(
     `INSERT INTO jobs (id, run_id, library_id, file_id, path, workflow_id, workflow_version, dry_run,
-       test_encode, state, priority, reason, queued_at, finished_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       test_encode, state, priority, reason, media, queued_at, finished_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     input.id,
     input.runId,
@@ -459,6 +477,7 @@ export function insertJob(db: Database, input: JobInsert, now: Date): JobRow {
     input.state,
     input.priority,
     input.reason ?? null,
+    toJson(input.media ?? null),
     ts,
     isFinalState(input.state) ? ts : null,
     ts,
@@ -587,8 +606,10 @@ const LIST_SELECT = `SELECT j.*, l.name AS library_name, w.name AS workflow_name
 const toListRow = (r: DbJobList): JobListRow => {
   // Dry runs only: the stored plan, parsed once for the summary and the size-gate outcome.
   const plan = r.dry_run !== 0 && r.r_plan !== null ? (JSON.parse(r.r_plan) as JobPlan) : null;
+  const job = toJob(r);
   return {
-    ...toJob(r),
+    ...job,
+    media: job.media ?? parseFileName(r.path),
     fileName: basename(r.path),
     libraryName: r.library_name ?? '',
     workflowName: r.workflow_name ?? '',

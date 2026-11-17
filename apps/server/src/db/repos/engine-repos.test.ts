@@ -188,6 +188,44 @@ describe('source damaged results', () => {
   });
 });
 
+describe('job media', () => {
+  const stored = {
+    kind: 'movie' as const,
+    title: 'Sherlock Jr.',
+    year: 1924,
+    season: null,
+    episode: null,
+    episodeTitle: null,
+    source: 'sidecar' as const,
+    posterPath: '/media/tv/poster.jpg',
+  };
+
+  it('stores the media given at insert and reads NULL without', () => {
+    expect(job('m1', { media: stored }).media).toEqual(stored);
+    expect(findJob(db, 'm1')?.media).toEqual(stored);
+    expect(job('m2').media).toBeNull();
+    expect(findJob(db, 'm2')?.media).toBeNull();
+    expect(findJobListRow(db, 'm1')?.media).toEqual(stored);
+  });
+
+  it('a list row without stored media parses the file name; invalid JSON does the same', () => {
+    const fallback = {
+      kind: 'episode',
+      title: 'Andor',
+      season: 2,
+      episode: 7,
+      source: 'filename',
+      posterPath: null,
+    };
+    job('n1', { path: '/media/shows/Andor/Andor S02E07.mkv' });
+    expect(findJobListRow(db, 'n1')?.media).toMatchObject(fallback);
+    job('n2', { path: '/media/shows/Andor/Andor S02E07.mkv' });
+    db.prepare("UPDATE jobs SET media = '{not json' WHERE id = 'n2'").run();
+    expect(findJob(db, 'n2')?.media).toBeNull();
+    expect(findJobListRow(db, 'n2')?.media).toMatchObject(fallback);
+  });
+});
+
 describe('job GPU fields', () => {
   it('reads a corrupt failed_gpus cell as an empty list', () => {
     job('g');
