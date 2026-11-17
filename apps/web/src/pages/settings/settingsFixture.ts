@@ -42,6 +42,6 @@ export function settingsFixture(): Settings {
       finishRunTimeoutMs: { value: 600_000, source: { kind: 'default' } },
       isolation: { mode: 'separate-user', variable: 'TRANSCODA_PLUGIN_ISOLATION' },
     },
-    about: { version: '1.4.0', node: 'v24.22.0' },
+    about: { version: '1.4.0', node: '26.13.1' },
   };
 }

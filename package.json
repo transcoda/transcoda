@@ -6,7 +6,7 @@
   "license": "GPL-3.0-only",
   "packageManager": "pnpm@12.20.0",
   "engines": {
-    "node": ">=24.22.1"
+    "node": ">=26.13.1"
   },
   "scripts": {
     "typecheck": "tsc -b",
@@ -24,7 +24,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.6.7",
-    "@types/node": "24.19.2",
+    "@types/node": "26.6.6",
     "tsdown": "0.23.7",
     "tsx": "4.23.15",
     "typescript": "7.0.2",
