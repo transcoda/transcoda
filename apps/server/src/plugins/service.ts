@@ -747,6 +747,7 @@ export class PluginService {
       installedAt: rec.installedAt,
       updatedAt: rec.updatedAt,
       icon: rec.manifest.icon ?? null,
+      network: rec.manifest.network ?? null,
       usedBy: this.usageIn(rec, index),
       lastTest: rec.integration ? this.settings.lastTest(rec.name) : null,
     };

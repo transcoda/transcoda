@@ -54,6 +54,11 @@ export const PluginSummarySchema = z.object({
   updatedAt: z.iso.datetime(),
   /** The manifest's SVG icon; show it only as an image, never as markup. Null: none. */
   icon: z.string().nullable(),
+  /**
+   * Where the installed build may send requests through Transcoda's HTTP client (its manifest's
+   * `network`); empty: none. Null: the build predates the list (SDK 1.3.0).
+   */
+  network: PluginNetworkSchema.nullable(),
   /** Workflows whose current or active version uses its nodes (`active`: the active one does). */
   usedBy: z.array(WorkflowRefSchema.extend({ active: z.boolean() })),
   /**

@@ -9428,6 +9428,10 @@ button.job-step-more:hover {
 .plugin-row-alert {
   margin: 0 18px 14px 76px;
 }
+/* The hosts it connects to, under the name, as the install dialog lists them. */
+.plugin-row-hosts {
+  margin: -6px 18px 14px 76px;
+}
 
 /* A row's settings: inset under the name, on the raised surface. */
 .plugin-panel {
@@ -9941,6 +9945,7 @@ button.job-step-more:hover {
     height: 44px;
   }
   .plugin-row-alert,
+  .plugin-row-hosts,
   .plugin-panel {
     margin: 0 12px 12px;
   }

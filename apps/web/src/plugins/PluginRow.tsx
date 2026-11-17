@@ -9,6 +9,7 @@ import { compareVersions } from './CatalogSection.tsx';
 import { pluginFailure } from './errors.ts';
 import type { Entry } from './InstallDialog.tsx';
 import { IntegrationSettings } from './IntegrationSettings.tsx';
+import { NetworkHosts } from './NetworkHosts.tsx';
 import { type NodeChip, NodeChips, PluginTile } from './PluginTile.tsx';
 import {
   blockedText,
@@ -52,7 +53,8 @@ function reasonLine(p: PluginSummary, now: Date): string | null {
 }
 
 /**
- * One installed plugin: tile, name, version, the workflows using it and its status, with Update
+ * One installed plugin: tile, name, version, the workflows using it, its status and the hosts it
+ * connects to (as the install dialog shows them), with Update
  * (when the catalog has a newer version; one click unless it touches a workflow) and Settings. Settings open inline: the integration's
  * form with its last test, the plugin's own buttons (disable, restart, remove), the nodes it
  * adds and the other catalog versions it can switch to.
@@ -291,6 +293,9 @@ export function PluginRow({
               <Icon name={open ? 'chevron-up' : 'chevron-down'} size={12} strokeWidth={2.6} />
             </button>
           </div>
+        </div>
+        <div className="plugin-row-hosts">
+          <NetworkHosts network={plugin.network} level={4} />
         </div>
         {plugin.blocked ? (
           <div className="alert alert-danger plugin-row-alert" role="alert">

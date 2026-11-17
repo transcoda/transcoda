@@ -176,6 +176,51 @@ describe('PluginsPage installed plugins', () => {
     expect(within(r).queryByRole('button', { name: /^Update/ })).toBeNull();
   });
 
+  it('a row lists the hosts the installed build connects to, as the install dialog does', async () => {
+    mocks.plugins.list.mockResolvedValue(
+      listOf([
+        plugin({
+          name: 'ntfy',
+          network: [
+            { origin: 'https://discord.com' },
+            { origin: 'http://ntfy.example.com' },
+            { setting: 'url', label: 'server URL' },
+          ],
+        }),
+        plugin({ name: 'quiet', network: [] }),
+        plugin({ name: 'old', network: null }),
+      ]),
+    );
+    view();
+    await screen.findByRole('article', { name: 'ntfy' });
+
+    const ntfy = row('ntfy');
+    expect(within(ntfy).getByRole('heading', { name: 'Connects to', level: 4 })).toBeTruthy();
+    const hosts = within(ntfy).getByRole('list', { name: 'Connects to' });
+    expect(
+      within(hosts)
+        .getAllByRole('listitem')
+        .map((li) => li.textContent),
+    ).toEqual([
+      'discord.com',
+      'http://ntfy.example.com',
+      'The server URL you enter in its settings',
+    ]);
+    expect(within(ntfy).getByText(NETWORK_NOTE)).toBeTruthy();
+
+    const quiet = row('quiet');
+    expect(
+      within(within(quiet).getByRole('list', { name: 'Connects to' })).getByRole('listitem')
+        .textContent,
+    ).toBe(NETWORK_NONE);
+    expect(within(quiet).getByText(NETWORK_NOTE)).toBeTruthy();
+
+    const old = row('old');
+    expect(within(old).queryByRole('list', { name: 'Connects to' })).toBeNull();
+    expect(within(old).getByText(NETWORK_UNLISTED)).toBeTruthy();
+    expect(within(old).queryByText(NETWORK_NOTE)).toBeNull();
+  });
+
   it('the status badge says how the last connection test went', async () => {
     const at = '2026-10-17T09:00:00.000Z';
     mocks.plugins.list.mockResolvedValue(

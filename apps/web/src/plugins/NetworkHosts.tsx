@@ -10,23 +10,28 @@ import {
 
 /**
  * "Connects to": the hosts a build may reach through Transcoda's HTTP client, with what that
- * promises. `added` marks the entries an update brings (a "new" badge on each).
+ * promises. `added` marks the entries an update brings (a "new" badge on each). Shown by the
+ * install and update dialogs and on an installed plugin's row.
  */
 export function NetworkHosts({
   network,
   added = [],
+  level = 3,
 }: {
   /** Null: the build predates the list. */
   network: readonly NetworkEntry[] | null;
   added?: readonly NetworkEntry[];
+  /** The heading's level: 3 in a dialog, 4 under a plugin row's name. */
+  level?: 3 | 4;
 }) {
   const id = useId();
+  const Heading = level === 4 ? 'h4' : 'h3';
   const fresh = new Set(added.map(keyOf));
   return (
     <section className="plugin-network" aria-labelledby={id}>
-      <h3 id={id} className="plugin-network-title">
+      <Heading id={id} className="plugin-network-title">
         Connects to
-      </h3>
+      </Heading>
       {network === null ? (
         <p className="plugin-network-unlisted">{NETWORK_UNLISTED}</p>
       ) : (
