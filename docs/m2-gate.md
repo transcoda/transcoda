@@ -7,6 +7,7 @@ The manual run that closes M2 (editor and job screens): the Otter & Finch cleanu
 - `pnpm check` and `pnpm build` passed before the run (web bundle 778 kB JS / 117 kB CSS, Vite's > 500 kB chunk warning; server `dist/main.js` 424 kB).
 - A throwaway instance: `TRANSCODA_CONFIG_DIR` and `TRANSCODA_TRANSCODE_DIR` in a temporary folder, the API (`tsx src/main.ts`) on 127.0.0.1:18727, Vite on 127.0.0.1:18728 proxying to it, the browser on `http://t27.localhost:18728` (listed in `TRANSCODA_ALLOWED_HOSTS`) so the session cookie stayed separate. Viewport 1440 × 900.
 - Media: `pnpm fixtures otter-finch h264-big`, with `otter-finch.mp4` copied into an empty temporary folder (`…/m2gate/media/fixtures`). Never real media. 379,411 bytes before the run.
+- The fixture had an earlier name at the time of the run; it was renamed to `otter-finch` afterwards. The sizes and outcomes below are the ones recorded on 2026-10-17. To reproduce the setup today, run `pnpm fixtures otter-finch h264-big`.
 - `/setup` completed with a generated throwaway admin.
 
 Everything below was done in the UI; nothing was created through the API by hand.

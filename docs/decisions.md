@@ -1215,7 +1215,7 @@ Summary of Phase B (Tasks 21–26) and what the Task 27 gate run added. The task
 
 ## M2 gate
 
-- **Date:** 2026-10-17. **Fixture:** `otter-finch.mp4` from `pnpm fixtures` (HEVC 180p, 20 AAC tracks, 21 mov_text subtitles with a Turkish default, one untagged subtitle, PNG cover; 379,411 bytes), copied into a temporary library folder; `h264-big.mkv` added later for the else branch and the live view.
+- **Date:** 2026-10-17. **Fixture:** `otter-finch.mp4` from `pnpm fixtures` (HEVC 180p, 20 AAC tracks, 21 mov_text subtitles with a Turkish default, one untagged subtitle, PNG cover; 379,411 bytes), copied into a temporary library folder; `h264-big.mkv` added later for the else branch and the live view. The fixture had an earlier name at the time; the recorded sizes are from that run.
 - **Outcome: passed.** From an empty instance, in the UI only: library created, sub-workflow and workflow built in the editor, dry run planned (nothing on disk changed), enabled through the dialog, a real "Scan now" replaced the file (379 kB → 133 kB, original in `.transcoda-recycle`, run summary 1 queued · 1 accounted for, Replaced 1), and a second scan ended "Nothing to do" (a third "Already processed"). The full run is in [`docs/m2-gate.md`](m2-gate.md).
 
 ## M2 fix round (Phase B review + M2 gate findings)
