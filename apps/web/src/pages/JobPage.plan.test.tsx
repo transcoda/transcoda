@@ -88,6 +88,16 @@ function job(over: Partial<JobDetail> = {}): JobDetail {
     testOutputNote: null,
     recycled: null,
     restore: null,
+    media: {
+      kind: 'episode',
+      title: 'Bluey',
+      year: null,
+      season: 1,
+      episode: 3,
+      episodeTitle: null,
+      source: 'filename',
+      poster: false,
+    },
     fileName: 'Bluey S01E03.mp4',
     filePath: '/media/Shows/Bluey/Season 01/Bluey S01E03.mp4',
     libraryId: 'l1',
@@ -177,7 +187,7 @@ describe('JobPage dry-run plan (Task 24)', () => {
   it('renders the plan above the steps and the command for a dry run', async () => {
     renderJob();
     expect(await screen.findByText('Nothing on disk changed')).toBeTruthy();
-    expect(screen.getByRole('heading', { level: 1, name: 'Bluey S01E03.mp4' })).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 1, name: 'Bluey' })).toBeTruthy();
     expect(screen.getByRole('region', { name: 'Audio' })).toBeTruthy();
     const decisions = screen.getByRole('region', { name: 'What the workflow would do' });
     expect(within(decisions).getAllByRole('listitem')).toHaveLength(3);
@@ -200,7 +210,7 @@ describe('JobPage dry-run plan (Task 24)', () => {
   it('a test-encode ran its command: the command block has no "not run" note', async () => {
     mocks.jobGet.mockResolvedValue(job({ testEncode: true }));
     renderJob();
-    await screen.findByRole('heading', { level: 1, name: 'Bluey S01E03.mp4' });
+    await screen.findByRole('heading', { level: 1, name: 'Bluey' });
     expect(screen.getByRole('region', { name: 'ffmpeg command' })).toBeTruthy();
     expect(screen.queryByRole('region', { name: 'ffmpeg command (not run)' })).toBeNull();
   });
@@ -326,7 +336,7 @@ describe('JobPage dry-run plan (Task 24)', () => {
   it('a job without a plan shows no plan view', async () => {
     mocks.jobGet.mockResolvedValue(job({ state: 'probing', plan: null, result: null }));
     renderJob();
-    await screen.findByRole('heading', { level: 1, name: 'Bluey S01E03.mp4' });
+    await screen.findByRole('heading', { level: 1, name: 'Bluey' });
     expect(screen.queryByRole('region', { name: 'Audio' })).toBeNull();
     // Without the plan's eyebrow, the header says it is a dry run.
     expect(screen.getAllByText('Dry run · Nothing on disk changed')).toHaveLength(1);
@@ -364,7 +374,7 @@ describe('JobPage before and after', () => {
   it('a job still running has no panel', async () => {
     mocks.jobGet.mockResolvedValue({ ...encoded(), state: 'encoding', result: null });
     renderJob();
-    await screen.findByRole('heading', { level: 1, name: 'Film.mkv' });
+    await screen.findByRole('heading', { level: 1, name: 'Bluey' });
     expect(screen.queryByRole('region', { name: 'Before and after' })).toBeNull();
   });
 });

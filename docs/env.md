@@ -36,7 +36,7 @@ The compose file in `docker/docker-compose.yml` adds `cap_drop: [ALL]` with only
 | `TZ` | system zone | unset (UTC) | Time zone (IANA name such as `America/New_York`) for scheduled run hours and the Jobs page's days and Saved today. UTC when unset in the image. |
 | `TRANSCODA_PORT` | `8080` | `8080` | Listen port (1-65535). UI, RPC and REST share it. |
 | `TRANSCODA_HOST` | `0.0.0.0` | `0.0.0.0` | Listen address. |
-| `TRANSCODA_CONFIG_DIR` | `/config` | `/config` | Database (`transcoda.sqlite`), `backups/` and the generated `secret.key`. |
+| `TRANSCODA_CONFIG_DIR` | `/config` | `/config` | Database (`transcoda.sqlite`), `backups/`, `posters/` (poster thumbnails) and the generated `secret.key`. |
 | `TRANSCODA_BUILD_ID` | a hash of the running server file | the `TRANSCODA_BUILD_ID` build-arg, empty by default (then the hash) | Identifies the build for the [backups](#database-backups): when it differs from the one stored at the last start, the database is backed up before anything else writes. Up to 64 letters, digits, `.`, `-` or `_`; anything else stops the server at start. Unset or empty: the first 12 hex characters of the sha256 of the server bundle (`/app/server/main.js` in the image), so every image with different server code counts as a new build. |
 | `TRANSCODA_TRANSCODE_DIR` | `/transcode` | `/transcode` | Scratch space for transcodes. Put it on a fast disk. |
 | `TRANSCODA_FFMPEG_PATH` | `ffmpeg` (from `PATH`) | `/usr/lib/jellyfin-ffmpeg/ffmpeg` | ffmpeg binary used for the capability probe and for every job. |

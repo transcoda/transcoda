@@ -17,6 +17,7 @@ import { outputFingerprint } from './0015_output_fingerprint.ts';
 import { libraryWatch } from './0016_library_watch.ts';
 import { restore } from './0017_restore.ts';
 import { failureCode } from './0018_failure_code.ts';
+import { jobMedia } from './0019_job_media.ts';
 
 export const migrations: Migration[] = [
   initial,
@@ -37,4 +38,5 @@ export const migrations: Migration[] = [
   libraryWatch,
   restore,
   failureCode,
+  jobMedia,
 ];

@@ -38,6 +38,11 @@ export interface FsOps {
    * the read. Throws an Error whose message says why (symlink, not a regular file, too large).
    */
   copyRegular(src: string, dst: string, maxBytes: number): Promise<void>;
+  /**
+   * UTF-8 text of a regular file of at most `maxBytes` (a `.nfo` sidecar), opened with O_NOFOLLOW
+   * and checked on the open handle like {@link FsOps.copyRegular}; throws otherwise.
+   */
+  readText(p: string, maxBytes: number): Promise<string>;
   /** True when anything is at `p` (a dangling symlink counts: `lstat`, not `stat`). */
   exists(p: string): Promise<boolean>;
 }
@@ -45,12 +50,61 @@ export interface FsOps {
 export const errorCode = (err: unknown): string | undefined =>
   err instanceof Error && 'code' in err ? String(err.code) : undefined;
 
+/** The error's code (`ENOENT`) when it has one: a system error's message names full paths. */
+export const why = (err: unknown): string =>
+  errorCode(err) ?? (err instanceof Error ? err.message : String(err));
+
 async function fsync(p: string): Promise<void> {
   const fh = await fsp.open(p, 'r');
   try {
     await fh.sync();
   } finally {
     await fh.close();
+  }
+}
+
+/**
+ * Opens `p` for reading with O_NOFOLLOW and checks the open handle: a regular file of at most
+ * `maxBytes`. Throws an Error whose message says why (symlink, not a regular file, too large).
+ */
+export async function openRegular(p: string, maxBytes: number): Promise<fsp.FileHandle> {
+  let input: fsp.FileHandle;
+  try {
+    input = await fsp.open(
+      p,
+      // O_NONBLOCK: a FIFO in place of the file must not block open(); fstat then refuses it.
+      fsp.constants.O_RDONLY | fsp.constants.O_NOFOLLOW | fsp.constants.O_NONBLOCK,
+    );
+  } catch (err) {
+    if (errorCode(err) === 'ELOOP') throw new Error('it is a symbolic link');
+    throw err;
+  }
+  try {
+    const info = await input.stat();
+    if (!info.isFile()) throw new Error('it is not a regular file');
+    if (info.size > maxBytes) throw new Error(`it is larger than ${fmtBytes(maxBytes)}`);
+  } catch (err) {
+    await input.close();
+    throw err;
+  }
+  return input;
+}
+
+/** Reads `input` to the end in chunks, refusing it once more than `maxBytes` arrive. */
+async function readCapped(
+  input: fsp.FileHandle,
+  maxBytes: number,
+  onChunk: (chunk: Buffer) => Promise<void>,
+): Promise<void> {
+  // Read at most maxBytes + 1 so a file that grew after the check is still refused.
+  const buffer = Buffer.alloc(Math.min(maxBytes + 1, 1 << 20));
+  let total = 0;
+  for (;;) {
+    const { bytesRead } = await input.read(buffer, 0, buffer.length, null);
+    if (bytesRead === 0) break;
+    total += bytesRead;
+    if (total > maxBytes) throw new Error(`it is larger than ${fmtBytes(maxBytes)}`);
+    await onChunk(buffer.subarray(0, bytesRead));
   }
 }
 
@@ -80,36 +134,26 @@ export const nodeFsOps: FsOps = {
   truncate: (p) => fsp.writeFile(p, ''),
   writeText: (p, text) => fsp.writeFile(p, text),
   copyRegular: async (src, dst, maxBytes) => {
-    let input: fsp.FileHandle;
+    const input = await openRegular(src, maxBytes);
     try {
-      input = await fsp.open(
-        src,
-        // O_NONBLOCK: a FIFO in place of the file must not block open(); fstat then refuses it.
-        fsp.constants.O_RDONLY | fsp.constants.O_NOFOLLOW | fsp.constants.O_NONBLOCK,
-      );
-    } catch (err) {
-      if (errorCode(err) === 'ELOOP') throw new Error('it is a symbolic link');
-      throw err;
-    }
-    try {
-      const info = await input.stat();
-      if (!info.isFile()) throw new Error('it is not a regular file');
-      if (info.size > maxBytes) throw new Error(`it is larger than ${fmtBytes(maxBytes)}`);
       const output = await fsp.open(dst, 'wx', 0o600);
       try {
-        // Read at most maxBytes + 1 so a file that grew after the check is still refused.
-        const buffer = Buffer.alloc(Math.min(maxBytes + 1, 1 << 20));
-        let total = 0;
-        for (;;) {
-          const { bytesRead } = await input.read(buffer, 0, buffer.length, null);
-          if (bytesRead === 0) break;
-          total += bytesRead;
-          if (total > maxBytes) throw new Error(`it is larger than ${fmtBytes(maxBytes)}`);
-          await output.write(buffer, 0, bytesRead);
-        }
+        await readCapped(input, maxBytes, (chunk) => output.write(chunk).then(() => {}));
       } finally {
         await output.close();
       }
+    } finally {
+      await input.close();
+    }
+  },
+  readText: async (p, maxBytes) => {
+    const input = await openRegular(p, maxBytes);
+    try {
+      const chunks: Buffer[] = [];
+      await readCapped(input, maxBytes, async (chunk) => {
+        chunks.push(Buffer.from(chunk));
+      });
+      return Buffer.concat(chunks).toString('utf8');
     } finally {
       await input.close();
     }

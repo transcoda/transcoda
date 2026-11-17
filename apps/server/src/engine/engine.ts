@@ -58,6 +58,7 @@ import { fingerprintKey } from './fingerprint.ts';
 import type { FsOps } from './fs-ops.ts';
 import { readCondensedTail } from './log-condense.ts';
 import { logPathFor, Pipeline } from './pipeline.ts';
+import { PosterStore, type Thumbnail } from './poster-store.ts';
 import { type JobProbe, jobProbeOf } from './probe.ts';
 import type { ProcessSpawner } from './process.ts';
 import { QueueService } from './queue-service.ts';
@@ -140,6 +141,8 @@ export class EngineService {
   readonly spaceWaits = new SpaceWaits();
   /** Kept test-encode outputs: retention, sweeps and the scratch-space guard. */
   readonly testOutputs: TestOutputStore;
+  /** Small cached thumbnails of the posters beside library files. */
+  readonly posters: PosterStore;
   /** The zone libraries' run hours are read in. */
   readonly timeZone: string;
   private readonly db: Database;
@@ -151,6 +154,12 @@ export class EngineService {
       db: deps.db,
       fs: deps.fs,
       config: deps.config,
+      now: deps.now,
+      log: deps.log,
+    });
+    this.posters = new PosterStore({
+      dir: `${deps.config.configDir}/posters`,
+      ffmpegPath: deps.config.ffmpegPath,
       now: deps.now,
       log: deps.log,
     });
@@ -200,6 +209,7 @@ export class EngineService {
       events: this.events,
       now: deps.now,
       fs: deps.fs,
+      log: deps.log,
       ...(deps.settleMinutes !== undefined ? { settleMinutes: deps.settleMinutes } : {}),
       onQueued: () => this.scheduler.tick(),
       onLibrariesChanged: () => this.catchUp.syncWatchers(),
@@ -414,6 +424,17 @@ export class EngineService {
       testOutputNote: this.testOutputs.note(id),
       ...this.recycleFacts(id),
     };
+  }
+
+  /** null for an unknown job, a job without a poster, or when no thumbnail can be produced. */
+  async jobPoster(id: string): Promise<Thumbnail | null> {
+    const job = findJob(this.db, id);
+    const posterPath = job?.media?.posterPath;
+    if (!job || !posterPath) return null;
+    // A deleted or missing library: its folder is no longer vouched for, so the cache only.
+    const library = findLibrary(this.db, job.libraryId);
+    const root = library && library.deletedAt === null ? library.path : null;
+    return this.posters.thumbnail(posterPath, root);
   }
 
   listJobs(filter: JobListFilter): {

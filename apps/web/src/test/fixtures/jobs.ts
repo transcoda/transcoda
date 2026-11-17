@@ -3,6 +3,18 @@
 import type { Job } from '@transcoda/contract';
 import { JOB_STATES, type JobState } from '@transcoda/shared';
 
+type Media = Job['media'];
+const episode = (title: string, season: number, number: number): Media => ({
+  kind: 'episode',
+  title,
+  year: null,
+  season,
+  episode: number,
+  episodeTitle: null,
+  source: 'filename',
+  poster: false,
+});
+
 export function job(overrides: Partial<Job> = {}): Job {
   return {
     id: 'j-base',
@@ -17,6 +29,7 @@ export function job(overrides: Partial<Job> = {}): Job {
     heldByRunHours: null,
     dryRun: false,
     testEncode: false,
+    media: episode('Andor', 2, 7),
     fileName: 'Andor S02E07.mkv',
     filePath: '/media/shows/Andor/Andor S02E07.mkv',
     libraryId: 'lib-shows',
@@ -45,6 +58,7 @@ export const fx = {
     id: 'j-bluey4',
     state: 'encoding',
     lane: 'encode',
+    media: episode('Bluey', 1, 4),
     fileName: 'Bluey S01E04.mp4',
     filePath: '/media/shows/Bluey/Bluey S01E04.mp4',
     startedAt: '2026-10-16T18:01:00.000Z',
@@ -61,6 +75,7 @@ export const fx = {
     id: 'j-severance',
     state: 'verifying',
     lane: 'quick',
+    media: episode('Severance', 2, 1),
     fileName: 'Severance S02E01.mkv',
     startedAt: '2026-10-16T18:01:00.000Z',
   }),
@@ -68,6 +83,7 @@ export const fx = {
   replaced: job({
     id: 'j-bluey3',
     state: 'done',
+    media: episode('Bluey', 1, 3),
     fileName: 'Bluey S01E03.mp4',
     ...finished,
     result: {
@@ -81,6 +97,16 @@ export const fx = {
   kept: job({
     id: 'j-dune',
     state: 'kept_original',
+    media: {
+      kind: 'movie',
+      title: 'Dune Part Two',
+      year: 2024,
+      season: null,
+      episode: null,
+      episodeTitle: null,
+      source: 'filename',
+      poster: false,
+    },
     fileName: 'Dune Part Two (2024).mkv',
     libraryId: 'lib-movies',
     libraryName: 'Movies',
@@ -90,10 +116,17 @@ export const fx = {
     ...finished,
     reason: 'Only 6% smaller, size gate needs 20%',
   }),
-  noop: job({ id: 'j-bear', state: 'nothing_to_do', fileName: 'The Bear S03E02.mkv', ...finished }),
+  noop: job({
+    id: 'j-bear',
+    state: 'nothing_to_do',
+    media: episode('The Bear', 3, 2),
+    fileName: 'The Bear S03E02.mkv',
+    ...finished,
+  }),
   skipped: job({
     id: 'j-shogun',
     state: 'skipped',
+    media: episode('Shogun', 1, 9),
     fileName: 'Shogun S01E09.mkv',
     ...finished,
     reason: 'Hardlinked by the torrent client',
@@ -101,6 +134,7 @@ export const fx = {
   failed: job({
     id: 'j-arcane',
     state: 'failed',
+    media: episode('Arcane', 2, 5),
     fileName: 'Arcane S02E05.mkv',
     ...finished,
     reason: 'Verification failed: output 4 s shorter',
@@ -109,6 +143,7 @@ export const fx = {
     id: 'j-fallout',
     state: 'dry_run',
     dryRun: true,
+    media: episode('Fallout', 1, 1),
     fileName: 'Fallout S01E01.mkv',
     workflowId: 'wf-kids',
     workflowName: 'Kids audio',

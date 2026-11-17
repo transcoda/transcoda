@@ -39,6 +39,23 @@ export const JobProgressSchema = z.object({
  */
 export const ReplacedToSchema = z.enum(['recycle', 'deleted']);
 
+/**
+ * What the Jobs list shows for a file instead of its path: read from the file's sidecar files when
+ * the job was queued, or from its name. The poster's file path stays on the server.
+ */
+export const JobMediaSchema = z.object({
+  kind: z.enum(['movie', 'episode', 'unknown']),
+  title: z.string(),
+  year: z.number().int().nullable(),
+  season: z.number().int().nullable(),
+  episode: z.number().int().nullable(),
+  episodeTitle: z.string().nullable(),
+  source: z.enum(['sidecar', 'filename']),
+  /** True when `GET /api/v1/jobs/:id/poster` may have an image. */
+  poster: z.boolean(),
+});
+export type JobMedia = z.infer<typeof JobMediaSchema>;
+
 /** One job as the list shows it. */
 export const JobSchema = z.object({
   id: z.string(),
@@ -67,6 +84,7 @@ export const JobSchema = z.object({
   dryRun: z.boolean(),
   /** Dry runs only: encode, verify and measure for real, then stop before the first write. */
   testEncode: z.boolean(),
+  media: JobMediaSchema,
   fileName: z.string(),
   filePath: z.string(),
   libraryId: z.string(),

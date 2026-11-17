@@ -21,6 +21,43 @@ describe('Jobs row detail (#44)', () => {
   });
 });
 
+describe('Jobs table (long titles)', () => {
+  it('a title keeps one line with an ellipsis', () => {
+    const t = rule('.job-title-text');
+    expect(t).toMatch(/overflow:\s*hidden/);
+    expect(t).toMatch(/text-overflow:\s*ellipsis/);
+    expect(t).toMatch(/white-space:\s*nowrap/);
+  });
+
+  it('a job name (phone cards, Run page) keeps one line with an ellipsis', () => {
+    const n = rule('.job-name');
+    expect(n).toMatch(/overflow:\s*hidden/);
+    expect(n).toMatch(/text-overflow:\s*ellipsis/);
+    expect(n).toMatch(/white-space:\s*nowrap/);
+  });
+
+  it('column widths are fixed, so a long title never widens the table', () => {
+    expect(rule('.job-table')).toMatch(/table-layout:\s*fixed/);
+  });
+
+  it('the minimum width leaves the Title column at least 240 px, with or without Actions', () => {
+    const px = (decls: string, prop: string): number =>
+      Number(decls.match(new RegExp(`(?:^|[;\\s])${prop}:\\s*(\\d+)px`))?.[1] ?? Number.NaN);
+    const col = (name: string) => px(rule(`.job-col-${name}`), 'width');
+    const fixed = ['library', 'workflow', 'status', 'result', 'when'].reduce(
+      (sum, c) => sum + col(c),
+      0,
+    );
+    expect(Number.isNaN(fixed)).toBe(false);
+    expect(px(rule('.job-table'), 'min-width') - fixed).toBeGreaterThanOrEqual(240);
+    expect(
+      px(rule('.job-table.has-actions'), 'min-width') - fixed - col('actions'),
+    ).toBeGreaterThanOrEqual(240);
+    // The table scrolls sideways inside its rounded box, not the page.
+    expect(rule('.job-list')).toMatch(/overflow-x:\s*auto/);
+  });
+});
+
 describe('Jobs stat tiles (#31)', () => {
   it('the button fills the stretched tile, so no tinted band shows under it', () => {
     expect(rule('.stat-tile.is-button')).toMatch(/display:\s*flex/);

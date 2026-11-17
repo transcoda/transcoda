@@ -9,6 +9,7 @@ import { type ResolvedAuth, resolveAuth } from './http/auth-context.ts';
 import { BACKUP_DOWNLOAD_PATH, backupDownload } from './http/backup-download.ts';
 import { checkHost, hostnameOf } from './http/host-check.ts';
 import { JOB_LOG_PATH, jobLogResponse } from './http/job-log.ts';
+import { JOB_POSTER_PATH, jobPosterResponse } from './http/job-poster.ts';
 import { METRICS_PATH, metricsResponse } from './http/metrics.ts';
 import { isHttps, requestHost } from './http/request-info.ts';
 import { mountStatic } from './http/static.ts';
@@ -182,6 +183,12 @@ export function createApp(opts: AppOptions): Hono {
   app.get(JOB_LOG_PATH, async (c) => {
     const { ctx, resolved } = await buildCtx(c);
     return respond(c, jobLogResponse(c, deps, resolved, ctx.remoteAddr), ctx, resolved);
+  });
+
+  // (3d-2) A job's poster thumbnail: image bytes, so a plain route beside the contract (session only).
+  app.get(JOB_POSTER_PATH, async (c) => {
+    const { ctx, resolved } = await buildCtx(c);
+    return respond(c, await jobPosterResponse(c, deps, resolved, ctx.remoteAddr), ctx, resolved);
   });
 
   // (3e) Prometheus scrape: plain text beside the contract (token with `metrics`, or a session).

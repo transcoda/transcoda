@@ -17,7 +17,6 @@ import {
   testEncodeOutcome,
   VERDICT_WORD,
   verdictOf,
-  whereLine,
   wouldText,
 } from './jobText.ts';
 
@@ -282,8 +281,6 @@ describe('jobText', () => {
     expect(stateWord(job({ ...fx.kept, dryRun: true }))).toBe('Would keep original');
     expect(stateWord(job({ ...fx.noop, dryRun: true }))).toBe('Nothing to do');
     expect(stateWord(job({ ...fx.kept, dryRun: false }))).toBe('Kept original');
-    expect(whereLine(fx.running)).toBe('Shows · TV cleanup v7');
-    expect(whereLine(fx.kept)).toBe('Movies · Movie shrink v3');
   });
 
   it('phoneLine is the verdict word and a short reason (screen 08)', () => {

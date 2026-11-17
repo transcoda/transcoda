@@ -1,5 +1,5 @@
 import { act, cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
-import type { EngineEvent } from '@transcoda/contract';
+import type { EngineEvent, Job } from '@transcoda/contract';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
@@ -51,6 +51,7 @@ vi.mock('../api/client.ts', () => ({
 
 import { EventsProvider } from '../hooks/useEvents.ts';
 import { REFETCH_COALESCE_MS } from '../hooks/useRefetchOn.ts';
+import { jobTitle } from '../jobs/mediaText.ts';
 import { fakeEventSource, jobChanged } from '../test/fakeEventStream.ts';
 import { counts, fx } from '../test/fixtures/jobs.ts';
 import { renderAt } from '../test/render.tsx';
@@ -169,7 +170,8 @@ async function renderPage() {
       <JobsPage />
     </EventsProvider>,
   );
-  await screen.findByText('Bluey S01E03.mp4');
+  // Desktop names the title link "Bluey S01E03"; the phone's finished card adds its result line.
+  await screen.findByRole('link', { name: /^Bluey S01E03/ });
   await waitFor(() => expect(fake.streams).toHaveLength(1));
   await act(async () =>
     fake.last().push({ type: 'queue.changed', paused: false, lanes: QUEUE.lanes, encodeSlots: [] }),
@@ -183,8 +185,13 @@ async function push(e: EngineEvent) {
   await act(async () => fake.last().push(e));
 }
 
-const rowOf = (fileName: string) =>
-  screen.getByRole('link', { name: fileName }).closest('.job-row') as HTMLElement;
+/** The table row of a job, found by its title link. */
+function rowOf(job: Pick<Job, 'id'>): HTMLElement {
+  const link = document.querySelector(`a.row-link-main[href="/jobs/${job.id}"]`);
+  const row = link?.closest('tr');
+  if (!row) throw new Error(`no row for ${job.id}`);
+  return row;
+}
 
 /** The lanes rows as one line: "Encoder: idle · Quick tasks: idle". */
 const lanesText = (el: HTMLElement) =>
@@ -251,7 +258,7 @@ describe('JobsPage', () => {
     });
     renderAt('/jobs', <JobsPage />);
     await screen.findAllByRole('heading', { name: 'Jobs' });
-    await screen.findByRole('link', { name: fx.replaced.fileName });
+    await screen.findByRole('link', { name: jobTitle(fx.replaced) });
     expect(screen.queryByRole('button', { name: 'Cancel all' })).toBeNull();
   });
 
@@ -301,7 +308,7 @@ describe('JobsPage', () => {
       problemCount: 0,
     });
     renderAt('/jobs', <JobsPage />);
-    await screen.findByRole('link', { name: fx.replaced.fileName });
+    await screen.findByRole('link', { name: jobTitle(fx.replaced) });
     expect(screen.queryByRole('button', { name: 'Cancel all' })).toBeNull();
   });
 
@@ -336,16 +343,16 @@ describe('JobsPage', () => {
     });
     await renderPage();
     const tip = 'runs on the version active when it starts';
-    await screen.findByRole('link', { name: 'Queued dry.mkv' });
-    const version = within(rowOf(fx.queued.fileName)).getByText('v7');
+    await waitFor(() => rowOf(queuedDry));
+    const version = within(rowOf(fx.queued)).getByText('v7');
     expect(version.getAttribute('title')).toBe(tip);
     expect(version.getAttribute('aria-describedby')).toBeTruthy();
     expect(
       document.getElementById(version.getAttribute('aria-describedby') as string)?.textContent,
     ).toBe(tip);
-    for (const name of [fx.running.fileName, fx.dry.fileName, 'Queued dry.mkv']) {
-      expect(rowOf(name).querySelector('[aria-describedby]')).toBeNull();
-      expect(rowOf(name).textContent).not.toContain(tip);
+    for (const j of [fx.running, fx.dry, queuedDry]) {
+      expect(rowOf(j).querySelector('[aria-describedby]')).toBeNull();
+      expect(rowOf(j).textContent).not.toContain(tip);
     }
   });
 
@@ -368,7 +375,7 @@ describe('JobsPage', () => {
       problemCount: 0,
     });
     await renderPage();
-    const row = rowOf(fx.verifying.fileName);
+    const row = rowOf(fx.verifying);
     expect(within(row).getByRole('progressbar').getAttribute('aria-valuenow')).toBe('21');
     expect(
       within(row).getByText('Checking duration, streams and decode · 3 of 14 done'),
@@ -377,16 +384,17 @@ describe('JobsPage', () => {
 
   it('a failed row clamps its reason to two lines, the whole line on hover (#44)', async () => {
     await renderPage();
-    const detail = within(rowOf(fx.failed.fileName)).getByText(
+    const detail = within(rowOf(fx.failed)).getByText(
       'Verification failed: output 4 s shorter · original untouched',
     );
     expect(detail.classList.contains('job-detail-clamp')).toBe(true);
+    expect(detail.classList.contains('is-failed')).toBe(true);
     expect(detail.getAttribute('title')).toBe(detail.textContent);
   });
 
   it('a finished dry run shows its would-be verdict with the Dry run badge beside it', async () => {
     await renderPage();
-    const row = rowOf(fx.dry.fileName);
+    const row = rowOf(fx.dry);
     expect(within(row).getByText('Would replace')).toBeTruthy();
     expect(within(row).queryByText('Plan ready')).toBeNull();
     expect(within(row).getByText('Dry run').closest('.badge-dry')).not.toBeNull();
@@ -417,30 +425,32 @@ describe('JobsPage', () => {
       problemCount: 0,
     });
     await renderPage();
-    const est = rowOf(withEstimate.fileName);
+    const est = rowOf(withEstimate);
     expect(within(est).getByText('Would replace · −34%')).toBeTruthy();
     expect(within(est).getByText('Convert 1 video track; drop 1 subtitle track')).toBeTruthy();
-    const none = rowOf('No history.mkv');
+    const none = rowOf(noEstimate);
     expect(within(none).getByText('Would replace')).toBeTruthy();
     expect(none.textContent).not.toContain('%');
   });
 
   it('each row says when it last moved, the exact time on hover (polish review)', async () => {
     await renderPage();
-    const time = rowOf(fx.dry.fileName).querySelector('time') as HTMLTimeElement;
+    const time = rowOf(fx.dry).querySelector('td.job-when time') as HTMLTimeElement;
     const when = fx.dry.finishedAt ?? fx.dry.startedAt ?? fx.dry.queuedAt;
     expect(time.getAttribute('datetime')).toBe(when);
     expect(time.getAttribute('title')).toBeTruthy();
     expect(time.textContent).toBeTruthy();
   });
 
-  it('the row is the link: the file name opens the job, no "Details" links (convention 9)', async () => {
+  it('the row is the link: the title opens the job, no "Details" links (convention 9)', async () => {
     await renderPage();
-    const row = rowOf(fx.dry.fileName);
+    const row = rowOf(fx.dry);
     expect(row.classList.contains('row-link')).toBe(true);
-    const link = within(row).getByRole('link', { name: fx.dry.fileName });
+    const link = within(row).getByRole('link', { name: jobTitle(fx.dry) });
     expect(link.getAttribute('href')).toBe(`/jobs/${fx.dry.id}`);
     expect(link.classList.contains('row-link-main')).toBe(true);
+    // The file name shows on hover only.
+    expect(link.getAttribute('title')).toBe(fx.dry.fileName);
     expect(within(row).queryByText('Details')).toBeNull();
     expect(within(row).queryByRole('link', { name: /^Details/ })).toBeNull();
   });
@@ -453,11 +463,9 @@ describe('JobsPage', () => {
       problemCount: 0,
     });
     await renderPage();
-    await screen.findByRole('link', { name: 'Queued dry.mkv' });
-    expect(
-      within(rowOf('Queued dry.mkv')).getByText('Dry run').closest('.badge-dry'),
-    ).not.toBeNull();
-    expect(rowOf(fx.running.fileName).querySelector('.badge-dry')).toBeNull();
+    await waitFor(() => rowOf(queuedDry));
+    expect(within(rowOf(queuedDry)).getByText('Dry run').closest('.badge-dry')).not.toBeNull();
+    expect(rowOf(fx.running).querySelector('.badge-dry')).toBeNull();
   });
 
   it('a planned job waiting for a lane reads "Planned" with "waiting for the encoder"', async () => {
@@ -474,8 +482,8 @@ describe('JobsPage', () => {
       problemCount: 0,
     });
     await renderPage();
-    await screen.findByRole('link', { name: 'Planned.mkv' });
-    const row = rowOf('Planned.mkv');
+    await waitFor(() => rowOf(planned));
+    const row = rowOf(planned);
     expect(within(row).getByText('Planned')).toBeTruthy();
     expect(within(row).getByText('Planned · waiting for the encoder')).toBeTruthy();
   });
@@ -516,32 +524,26 @@ describe('JobsPage', () => {
     ]);
     fireEvent.keyDown(screen.getByRole('listbox'), { key: 'Escape' });
 
-    const list = screen.getByRole('region', { name: 'Job list' });
-    expect(list.querySelectorAll('.job-row')).toHaveLength(ALL_JOBS.length);
-    const replaced = rowOf('Bluey S01E03.mp4');
-    expect(within(replaced).getByText('Shows · TV cleanup v7')).toBeTruthy();
-    expect(
-      within(replaced)
-        .getByRole('link', { name: 'Run summary for Bluey S01E03.mp4' })
-        .getAttribute('href'),
-    ).toBe('/runs/r1');
+    const list = screen.getByRole('table', { name: 'Job list' });
+    expect(within(list).getAllByRole('row')).toHaveLength(ALL_JOBS.length + 1);
+    const replaced = rowOf(fx.replaced);
+    expect(within(replaced).getByText('Shows')).toBeTruthy();
+    expect(within(replaced).getByText('TV cleanup v7')).toBeTruthy();
     expect(replaced.querySelector('.job-chip')?.textContent).toBe('Replaced');
-    expect(
-      within(replaced).getByText('2.41 GB → 1.62 GB, saved 790 MB · original in recycle folder'),
-    ).toBeTruthy();
-    expect(
-      within(replaced).getByRole('link', { name: 'Bluey S01E03.mp4' }).getAttribute('href'),
-    ).toBe('/jobs/j-bluey3');
-    const running = rowOf('Bluey S01E04.mp4');
+    expect(within(replaced).getByText('2.41 GB → 1.62 GB')).toBeTruthy();
+    expect(within(replaced).getByRole('link', { name: 'Bluey S01E03' }).getAttribute('href')).toBe(
+      '/jobs/j-bluey3',
+    );
+    const running = rowOf(fx.running);
     expect(running.querySelector('.job-chip')?.textContent).toBe('Encoding');
     expect(within(running).getByRole('progressbar').getAttribute('aria-valuenow')).toBe('42');
     expect(within(running).getByText('42% · 118 fps · ETA 3 min')).toBeTruthy();
-    // Per-row controls are named for their file (one "Pause" per row is ambiguous to a reader).
-    expect(within(running).getByRole('button', { name: 'Pause Bluey S01E04.mp4' })).toBeTruthy();
-    expect(within(running).getByRole('button', { name: 'Cancel Bluey S01E04.mp4' })).toBeTruthy();
+    // Per-row controls are named for their job (one "Pause" per row is ambiguous to a reader).
+    expect(within(running).getByRole('button', { name: 'Pause Bluey S01E04' })).toBeTruthy();
+    expect(within(running).getByRole('button', { name: 'Cancel Bluey S01E04' })).toBeTruthy();
     expect(within(running).queryByRole('link', { name: /^Details/ })).toBeNull();
     // A queued job while the queue runs waits for a lane.
-    expect(within(rowOf('Andor S02E07.mkv')).getByText('Waiting its turn')).toBeTruthy();
+    expect(within(rowOf(fx.queued)).getByText('Waiting its turn')).toBeTruthy();
     expect(mocks.list).toHaveBeenCalledWith({ limit: 200 });
   });
 
@@ -683,7 +685,7 @@ describe('JobsPage', () => {
       problemCount: 1,
     });
     await renderPage();
-    const row = rowOf('Bluey S01E03.mp4');
+    const row = rowOf(fx.replaced);
     expect(row.querySelector('.job-chip')?.textContent).toBe('Needs attention');
     expect(
       within(row).getByText(
@@ -701,12 +703,12 @@ describe('JobsPage', () => {
       ...jobChanged('j-bluey4'),
       progress: { ...p, percent: 61, etaSeconds: 120 },
     } as EngineEvent);
-    const running = rowOf('Bluey S01E04.mp4');
+    const running = rowOf(fx.running);
     expect(within(running).getByRole('progressbar').getAttribute('aria-valuenow')).toBe('61');
     expect(within(running).getByText('61% · 118 fps · ETA 2 min')).toBeTruthy();
     // The queued job starts probing: the state moves in place and the counts follow.
     await push({ ...jobChanged('j-andor'), state: 'probing', lane: 'quick' } as EngineEvent);
-    expect(rowOf('Andor S02E07.mkv').querySelector('.job-chip')?.textContent).toBe('Probing');
+    expect(rowOf(fx.queued).querySelector('.job-chip')?.textContent).toBe('Probing');
     expect(screen.getByRole('button', { name: 'Running 3' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Queued 36' })).toBeTruthy();
     expect(mocks.list).toHaveBeenCalledTimes(2);
@@ -726,10 +728,10 @@ describe('JobsPage', () => {
     await waitFor(() => expect(mocks.list).toHaveBeenCalledTimes(3));
   });
 
-  it('Pause queue calls queue.pause and shows the paused banner; lanes line names the running file', async () => {
+  it('Pause queue calls queue.pause and shows the paused banner; lanes line names the running job', async () => {
     await renderPage();
     expect(lanesText(await screen.findByTestId('lanes'))).toBe(
-      'Encoder: Bluey S01E04.mp4 · Quick tasks: idle',
+      'Encoder: Bluey S01E04 · Quick tasks: idle',
     );
     fireEvent.click(screen.getByRole('button', { name: 'Pause queue' }));
     await waitFor(() => expect(mocks.queuePause).toHaveBeenCalled());
@@ -751,21 +753,21 @@ describe('JobsPage', () => {
       encodeSlots: [],
     });
     expect(lanesText(screen.getByTestId('lanes'))).toBe(
-      'Encoder: idle · Quick tasks: Severance S02E01.mkv',
+      'Encoder: idle · Quick tasks: Severance S02E01',
     );
     expect(screen.getByRole('button', { name: 'Resume queue' })).toBeTruthy();
     // Nothing starts while the queue is paused: a queued row says so.
-    expect(within(rowOf('Andor S02E07.mkv')).getByText('Queue paused')).toBeTruthy();
+    expect(within(rowOf(fx.queued)).getByText('Queue paused')).toBeTruthy();
   });
 
   it("hides a job's own Pause while the whole queue is paused; Cancel stays (#54)", async () => {
     await renderPage();
-    const andor = rowOf('Andor S02E07.mkv');
-    expect(within(andor).getByRole('button', { name: 'Pause Andor S02E07.mkv' })).toBeTruthy();
+    const andor = rowOf(fx.queued);
+    expect(within(andor).getByRole('button', { name: 'Pause Andor S02E07' })).toBeTruthy();
     await push({ type: 'queue.changed', paused: true, lanes: QUEUE.lanes, encodeSlots: [] });
-    const paused = rowOf('Andor S02E07.mkv');
-    expect(within(paused).queryByRole('button', { name: 'Pause Andor S02E07.mkv' })).toBeNull();
-    expect(within(paused).getByRole('button', { name: 'Cancel Andor S02E07.mkv' })).toBeTruthy();
+    const paused = rowOf(fx.queued);
+    expect(within(paused).queryByRole('button', { name: 'Pause Andor S02E07' })).toBeNull();
+    expect(within(paused).getByRole('button', { name: 'Cancel Andor S02E07' })).toBeTruthy();
   });
 
   it('the Runs facet narrows the list and its counts to dry or real runs; Cancel all keeps counting both (#54)', async () => {
@@ -858,41 +860,35 @@ describe('JobsPage', () => {
 
   it('Pause and Resume a single job', async () => {
     await renderPage();
-    fireEvent.click(
-      within(rowOf('Bluey S01E04.mp4')).getByRole('button', { name: 'Pause Bluey S01E04.mp4' }),
-    );
+    fireEvent.click(within(rowOf(fx.running)).getByRole('button', { name: 'Pause Bluey S01E04' }));
     await waitFor(() => expect(mocks.pause).toHaveBeenCalledWith({ id: 'j-bluey4' }));
     await push({
       ...jobChanged('j-bluey4'),
       paused: true,
       progress: fx.running.progress,
     } as EngineEvent);
-    const row = rowOf('Bluey S01E04.mp4');
+    const row = rowOf(fx.running);
     expect([...row.querySelectorAll('.job-chip')].map((c) => c.textContent)).toEqual([
       'Encoding',
       'Paused',
     ]);
     expect(screen.getByRole('button', { name: 'Paused 1' })).toBeTruthy();
-    fireEvent.click(within(row).getByRole('button', { name: 'Resume Bluey S01E04.mp4' }));
+    fireEvent.click(within(row).getByRole('button', { name: 'Resume Bluey S01E04' }));
     await waitFor(() => expect(mocks.resume).toHaveBeenCalledWith({ id: 'j-bluey4' }));
   });
 
   it('Cancel asks for confirmation and handles JOB_NOT_ACTIVE with a toast and reload', async () => {
     await renderPage();
-    fireEvent.click(
-      within(rowOf('Bluey S01E04.mp4')).getByRole('button', { name: 'Cancel Bluey S01E04.mp4' }),
-    );
-    const dialog = await screen.findByRole('dialog', { name: 'Cancel Bluey S01E04.mp4?' });
+    fireEvent.click(within(rowOf(fx.running)).getByRole('button', { name: 'Cancel Bluey S01E04' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Cancel Bluey S01E04?' });
     expect(within(dialog).getByText('The original stays untouched.')).toBeTruthy();
     fireEvent.click(within(dialog).getByRole('button', { name: 'Keep running' }));
     expect(mocks.cancel).not.toHaveBeenCalled();
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
 
     mocks.cancel.mockRejectedValueOnce({ defined: true, code: 'JOB_NOT_ACTIVE' });
-    fireEvent.click(
-      within(rowOf('Bluey S01E04.mp4')).getByRole('button', { name: 'Cancel Bluey S01E04.mp4' }),
-    );
-    const again = await screen.findByRole('dialog', { name: 'Cancel Bluey S01E04.mp4?' });
+    fireEvent.click(within(rowOf(fx.running)).getByRole('button', { name: 'Cancel Bluey S01E04' }));
+    const again = await screen.findByRole('dialog', { name: 'Cancel Bluey S01E04?' });
     fireEvent.click(within(again).getByRole('button', { name: 'Cancel job' }));
     await waitFor(() => expect(mocks.cancel).toHaveBeenCalledWith({ id: 'j-bluey4' }));
     expect(await screen.findByText('That job already finished')).toBeTruthy();
@@ -951,7 +947,7 @@ describe('JobsPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Failed 4' }));
     expect(await screen.findByText('No jobs match this filter.')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Show all' }));
-    expect(await screen.findByText('Bluey S01E03.mp4')).toBeTruthy();
+    expect(await screen.findByRole('link', { name: 'Bluey S01E03' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'All 2,149' }).getAttribute('aria-pressed')).toBe(
       'true',
     );
@@ -978,7 +974,7 @@ describe('JobsPage', () => {
         <JobsPage />
       </EventsProvider>,
     );
-    await screen.findByText('Bluey S01E03.mp4');
+    await screen.findByText('Bluey S01E03');
     fireEvent.click(await screen.findByRole('button', { name: 'Failed 4' }));
     await waitFor(() => expect(mocks.list).toHaveBeenCalledWith({ state: ['failed'], limit: 200 }));
   });
@@ -991,7 +987,7 @@ describe('JobsPage', () => {
         <JobsPage />
       </EventsProvider>,
     );
-    await screen.findByText('Bluey S01E03.mp4');
+    await screen.findByText('Bluey S01E03');
     const tiles = await screen.findByRole('list', { name: 'Today' });
     await waitFor(() =>
       expect([...tiles.querySelectorAll('.stat-tile')].map((t) => t.textContent)).toEqual([
@@ -1003,7 +999,8 @@ describe('JobsPage', () => {
     );
     expect(mocks.problems).toHaveBeenCalledWith({ limit: 1, problems: true });
     const running = screen.getByRole('region', { name: 'Running' });
-    expect(within(running).getByText('Bluey S01E04.mp4')).toBeTruthy();
+    expect(within(running).getByRole('link', { name: 'Bluey S01E04' }).textContent).toBe('Bluey');
+    expect(within(running).getByText('S01E04')).toBeTruthy();
     expect(within(running).getByText('42%')).toBeTruthy();
     expect(within(running).getByText('Encoding · 118 fps · ETA 3 min')).toBeTruthy();
     expect(within(running).getByText('Checking duration, streams and decode')).toBeTruthy();
@@ -1016,19 +1013,216 @@ describe('JobsPage', () => {
     expect(within(finished).getByText('Failed · original untouched')).toBeTruthy();
     expect(
       within(finished)
-        .getByRole('link', { name: /Bluey S01E03\.mp4/ })
+        .getByRole('link', { name: /Bluey S01E03/ })
         .getAttribute('href'),
     ).toBe('/jobs/j-bluey3');
-    expect(screen.queryByRole('region', { name: 'Job list' })).toBeNull();
+    expect(screen.queryByRole('table', { name: 'Job list' })).toBeNull();
     // Queued jobs are listed too, with their controls.
     const queued = screen.getByRole('region', { name: 'Queued' });
-    expect(within(queued).getByText('Andor S02E07.mkv')).toBeTruthy();
+    expect(within(queued).getByRole('link', { name: 'Andor S02E07' }).textContent).toBe('Andor');
+    expect(within(queued).getByText('S02E07')).toBeTruthy();
     expect(within(queued).getByText('Waiting its turn')).toBeTruthy();
-    expect(within(queued).getByRole('button', { name: 'Pause Andor S02E07.mkv' })).toBeTruthy();
-    expect(within(queued).getByRole('button', { name: 'Cancel Andor S02E07.mkv' })).toBeTruthy();
+    expect(within(queued).getByRole('button', { name: 'Pause Andor S02E07' })).toBeTruthy();
+    expect(within(queued).getByRole('button', { name: 'Cancel Andor S02E07' })).toBeTruthy();
+    // Titles, not file names; no posters on the phone list.
+    for (const j of ALL_JOBS) expect(screen.queryByText(j.fileName)).toBeNull();
+    expect(document.querySelector('.phone-section img, .phone-section .poster')).toBeNull();
     // The phone header and its Menu drawer belong to the shell now, not to this page.
     expect(screen.queryByRole('button', { name: 'Menu' })).toBeNull();
     expect(screen.getByRole('heading', { level: 1, name: 'Jobs' })).toBeTruthy();
+  });
+});
+
+describe('Jobs table', () => {
+  const withJobs = (jobs: Job[]) =>
+    mocks.list.mockResolvedValue({ jobs: [fx.replaced, ...jobs], counts: COUNTS, problemCount: 0 });
+  const headers = () =>
+    within(screen.getByRole('table', { name: 'Job list' }))
+      .getAllByRole('columnheader')
+      .map((h) => h.textContent);
+
+  it('is a table with Title, Library, Workflow, Status, Result and When; an Actions column only while a job is active', async () => {
+    await renderPage();
+    expect(headers()).toEqual([
+      'Title',
+      'Library',
+      'Workflow',
+      'Status',
+      'Result',
+      'When',
+      'Actions',
+    ]);
+    const actions = within(screen.getByRole('table', { name: 'Job list' })).getByRole(
+      'columnheader',
+      { name: 'Actions' },
+    );
+    expect(actions.querySelector('.sr-only')?.textContent).toBe('Actions');
+    expect(screen.getByRole('table', { name: 'Job list' }).classList).toContain('has-actions');
+    cleanup();
+    mocks.list.mockResolvedValue({
+      jobs: [fx.replaced, fx.failed],
+      counts: COUNTS,
+      problemCount: 0,
+    });
+    renderAt('/jobs', <JobsPage />);
+    await screen.findByRole('link', { name: 'Bluey S01E03' });
+    expect(headers()).toEqual(['Title', 'Library', 'Workflow', 'Status', 'Result', 'When']);
+    expect(screen.getByRole('table', { name: 'Job list' }).classList).not.toContain('has-actions');
+  });
+
+  it('an episode row: the show title links to the job with the file name on hover, then code, library, workflow and state; no file name', async () => {
+    const ep = {
+      ...fx.replaced,
+      id: 'j-bh17',
+      media: {
+        ...fx.replaced.media,
+        title: 'The Beverly Hillbillies',
+        season: 1,
+        episode: 17,
+        episodeTitle: "Jed's Dilemma",
+      },
+      fileName: 'The.Beverly.Hillbillies.S01E17.mkv',
+    };
+    withJobs([ep, fx.queued]);
+    await renderPage();
+    const row = rowOf(ep);
+    const link = within(row).getByRole('link', { name: 'The Beverly Hillbillies S01E17' });
+    expect(link.textContent).toBe('The Beverly Hillbillies');
+    expect(link.getAttribute('href')).toBe('/jobs/j-bh17');
+    expect(link.getAttribute('title')).toBe(ep.fileName);
+    const code = within(row).getByText('S01E17');
+    expect(code.closest('.job-title-sub')?.textContent).toBe("S01E17 · Jed's Dilemma");
+    expect(within(row).getByText('Shows')).toBeTruthy();
+    expect(within(row).getByText('TV cleanup v7')).toBeTruthy();
+    expect(row.querySelector('.job-chip')?.textContent).toBe('Replaced');
+    expect(within(row).queryByText(ep.fileName)).toBeNull();
+    expect(row.textContent).not.toContain(ep.fileName);
+    expect(within(rowOf(fx.queued)).getByText('S02E07')).toBeTruthy();
+  });
+
+  it('a movie row shows its year under the title; a row with no match has no sub line', async () => {
+    const unknown = {
+      ...fx.noop,
+      id: 'j-home',
+      media: {
+        kind: 'unknown' as const,
+        title: 'Lake trip',
+        year: null,
+        season: null,
+        episode: null,
+        episodeTitle: null,
+        source: 'filename' as const,
+        poster: false,
+      },
+      fileName: 'Lake trip.mkv',
+    };
+    withJobs([fx.kept, unknown]);
+    await renderPage();
+    const movie = rowOf(fx.kept);
+    expect(within(movie).getByRole('link', { name: 'Dune Part Two (2024)' }).textContent).toBe(
+      'Dune Part Two',
+    );
+    expect(movie.querySelector('.job-title-sub')?.textContent).toBe('2024');
+    const none = rowOf(unknown);
+    expect(within(none).getByRole('link', { name: 'Lake trip' })).toBeTruthy();
+    expect(none.querySelector('.job-title-sub')).toBeNull();
+  });
+
+  it('every row has a poster box; a job with a poster shows its thumbnail', async () => {
+    const withPoster = { ...fx.kept, media: { ...fx.kept.media, poster: true } };
+    withJobs([withPoster]);
+    await renderPage();
+    const img = rowOf(withPoster).querySelector('.poster-row img');
+    expect(img?.getAttribute('src')).toBe(`/api/v1/jobs/${fx.kept.id}/poster`);
+    expect(rowOf(fx.replaced).querySelector('.poster-row.poster-empty')).not.toBeNull();
+  });
+
+  it('a kept original with both sizes: the reason first, the sizes under it, no change line', async () => {
+    const kept = {
+      ...fx.kept,
+      result: {
+        outcome: 'kept_original' as const,
+        beforeBytes: 2_000_000_000,
+        afterBytes: 1_880_000_000,
+        replacedTo: null,
+        sourceDamaged: false,
+      },
+    };
+    withJobs([kept]);
+    await renderPage();
+    const cell = rowOf(kept).querySelector('td.job-outcome') as HTMLElement;
+    const reason = within(cell).getByText('Only 6% smaller, size gate needs 20%');
+    expect(reason.classList.contains('is-kept')).toBe(true);
+    const lines = [...cell.children].map((c) => c.textContent);
+    expect(lines).toEqual(['Only 6% smaller, size gate needs 20%', '2.00 GB → 1.88 GB']);
+    expect(cell.textContent).not.toContain('saved');
+  });
+
+  it('a replaced job shows its sizes, then the saving in the accent; one that grew in muted; no recycle folder note', async () => {
+    const grew = {
+      ...fx.replaced,
+      id: 'j-grew',
+      media: { ...fx.replaced.media, episode: 9 },
+      result: {
+        outcome: 'done' as const,
+        beforeBytes: 1_000_000_000,
+        afterBytes: 1_047_000_000,
+        replacedTo: 'recycle' as const,
+        sourceDamaged: false,
+      },
+    };
+    withJobs([grew]);
+    await renderPage();
+    const cell = rowOf(fx.replaced).querySelector('td.job-outcome') as HTMLElement;
+    expect([...cell.children].map((c) => c.textContent)).toEqual([
+      '2.41 GB → 1.62 GB',
+      'saved 33% · 790 MB',
+    ]);
+    expect(within(cell).getByText('saved 33% · 790 MB').classList.contains('is-saved')).toBe(true);
+    expect(cell.textContent).not.toContain('original in recycle folder');
+    const grewChange = within(rowOf(grew)).getByText('grew 4.7% · 47.0 MB');
+    expect(grewChange.classList.contains('is-grew')).toBe(true);
+  });
+
+  it('a failed job shows its reason in the failed colour with the whole text on hover', async () => {
+    await renderPage();
+    const text = 'Verification failed: output 4 s shorter · original untouched';
+    const detail = within(rowOf(fx.failed)).getByText(text);
+    expect(detail.classList.contains('is-failed')).toBe(true);
+    expect(detail.getAttribute('title')).toBe(text);
+  });
+
+  it('a row has no run link; the job page links to the run', async () => {
+    await renderPage();
+    for (const j of ALL_JOBS) {
+      expect(within(rowOf(j)).queryByRole('link', { name: /^Run summary/ })).toBeNull();
+      expect(rowOf(j).querySelector('a[href^="/runs/"]')).toBeNull();
+    }
+  });
+
+  it('a failed pause names the job by its title', async () => {
+    mocks.pause.mockRejectedValueOnce(new Error('nope'));
+    await renderPage();
+    fireEvent.click(within(rowOf(fx.running)).getByRole('button', { name: 'Pause Bluey S01E04' }));
+    expect(await screen.findByText("Couldn't pause Bluey S01E04")).toBeTruthy();
+  });
+
+  it('a button in a row does not open the job', async () => {
+    const view = await renderPage();
+    fireEvent.click(within(rowOf(fx.queued)).getByRole('button', { name: 'Pause Andor S02E07' }));
+    await waitFor(() => expect(mocks.pause).toHaveBeenCalledWith({ id: 'j-andor' }));
+    fireEvent.click(within(rowOf(fx.queued)).getByRole('button', { name: 'Cancel Andor S02E07' }));
+    expect(await screen.findByRole('dialog', { name: 'Cancel Andor S02E07?' })).toBeTruthy();
+    expect(view.location()).toBe('/jobs');
+  });
+
+  it('a 200-character title sits in the one-line, ellipsized title text', async () => {
+    const long = 'A'.repeat(200);
+    const job = { ...fx.kept, id: 'j-long', media: { ...fx.kept.media, title: long, year: null } };
+    withJobs([job]);
+    await renderPage();
+    const text = within(rowOf(job)).getByText(long);
+    expect(text.closest('.job-title-text')).not.toBeNull();
   });
 });
 

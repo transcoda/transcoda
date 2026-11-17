@@ -11,6 +11,7 @@ import { redactGraph } from '../redact.ts';
 
 /** The list row as the API shows it (no replace journal, file id, walk path or requeue count). */
 function toJob(r: JobListRow & { heldByRunHours: RunHoursHold | null }): Job {
+  const { posterPath, ...mediaFields } = r.media;
   return {
     id: r.id,
     runId: r.runId,
@@ -23,6 +24,7 @@ function toJob(r: JobListRow & { heldByRunHours: RunHoursHold | null }): Job {
     priority: r.priority,
     dryRun: r.dryRun,
     testEncode: r.testEncode,
+    media: { ...mediaFields, poster: posterPath !== null },
     fileName: r.fileName,
     filePath: r.path,
     libraryId: r.libraryId,

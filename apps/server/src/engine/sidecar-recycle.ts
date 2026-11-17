@@ -4,13 +4,9 @@ import type { BuildModel } from '@transcoda/sdk';
 import type { RecycledInsert } from '../db/repos/jobs.ts';
 import type { Logger } from '../logger.ts';
 import { extraInputOf, isExtraStream } from './build-model.ts';
-import { errorCode, type FsOps, renameNoClobber, syncDirs } from './fs-ops.ts';
+import { type FsOps, renameNoClobber, syncDirs, why } from './fs-ops.ts';
 import { isWithin } from './paths.ts';
 import { recyclePathFor } from './replace.ts';
-
-/** The error's code (`ENOENT`) when it has one: a system error's message names full paths. */
-const why = (err: unknown): string =>
-  errorCode(err) ?? (err instanceof Error ? err.message : String(err));
 
 /**
  * Moves each extra input with `afterReplace: 'recycle'` whose stream was kept (so it is in the

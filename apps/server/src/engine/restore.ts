@@ -23,7 +23,7 @@ import { findLibrary } from '../db/repos/libraries.ts';
 import { findRestore, insertRestore, markRestoreUndone } from '../db/repos/restores.ts';
 import type { Logger } from '../logger.ts';
 import { fingerprintKey } from './fingerprint.ts';
-import { ClobberRefused, errorCode, type FsOps, renameNoClobber, syncDirs } from './fs-ops.ts';
+import { ClobberRefused, errorCode, type FsOps, renameNoClobber, syncDirs, why } from './fs-ops.ts';
 import { fingerprintFromStats, recyclePathFor } from './replace.ts';
 
 export interface RestoreDeps {
@@ -101,9 +101,6 @@ async function statOrNull(
     throw err;
   }
 }
-
-const why = (err: unknown): string =>
-  errorCode(err) ?? (err instanceof Error ? err.message : String(err));
 
 async function firstFree(
   fs: FsOps,

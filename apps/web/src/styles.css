@@ -6378,39 +6378,127 @@ a.nav-item.is-active .nav-count {
   box-shadow: var(--focus-ring);
 }
 
+/* A job's poster thumbnail, or a film placeholder. */
+.poster {
+  display: block;
+  overflow: hidden;
+  flex: none;
+}
+.poster img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.poster-row {
+  width: 34px;
+  height: 51px;
+  border-radius: 5px;
+}
+.poster-page {
+  width: 104px;
+  height: 156px;
+  border-radius: 10px;
+}
+@media (max-width: 639px) {
+  .poster-page {
+    width: 64px;
+    height: 96px;
+  }
+}
+.poster-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--raised);
+  box-shadow: inset 0 0 0 1px var(--line-strong);
+  color: var(--faint);
+}
+
+/* Desktop Jobs list: a table in the rounded surface, scrolling sideways below its minimum width.
+   Positioned so the sr-only Actions header stays inside the scroll box. */
 .job-list {
+  position: relative;
   border-radius: var(--r-lg);
   background: var(--surface);
   border: 1px solid var(--line);
   overflow-x: auto;
 }
-.job-row {
-  min-width: 760px;
-  display: grid;
-  /* File, state, detail; a fourth column for Pause / Cancel only while a job on the list runs. */
-  grid-template-columns: minmax(0, 1.6fr) 170px minmax(0, 1.4fr);
-  align-items: center;
-  gap: 16px;
-  padding: 14px 20px;
+/* The minimum width is the fixed columns plus 240px for the Title. */
+.job-table {
+  width: 100%;
+  min-width: 964px;
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-size: 14px;
 }
-.job-list.has-actions .job-row {
-  grid-template-columns: minmax(0, 1.6fr) 170px minmax(0, 1.4fr) 180px;
+.job-table.has-actions {
+  min-width: 1114px;
 }
-.job-row + .job-row {
+/* Title takes the rest. */
+.job-col-library {
+  width: 110px;
+}
+.job-col-workflow {
+  width: 170px;
+}
+.job-col-status {
+  width: 150px;
+}
+.job-col-result {
+  width: 210px;
+}
+.job-col-when {
+  width: 84px;
+}
+.job-col-actions {
+  width: 150px;
+}
+/* The stat tiles' label style. */
+.job-table th {
+  padding: 10px 12px;
+  text-align: left;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--faint);
+  white-space: nowrap;
+  border-bottom: 1px solid var(--line);
+}
+.job-table .row-link td {
+  padding: 8px 12px;
+  vertical-align: middle;
+}
+.job-table .row-link + .row-link td {
   border-top: 1px solid var(--line);
 }
-.job-row:first-child {
-  border-radius: var(--r-lg) var(--r-lg) 0 0;
+.job-table th:first-child,
+.job-table td:first-child {
+  padding-left: 16px;
 }
-.job-row:last-child {
-  border-radius: 0 0 var(--r-lg) var(--r-lg);
+.job-table th:last-child,
+.job-table td:last-child {
+  padding-right: 16px;
 }
-.job-file {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
+.job-table .job-when {
+  text-align: right;
+  white-space: nowrap;
 }
+.job-table td.job-when {
+  font-size: var(--fs-small);
+  color: var(--faint);
+  font-variant-numeric: tabular-nums;
+}
+/* Library and workflow: one line, the whole text on hover. */
+.job-cell-clip {
+  font-size: var(--fs-small);
+  color: var(--faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* A job's name as a link (phone cards, the Run page): one line, ellipsis. */
 .job-name {
   color: var(--text);
   font-weight: 600;
@@ -6423,26 +6511,58 @@ a.nav-item.is-active .nav-count {
 .job-name:hover {
   color: var(--text);
 }
-.job-where {
+.job-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.job-title-main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+/* A long title keeps one line and never widens the table. */
+.job-title-text {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.job-title-sub {
+  display: block;
   font-size: var(--fs-small);
   color: var(--faint);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.job-run-link {
-  /* A 44 px target inside the one-line "where" text without making the line taller. */
-  display: inline-block;
-  padding: 12px 6px;
-  margin: -12px -6px;
+.job-title-code {
+  font-weight: 600;
   color: var(--muted);
-  text-decoration: none;
 }
-.job-run-link:hover {
+/* Result: sizes over the saving, or a reason over the sizes, or the detail line. */
+.job-outcome-sizes {
+  display: block;
   color: var(--text);
-  text-decoration: underline;
 }
-
+.job-outcome-sub {
+  display: block;
+  font-size: var(--fs-small);
+  color: var(--faint);
+}
+.job-outcome-change {
+  display: block;
+  font-size: var(--fs-small);
+  font-weight: 600;
+}
+.job-outcome-change.is-saved {
+  color: var(--accent-text);
+}
+.job-outcome-change.is-grew {
+  color: var(--muted);
+}
 .job-chips {
   display: inline-flex;
   flex-wrap: wrap;
@@ -6502,12 +6622,6 @@ a.nav-item.is-active .nav-count {
   color: var(--st-dry);
 }
 
-.job-detail {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
 .job-detail-text {
   font-size: var(--fs-small);
   color: var(--muted);
@@ -6528,7 +6642,7 @@ a.nav-item.is-active .nav-count {
   color: var(--st-replaced-text);
 }
 /* Desktop rows: the chip already says "Replaced"; the sizes beside it read as plain text. */
-.job-row .job-detail-text.is-replaced {
+.job-table .job-detail-text.is-replaced {
   color: var(--text);
 }
 .job-detail-text.is-failed {
@@ -6554,6 +6668,21 @@ a.nav-item.is-active .nav-count {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
+}
+
+/* The Jobs table's Result cell: the bar under its line. */
+.job-outcome .progress {
+  margin-top: 6px;
+}
+/* Two buttons fit the 150 px column at the compact size; they wrap rather than overlap. */
+.job-table .job-actions {
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.job-table .job-actions .btn-sm {
+  height: 30px;
+  padding: 0 10px;
+  font-size: 13px;
 }
 
 .jobs-empty {
@@ -7003,6 +7132,10 @@ a.nav-item.is-active .nav-count {
 .phone-card-head .job-name {
   flex: 1;
   min-width: 0;
+}
+/* The episode line sits close under the title. */
+.phone-card .job-title-sub {
+  margin-top: -6px;
 }
 .phone-card-head .mono {
   font-size: 12px;
@@ -8183,15 +8316,96 @@ a.nav-item.is-active .nav-count {
   padding-top: 0;
 }
 
-/* The one muted meta line: library · workflow · run · when (convention 1). */
-.job-head-meta {
+/* Poster left, the facts column right; the column may shrink so a long path wraps. */
+.job-head-body {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-4);
+}
+
+.job-head-main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  flex: 1;
+  min-width: 0;
+}
+
+.job-title-line {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-3);
+  min-width: 0;
+}
+
+.job-year {
+  font-size: 22px;
+  font-weight: 500;
   color: var(--faint);
 }
 
-.job-head-meta .link-muted:focus-visible {
+.job-sub {
+  margin: 0;
+  font-size: var(--fs-small);
+  color: var(--muted);
+}
+
+.job-sub strong {
+  font-weight: 600;
+}
+
+.job-path-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.job-path {
+  min-width: 0;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.job-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 28px;
+  margin: 0;
+}
+
+.job-fact dt {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+.job-fact dd {
+  margin: 0;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.job-facts .link-muted:focus-visible {
   outline: none;
   border-radius: var(--r-sm);
   box-shadow: var(--focus-ring);
+}
+
+@media (max-width: 639px) {
+  .job-head-body {
+    flex-wrap: wrap;
+    gap: var(--sp-3);
+  }
+
+  /* The facts wrap under the 64x96 poster. */
+  .job-head-main {
+    flex-basis: 100%;
+  }
 }
 
 .job-head-chips {

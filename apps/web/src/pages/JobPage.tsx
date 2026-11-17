@@ -50,12 +50,15 @@ import {
   verdictOf,
   wouldText,
 } from '../jobs/jobText.ts';
+import { jobTitle, mediaSub } from '../jobs/mediaText.ts';
+import { Poster } from '../jobs/Poster.tsx';
 import { ProcessAgain } from '../jobs/ProcessAgain.tsx';
 import { damagedSideOf, didText, type StepContext } from '../jobs/steps.ts';
 import { TestEncodeFile } from '../jobs/TestEncodeFile.tsx';
 import { TestOutputPanel } from '../jobs/TestOutputPanel.tsx';
 import { encodeStopped, useQueue } from '../jobs/useQueue.ts';
 import { useNodeParam } from '../jobs/useTryOnFile.ts';
+import { copyText } from '../lib/clipboard.ts';
 import { usePageTitle } from '../lib/pageTitle.ts';
 import { fmtDate } from '../lib/time.ts';
 import { usePhone } from '../lib/usePhone.ts';
@@ -124,6 +127,16 @@ function useSubgraphs(job: JobDetail | undefined): Subgraphs {
   return state;
 }
 
+/** One label/value pair in the header's facts. */
+function Fact({ term, children }: { term: string; children: ReactNode }) {
+  return (
+    <div className="job-fact">
+      <dt>{term}</dt>
+      <dd>{children}</dd>
+    </div>
+  );
+}
+
 /** A queued job's line: whether it waits for a lane or for the paused queue. */
 function QueuedDetail({ job }: { job: JobDetail }) {
   const queue = useQueue();
@@ -187,7 +200,7 @@ function JobView({ id }: { id: string }) {
     (): JobDetail | undefined => (data && live?.base === data ? { ...data, ...live.fields } : data),
     [data, live],
   );
-  usePageTitle(job?.fileName ?? 'Job');
+  usePageTitle(job ? jobTitle(job) : 'Job');
   const shown = useRef(job);
   shown.current = job;
 
@@ -343,6 +356,12 @@ function JobView({ id }: { id: string }) {
         }`
       : null;
 
+  const sub = mediaSub(job.media);
+  const copyPath = async () => {
+    const result = await copyText(job.filePath);
+    if (result === 'copied') toast.success('Copied');
+    else toast.error("Couldn't copy the path");
+  };
   const showResult = Boolean(job.result) || !active;
   const failed = job.state === 'failed';
   const raw = (
@@ -364,129 +383,164 @@ function JobView({ id }: { id: string }) {
           </Link>
           <span aria-hidden="true">/</span>
         </nav>
-        <div className="job-head-chips">
-          {verdictOf(job) === 'running' ? <QueueAwareChip job={job} /> : <JobStateChip job={job} />}
-          {/* The dry-run plan carries this badge itself (screen 06); a dry run without one shows it here. */}
-          {job.dryRun && !job.plan && (
-            <span className="badge badge-dry">
-              <Icon name="eye" size={12} />
-              Dry run · Nothing on disk changed
-            </span>
-          )}
-        </div>
-        <div className="head-row job-title-row">
-          <h1>{job.fileName}</h1>
-          <div className="head-actions">
-            {!active && job.state === 'done' && job.recycled !== null && (
-              <RestoreButton
-                path={job.recycled.path}
-                fileName={job.fileName}
-                targetPath={job.filePath}
-                direction="restore"
-                onDone={reload}
-              />
-            )}
-            {!active && job.state === 'done' && job.restore?.outputPath && (
-              <RestoreButton
-                path={job.restore.outputPath}
-                fileName={job.fileName}
-                targetPath={job.filePath}
-                direction="undo"
-                onDone={reload}
-              />
-            )}
-            {!active && (
-              <ProcessAgain
-                job={job}
-                summary={workflows?.find((w) => w.id === job.workflowId) ?? null}
-                primary={failed}
-              />
-            )}
-            {active && (
-              <>
-                {job.paused ? (
-                  <button
-                    type="button"
-                    className="btn btn-sm btn-ghost"
-                    disabled={busy}
-                    onClick={() => void control('resume')}
-                  >
-                    <Icon name="play" size={14} />
-                    Resume
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    className="btn btn-sm btn-ghost"
-                    disabled={busy}
-                    onClick={() => void control('pause')}
-                  >
-                    <Icon name="pause" size={14} />
-                    Pause
-                  </button>
+        <div className="job-head-body">
+          <Poster job={job} size="page" />
+          <div className="job-head-main">
+            <div className="job-head-chips">
+              {verdictOf(job) === 'running' ? (
+                <QueueAwareChip job={job} />
+              ) : (
+                <JobStateChip job={job} />
+              )}
+              {/* The dry-run plan carries this badge itself (screen 06); a dry run without one shows it here. */}
+              {job.dryRun && !job.plan && (
+                <span className="badge badge-dry">
+                  <Icon name="eye" size={12} />
+                  Dry run · Nothing on disk changed
+                </span>
+              )}
+            </div>
+            <div className="head-row job-title-row">
+              <div className="job-title-line">
+                <h1>{job.media.title}</h1>
+                {job.media.kind === 'movie' && job.media.year !== null && (
+                  <span className="job-year">{job.media.year}</span>
                 )}
-                <button
-                  type="button"
-                  className="btn btn-sm btn-danger-outline"
-                  disabled={busy}
-                  onClick={() => setConfirmCancel(true)}
-                >
-                  Cancel
-                </button>
-              </>
-            )}
-          </div>
-        </div>
-        <p className="head-sub job-head-meta">
-          <Link href="/libraries" className="link-muted">
-            {job.libraryName}
-          </Link>
-          {' · '}
-          <Link
-            href={`/workflows/${job.workflowId}?version=${job.workflowVersion}`}
-            className="link-muted"
-          >
-            {`${job.workflowName} v${job.workflowVersion}`}
-          </Link>
-          {' · '}
-          <Link href={`/runs/${job.runId}`} className="link-muted">
-            Run
-          </Link>
-          {` · ${jobWhenLine(job, !active)}`}
-          {job.encodedOn && job.state !== 'queued' && (
-            <>
-              {' · '}
-              <span>{`${active ? 'Encoding' : 'Encoded'} on ${job.encodedOn}`}</span>
-            </>
-          )}
-        </p>
-        {job.recycled && (
-          <p className="head-sub">{`Original kept until ${fmtDate(job.recycled.keptUntil)}`}</p>
-        )}
-        {job.restore && (
-          <p className="head-sub">
-            <span>{`Original restored on ${fmtDate(job.restore.restoredAt)} by ${job.restore.restoredBy}`}</span>
-          </p>
-        )}
-        {active && (
-          <div className="job-progress">
-            {running && (
-              <div
-                className="job-progress-bar"
-                role="progressbar"
-                aria-label="Progress"
-                aria-valuemin={0}
-                aria-valuemax={100}
-                {...(percent !== null && { 'aria-valuenow': percent })}
+              </div>
+              <div className="head-actions">
+                {!active && job.state === 'done' && job.recycled !== null && (
+                  <RestoreButton
+                    path={job.recycled.path}
+                    fileName={job.fileName}
+                    targetPath={job.filePath}
+                    direction="restore"
+                    onDone={reload}
+                  />
+                )}
+                {!active && job.state === 'done' && job.restore?.outputPath && (
+                  <RestoreButton
+                    path={job.restore.outputPath}
+                    fileName={job.fileName}
+                    targetPath={job.filePath}
+                    direction="undo"
+                    onDone={reload}
+                  />
+                )}
+                {!active && (
+                  <ProcessAgain
+                    job={job}
+                    summary={workflows?.find((w) => w.id === job.workflowId) ?? null}
+                    primary={failed}
+                  />
+                )}
+                {active && (
+                  <>
+                    {job.paused ? (
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-ghost"
+                        disabled={busy}
+                        onClick={() => void control('resume')}
+                      >
+                        <Icon name="play" size={14} />
+                        Resume
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-ghost"
+                        disabled={busy}
+                        onClick={() => void control('pause')}
+                      >
+                        <Icon name="pause" size={14} />
+                        Pause
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-danger-outline"
+                      disabled={busy}
+                      onClick={() => setConfirmCancel(true)}
+                    >
+                      Cancel
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+            {sub.code || sub.text ? (
+              <p className="job-sub">
+                {sub.code && <strong>{sub.code}</strong>}
+                {sub.code && sub.text ? ' · ' : ''}
+                {sub.text}
+              </p>
+            ) : null}
+            <div className="job-path-row">
+              <span className="job-path">{job.filePath}</span>
+              <button
+                type="button"
+                className="btn btn-sm btn-ghost"
+                onClick={() => void copyPath()}
               >
-                <span style={{ width: `${percent ?? 0}%` }} />
+                <Icon name="copy" size={14} />
+                Copy path
+              </button>
+            </div>
+            <dl className="job-facts">
+              <Fact term="Library">
+                <Link href="/libraries" className="link-muted">
+                  {job.libraryName}
+                </Link>
+              </Fact>
+              <Fact term="Workflow">
+                <Link
+                  href={`/workflows/${job.workflowId}?version=${job.workflowVersion}`}
+                  className="link-muted"
+                >
+                  {`${job.workflowName} v${job.workflowVersion}`}
+                </Link>
+              </Fact>
+              <Fact term="Run">
+                <Link href={`/runs/${job.runId}`} className="link-muted">
+                  Run
+                </Link>
+              </Fact>
+              <Fact term="When">{jobWhenLine(job, !active)}</Fact>
+              {job.encodedOn && job.state !== 'queued' && (
+                <Fact term={active ? 'Encoding on' : 'Encoded on'}>{job.encodedOn}</Fact>
+              )}
+              {job.recycled && (
+                <Fact term="Original kept until">{fmtDate(job.recycled.keptUntil)}</Fact>
+              )}
+              {job.restore && (
+                <Fact term="Original restored">
+                  {`${fmtDate(job.restore.restoredAt)} by ${job.restore.restoredBy}`}
+                </Fact>
+              )}
+            </dl>
+            {active && (
+              <div className="job-progress">
+                {running && (
+                  <div
+                    className="job-progress-bar"
+                    role="progressbar"
+                    aria-label="Progress"
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    {...(percent !== null && { 'aria-valuenow': percent })}
+                  >
+                    <span style={{ width: `${percent ?? 0}%` }} />
+                  </div>
+                )}
+                {detail && <span className="job-progress-detail">{detail}</span>}
+                {job.state === 'queued' && <QueuedDetail job={job} />}
+                {atText && (
+                  <span className="job-progress-detail job-head-at">{`At: ${atText}`}</span>
+                )}
               </div>
             )}
-            {detail && <span className="job-progress-detail">{detail}</span>}
-            {job.state === 'queued' && <QueuedDetail job={job} />}
-            {atText && <span className="job-progress-detail job-head-at">{`At: ${atText}`}</span>}
           </div>
-        )}
+        </div>
       </header>
 
       {showResult && (
@@ -534,7 +588,7 @@ function JobView({ id }: { id: string }) {
 
       <Dialog
         open={confirmCancel}
-        title={`Cancel ${job.fileName}?`}
+        title={`Cancel ${jobTitle(job)}?`}
         tone="danger"
         onClose={() => setConfirmCancel(false)}
         footer={

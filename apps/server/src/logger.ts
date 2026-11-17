@@ -4,6 +4,8 @@ export interface Logger {
   info(entry: LogFields): void;
   warn(entry: LogFields): void;
   error(entry: LogFields): void;
+  /** Detail that is only worth seeing while investigating; loggers may leave it out (dropped). */
+  debug?(entry: LogFields): void;
 }
 
 const show = (v: unknown): string => {
