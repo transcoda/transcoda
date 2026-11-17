@@ -1117,7 +1117,13 @@ describe('QueueService.retryFailed', () => {
     updateJob(
       db,
       jobA.id,
-      { state: 'failed', attempt: 2, reason: 'ffmpeg exited 1', encodedOn: 'GPU 0' },
+      {
+        state: 'failed',
+        attempt: 2,
+        reason: 'ffmpeg exited 1',
+        failureCode: 'encode',
+        encodedOn: 'GPU 0',
+      },
       new Date(),
     );
     updateJob(db, jobB.id, { state: 'done' }, new Date());
@@ -1134,6 +1140,7 @@ describe('QueueService.retryFailed', () => {
       state: 'queued',
       attempt: 3,
       reason: null,
+      failureCode: null,
       finishedAt: null,
       encodedOn: null,
     });

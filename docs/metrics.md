@@ -5,7 +5,7 @@ Transcoda serves its numbers in two forms:
 - `GET /metrics` in the Prometheus text format, for Prometheus (and anything that reads it: VictoriaMetrics, Grafana Agent, Telegraf).
 - `GET /api/v1/system/status` as a small JSON summary, for pollers that cannot read that format, such as Home Assistant's RESTful sensor.
 
-Both are read-only and come from the same snapshot, taken at most once every 5 seconds: a scrape inside that window gets the last answer, so a short scrape interval cannot load the database. They carry counts, bytes, library names and encoder names, never a file path, a job, or a failure message.
+Both are read-only and come from the same snapshot, taken at most once every 5 seconds: a scrape inside that window gets the last answer, so a short scrape interval cannot load the database. They carry counts, bytes, library names, encoder names and failure codes, never a file path, a job, or a failure message.
 
 ## Access
 
@@ -48,7 +48,7 @@ curl -H "Authorization: Bearer $TOKEN" http://localhost:8080/metrics
 
 ## Grafana
 
-Import [`examples/grafana/transcoda-dashboard.json`](../examples/grafana/transcoda-dashboard.json) (Dashboards → New → Import → upload the file) and pick your Prometheus data source when asked. It shows the queue, saved space, throughput (saved per day, jobs finished per hour, hours of video per day, encode speed), the encoders and GPUs, job durations, failures and retries, and per-library totals. A **Library** filter at the top narrows the library panels. Tested against Grafana 10 and newer.
+Import [`examples/grafana/transcoda-dashboard.json`](../examples/grafana/transcoda-dashboard.json) (Dashboards → New → Import → upload the file) and pick your Prometheus data source when asked. It shows the queue, saved space, throughput (saved per day, jobs finished per hour, hours of video per day, encode speed), the encoders and GPUs, job durations, failures by reason and retries, and per-library totals. A **Library** filter at the top narrows the library panels. Tested against Grafana 10 and newer.
 
 ## Metrics
 
@@ -61,6 +61,7 @@ All sizes are bytes (Grafana's `decbytes` unit shows them in SI units, 1 GB = 1,
 | `transcoda_jobs` | gauge | `library`, `state`, `lane` | Jobs not finished yet. `state`: `queued`, `probing`, `deciding`, `building`, `encoding`, `verifying`, `replacing`. `lane`: `encode`, `quick`, or empty before a job has one. Only combinations with at least one job are listed. |
 | `transcoda_jobs_paused` | gauge | `library` | Unfinished jobs paused one by one. |
 | `transcoda_jobs_finished` | gauge | `library`, `outcome` | Finished jobs, all time. `outcome`: `done` (replaced), `kept_original`, `nothing_to_do`, `failed`, `cancelled`, `dry_run`, `skipped`, `already_processed`. |
+| `transcoda_jobs_failed` | gauge | `library`, `reason` | Jobs whose final state is failed, by failure code (see [Failure codes](#failure-codes)). Sums to the `failed` row of `transcoda_jobs_finished`. Retry failed takes jobs back out, so the count can go down and `delta()` is a net change. Every code is listed for every library, 0 included; `unknown` only when it has jobs. |
 | `transcoda_job_retries` | gauge | `library` | Attempts beyond the first, summed over all jobs. |
 | `transcoda_source_bytes` | gauge | `library` | Size of the originals of replaced files, restored ones left out. |
 | `transcoda_output_bytes` | gauge | `library` | Size of their replacements. |
@@ -79,7 +80,23 @@ All sizes are bytes (Grafana's `decbytes` unit shows them in SI units, 1 GB = 1,
 
 `library` is the library's name. Two libraries with the same name get the first 8 characters of their id added (`Movies (3f2a91c0)`). Renaming a library starts new series under the new name. Deleted libraries are left out.
 
-There is no per-file or per-job label and no failure reason: those would make a series per file. A job's details stay in the UI and the API.
+There is no per-file or per-job label and no failure message: those would make a series per file. A job's details, including the sentence that says why it failed, stay in the UI and the API.
+
+### Failure codes
+
+The `reason` label of `transcoda_jobs_failed` is one of a fixed set, so it adds at most nine series per library:
+
+| Code | The job failed because |
+|---|---|
+| `interrupted` | The server stopped during the job: a second interruption of the same job (the first one queues it again), or a replace the restart rolled back. |
+| `source_unreadable` | The file could not be read or probed, or ffmpeg hit read errors on the source while encoding. |
+| `source_changed` | The file changed or moved while the job ran. |
+| `encode` | ffmpeg could not start, failed, was killed, stalled, reported output errors or wrote the wrong number of frames; or the command could not be built (subtitle file, cover image). |
+| `verify` | The encoded file failed its checks. |
+| `replace` | Replacing the original, moving or copying the output, or recovering an interrupted replace at start failed. |
+| `workflow` | The workflow is missing or invalid (including a plugin it needs that cannot start), or one of its nodes or plugins failed. |
+| `internal` | An unexpected internal error. |
+| `unknown` | Failed before Transcoda recorded failure codes. |
 
 Useful queries:
 
@@ -93,6 +110,12 @@ sum(increase(transcoda_job_media_seconds_total{lane="encode", outcome=~"done|kep
 
 # Median encode-lane job duration over the last 6 hours
 histogram_quantile(0.5, sum by (le) (increase(transcoda_job_duration_seconds_bucket{lane="encode"}[6h])))
+
+# Net change in failed jobs over the last day, by failure code (retries count against it)
+sum by (reason) (delta(transcoda_jobs_failed[1d]))
+
+# Failed jobs right now, by failure code
+sum by (reason) (transcoda_jobs_failed)
 
 # Alert: the queue has been paused for an hour
 min_over_time(transcoda_queue_paused[1h]) == 1

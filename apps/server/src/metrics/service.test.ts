@@ -202,6 +202,43 @@ describe('MetricsService.exposition', () => {
     expect(value(text, 'transcoda_runs', { library: 'Movies', source: 'manual' })).toBe(1);
   });
 
+  it('counts failed jobs by failure code; a failure from before codes is unknown', async () => {
+    lib('l1', 'Movies');
+    lib('l2', 'Shows');
+    const failed = (id: string, libraryId: string, failureCode: 'encode' | 'verify' | null) => {
+      job(id, libraryId, 'queued');
+      updateJob(db, id, { state: 'failed', reason: 'why', failureCode }, new Date(t0));
+    };
+    failed('f1', 'l1', 'encode');
+    failed('f2', 'l1', 'encode');
+    failed('f3', 'l1', 'verify');
+    failed('f4', 'l1', null);
+    failed('f5', 'l2', 'verify');
+    job('d', 'l1', 'done');
+    const text = await service().svc.exposition();
+    const rows = parseExposition(text)
+      .samples.filter((s) => s.name === 'transcoda_jobs_failed')
+      .map((s) => [s.labels.library, s.labels.reason, s.value]);
+    expect(rows.filter(([, , v]) => v !== 0)).toEqual([
+      ['Movies', 'encode', 2],
+      ['Movies', 'verify', 1],
+      ['Movies', 'unknown', 1],
+      ['Shows', 'verify', 1],
+    ]);
+    // Every code is listed at 0 too, so delta() sees a library's first failure; unknown only
+    // where it has jobs.
+    expect(rows.filter(([l]) => l === 'Movies')).toHaveLength(9);
+    expect(rows.filter(([l]) => l === 'Shows')).toHaveLength(8);
+    expect(rows).toContainEqual(['Shows', 'interrupted', 0]);
+    expect(rows).not.toContainEqual(['Shows', 'unknown', 0]);
+    // The codes add up to the failed outcome.
+    expect(value(text, 'transcoda_jobs_finished', { library: 'Movies', outcome: 'failed' })).toBe(
+      4,
+    );
+    // The free text never reaches a label.
+    expect(text).not.toContain('why');
+  });
+
   it('never writes a path or a job id', async () => {
     lib('l1', 'Movies');
     job('job-secret-id', 'l1', 'queued');

@@ -86,6 +86,7 @@ describe('examples/grafana/transcoda-dashboard.json', () => {
       'transcoda_jobs',
       'transcoda_saved_bytes',
       'transcoda_jobs_finished',
+      'transcoda_jobs_failed',
       'transcoda_processed_media_seconds',
       'transcoda_encoder_busy_seconds_total',
       'transcoda_gpu_utilization_ratio',

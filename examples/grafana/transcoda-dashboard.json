@@ -464,7 +464,7 @@
       "type": "timeseries",
       "title": "Failures and retries per hour",
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 31 },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 31 },
       "interval": "1h",
       "fieldConfig": {
         "defaults": {
@@ -494,12 +494,46 @@
       ]
     },
     {
+      "id": 26,
+      "type": "timeseries",
+      "title": "Failures by reason",
+      "description": "Jobs failed per hour, by failure code (interrupted, source_unreadable, source_changed, encode, verify, replace, workflow, internal). unknown: failed before Transcoda recorded codes.",
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 31 },
+      "interval": "1h",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "min": 0,
+          "custom": { "drawStyle": "bars", "fillOpacity": 80, "stacking": { "mode": "normal" } },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "green", "value": null }]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "expr": "sum by (reason) (delta(transcoda_jobs_failed{library=~\"$library\"}[1h])) > 0",
+          "legendFormat": "{{reason}}"
+        }
+      ]
+    },
+    {
       "id": 19,
       "type": "timeseries",
       "title": "Encoded on each encoder per hour",
       "description": "Hours each encode slot spent encoding, per hour.",
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 31 },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 31 },
       "interval": "1h",
       "fieldConfig": {
         "defaults": {

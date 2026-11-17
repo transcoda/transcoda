@@ -181,7 +181,12 @@ describe('EngineService', () => {
     const t2 = app(t.db);
     const again = await t2.deps.engine.start();
     expect(again.interrupted).toEqual([id]);
-    expect(row(id)).toMatchObject({ state: 'failed', reason: 'interrupted', requeues: 1 });
+    expect(row(id)).toMatchObject({
+      state: 'failed',
+      failureCode: 'interrupted',
+      reason: 'interrupted',
+      requeues: 1,
+    });
   });
 
   it('start() with a replacing job whose journal says cleaning records done (the .orig removed)', async () => {

@@ -17,6 +17,7 @@ import {
   type StreamPlan,
 } from '@transcoda/sdk';
 import {
+  type FailureCode,
   finishPhaseRank,
   type Issue,
   isPicture,
@@ -272,6 +273,8 @@ interface Written {
 }
 
 type Failure = {
+  /** The job's machine-readable failure code (`jobs.failure_code`). */
+  code: FailureCode;
   reason: string;
   /** A second attempt could change the outcome (I/O, encode, verify, finish actions). */
   retry: boolean;
@@ -529,12 +532,14 @@ function sourceFrameCounts(
 }
 
 /** The kind of a failure the job ends with right away, never retried. */
-const final = (reason: string, warnings?: string[]): Failure => ({
+const final = (code: FailureCode, reason: string, warnings?: string[]): Failure => ({
+  code,
   reason,
   retry: false,
   ...(warnings ? { warnings } : {}),
 });
-const retryable = (reason: string, warnings?: string[]): Failure => ({
+const retryable = (code: FailureCode, reason: string, warnings?: string[]): Failure => ({
+  code,
   reason,
   retry: true,
   ...(warnings ? { warnings } : {}),
@@ -596,7 +601,7 @@ export class Pipeline implements JobExecutor {
       return { final: true };
     }
     if (loaded.kind === 'missing') {
-      this.finish(job, ctl, 'failed', { reason: 'workflow missing' });
+      this.finish(job, ctl, 'failed', { code: 'workflow', reason: 'workflow missing' });
       return { final: true };
     }
     if (loaded.kind === 'invalid') {
@@ -604,6 +609,7 @@ export class Pipeline implements JobExecutor {
       // A plugin that cannot run is named in the reason (the active version cannot start).
       const down = errors.filter((i) => i.code === 'PLUGIN_UNAVAILABLE');
       this.finish(job, ctl, 'failed', {
+        code: 'workflow',
         reason: `workflow invalid: ${
           down.length > 0 ? down.map((i) => i.message).join('; ') : `${errors.length} error(s)`
         }`,
@@ -632,7 +638,10 @@ export class Pipeline implements JobExecutor {
       stat = await fs.stat(realPath);
     } catch (err) {
       this.stopIfAborted(ctl);
-      this.finish(job, ctl, 'failed', { reason: `cannot read the file: ${message(err)}` });
+      this.finish(job, ctl, 'failed', {
+        code: 'source_unreadable',
+        reason: `cannot read the file: ${message(err)}`,
+      });
       return { final: true };
     }
     this.stopIfAborted(ctl);
@@ -680,7 +689,13 @@ export class Pipeline implements JobExecutor {
       const logPath = await this.writeProbeLog(job, err);
       // A cancel or shutdown during the log write wins over the failure.
       this.stopIfAborted(ctl);
-      this.finish(job, ctl, 'failed', { reason: probeReason(err, realPath) }, { fp, logPath });
+      this.finish(
+        job,
+        ctl,
+        'failed',
+        { code: 'source_unreadable', reason: probeReason(err, realPath) },
+        { fp, logPath },
+      );
       return { final: true };
     }
     this.stopIfAborted(ctl);
@@ -797,7 +812,7 @@ export class Pipeline implements JobExecutor {
       ];
     } catch (err) {
       if (!(err instanceof RenderError)) throw err;
-      this.finish(job, ctl, 'failed', { reason: `render: ${err.message}` }, base);
+      this.finish(job, ctl, 'failed', { code: 'encode', reason: `render: ${err.message}` }, base);
       return { final: true };
     }
     const command = renderCommandLine(config.ffmpegPath, args);
@@ -1000,7 +1015,7 @@ export class Pipeline implements JobExecutor {
       }
       return this.conclude(job, ctl, p, {
         kind: 'fail',
-        failure: final(`internal error: ${message(err)}`),
+        failure: final('internal', `internal error: ${message(err)}`),
       });
     } finally {
       if (ctl.stopReason() !== 'shutdown') this.prepared.delete(job.id);
@@ -1046,7 +1061,7 @@ export class Pipeline implements JobExecutor {
       row,
       ctl,
       'failed',
-      { reason: f.reason, warnings: [...p.warnings, ...(f.warnings ?? [])] },
+      { code: f.code, reason: f.reason, warnings: [...p.warnings, ...(f.warnings ?? [])] },
       resultOf(p),
     );
     return null;
@@ -1077,7 +1092,10 @@ export class Pipeline implements JobExecutor {
         await fs.copyRegular(original, copy, MAX_SIDECAR_BYTES);
       } catch (err) {
         return fail(
-          final(`render: subtitle file ${basename(original)} cannot be used: ${message(err)}`),
+          final(
+            'encode',
+            `render: subtitle file ${basename(original)} cannot be used: ${message(err)}`,
+          ),
         );
       }
     }
@@ -1093,11 +1111,13 @@ export class Pipeline implements JobExecutor {
         );
       } catch (err) {
         this.stopIfAborted(ctl);
-        return fail(final(coverFailure(err, index, coverTimeoutMs(p.probe.sizeBytes))));
+        return fail(final('encode', coverFailure(err, index, coverTimeoutMs(p.probe.sizeBytes))));
       }
       this.stopIfAborted(ctl);
       if (!(await fs.exists(path))) {
-        return fail(final(`render: cover video #${index} needs its extracted image file`));
+        return fail(
+          final('encode', `render: cover video #${index} needs its extracted image file`),
+        );
       }
     }
 
@@ -1161,7 +1181,10 @@ export class Pipeline implements JobExecutor {
         );
       }
       return fail(
-        retryable(`verify: ${verified.failures.map((f) => `${f.check}: ${f.message}`).join('; ')}`),
+        retryable(
+          'verify',
+          `verify: ${verified.failures.map((f) => `${f.check}: ${f.message}`).join('; ')}`,
+        ),
       );
     }
     // Finish actions, in order. Once something was written, nothing is retried any more: a later
@@ -1219,7 +1242,7 @@ export class Pipeline implements JobExecutor {
           const r = await this.replace(job, ctl, p, action.recycleFolder);
           if (r.kind === 'requeue') {
             if (!wrote()) return r;
-            failure = final('file changed during processing');
+            failure = final('source_changed', 'file changed during processing');
           } else if (r.kind === 'failure') {
             failure = r.failure;
           } else {
@@ -1252,7 +1275,7 @@ export class Pipeline implements JobExecutor {
           } else if (!wrote()) {
             // Unreachable: prepare ends such jobs kept_original, and validation orders them after
             // the write.
-            return fail(final('plugin finish step before a write'));
+            return fail(final('internal', 'plugin finish step before a write'));
           } else {
             lastPluginRank = finishPhaseRank(action.phase);
             if (!(await this.pluginStep(job, ctl, p, action, state))) {
@@ -1466,7 +1489,7 @@ export class Pipeline implements JobExecutor {
       watch?.stop();
       ctl.attach(null);
       this.stopIfAborted(ctl);
-      return fail(retryable(`ffmpeg could not start: ${message(err)}`));
+      return fail(retryable('encode', `ffmpeg could not start: ${message(err)}`));
     }
     watch?.stop();
     ctl.attach(null);
@@ -1477,7 +1500,7 @@ export class Pipeline implements JobExecutor {
     // hardware encode tries another GPU or software first.
     const stalledAfterOutput = stalled && (guard?.started() ?? false);
     if (stalled && !stalledAfterOutput) {
-      return fail(final(noOutputReason(config.encodeStallMinutes)));
+      return fail(final('encode', noOutputReason(config.encodeStallMinutes)));
     }
     if (stalledAfterOutput || result.code !== 0) {
       const why = stalledAfterOutput
@@ -1541,24 +1564,39 @@ export class Pipeline implements JobExecutor {
           return this.encode(row, ctl, p);
         }
       }
-      return fail(retryable(cause ? `${why}: ${cause}` : why));
+      // ffmpeg often exits non-zero after a read error: the source is the cause, not the encoder.
+      const unreadable = [...demuxerErrors, ...sourceErrors].find((e) => READ_FAILURE.test(e.line));
+      if (unreadable) {
+        return fail(
+          retryable('source_unreadable', `encode could not read the source: ${unreadable.line}`),
+        );
+      }
+      return fail(retryable('encode', cause ? `${why}: ${cause}` : why));
     }
     if (leading > 0) {
       p.warnings.push(`ignored ${leading} decoder error(s) before the first output frame`);
     }
     if (outputErrors.length > 0) {
       const lines = outputErrors.slice(0, MAX_ERROR_LINES);
-      return fail(retryable(`encode reported errors: ${lines[0] ?? ''}`, lines));
+      return fail(retryable('encode', `encode reported errors: ${lines[0] ?? ''}`, lines));
     }
     // A read error (a disk or network share) may cause any decoder error after it: never damage.
     const unreadable = [...demuxerErrors, ...sourceErrors].find((e) => READ_FAILURE.test(e.line));
     if (unreadable) {
-      return fail(retryable(`encode could not read the source: ${unreadable.line}`));
+      return fail(
+        retryable('source_unreadable', `encode could not read the source: ${unreadable.line}`),
+      );
     }
     // The demuxer alone proves nothing; with a decoder error its lines are part of the damage.
     if (sourceErrors.length === 0 && demuxerErrors.length > 0) {
       const lines = demuxerErrors.slice(0, MAX_ERROR_LINES).map((e) => e.line);
-      return fail(retryable(`encode reported source read errors: ${lines[0] ?? ''}`, lines));
+      return fail(
+        retryable(
+          'source_unreadable',
+          `encode reported source read errors: ${lines[0] ?? ''}`,
+          lines,
+        ),
+      );
     }
     if (sourceErrors.length > 0) {
       sourceErrors.push(...demuxerErrors);
@@ -1585,6 +1623,7 @@ export class Pipeline implements JobExecutor {
       }
       return fail(
         retryable(
+          'encode',
           `encode reported source decode errors the source does not reproduce: ${lines[0] ?? ''}`,
           lines,
         ),
@@ -1597,7 +1636,9 @@ export class Pipeline implements JobExecutor {
       const { exact, tag } = sourceFrameCounts(p.probe, (videos[0] as StreamPlan).sourceIndex);
       const off = (n: number) => Math.abs(frames - n) > Math.max(FRAME_SLACK, n * FRAME_TOLERANCE);
       if (exact !== null && off(exact)) {
-        return fail(retryable(`encode wrote ${frames} video frames, the source has ${exact}`));
+        return fail(
+          retryable('encode', `encode wrote ${frames} video frames, the source has ${exact}`),
+        );
       }
       if (exact === null && tag !== null && off(tag)) {
         p.warnings.push(
@@ -1658,13 +1699,17 @@ export class Pipeline implements JobExecutor {
   > {
     if (job.dryRun) throw new Error('a replace step reached a dry run');
     const { db, fs, config } = this.deps;
-    const failure = (reason: string) => ({ kind: 'failure' as const, failure: final(reason) });
+    const failure = (reason: string, code: FailureCode = 'replace') => ({
+      kind: 'failure' as const,
+      failure: final(code, reason),
+    });
     // Only realpaths reach the replace: the file and its root are resolved again right before it.
     const check = await checkPath(db, p.realPath, fs);
     this.stopIfAborted(ctl);
     if (!check.ok || check.library.id !== p.library.id || check.realPath !== p.realPath) {
       return failure(
         `file moved before the replace: ${check.ok ? 'path now leads elsewhere' : check.reason}`,
+        'source_changed',
       );
     }
     const root = check.library.path;
@@ -1741,7 +1786,7 @@ export class Pipeline implements JobExecutor {
           requeues: fresh.requeues + 1,
         };
       }
-      return failure('file changed during processing');
+      return failure('file changed during processing', 'source_changed');
     }
     if (result.kind === 'failed') {
       const what = `replace: ${result.step}: ${result.message}`;
@@ -1809,12 +1854,12 @@ export class Pipeline implements JobExecutor {
     const root = resolve(action.outputRoot);
     const allowed = config.outputRoots.map((r) => resolve(r));
     if (!allowed.some((r) => isWithin(root, r))) {
-      return final(`move-copy: ${action.outputRoot} is not a configured output root`);
+      return final('replace', `move-copy: ${action.outputRoot} is not a configured output root`);
     }
     const rel = relative(p.library.path, p.realPath);
     const stem = rel.slice(0, rel.length - extname(rel).length);
     const dest = join(root, `${stem}${extname(p.outputPath)}`);
-    if (!isWithin(dest, root)) return final(`move-copy: ${dest} is outside ${root}`);
+    if (!isWithin(dest, root)) return final('replace', `move-copy: ${dest} is outside ${root}`);
     const tmp = join(dirname(dest), `.transcoda-${job.id}.tmp`);
     /** Removes the tmp; returns the error text when it could not. */
     const dropTmp = async (): Promise<string> => {
@@ -1828,7 +1873,7 @@ export class Pipeline implements JobExecutor {
     this.stopIfAborted(ctl);
     try {
       await fs.mkdir(dirname(dest));
-      if (await fs.exists(dest)) return final(`move-copy: ${dest} already exists`);
+      if (await fs.exists(dest)) return final('replace', `move-copy: ${dest} already exists`);
       await fs.copyFile(p.outputPath, tmp);
       if (ctl.signal.aborted) {
         const left = await dropTmp();
@@ -1846,8 +1891,9 @@ export class Pipeline implements JobExecutor {
     } catch (err) {
       if (err instanceof Stop) throw err;
       const left = await dropTmp();
-      if (err instanceof ClobberRefused) return final(`move-copy: ${dest} already exists${left}`);
-      return retryable(`move-copy: ${message(err)}${left}`);
+      if (err instanceof ClobberRefused)
+        return final('replace', `move-copy: ${dest} already exists${left}`);
+      return retryable('replace', `move-copy: ${message(err)}${left}`);
     }
     state.dest = dest;
     state.mode = action.mode === 'move' ? 'moved' : 'copied';
@@ -2297,7 +2343,7 @@ export class Pipeline implements JobExecutor {
     // the encode (nothing has been written yet).
     if (f.retryable && job.attempt === 1) return { requeue: { reason, attempt: 2 } };
     this.update(job, ctl, { walkPath: f.path });
-    this.finish(job, ctl, 'failed', { reason }, { fp });
+    this.finish(job, ctl, 'failed', { code: 'workflow', reason }, { fp });
     return { final: true };
   }
 
@@ -2325,9 +2371,23 @@ export class Pipeline implements JobExecutor {
   private finish(
     job: JobRow,
     ctl: JobControl,
-    state: JobState,
+    state: 'failed',
+    o: { code: FailureCode; reason: string; warnings?: string[] },
+    r?: FinishResult,
+  ): void;
+  private finish(
+    job: JobRow,
+    ctl: JobControl,
+    state: Exclude<JobState, 'failed'>,
     o: { reason?: string | null; warnings?: string[] },
-    r: Partial<Omit<ResultInput, 'outcome'>> & { fp?: Fingerprint } = {},
+    r?: FinishResult,
+  ): void;
+  private finish(
+    job: JobRow,
+    ctl: JobControl,
+    state: JobState,
+    o: { code?: FailureCode; reason?: string | null; warnings?: string[] },
+    r: FinishResult = {},
   ): void {
     const { db } = this.deps;
     this.gpuWarnings.delete(job.id);
@@ -2335,6 +2395,8 @@ export class Pipeline implements JobExecutor {
       const updated = this.write(job.id, {
         state,
         reason: o.reason ?? null,
+        // Only a failure has a code; any other final state clears one an earlier attempt left.
+        failureCode: state === 'failed' ? (o.code ?? 'internal') : null,
         lane: null,
         progress: null,
       });
@@ -2697,6 +2759,8 @@ type End =
   | { kind: 'requeue'; reason: string; requeues?: number; failedGpus?: string[] }
   | { kind: 'fail'; failure: Failure };
 const SETTLED: End = { kind: 'settled' };
+/** What `finish` records as the job's result besides its outcome. */
+type FinishResult = Partial<Omit<ResultInput, 'outcome'>> & { fp?: Fingerprint };
 const fail = (failure: Failure): End => ({ kind: 'fail', failure });
 
 type ResultInput = {

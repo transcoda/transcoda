@@ -108,6 +108,7 @@ describe('metricsTotals', () => {
       libraries: [],
       active: [],
       finished: [],
+      failed: [],
       perLibrary: [],
       runs: [],
     });
@@ -155,6 +156,20 @@ describe('metricsTotals', () => {
       { libraryId: 'l1', outcome: 'failed', jobs: 1 },
     ]);
     expect(t.perLibrary[0]?.retries).toBe(3);
+  });
+
+  it('counts failed jobs by failure code, unknown without one', () => {
+    library('l1', 'Movies');
+    job('a', 'l1', { state: 'failed', reason: 'ffmpeg exited 1', failureCode: 'encode' });
+    job('b', 'l1', { state: 'failed', reason: 'ffmpeg exited 1', failureCode: 'encode' });
+    job('c', 'l1', { state: 'failed', reason: 'verify: x', failureCode: 'verify' });
+    job('d', 'l1', { state: 'failed', reason: 'from before codes' });
+    job('e', 'l1', { state: 'done' });
+    expect(metricsTotals(db).failed).toEqual([
+      { libraryId: 'l1', reason: 'encode', jobs: 2 },
+      { libraryId: 'l1', reason: 'unknown', jobs: 1 },
+      { libraryId: 'l1', reason: 'verify', jobs: 1 },
+    ]);
   });
 
   it('sums bytes over replaced files only, leaves out restored ones, and counts media seconds of done and kept', () => {
@@ -212,11 +227,13 @@ describe('metricsTotals', () => {
     library('l2', 'Old');
     job('x', 'l2', { state: 'done' });
     job('y', 'l2');
+    job('z', 'l2', { state: 'failed', reason: 'x', failureCode: 'encode' });
     softDeleteLibrary(db, 'l2', at(5));
     const t = metricsTotals(db);
     expect(t.libraries.map((l) => l.id)).toEqual(['l1']);
     expect(t.active).toEqual([]);
     expect(t.finished).toEqual([]);
+    expect(t.failed).toEqual([]);
     expect(t.perLibrary.map((l) => l.libraryId)).toEqual(['l1']);
     expect(t.runs.map((r) => r.libraryId)).toEqual(['l1']);
   });

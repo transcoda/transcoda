@@ -92,7 +92,12 @@ export function requeueOnce(db: Database, job: JobRow, reason: string, now: Date
           },
           now,
         )
-      : updateJob(db, job.id, { state: 'failed', reason, lane: null, progress: null }, now);
+      : updateJob(
+          db,
+          job.id,
+          { state: 'failed', reason, failureCode: 'interrupted', lane: null, progress: null },
+          now,
+        );
   if (row === null) throw new Error(`job ${job.id} vanished`);
   return row;
 }
@@ -296,6 +301,7 @@ async function settleOne(
       {
         state: 'failed',
         reason: `replace recovery failed: ${message(err)}; the original is at ${j.originalPath} or ${j.copyPath}`,
+        failureCode: 'replace',
         lane: null,
         progress: null,
       },
@@ -371,6 +377,7 @@ async function settleJournal(
       {
         state: 'failed',
         reason: `library root unavailable: ${missing}`,
+        failureCode: 'replace',
         lane: null,
         progress: null,
       },
@@ -415,7 +422,14 @@ async function settleJournal(
     updateJob(
       db,
       job.id,
-      { state: 'failed', reason, replaceJournal: null, lane: null, progress: null },
+      {
+        state: 'failed',
+        reason,
+        failureCode: 'replace',
+        replaceJournal: null,
+        lane: null,
+        progress: null,
+      },
       now,
     );
   };
@@ -540,6 +554,7 @@ async function finishRestore(
       {
         state: 'failed',
         reason: 'interrupted; original restored',
+        failureCode: 'interrupted',
         replaceJournal: null,
         lane: null,
         progress: null,

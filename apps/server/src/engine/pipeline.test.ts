@@ -581,7 +581,7 @@ describe('pipeline', () => {
       const job = await settled(id);
       expect(spawner.signals).toEqual(['SIGKILL']);
       expect(spawner.calls).toHaveLength(1);
-      expect(job).toMatchObject({ state: 'failed', attempt: 1 });
+      expect(job).toMatchObject({ state: 'failed', failureCode: 'encode', attempt: 1 });
       expect(job.reason).toMatch(
         /^ffmpeg wrote no output for 0\.001 minutes and was stopped\. .*could not get started/,
       );
@@ -606,7 +606,7 @@ describe('pipeline', () => {
       spawner.emitProgress({ outTimeSeconds: 1, speed: 1, fps: 25, sizeBytes: 100 });
       await stall();
       const job = await settled(id);
-      expect(job).toMatchObject({ state: 'failed', attempt: 2 });
+      expect(job).toMatchObject({ state: 'failed', failureCode: 'encode', attempt: 2 });
       expect(job.reason).toMatch(
         /^ffmpeg stopped writing output for 0\.001 minutes and was stopped/,
       );
@@ -1341,7 +1341,7 @@ describe('pipeline', () => {
     expect(row(id)).toMatchObject({ attempt: 2 });
     await spawner.complete({ bytes: 600 });
     const job = await settled(id);
-    expect(job).toMatchObject({ state: 'failed', attempt: 2 });
+    expect(job).toMatchObject({ state: 'failed', failureCode: 'verify', attempt: 2 });
     expect(job.reason).toMatch(/^verify: duration: output #0 \(video #0\) ends early/);
     expect(states(id)).toContain('queued');
     expect((await stat(file())).size).toBe(1000);
@@ -1379,6 +1379,7 @@ describe('pipeline', () => {
     await spawner.complete({ bytes: 600 });
     expect(await settled(id)).toMatchObject({
       state: 'failed',
+      failureCode: 'source_changed',
       reason: 'file changed during processing',
     });
     expect((await stat(file())).size).toBe(1000);
@@ -1677,6 +1678,7 @@ describe('pipeline', () => {
     await t.deps.engine.start();
     const job = await settled(id);
     expect(job.state).toBe('failed');
+    expect(job.failureCode).toBe('workflow');
     expect(job.reason).toMatch(/^workflow invalid: \d+ error\(s\)$/);
     expect(job.attempt).toBe(1);
     expect(spawner.calls).toEqual([]);
@@ -2222,7 +2224,7 @@ describe('pipeline: the verified output probe (before/after)', () => {
     await until('second spawn', () => spawner.calls.length === 2);
     await touch(20);
     await spawner.complete({ bytes: 600 });
-    expect(await settled(id)).toMatchObject({ state: 'failed' });
+    expect(await settled(id)).toMatchObject({ state: 'failed', failureCode: 'source_changed' });
     expect(outputOf(id)).toBeNull();
   });
 
@@ -2234,7 +2236,7 @@ describe('pipeline: the verified output probe (before/after)', () => {
     await spawner.complete({ bytes: 600 });
     await until('second spawn', () => spawner.calls.length === 2);
     await spawner.complete({ bytes: 600 });
-    expect(await settled(id)).toMatchObject({ state: 'failed' });
+    expect(await settled(id)).toMatchObject({ state: 'failed', failureCode: 'verify' });
     expect(outputOf(id)).toBeNull();
   });
 });
@@ -2366,7 +2368,7 @@ describe('pipeline: controller notes', () => {
     await until('second spawn', () => spawner.calls.length === 2);
     await spawner.complete({ bytes: 600, stderr });
     const job = await settled(id);
-    expect(job).toMatchObject({ state: 'failed', attempt: 2 });
+    expect(job).toMatchObject({ state: 'failed', failureCode: 'encode', attempt: 2 });
     expect(job.reason).toMatch(
       /^encode reported source decode errors the source does not reproduce: \[hevc/,
     );
@@ -2407,7 +2409,7 @@ describe('pipeline: controller notes', () => {
     await until('second spawn', () => spawner.calls.length === 2);
     await spawner.complete({ bytes: 600, stderr });
     const job = await settled(id);
-    expect(job).toMatchObject({ state: 'failed', attempt: 2 });
+    expect(job).toMatchObject({ state: 'failed', failureCode: 'encode', attempt: 2 });
     expect(job.reason).toMatch(/^encode reported errors: \[out#0/);
   });
 
@@ -2424,6 +2426,7 @@ describe('pipeline: controller notes', () => {
     await spawner.complete({ bytes: 0, stderr, code: 1 });
     expect(await settled(id)).toMatchObject({
       state: 'failed',
+      failureCode: 'encode',
       reason: 'ffmpeg exited 1: Conversion failed!',
     });
     // jobLog serves only the tail.
@@ -2477,6 +2480,7 @@ describe('pipeline: controller notes', () => {
     await t.deps.engine.start();
     expect(await settled(id)).toMatchObject({
       state: 'failed',
+      failureCode: 'encode',
       reason: 'render: globalArgs has a stray argument "stray"',
       attempt: 1,
     });
@@ -2523,6 +2527,7 @@ describe('pipeline: controller notes', () => {
     await t.deps.engine.start();
     expect(await settled(id2)).toMatchObject({
       state: 'failed',
+      failureCode: 'encode',
       reason: 'render: cover video #2 needs its extracted image file',
     });
     expect(spawner.calls).toEqual([]);
@@ -2563,6 +2568,7 @@ describe('pipeline: controller notes', () => {
       await t.deps.engine.start();
       expect(await settled(id)).toMatchObject({
         state: 'failed',
+        failureCode: 'encode',
         // The realpath check refuses it first; copyRegular's O_NOFOLLOW still guards a swap after.
         reason:
           'render: subtitle file a.de.srt cannot be used: its path is not a real path in the library',
@@ -2579,6 +2585,7 @@ describe('pipeline: controller notes', () => {
       const job = await settled(id);
       expect(job).toMatchObject({
         state: 'failed',
+        failureCode: 'encode',
         reason:
           'render: subtitle file a.de.srt cannot be used: its path is not a real path in the library',
       });
@@ -2593,6 +2600,7 @@ describe('pipeline: controller notes', () => {
       await t.deps.engine.start();
       expect(await settled(id)).toMatchObject({
         state: 'failed',
+        failureCode: 'encode',
         reason:
           'render: subtitle file a.de.srt cannot be used: its path is not a real path in the library',
       });
@@ -2606,6 +2614,7 @@ describe('pipeline: controller notes', () => {
       await t.deps.engine.start();
       expect(await settled(id)).toMatchObject({
         state: 'failed',
+        failureCode: 'encode',
         reason: 'render: subtitle file a.de.srt cannot be used: it is larger than 8.00 MB',
       });
       expect(spawner.calls).toEqual([]);
@@ -2670,6 +2679,7 @@ describe('pipeline: controller notes', () => {
     }
     expect(await settled(id)).toMatchObject({
       state: 'failed',
+      failureCode: 'encode',
       reason: 'encode wrote 700 video frames, the source has 1440',
     });
   });
@@ -2732,7 +2742,7 @@ describe('pipeline: fix round (review)', () => {
     await writeFile(join(base, 'out', 'Show', 'a.mkv'), 'taken');
     const id = await queue(file(), encodeAnd(moveCopy(), replaceNode()));
     const job = await runOnce(id);
-    expect(job).toMatchObject({ state: 'failed', attempt: 1 });
+    expect(job).toMatchObject({ state: 'failed', failureCode: 'replace', attempt: 1 });
     expect(job.reason).toMatch(/^move-copy: .*a\.mkv already exists$/);
     expect((await stat(file())).size).toBe(1000);
     expect(await readFile(join(base, 'out', 'Show', 'a.mkv'), 'utf8')).toBe('taken');
@@ -2773,6 +2783,7 @@ describe('pipeline: fix round (review)', () => {
     await t.deps.engine.start();
     const job = await settled(id);
     expect(job.state).toBe('failed');
+    expect(job.failureCode).toBe('workflow');
     expect(job.reason).toMatch(/output root|workflow invalid/);
     expect(await listAll(join(base, 'out'))).toEqual([]);
   });
@@ -3023,7 +3034,12 @@ describe('pipeline: fix round (review)', () => {
     const id = await queue(file(), encodeAnd(replaceNode()));
     const job = await runOnce(id);
     expect(fs.fired()).toBe(true);
-    expect(job).toMatchObject({ state: 'failed', attempt: 1, replaceJournal: null });
+    expect(job).toMatchObject({
+      state: 'failed',
+      failureCode: 'replace',
+      attempt: 1,
+      replaceJournal: null,
+    });
     expect(job.reason).toBe('replace: moving_original: injected; nothing was replaced');
     expect((await stat(file())).size).toBe(1000);
     expect(await listAll(join(root, 'Show'))).toEqual(['/a.mkv']);
@@ -3043,7 +3059,7 @@ describe('pipeline: fix round (review)', () => {
     });
     const id = await queue(file(), encodeAnd(replaceNode()));
     const job = await runOnce(id);
-    expect(job).toMatchObject({ state: 'failed', attempt: 1 });
+    expect(job).toMatchObject({ state: 'failed', failureCode: 'replace', attempt: 1 });
     expect(job.reason).toBe(`library root unavailable: ${root}`);
     expect(hasReplaceJournal(t.db, id)).toBe(true);
     expect(spawner.calls).toHaveLength(1);
@@ -3145,7 +3161,7 @@ describe('pipeline: fix round (review)', () => {
     const outsideBefore = await listAll(join(base, 'outside'));
     await spawner.complete({ bytes: 600 });
     const job = await settled(id);
-    expect(job).toMatchObject({ state: 'failed', attempt: 1 });
+    expect(job).toMatchObject({ state: 'failed', failureCode: 'source_changed', attempt: 1 });
     expect(job.reason).toBe('file moved before the replace: symlink escapes root');
     expect(await listAll(join(base, 'outside'))).toEqual(outsideBefore);
   });
@@ -3308,7 +3324,12 @@ describe('pipeline: fix round (review)', () => {
     await writeFile(join(root, 'Show', `.transcoda-${id}.tmp`), 'not ours');
     await spawner.complete({ bytes: 600 });
     const job = await settled(id);
-    expect(job).toMatchObject({ state: 'failed', attempt: 1, replaceJournal: null });
+    expect(job).toMatchObject({
+      state: 'failed',
+      failureCode: 'replace',
+      attempt: 1,
+      replaceJournal: null,
+    });
     expect(job.reason).toMatch(/^replace: checking: .*\.tmp already exists$/);
     expect(spawner.calls).toHaveLength(1);
     expect((await stat(file())).size).toBe(1000);
@@ -3320,7 +3341,7 @@ describe('pipeline: fix round (review)', () => {
       encodeAnd(replaceNode({ recycleFolder: join(base, 'outside', 'bin') })),
     );
     const job = await runOnce(id);
-    expect(job).toMatchObject({ state: 'failed', attempt: 1 });
+    expect(job).toMatchObject({ state: 'failed', failureCode: 'replace', attempt: 1 });
     expect(job.reason).toBe(
       `replace: recycle folder ${join(base, 'outside', 'bin')} is outside the library root ${root}`,
     );
@@ -3537,7 +3558,7 @@ describe('pipeline: test-encode dry runs', () => {
     expect(row(id)).toMatchObject({ attempt: 2 });
     await spawner.complete({ bytes: 600 });
     const job = await settled(id);
-    expect(job).toMatchObject({ state: 'failed', attempt: 2 });
+    expect(job).toMatchObject({ state: 'failed', failureCode: 'verify', attempt: 2 });
     expect(job.reason).toMatch(/^verify:/);
     expect(await listAll(root)).toEqual(libraryBefore);
     expect(await readFile(file())).toEqual(Buffer.alloc(1000, 7));
@@ -3602,7 +3623,7 @@ describe('pipeline: test-encode dry runs', () => {
     await spawner.complete({ bytes: 600 });
     await until('second spawn', () => spawner.calls.length === 2);
     await spawner.complete({ bytes: 600 });
-    expect(await settled(id)).toMatchObject({ state: 'failed' });
+    expect(await settled(id)).toMatchObject({ state: 'failed', failureCode: 'verify' });
     expect(t.deps.engine.jobDetail(id)).toMatchObject({ testOutput: null, testOutputNote: null });
     expect(await listAll(transcodeDir)).toEqual([]);
   });
@@ -4502,6 +4523,7 @@ describe('pipeline: plugin finish steps and hooks', () => {
     t.deps.engine.scheduler.resumeQueue();
     const job = await settled(id);
     expect(job.state).toBe('failed');
+    expect(job.failureCode).toBe('workflow');
     expect(job.reason).toMatch(/^workflow invalid: .*plugin example is not running/);
     expect(spawner.calls).toEqual([]);
     expect(runCalls).toEqual([]);
@@ -4533,7 +4555,7 @@ describe('pipeline: plugin finish steps and hooks', () => {
     );
     await t.deps.engine.start();
     const failed = await settled(id2);
-    expect(failed).toMatchObject({ state: 'failed', attempt: 1 });
+    expect(failed).toMatchObject({ state: 'failed', failureCode: 'workflow', attempt: 1 });
     expect(failed.reason).toBe('ac: plugin example rejected the file');
   });
 });
@@ -5017,7 +5039,7 @@ describe('pipeline: damaged sources (Render’s Damaged)', () => {
     await spawner.complete({ bytes: 600, stderr });
     await until('second spawn', () => spawner.calls.length === 2);
     await spawner.complete({ bytes: 600, stderr });
-    expect(await settled(id)).toMatchObject({ state: 'failed', attempt: 2 });
+    expect(await settled(id)).toMatchObject({ state: 'failed', failureCode: 'encode', attempt: 2 });
     expect(findJobResult(t.db, id)?.sourceDamaged).toBe(false);
     expect(runCalls).toEqual([]);
     expect(calledUrls()).toEqual([]);
@@ -5032,7 +5054,7 @@ describe('pipeline: damaged sources (Render’s Damaged)', () => {
     await until('second spawn', () => spawner.calls.length === 2);
     await spawner.complete({ bytes: 600, at: 30, stderr: [LFE] });
     const job = await settled(id);
-    expect(job).toMatchObject({ state: 'failed', attempt: 2 });
+    expect(job).toMatchObject({ state: 'failed', failureCode: 'encode', attempt: 2 });
     expect(job.reason).toMatch(
       /^encode reported source decode errors the source does not reproduce/,
     );
@@ -5052,7 +5074,10 @@ describe('pipeline: damaged sources (Render’s Damaged)', () => {
     await spawner.complete({ bytes: 600, stderr, code: 1 });
     await until('second spawn', () => spawner.calls.length === 2);
     await spawner.complete({ bytes: 600, stderr, code: 1 });
-    expect(await settled(id)).toMatchObject({ state: 'failed', attempt: 2 });
+    // ffmpeg exited after a read error: counted as the source, not the encoder.
+    const job = await settled(id);
+    expect(job).toMatchObject({ state: 'failed', failureCode: 'source_unreadable', attempt: 2 });
+    expect(job.reason).toMatch(/^encode could not read the source: .*Input\/output error/);
     expect(findJobResult(t.db, id)?.sourceDamaged).toBe(false);
     expect(runCalls).toEqual([]);
     expect(calledUrls()).toEqual([]);
@@ -5079,7 +5104,7 @@ describe('pipeline: damaged sources (Render’s Damaged)', () => {
       await spawner.complete({ bytes: 600, at: 30, stderr });
     }
     const job = await settled(id);
-    expect(job).toMatchObject({ state: 'failed', attempt: 2 });
+    expect(job).toMatchObject({ state: 'failed', failureCode: 'source_unreadable', attempt: 2 });
     expect(job.reason).toMatch(/^encode could not read the source: .*Input\/output error/);
     expect(findJobResult(t.db, id)?.sourceDamaged).toBe(false);
     expect(runCalls).toEqual([]);
@@ -5096,7 +5121,7 @@ describe('pipeline: damaged sources (Render’s Damaged)', () => {
     await until('second spawn', () => spawner.calls.length === 2);
     await spawner.complete({ bytes: 600, at: 30, stderr });
     const job = await settled(id);
-    expect(job).toMatchObject({ state: 'failed', attempt: 2 });
+    expect(job).toMatchObject({ state: 'failed', failureCode: 'source_unreadable', attempt: 2 });
     expect(job.reason).toMatch(/^encode reported source read errors: \[in#0/);
     expect(findJobResult(t.db, id)?.sourceDamaged).toBe(false);
     expect(runCalls).toEqual([]);
@@ -5119,7 +5144,7 @@ describe('pipeline: damaged sources (Render’s Damaged)', () => {
     await spawner.complete({ bytes: 600, at: 30, stderr: [LFE] });
     await until('second spawn', () => spawner.calls.length === 2);
     await spawner.complete({ bytes: 600, at: 30, stderr: [LFE] });
-    expect(await settled(id)).toMatchObject({ state: 'failed', attempt: 2 });
+    expect(await settled(id)).toMatchObject({ state: 'failed', failureCode: 'encode', attempt: 2 });
     expect(findJobResult(t.db, id)?.sourceDamaged).toBe(false);
     expect(runCalls).toEqual([]);
   });
@@ -5145,6 +5170,7 @@ describe('pipeline: damaged sources (Render’s Damaged)', () => {
     await t.deps.engine.start();
     const job = await settled(id);
     expect(job.state).toBe('failed');
+    expect(job.failureCode).toBe('encode');
     expect(job.reason).toMatch(/cover \(video #2\) out of the file took longer than/);
     expect(findJobResult(t.db, id)?.sourceDamaged).toBe(false);
     expect(runCalls).toEqual([]);
@@ -5160,7 +5186,7 @@ describe('pipeline: damaged sources (Render’s Damaged)', () => {
     await until('second spawn', () => spawner.calls.length === 2);
     await spawner.complete({ bytes: 600 });
     const job = await settled(id);
-    expect(job).toMatchObject({ state: 'failed', attempt: 2 });
+    expect(job).toMatchObject({ state: 'failed', failureCode: 'verify', attempt: 2 });
     expect(job.reason).toMatch(/^verify: /);
     expect(runCalls).toEqual([]);
     expect(calledUrls()).toEqual([]);
@@ -5387,7 +5413,7 @@ describe('pipeline: damaged sources (Render’s Damaged)', () => {
       const id = await queue(file(), checked());
       await t.deps.engine.start();
       const job = await settled(id);
-      expect(job).toMatchObject({ state: 'failed', attempt: 2 });
+      expect(job).toMatchObject({ state: 'failed', failureCode: 'workflow', attempt: 2 });
       expect(job.reason).toMatch(/which the source does not reproduce$/);
       expect(findJobResult(t.db, id)?.sourceDamaged).toBe(false);
       expect(runCalls).toEqual([]);
@@ -5407,6 +5433,7 @@ describe('pipeline: damaged sources (Render’s Damaged)', () => {
       const job = await settled(id);
       expect(job).toMatchObject({
         state: 'failed',
+        failureCode: 'workflow',
         attempt: 2,
         reason: 'cs: check source failed: Error during demuxing: Input/output error',
       });
@@ -5688,6 +5715,7 @@ describe('pipeline: a failed probe (#44)', () => {
     const job = await settled(id);
     expect(job).toMatchObject({
       state: 'failed',
+      failureCode: 'source_unreadable',
       reason:
         "The file couldn't be read: it isn't a valid video file (ffprobe: Invalid data found when processing input)",
     });
@@ -5699,5 +5727,107 @@ describe('pipeline: a failed probe (#44)', () => {
     expect(findJobResult(t.db, id)?.logPath).toBe(
       join(configDir, 'logs', 'jobs', `${id}.attempt-1.log`),
     );
+  });
+});
+
+describe('pipeline: failure codes', () => {
+  const toReplace = () => workflow(line(node('in', 'core:input-manual'), toH264(), replaceNode()));
+
+  it('a deleted workflow fails the job with workflow', async () => {
+    const wf = toReplace();
+    t.deps.engine.scheduler.pauseQueue();
+    const id = await queue(file(), wf);
+    t.db
+      .prepare('UPDATE workflows SET deleted_at = ? WHERE id = ?')
+      .run(new Date().toISOString(), wf);
+    await t.deps.engine.start();
+    t.deps.engine.scheduler.resumeQueue();
+    expect(await settled(id)).toMatchObject({
+      state: 'failed',
+      failureCode: 'workflow',
+      reason: 'workflow missing',
+    });
+  });
+
+  it('a file that cannot be stat-ed fails with source_unreadable', async () => {
+    await t.deps.engine.stop();
+    let armed = false;
+    const plain = fsOps;
+    await setup({
+      fs: {
+        ...plain,
+        stat: async (p) => {
+          if (armed && p === file()) throw Object.assign(new Error('injected'), { code: 'EIO' });
+          return plain.stat(p);
+        },
+      },
+    });
+    const id = await queue(file(), toReplace());
+    armed = true;
+    await t.deps.engine.start();
+    const job = await settled(id);
+    expect(job).toMatchObject({ state: 'failed', failureCode: 'source_unreadable' });
+    expect(job.reason).toBe('cannot read the file: injected');
+  });
+
+  it('ffmpeg that cannot start fails with encode after its retry', async () => {
+    const spawn = spawner.spawn.bind(spawner);
+    spawner.spawn = (f: string, a: string[], o: SpawnOptions): RunnerProcess => {
+      const proc = spawn(f, a, o);
+      const done = Promise.reject(new Error('spawn ffmpeg ENOENT'));
+      // Read more than once (the stall guard too); each reader sees the rejection.
+      done.catch(() => {});
+      return { ...proc, done };
+    };
+    const id = await queue(file(), toReplace());
+    await t.deps.engine.start();
+    const job = await settled(id);
+    expect(job).toMatchObject({ state: 'failed', failureCode: 'encode', attempt: 2 });
+    expect(job.reason).toBe('ffmpeg could not start: spawn ffmpeg ENOENT');
+  });
+
+  it('an unexpected throw before anything is written fails with internal', async () => {
+    await t.deps.engine.stop();
+    const plain = fsOps;
+    await setup({
+      fs: {
+        ...plain,
+        // The job's own temp dir under the transcode dir.
+        mkdir: async (p) => {
+          if (p.startsWith(`${transcodeDir}/`) && !p.slice(transcodeDir.length + 1).includes('/'))
+            throw new Error('injected');
+          return plain.mkdir(p);
+        },
+      },
+    });
+    const id = await queue(file(), toReplace());
+    await t.deps.engine.start();
+    expect(await settled(id)).toMatchObject({
+      state: 'failed',
+      failureCode: 'internal',
+      reason: 'internal error: injected',
+    });
+  });
+
+  it('a job that ends any other way has no code; Retry failed clears the code with the reason', async () => {
+    brokenOutput = true;
+    const id = await queue(file(), toReplace());
+    await t.deps.engine.start();
+    await until('first spawn', () => spawner.calls.length === 1);
+    await spawner.complete({ bytes: 600 });
+    await until('second spawn', () => spawner.calls.length === 2);
+    // The retry after the first verify failure is not a failure yet.
+    expect(row(id).failureCode).toBeNull();
+    await spawner.complete({ bytes: 600 });
+    expect(await settled(id)).toMatchObject({ state: 'failed', failureCode: 'verify' });
+
+    brokenOutput = false;
+    t.deps.engine.scheduler.pauseQueue();
+    expect(t.deps.engine.queue.retryFailed()).toEqual({ retried: 1 });
+    expect(row(id)).toMatchObject({ state: 'queued', reason: null, failureCode: null });
+    t.deps.engine.scheduler.resumeQueue();
+    await until('third spawn', () => spawner.calls.length === 3);
+    await spawner.complete({ bytes: 600 });
+    expect(await settled(id)).toMatchObject({ state: 'done', failureCode: null });
   });
 });

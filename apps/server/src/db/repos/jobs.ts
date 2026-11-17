@@ -1,6 +1,7 @@
 import { basename } from 'node:path';
 import {
   ACTIVE_JOB_STATES,
+  type FailureCode,
   FINAL_JOB_STATES,
   isFinalState,
   JOB_STATES,
@@ -76,6 +77,8 @@ export interface JobRow {
   failedGpus: string[];
   progress: JobProgress | null;
   reason: string | null;
+  /** Why a `failed` job failed (null for any other state, and for failures recorded before migration 0018). */
+  failureCode: FailureCode | null;
   replaceJournal: ReplaceJournal | null;
   restoreJournal: RestoreJournal | null;
   /** The path the walk took (partial up to the failing node on a walk failure); null before. */
@@ -239,6 +242,7 @@ export type JobPatch = Partial<
     | 'failedGpus'
     | 'progress'
     | 'reason'
+    | 'failureCode'
     | 'replaceJournal'
     | 'restoreJournal'
     | 'walkPath'
@@ -269,6 +273,7 @@ interface DbJob {
   failed_gpus: string;
   progress: string | null;
   reason: string | null;
+  failure_code: FailureCode | null;
   replace_journal: string | null;
   restore_journal: string | null;
   walk_path: string | null;
@@ -375,6 +380,7 @@ const toJob = (r: DbJob): JobRow => ({
   failedGpus: parseStringList(r.failed_gpus),
   progress: parseJson<JobProgress>(r.progress),
   reason: r.reason,
+  failureCode: r.failure_code,
   replaceJournal: parseJson<ReplaceJournal>(r.replace_journal),
   restoreJournal: parseJson<RestoreJournal>(r.restore_journal),
   walkPath: parseJson<WalkStep[]>(r.walk_path),
@@ -479,6 +485,7 @@ const PATCH_COLUMNS: Record<keyof JobPatch, [string, (v: unknown) => unknown]> =
   failedGpus: ['failed_gpus', toJson],
   progress: ['progress', toJson],
   reason: ['reason', same],
+  failureCode: ['failure_code', same],
   replaceJournal: ['replace_journal', toJson],
   restoreJournal: ['restore_journal', toJson],
   walkPath: ['walk_path', toJson],

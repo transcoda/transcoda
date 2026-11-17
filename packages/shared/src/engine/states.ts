@@ -41,6 +41,32 @@ export function isFinalState(s: JobState): boolean {
   return FINAL_JOB_STATES.includes(s);
 }
 
+/**
+ * Why a `failed` job failed, machine-readable (the job's `reason` stays the human sentence). A
+ * bounded set: it is a Prometheus label (`transcoda_jobs_failed{reason}`).
+ *
+ * - `interrupted`: the server stopped mid-job (a second interruption, or a replace rolled back at start).
+ * - `source_unreadable`: the source could not be read or probed.
+ * - `source_changed`: the source changed (or moved) while the job ran.
+ * - `encode`: ffmpeg failed, stalled or wrote the wrong output; rendering the command failed.
+ * - `verify`: the encoded output failed its checks.
+ * - `replace`: replacing the original, the move or copy of the output, or recovering a replace.
+ * - `workflow`: the workflow is missing or invalid, a node failed, a plugin failed.
+ * - `internal`: an unexpected internal error.
+ */
+export const FAILURE_CODES = [
+  'interrupted',
+  'source_unreadable',
+  'source_changed',
+  'encode',
+  'verify',
+  'replace',
+  'workflow',
+  'internal',
+] as const;
+export type FailureCode = (typeof FAILURE_CODES)[number];
+export const FailureCodeSchema = z.enum(FAILURE_CODES);
+
 export const LANES = ['encode', 'quick'] as const;
 export type Lane = (typeof LANES)[number];
 
