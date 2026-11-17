@@ -39,7 +39,7 @@ import { renderAt } from '../test/render.tsx';
 import { ActivityButton } from './ActivityButton.tsx';
 
 const A = job({ ...fx.running, id: 'a', workflowName: 'TV cleanup', workflowVersion: 3 });
-const B = job({ ...fx.verifying, id: 'b', fileName: 'Severance S02E01.mkv' });
+const B = job({ ...fx.verifying, id: 'b', fileName: 'Blue Ledger S02E01.mkv' });
 
 function activity(
   running: Job[],

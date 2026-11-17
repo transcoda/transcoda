@@ -34,7 +34,7 @@ const EXAMPLES = ['save-space', 'play-everywhere', 'keep-my-languages'] as const
 type Example = (typeof EXAMPLES)[number];
 
 const FOLDER: FixtureName[] = [
-  'tigger-pooh.mp4',
+  'otter-finch.mp4',
   'compliant.mkv',
   'untagged.mkv',
   'two-defaults.mkv',
@@ -431,7 +431,7 @@ describe.skipIf(!fixturesAvailable())('examples/workflows: the end-to-end gate',
         // English only: the German tracks go (compliant, two-defaults, h264-big, pgs-subs) and
         // untagged.mkv is rewritten; ass-fonts.mkv has only English and stays as it is.
         expect(states(one), explain(one)).toEqual({
-          'tigger-pooh.mp4': 'done',
+          'otter-finch.mp4': 'done',
           'compliant.mkv': 'done',
           'untagged.mkv': 'done',
           'two-defaults.mkv': 'done',
@@ -440,13 +440,13 @@ describe.skipIf(!fixturesAvailable())('examples/workflows: the end-to-end gate',
           'pgs-subs.mkv': 'done',
         });
         const { ffprobePath } = toolPaths();
-        const tigger = await probeFile(join(folder, 'tigger-pooh.mp4'), { ffprobePath });
-        const audio = tigger.streams.filter((s) => s.type === 'audio');
+        const otter = await probeFile(join(folder, 'otter-finch.mp4'), { ffprobePath });
+        const audio = otter.streams.filter((s) => s.type === 'audio');
         expect(audio[0]?.language).toBe('eng');
         expect(audio.map((s) => s.language)).not.toContain('deu');
         expect(audio.filter((s) => s.default).map((s) => s.language)).toEqual(['eng']);
         // keepCover: the png cover stays.
-        expect(tigger.streams.filter((s) => s.attachedPic)).toHaveLength(1);
+        expect(otter.streams.filter((s) => s.attachedPic)).toHaveLength(1);
       });
     },
     GATE_TIMEOUT_MS,
@@ -514,9 +514,9 @@ describe.skipIf(!fixturesAvailable())('examples/workflows: the end-to-end gate',
         audioLanguages: ['en'],
         subtitleLanguages: [],
       });
-      await gateWith('clear-default-sub', graph, ['tigger-pooh.mp4'], async (one, folder) => {
-        expect(states(one), explain(one)).toEqual({ 'tigger-pooh.mp4': 'done' });
-        const after = await defaults(join(folder, 'tigger-pooh.mp4'));
+      await gateWith('clear-default-sub', graph, ['otter-finch.mp4'], async (one, folder) => {
+        expect(states(one), explain(one)).toEqual({ 'otter-finch.mp4': 'done' });
+        const after = await defaults(join(folder, 'otter-finch.mp4'));
         expect(after.audio.filter(Boolean)).toHaveLength(1);
         expect(after.audio[0]).toBe(true);
         expect(after.subtitle.filter(Boolean)).toHaveLength(1);

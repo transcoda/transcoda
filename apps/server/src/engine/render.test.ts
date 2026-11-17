@@ -969,17 +969,17 @@ describe.skipIf(!fixturesAvailable())('renderArgs with real ffmpeg', () => {
     expect(mp4.streams[1]?.language).toBeNull();
   });
 
-  it('tigger-pooh.mp4 → mkv writes the png cover as an attachment that reprobes as attached_pic', async () => {
+  it('otter-finch.mp4 → mkv writes the png cover as an attachment that reprobes as attached_pic', async () => {
     const { ffmpegPath, ffprobePath } = toolPaths();
-    const input = fixturePath('tigger-pooh.mp4');
+    const input = fixturePath('otter-finch.mp4');
     const source = await probeFile(input, { ffprobePath });
     const model = { ...modelFromProbe(source), container: 'mkv' as const };
     fitToContainer(model);
     const cover = source.streams.find((s) => s.attachedPic);
-    if (!cover) throw new Error('tigger-pooh.mp4 has no cover');
+    if (!cover) throw new Error('otter-finch.mp4 has no cover');
     const coverPath = join(dir, `cover-${cover.index}.png`);
     await execFileAsync(ffmpegPath, coverExtractArgs(input, cover.index, coverPath));
-    const output = join(dir, 'tigger.mkv');
+    const output = join(dir, 'otter.mkv');
     await execFileAsync(
       ffmpegPath,
       renderArgs({ model, input, output, coverFiles: new Map([[cover.index, coverPath]]) }),

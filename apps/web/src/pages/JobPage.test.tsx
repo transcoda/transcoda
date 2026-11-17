@@ -96,7 +96,7 @@ async function open(path = '/jobs/j1') {
       </Route>
     </EventsProvider>,
   );
-  await screen.findByRole('heading', { level: 1, name: 'Tigger and Pooh' });
+  await screen.findByRole('heading', { level: 1, name: 'Otter and Finch' });
   await act(async () => {});
   return view;
 }
@@ -445,7 +445,7 @@ describe('JobPage', () => {
     await open();
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
     const dialog = await screen.findByRole('dialog', {
-      name: 'Cancel Tigger and Pooh S01E01?',
+      name: 'Cancel Otter and Finch S01E01?',
     });
     expect(within(dialog).getByText('The original stays untouched.')).toBeTruthy();
     // Focus starts on the safe choice.
@@ -471,12 +471,12 @@ describe('JobPage', () => {
     mocks.jobs.get.mockResolvedValue(
       jobDetail({
         id: 'j2',
-        fileName: 'Andor S02E07.mkv',
-        media: { ...jobDetail().media, title: 'Andor' },
+        fileName: 'Starfall S02E07.mkv',
+        media: { ...jobDetail().media, title: 'Starfall' },
       }),
     );
     view.navigate('/jobs/j2');
-    await screen.findByRole('heading', { level: 1, name: 'Andor' });
+    await screen.findByRole('heading', { level: 1, name: 'Starfall' });
     await act(async () => {});
     expect(mocks.jobs.get).toHaveBeenLastCalledWith({ id: 'j2' });
     expect(screen.queryByText('frame=100 fps=118')).toBeNull();
@@ -533,7 +533,7 @@ describe('JobPage', () => {
     expect((await screen.findByRole('alert')).textContent).toBe(
       'Could not refresh: server restarting — showing the last state.',
     );
-    expect(screen.getByRole('heading', { level: 1, name: 'Tigger and Pooh' })).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 1, name: 'Otter and Finch' })).toBeTruthy();
     expect(screen.getByRole('list', { name: 'What the workflow is doing' })).toBeTruthy();
   });
 

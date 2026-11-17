@@ -79,7 +79,7 @@ const COUNTS = counts({
   failed: 4,
   dry_run: 1,
 });
-const QUEUE = { paused: false, lanes: { encode: 'j-bluey4', quick: null }, preparing: [] };
+const QUEUE = { paused: false, lanes: { encode: 'j-maple-lane4', quick: null }, preparing: [] };
 
 let fake: ReturnType<typeof fakeEventSource>;
 const realMatchMedia = window.matchMedia;
@@ -170,8 +170,8 @@ async function renderPage() {
       <JobsPage />
     </EventsProvider>,
   );
-  // Desktop names the title link "Bluey S01E03"; the phone's finished card adds its result line.
-  await screen.findByRole('link', { name: /^Bluey S01E03/ });
+  // Desktop names the title link "Maple Lane S01E03"; the phone's finished card adds its result line.
+  await screen.findByRole('link', { name: /^Maple Lane S01E03/ });
   await waitFor(() => expect(fake.streams).toHaveLength(1));
   await act(async () =>
     fake.last().push({ type: 'queue.changed', paused: false, lanes: QUEUE.lanes, encodeSlots: [] }),
@@ -531,16 +531,16 @@ describe('JobsPage', () => {
     expect(within(replaced).getByText('TV cleanup v7')).toBeTruthy();
     expect(replaced.querySelector('.job-chip')?.textContent).toBe('Replaced');
     expect(within(replaced).getByText('2.41 GB → 1.62 GB')).toBeTruthy();
-    expect(within(replaced).getByRole('link', { name: 'Bluey S01E03' }).getAttribute('href')).toBe(
-      '/jobs/j-bluey3',
-    );
+    expect(
+      within(replaced).getByRole('link', { name: 'Maple Lane S01E03' }).getAttribute('href'),
+    ).toBe('/jobs/j-maple-lane3');
     const running = rowOf(fx.running);
     expect(running.querySelector('.job-chip')?.textContent).toBe('Encoding');
     expect(within(running).getByRole('progressbar').getAttribute('aria-valuenow')).toBe('42');
     expect(within(running).getByText('42% · 118 fps · ETA 3 min')).toBeTruthy();
     // Per-row controls are named for their job (one "Pause" per row is ambiguous to a reader).
-    expect(within(running).getByRole('button', { name: 'Pause Bluey S01E04' })).toBeTruthy();
-    expect(within(running).getByRole('button', { name: 'Cancel Bluey S01E04' })).toBeTruthy();
+    expect(within(running).getByRole('button', { name: 'Pause Maple Lane S01E04' })).toBeTruthy();
+    expect(within(running).getByRole('button', { name: 'Cancel Maple Lane S01E04' })).toBeTruthy();
     expect(within(running).queryByRole('link', { name: /^Details/ })).toBeNull();
     // A queued job while the queue runs waits for a lane.
     expect(within(rowOf(fx.queued)).getByText('Waiting its turn')).toBeTruthy();
@@ -700,14 +700,14 @@ describe('JobsPage', () => {
     expect(mocks.list).toHaveBeenCalledTimes(2);
     const p = fx.running.progress as NonNullable<typeof fx.running.progress>;
     await push({
-      ...jobChanged('j-bluey4'),
+      ...jobChanged('j-maple-lane4'),
       progress: { ...p, percent: 61, etaSeconds: 120 },
     } as EngineEvent);
     const running = rowOf(fx.running);
     expect(within(running).getByRole('progressbar').getAttribute('aria-valuenow')).toBe('61');
     expect(within(running).getByText('61% · 118 fps · ETA 2 min')).toBeTruthy();
     // The queued job starts probing: the state moves in place and the counts follow.
-    await push({ ...jobChanged('j-andor'), state: 'probing', lane: 'quick' } as EngineEvent);
+    await push({ ...jobChanged('j-starfall'), state: 'probing', lane: 'quick' } as EngineEvent);
     expect(rowOf(fx.queued).querySelector('.job-chip')?.textContent).toBe('Probing');
     expect(screen.getByRole('button', { name: 'Running 3' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Queued 36' })).toBeTruthy();
@@ -723,7 +723,7 @@ describe('JobsPage', () => {
   it('a job reaching a final state reloads the list (coalesced)', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ['setTimeout', 'clearTimeout', 'Date'] });
     await renderPage();
-    await push({ ...jobChanged('j-bluey4'), state: 'done', lane: null } as EngineEvent);
+    await push({ ...jobChanged('j-maple-lane4'), state: 'done', lane: null } as EngineEvent);
     await act(() => vi.advanceTimersByTimeAsync(REFETCH_COALESCE_MS));
     await waitFor(() => expect(mocks.list).toHaveBeenCalledTimes(3));
   });
@@ -731,7 +731,7 @@ describe('JobsPage', () => {
   it('Pause queue calls queue.pause and shows the paused banner; lanes line names the running job', async () => {
     await renderPage();
     expect(lanesText(await screen.findByTestId('lanes'))).toBe(
-      'Encoder: Bluey S01E04 · Quick tasks: idle',
+      'Encoder: Maple Lane S01E04 · Quick tasks: idle',
     );
     fireEvent.click(screen.getByRole('button', { name: 'Pause queue' }));
     await waitFor(() => expect(mocks.queuePause).toHaveBeenCalled());
@@ -749,11 +749,11 @@ describe('JobsPage', () => {
     await push({
       type: 'queue.changed',
       paused: true,
-      lanes: { encode: null, quick: 'j-severance' },
+      lanes: { encode: null, quick: 'j-blue-ledger' },
       encodeSlots: [],
     });
     expect(lanesText(screen.getByTestId('lanes'))).toBe(
-      'Encoder: idle · Quick tasks: Severance S02E01',
+      'Encoder: idle · Quick tasks: Blue Ledger S02E01',
     );
     expect(screen.getByRole('button', { name: 'Resume queue' })).toBeTruthy();
     // Nothing starts while the queue is paused: a queued row says so.
@@ -762,12 +762,12 @@ describe('JobsPage', () => {
 
   it("hides a job's own Pause while the whole queue is paused; Cancel stays (#54)", async () => {
     await renderPage();
-    const andor = rowOf(fx.queued);
-    expect(within(andor).getByRole('button', { name: 'Pause Andor S02E07' })).toBeTruthy();
+    const starfall = rowOf(fx.queued);
+    expect(within(starfall).getByRole('button', { name: 'Pause Starfall S02E07' })).toBeTruthy();
     await push({ type: 'queue.changed', paused: true, lanes: QUEUE.lanes, encodeSlots: [] });
     const paused = rowOf(fx.queued);
-    expect(within(paused).queryByRole('button', { name: 'Pause Andor S02E07' })).toBeNull();
-    expect(within(paused).getByRole('button', { name: 'Cancel Andor S02E07' })).toBeTruthy();
+    expect(within(paused).queryByRole('button', { name: 'Pause Starfall S02E07' })).toBeNull();
+    expect(within(paused).getByRole('button', { name: 'Cancel Starfall S02E07' })).toBeTruthy();
   });
 
   it('the Runs facet narrows the list and its counts to dry or real runs; Cancel all keeps counting both (#54)', async () => {
@@ -860,10 +860,12 @@ describe('JobsPage', () => {
 
   it('Pause and Resume a single job', async () => {
     await renderPage();
-    fireEvent.click(within(rowOf(fx.running)).getByRole('button', { name: 'Pause Bluey S01E04' }));
-    await waitFor(() => expect(mocks.pause).toHaveBeenCalledWith({ id: 'j-bluey4' }));
+    fireEvent.click(
+      within(rowOf(fx.running)).getByRole('button', { name: 'Pause Maple Lane S01E04' }),
+    );
+    await waitFor(() => expect(mocks.pause).toHaveBeenCalledWith({ id: 'j-maple-lane4' }));
     await push({
-      ...jobChanged('j-bluey4'),
+      ...jobChanged('j-maple-lane4'),
       paused: true,
       progress: fx.running.progress,
     } as EngineEvent);
@@ -873,24 +875,28 @@ describe('JobsPage', () => {
       'Paused',
     ]);
     expect(screen.getByRole('button', { name: 'Paused 1' })).toBeTruthy();
-    fireEvent.click(within(row).getByRole('button', { name: 'Resume Bluey S01E04' }));
-    await waitFor(() => expect(mocks.resume).toHaveBeenCalledWith({ id: 'j-bluey4' }));
+    fireEvent.click(within(row).getByRole('button', { name: 'Resume Maple Lane S01E04' }));
+    await waitFor(() => expect(mocks.resume).toHaveBeenCalledWith({ id: 'j-maple-lane4' }));
   });
 
   it('Cancel asks for confirmation and handles JOB_NOT_ACTIVE with a toast and reload', async () => {
     await renderPage();
-    fireEvent.click(within(rowOf(fx.running)).getByRole('button', { name: 'Cancel Bluey S01E04' }));
-    const dialog = await screen.findByRole('dialog', { name: 'Cancel Bluey S01E04?' });
+    fireEvent.click(
+      within(rowOf(fx.running)).getByRole('button', { name: 'Cancel Maple Lane S01E04' }),
+    );
+    const dialog = await screen.findByRole('dialog', { name: 'Cancel Maple Lane S01E04?' });
     expect(within(dialog).getByText('The original stays untouched.')).toBeTruthy();
     fireEvent.click(within(dialog).getByRole('button', { name: 'Keep running' }));
     expect(mocks.cancel).not.toHaveBeenCalled();
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
 
     mocks.cancel.mockRejectedValueOnce({ defined: true, code: 'JOB_NOT_ACTIVE' });
-    fireEvent.click(within(rowOf(fx.running)).getByRole('button', { name: 'Cancel Bluey S01E04' }));
-    const again = await screen.findByRole('dialog', { name: 'Cancel Bluey S01E04?' });
+    fireEvent.click(
+      within(rowOf(fx.running)).getByRole('button', { name: 'Cancel Maple Lane S01E04' }),
+    );
+    const again = await screen.findByRole('dialog', { name: 'Cancel Maple Lane S01E04?' });
     fireEvent.click(within(again).getByRole('button', { name: 'Cancel job' }));
-    await waitFor(() => expect(mocks.cancel).toHaveBeenCalledWith({ id: 'j-bluey4' }));
+    await waitFor(() => expect(mocks.cancel).toHaveBeenCalledWith({ id: 'j-maple-lane4' }));
     expect(await screen.findByText('That job already finished')).toBeTruthy();
     await waitFor(() => expect(mocks.list).toHaveBeenCalledTimes(3));
   });
@@ -947,7 +953,7 @@ describe('JobsPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Failed 4' }));
     expect(await screen.findByText('No jobs match this filter.')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Show all' }));
-    expect(await screen.findByRole('link', { name: 'Bluey S01E03' })).toBeTruthy();
+    expect(await screen.findByRole('link', { name: 'Maple Lane S01E03' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'All 2,149' }).getAttribute('aria-pressed')).toBe(
       'true',
     );
@@ -974,7 +980,7 @@ describe('JobsPage', () => {
         <JobsPage />
       </EventsProvider>,
     );
-    await screen.findByText('Bluey S01E03');
+    await screen.findByText('Maple Lane S01E03');
     fireEvent.click(await screen.findByRole('button', { name: 'Failed 4' }));
     await waitFor(() => expect(mocks.list).toHaveBeenCalledWith({ state: ['failed'], limit: 200 }));
   });
@@ -987,7 +993,7 @@ describe('JobsPage', () => {
         <JobsPage />
       </EventsProvider>,
     );
-    await screen.findByText('Bluey S01E03');
+    await screen.findByText('Maple Lane S01E03');
     const tiles = await screen.findByRole('list', { name: 'Today' });
     await waitFor(() =>
       expect([...tiles.querySelectorAll('.stat-tile')].map((t) => t.textContent)).toEqual([
@@ -999,7 +1005,9 @@ describe('JobsPage', () => {
     );
     expect(mocks.problems).toHaveBeenCalledWith({ limit: 1, problems: true });
     const running = screen.getByRole('region', { name: 'Running' });
-    expect(within(running).getByRole('link', { name: 'Bluey S01E04' }).textContent).toBe('Bluey');
+    expect(within(running).getByRole('link', { name: 'Maple Lane S01E04' }).textContent).toBe(
+      'Maple Lane',
+    );
     expect(within(running).getByText('S01E04')).toBeTruthy();
     expect(within(running).getByText('42%')).toBeTruthy();
     expect(within(running).getByText('Encoding · 118 fps · ETA 3 min')).toBeTruthy();
@@ -1013,17 +1021,19 @@ describe('JobsPage', () => {
     expect(within(finished).getByText('Failed · original untouched')).toBeTruthy();
     expect(
       within(finished)
-        .getByRole('link', { name: /Bluey S01E03/ })
+        .getByRole('link', { name: /Maple Lane S01E03/ })
         .getAttribute('href'),
-    ).toBe('/jobs/j-bluey3');
+    ).toBe('/jobs/j-maple-lane3');
     expect(screen.queryByRole('table', { name: 'Job list' })).toBeNull();
     // Queued jobs are listed too, with their controls.
     const queued = screen.getByRole('region', { name: 'Queued' });
-    expect(within(queued).getByRole('link', { name: 'Andor S02E07' }).textContent).toBe('Andor');
+    expect(within(queued).getByRole('link', { name: 'Starfall S02E07' }).textContent).toBe(
+      'Starfall',
+    );
     expect(within(queued).getByText('S02E07')).toBeTruthy();
     expect(within(queued).getByText('Waiting its turn')).toBeTruthy();
-    expect(within(queued).getByRole('button', { name: 'Pause Andor S02E07' })).toBeTruthy();
-    expect(within(queued).getByRole('button', { name: 'Cancel Andor S02E07' })).toBeTruthy();
+    expect(within(queued).getByRole('button', { name: 'Pause Starfall S02E07' })).toBeTruthy();
+    expect(within(queued).getByRole('button', { name: 'Cancel Starfall S02E07' })).toBeTruthy();
     // Titles, not file names; no posters on the phone list.
     for (const j of ALL_JOBS) expect(screen.queryByText(j.fileName)).toBeNull();
     expect(document.querySelector('.phone-section img, .phone-section .poster')).toBeNull();
@@ -1065,7 +1075,7 @@ describe('Jobs table', () => {
       problemCount: 0,
     });
     renderAt('/jobs', <JobsPage />);
-    await screen.findByRole('link', { name: 'Bluey S01E03' });
+    await screen.findByRole('link', { name: 'Maple Lane S01E03' });
     expect(headers()).toEqual(['Title', 'Library', 'Workflow', 'Status', 'Result', 'When']);
     expect(screen.getByRole('table', { name: 'Job list' }).classList).not.toContain('has-actions');
   });
@@ -1119,10 +1129,10 @@ describe('Jobs table', () => {
     withJobs([fx.kept, unknown]);
     await renderPage();
     const movie = rowOf(fx.kept);
-    expect(within(movie).getByRole('link', { name: 'Dune Part Two (2024)' }).textContent).toBe(
-      'Dune Part Two',
+    expect(within(movie).getByRole('link', { name: 'Nosferatu (1922)' }).textContent).toBe(
+      'Nosferatu',
     );
-    expect(movie.querySelector('.job-title-sub')?.textContent).toBe('2024');
+    expect(movie.querySelector('.job-title-sub')?.textContent).toBe('1922');
     const none = rowOf(unknown);
     expect(within(none).getByRole('link', { name: 'Lake trip' })).toBeTruthy();
     expect(none.querySelector('.job-title-sub')).toBeNull();
@@ -1203,16 +1213,22 @@ describe('Jobs table', () => {
   it('a failed pause names the job by its title', async () => {
     mocks.pause.mockRejectedValueOnce(new Error('nope'));
     await renderPage();
-    fireEvent.click(within(rowOf(fx.running)).getByRole('button', { name: 'Pause Bluey S01E04' }));
-    expect(await screen.findByText("Couldn't pause Bluey S01E04")).toBeTruthy();
+    fireEvent.click(
+      within(rowOf(fx.running)).getByRole('button', { name: 'Pause Maple Lane S01E04' }),
+    );
+    expect(await screen.findByText("Couldn't pause Maple Lane S01E04")).toBeTruthy();
   });
 
   it('a button in a row does not open the job', async () => {
     const view = await renderPage();
-    fireEvent.click(within(rowOf(fx.queued)).getByRole('button', { name: 'Pause Andor S02E07' }));
-    await waitFor(() => expect(mocks.pause).toHaveBeenCalledWith({ id: 'j-andor' }));
-    fireEvent.click(within(rowOf(fx.queued)).getByRole('button', { name: 'Cancel Andor S02E07' }));
-    expect(await screen.findByRole('dialog', { name: 'Cancel Andor S02E07?' })).toBeTruthy();
+    fireEvent.click(
+      within(rowOf(fx.queued)).getByRole('button', { name: 'Pause Starfall S02E07' }),
+    );
+    await waitFor(() => expect(mocks.pause).toHaveBeenCalledWith({ id: 'j-starfall' }));
+    fireEvent.click(
+      within(rowOf(fx.queued)).getByRole('button', { name: 'Cancel Starfall S02E07' }),
+    );
+    expect(await screen.findByRole('dialog', { name: 'Cancel Starfall S02E07?' })).toBeTruthy();
     expect(view.location()).toBe('/jobs');
   });
 
@@ -1313,7 +1329,9 @@ describe('Jobs page stats', () => {
     await renderPage();
     const before = mocks.history.mock.calls.length;
     await act(async () =>
-      fake.last().push({ ...jobChanged('j-bluey4'), state: 'done', lane: null } as EngineEvent),
+      fake
+        .last()
+        .push({ ...jobChanged('j-maple-lane4'), state: 'done', lane: null } as EngineEvent),
     );
     await act(() => vi.advanceTimersByTimeAsync(REFETCH_COALESCE_MS));
     await waitFor(() => expect(mocks.history.mock.calls.length).toBeGreaterThan(before));

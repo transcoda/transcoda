@@ -77,7 +77,7 @@ function settledRun(): RunDetail {
       libraryId: 'l1',
       workflowId: 'w1',
       workflowVersion: 7,
-      requestedPath: '/transcode/shows/Bluey',
+      requestedPath: '/transcode/shows/Maple Lane',
       dryRun: false,
       testEncode: false,
       force: false,
@@ -99,23 +99,25 @@ function settledRun(): RunDetail {
       afterBytes: 1_620_000_000,
     },
     files: [
-      file('j1', 'Bluey S01E01.mkv', 'done', {
+      file('j1', 'Maple Lane S01E01.mkv', 'done', {
         reason: 'Re-encoded to HEVC',
         beforeBytes: 2_410_000_000,
         afterBytes: 1_620_000_000,
         replacedTo: 'recycle',
       }),
-      file('j2', 'Bluey S01E02.mkv', 'kept_original', {
+      file('j2', 'Maple Lane S01E02.mkv', 'kept_original', {
         reason: 'Only 6% smaller, size gate needs 20%',
         beforeBytes: 1_000_000_000,
         afterBytes: 940_000_000,
       }),
-      file('j3', 'Bluey S01E03.mkv', 'nothing_to_do', { reason: 'Already HEVC' }),
-      file('j4', 'Bluey S01E04.mkv', 'failed', {
+      file('j3', 'Maple Lane S01E03.mkv', 'nothing_to_do', { reason: 'Already HEVC' }),
+      file('j4', 'Maple Lane S01E04.mkv', 'failed', {
         reason: 'Verification failed: output 4 s shorter',
         beforeBytes: 800_000_000,
       }),
-      file('j5', 'Bluey S01E05.mkv', 'skipped', { reason: 'Hardlinked by the torrent client' }),
+      file('j5', 'Maple Lane S01E05.mkv', 'skipped', {
+        reason: 'Hardlinked by the torrent client',
+      }),
     ],
   };
 }
@@ -135,10 +137,10 @@ function liveRun(): RunDetail {
     },
     files: [
       r.files[0] as RunDetail['files'][number],
-      file('j2', 'Bluey S01E02.mkv', 'encoding'),
-      file('j3', 'Bluey S01E03.mkv', 'queued'),
-      file('j4', 'Bluey S01E04.mkv', 'queued'),
-      file('j5', 'Bluey S01E05.mkv', 'queued'),
+      file('j2', 'Maple Lane S01E02.mkv', 'encoding'),
+      file('j3', 'Maple Lane S01E03.mkv', 'queued'),
+      file('j4', 'Maple Lane S01E04.mkv', 'queued'),
+      file('j5', 'Maple Lane S01E05.mkv', 'queued'),
     ],
   };
 }
@@ -173,7 +175,9 @@ describe('RunPage', () => {
     // The muted subtitle: library and when the run started; the path is only a hover title.
     const sub = document.querySelector('.page-head .head-sub') as HTMLElement;
     expect(sub.textContent).toBe(`Run on Shows · ${fmtStamp('2026-10-16T18:00:00.000Z')}`);
-    expect(within(sub).getByText('Shows').getAttribute('title')).toBe('/transcode/shows/Bluey');
+    expect(within(sub).getByText('Shows').getAttribute('title')).toBe(
+      '/transcode/shows/Maple Lane',
+    );
     expect(sub.querySelector('time')?.getAttribute('dateTime')).toBe('2026-10-16T18:00:00.000Z');
 
     const counts = screen.getByRole('list', { name: 'Outcomes' });
@@ -206,8 +210,8 @@ describe('RunPage', () => {
       ...r,
       run: { ...r.run, dryRun: true, note: 'no active version' },
       files: [
-        file('j1', 'Bluey S01E01.mkv', 'dry_run'),
-        file('j2', 'Bluey S01E02.mkv', 'dry_run', { workflowVersion: 6 }),
+        file('j1', 'Maple Lane S01E01.mkv', 'dry_run'),
+        file('j2', 'Maple Lane S01E02.mkv', 'dry_run', { workflowVersion: 6 }),
       ],
       counts: { ...r.counts, total: 2 },
     });
@@ -215,8 +219,8 @@ describe('RunPage', () => {
 
     expect(await screen.findByText('Dry run · No active version')).toBeTruthy();
     const rows = screen.getAllByRole('row');
-    const first = rows.find((row) => row.textContent?.includes('Bluey S01E01.mkv'));
-    const second = rows.find((row) => row.textContent?.includes('Bluey S01E02.mkv'));
+    const first = rows.find((row) => row.textContent?.includes('Maple Lane S01E01.mkv'));
+    const second = rows.find((row) => row.textContent?.includes('Maple Lane S01E02.mkv'));
     expect(first?.textContent).not.toContain('v6');
     expect(first?.textContent).not.toMatch(/mkv\s*v7/);
     expect(second?.textContent).toContain('ran on v6');
@@ -278,19 +282,23 @@ describe('RunPage', () => {
         .getAllByRole('cell')
         .map((c) => c.textContent);
     // The reason is a muted line under the name, only when it says more than the chip.
-    expect(cells(0)).toEqual(['Bluey S01E01.mkv', 'Replaced', '2.41 GB → 1.62 GB']);
+    expect(cells(0)).toEqual(['Maple Lane S01E01.mkv', 'Replaced', '2.41 GB → 1.62 GB']);
     expect(cells(1)).toEqual([
-      'Bluey S01E02.mkvOnly 6% smaller, size gate needs 20%',
+      'Maple Lane S01E02.mkvOnly 6% smaller, size gate needs 20%',
       'Kept original',
       '1.00 GB',
     ]);
-    expect(cells(2)).toEqual(['Bluey S01E03.mkvAlready HEVC', 'Nothing to do', '—']);
+    expect(cells(2)).toEqual(['Maple Lane S01E03.mkvAlready HEVC', 'Nothing to do', '—']);
     expect(cells(3)).toEqual([
-      'Bluey S01E04.mkvVerification failed: output 4 s shorter',
+      'Maple Lane S01E04.mkvVerification failed: output 4 s shorter',
       'Failed',
       '800 MB',
     ]);
-    expect(cells(4)).toEqual(['Bluey S01E05.mkvHardlinked by the torrent client', 'Skipped', '—']);
+    expect(cells(4)).toEqual([
+      'Maple Lane S01E05.mkvHardlinked by the torrent client',
+      'Skipped',
+      '—',
+    ]);
 
     // The Jobs list's chip: icon and word, "Kept original" neutral.
     expect(
@@ -311,9 +319,9 @@ describe('RunPage', () => {
       '/jobs/j4',
       '/jobs/j5',
     ]);
-    expect(links[0]?.textContent).toBe('Bluey S01E01.mkv');
+    expect(links[0]?.textContent).toBe('Maple Lane S01E01.mkv');
     expect(rows[0]?.classList.contains('row-link')).toBe(true);
-    expect(links[0]?.getAttribute('title')).toBe('/transcode/shows/Bluey S01E01.mkv');
+    expect(links[0]?.getAttribute('title')).toBe('/transcode/shows/Maple Lane S01E01.mkv');
   });
 
   it('phone: stacked cards like the Jobs phone list, no table', async () => {
@@ -330,13 +338,15 @@ describe('RunPage', () => {
       }) as MediaQueryList;
     mocks.get.mockResolvedValue(settledRun());
     renderAt('/runs/r1', page());
-    const first = await screen.findByRole('link', { name: /Bluey S01E01\.mkv/ });
+    const first = await screen.findByRole('link', { name: /Maple Lane S01E01\.mkv/ });
     expect(first.getAttribute('href')).toBe('/jobs/j1');
     expect(first.className).toBe('phone-finished');
     expect(within(first).getByText('Replaced · 2.41 GB → 1.62 GB')).toBeTruthy();
     expect(screen.getByText('Kept original · 1.00 GB')).toBeTruthy();
     expect(
-      within(screen.getByRole('link', { name: /Bluey S01E03\.mkv/ })).getByText('Nothing to do'),
+      within(screen.getByRole('link', { name: /Maple Lane S01E03\.mkv/ })).getByText(
+        'Nothing to do',
+      ),
     ).toBeTruthy();
     expect(screen.queryByRole('table')).toBeNull();
   });
@@ -346,7 +356,7 @@ describe('RunPage', () => {
     mocks.get.mockResolvedValue({
       ...settledRun(),
       files: [
-        file('j1', 'tigger-pooh.mp4', 'already_processed', {
+        file('j1', 'otter-finch.mp4', 'already_processed', {
           reason: `already nothing_to_do on ${at}`,
           beforeBytes: 133_331,
         }),
@@ -443,11 +453,11 @@ describe('RunPage', () => {
     const row = (name: string) =>
       within(table.getByRole('link', { name }).closest('tr') as HTMLElement);
     // A paused queued job: the chip stays "Queued", a second chip and the note say "Paused".
-    expect(row('Bluey S01E03.mkv').getByText('Queued')).toBeTruthy();
-    expect(row('Bluey S01E03.mkv').getAllByText('Paused')).toHaveLength(2);
+    expect(row('Maple Lane S01E03.mkv').getByText('Queued')).toBeTruthy();
+    expect(row('Maple Lane S01E03.mkv').getAllByText('Paused')).toHaveLength(2);
     // A paused running job keeps "In progress" with the Paused chip.
-    expect(row('Bluey S01E02.mkv').getByText('In progress')).toBeTruthy();
-    expect(row('Bluey S01E02.mkv').getByText('Paused')).toBeTruthy();
+    expect(row('Maple Lane S01E02.mkv').getByText('In progress')).toBeTruthy();
+    expect(row('Maple Lane S01E02.mkv').getByText('Paused')).toBeTruthy();
     // The queue itself runs: no "Queue paused" anywhere.
     expect(screen.queryByText(/Queue paused/)).toBeNull();
   });
@@ -557,7 +567,7 @@ describe('RunPage dry run', () => {
       ...base,
       run: { ...base.run, dryRun: true },
       counts: { ...zero, dry_run: 1, total: 1 },
-      files: [file('j1', 'Bluey S01E01.mp4', 'dry_run', { beforeBytes: 1000 })],
+      files: [file('j1', 'Maple Lane S01E01.mp4', 'dry_run', { beforeBytes: 1000 })],
     });
     renderAt('/runs/r1', <Route path="/runs/:id" component={RunPage} />);
     const heading = await screen.findByRole('heading', { level: 1 });

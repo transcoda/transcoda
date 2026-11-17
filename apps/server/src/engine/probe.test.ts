@@ -12,8 +12,8 @@ import {
   probeReason,
 } from './probe.ts';
 
-const tigger: unknown = JSON.parse(
-  readFileSync(new URL('./fixtures/ffprobe-tigger-pooh.json', import.meta.url), 'utf8'),
+const otter: unknown = JSON.parse(
+  readFileSync(new URL('./fixtures/ffprobe-otter-finch.json', import.meta.url), 'utf8'),
 );
 
 /** A minimal ffprobe document around the given streams and format fields. */
@@ -31,8 +31,8 @@ function doc(streams: Record<string, unknown>[], format: Record<string, unknown>
   };
 }
 
-describe('parseProbe on the captured tigger-pooh output', () => {
-  const probe = parseProbe(tigger);
+describe('parseProbe on the captured otter-finch output', () => {
+  const probe = parseProbe(otter);
 
   it('reads the container and every stream', () => {
     expect(probe.container).toBe('mp4');
@@ -42,7 +42,7 @@ describe('parseProbe on the captured tigger-pooh output', () => {
     expect(probe.chapters).toBe(0);
     expect(probe.durationSeconds).toBeCloseTo(3, 1);
     expect(probe.sizeBytes).toBe(379411);
-    expect(probe.raw).toBe(tigger);
+    expect(probe.raw).toBe(otter);
   });
 
   it('maps an audio stream', () => {

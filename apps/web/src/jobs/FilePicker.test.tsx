@@ -41,9 +41,9 @@ beforeEach(() => {
     libraries: [library('l1', 'Shows', '/media/Shows'), library('l2', 'Films', '/media/Films')],
   });
   mocks.browse.mockReset().mockImplementation(async ({ id, path }) => {
-    if (id === 'l1' && path === '') return { dirs: ['Bluey'], files: [] };
-    if (id === 'l1' && path === 'Bluey') {
-      return { dirs: ['Season 01'], files: [file('tigger-pooh.mp4', 2_410_000_000)] };
+    if (id === 'l1' && path === '') return { dirs: ['Maple Lane'], files: [] };
+    if (id === 'l1' && path === 'Maple Lane') {
+      return { dirs: ['Season 01'], files: [file('otter-finch.mp4', 2_410_000_000)] };
     }
     if (id === 'l2' && path === '') return { dirs: [], files: [file('film.mkv', 790_000_000)] };
     return { dirs: [], files: [] };
@@ -78,24 +78,24 @@ describe('FilePicker', () => {
     ).toEqual(['Shows', 'Films']);
     fireEvent.click(within(dialog).getByRole('option', { name: 'Shows' }));
 
-    fireEvent.click(await within(dialog).findByRole('button', { name: 'Bluey' }));
-    const pick = await within(dialog).findByRole('button', { name: /tigger-pooh\.mp4/ });
+    fireEvent.click(await within(dialog).findByRole('button', { name: 'Maple Lane' }));
+    const pick = await within(dialog).findByRole('button', { name: /otter-finch\.mp4/ });
     expect(pick.textContent).toContain('2.41 GB');
     const crumbs = within(dialog).getByRole('navigation', { name: 'Folder' });
-    expect(crumbs.textContent).toBe('Shows/Bluey');
-    expect(mocks.browse).toHaveBeenLastCalledWith({ id: 'l1', path: 'Bluey' });
+    expect(crumbs.textContent).toBe('Shows/Maple Lane');
+    expect(mocks.browse).toHaveBeenLastCalledWith({ id: 'l1', path: 'Maple Lane' });
 
     fireEvent.click(pick);
     await waitFor(() =>
       expect(onPick).toHaveBeenCalledWith(
-        '/media/Shows/Bluey/tigger-pooh.mp4',
+        '/media/Shows/Maple Lane/otter-finch.mp4',
         expect.objectContaining({ id: 'l1', name: 'Shows' }),
       ),
     );
 
     // Up returns to the root; another library browses its own root.
     fireEvent.click(within(dialog).getByRole('button', { name: 'Up' }));
-    await within(dialog).findByRole('button', { name: 'Bluey' });
+    await within(dialog).findByRole('button', { name: 'Maple Lane' });
     expect(within(dialog).queryByRole('button', { name: 'Up' })).toBeNull();
     fireEvent.click(select);
     fireEvent.click(within(dialog).getByRole('option', { name: 'Films' }));
@@ -136,12 +136,12 @@ describe('FilePicker', () => {
       ),
     );
     fireEvent.change(within(dialog).getByLabelText('Or type a path'), {
-      target: { value: '/media/Shows/Bluey/x.mkv' },
+      target: { value: '/media/Shows/Maple Lane/x.mkv' },
     });
     fireEvent.click(within(dialog).getByRole('button', { name: 'Choose file' }));
     await waitFor(() =>
       expect(onPick).toHaveBeenLastCalledWith(
-        '/media/Shows/Bluey/x.mkv',
+        '/media/Shows/Maple Lane/x.mkv',
         expect.objectContaining({ id: 'l1' }),
       ),
     );
@@ -150,12 +150,14 @@ describe('FilePicker', () => {
   it('is a wide dialog: one-line crumbs with full names on hover, file names break at dots, a placeholder under the library', async () => {
     const long = 'Example.Movie.2001.Hybrid.BluRay.Remux.1080p.AVC.DTS-HD.MA.5.1-GROUP.mkv';
     mocks.browse.mockImplementation(async ({ path }) =>
-      path === 'Bluey' ? { dirs: [], files: [file(long, 1)] } : { dirs: ['Bluey'], files: [] },
+      path === 'Maple Lane'
+        ? { dirs: [], files: [file(long, 1)] }
+        : { dirs: ['Maple Lane'], files: [] },
     );
     show();
     const dialog = await screen.findByRole('dialog', { name: 'Dry run TV cleanup on a file' });
     expect(dialog.classList.contains('dialog-wide')).toBe(true);
-    fireEvent.click(await within(dialog).findByRole('button', { name: 'Bluey' }));
+    fireEvent.click(await within(dialog).findByRole('button', { name: 'Maple Lane' }));
     const pick = await within(dialog).findByRole('button', {
       name: new RegExp(long.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')),
     });
@@ -164,7 +166,7 @@ describe('FilePicker', () => {
     expect(name.textContent).toBe(long);
     expect(name.querySelectorAll('wbr').length).toBeGreaterThan(10);
     const crumbs = within(dialog).getByRole('navigation', { name: 'Folder' });
-    expect(within(crumbs).getByText('Bluey').getAttribute('title')).toBe('Bluey');
+    expect(within(crumbs).getByText('Maple Lane').getAttribute('title')).toBe('Maple Lane');
     expect(within(crumbs).getByRole('button', { name: 'Shows' }).getAttribute('title')).toBe(
       'Shows',
     );
@@ -188,9 +190,9 @@ describe('FilePicker', () => {
     const onPick = vi.fn(async () => 'still growing');
     show(onPick);
     const dialog = await screen.findByRole('dialog');
-    fireEvent.click(await within(dialog).findByRole('button', { name: 'Bluey' }));
-    fireEvent.click(await within(dialog).findByRole('button', { name: /tigger-pooh\.mp4/ }));
-    const reason = await within(dialog).findByText("Can't use tigger-pooh.mp4: still growing");
+    fireEvent.click(await within(dialog).findByRole('button', { name: 'Maple Lane' }));
+    fireEvent.click(await within(dialog).findByRole('button', { name: /otter-finch\.mp4/ }));
+    const reason = await within(dialog).findByText("Can't use otter-finch.mp4: still growing");
     expect(reason.previousElementSibling?.classList.contains('picker-list')).toBe(true);
     const typed = within(dialog).getByLabelText('Or type a path');
     expect(typed.getAttribute('aria-invalid')).toBeNull();

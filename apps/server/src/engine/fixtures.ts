@@ -11,7 +11,7 @@ const FIXTURES_DIR = join(REPO_ROOT, '.local', 'fixtures');
 const TMP_DIR = join(REPO_ROOT, '.local', 'tmp');
 
 export type FixtureName =
-  | 'tigger-pooh.mp4'
+  | 'otter-finch.mp4'
   | 'compliant.mkv'
   | 'untagged.mkv'
   | 'pgs-subs.mkv'

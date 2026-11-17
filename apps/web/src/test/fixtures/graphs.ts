@@ -1,13 +1,13 @@
 import type { WorkflowGraph } from '@transcoda/shared';
 
 /**
- * Editor test graphs. `tiggerPoohSub` and `tiggerPoohMain` are the graphs of
- * `apps/server/src/workflows/fixtures/tigger-pooh.ts` (`languageCleanupSub`, `tiggerPoohMain`
+ * Editor test graphs. `otterFinchSub` and `otterFinchMain` are the graphs of
+ * `apps/server/src/workflows/fixtures/otter-finch.ts` (`languageCleanupSub`, `otterFinchMain`
  * without extra nodes) written out literally, because the web app never imports server code.
  */
 
 /** Shared sub-workflow: keep English and German, English default audio, English then German first. */
-export function tiggerPoohSub(): WorkflowGraph {
+export function otterFinchSub(): WorkflowGraph {
   return {
     formatVersion: 2,
     kind: 'subworkflow',
@@ -63,7 +63,7 @@ export function tiggerPoohSub(): WorkflowGraph {
 }
 
 /** Main workflow: HEVC files go through the cleanup then finish; other files are encoded first. */
-export function tiggerPoohMain(subId: string, subVersion: number): WorkflowGraph {
+export function otterFinchMain(subId: string, subVersion: number): WorkflowGraph {
   const runSettings = () => ({
     subworkflowId: subId,
     version: subVersion,

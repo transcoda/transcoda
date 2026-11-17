@@ -39,7 +39,7 @@ import {
 import { renderAt } from '../test/render.tsx';
 import { JobPage } from './JobPage.tsx';
 
-const FILE = '/media/Shows/Tigger and Pooh/Tigger and Pooh S01E01.mkv';
+const FILE = '/media/Shows/Otter and Finch/Otter and Finch S01E01.mkv';
 const LIBRARY = {
   id: 'l1',
   name: 'Shows',
@@ -97,7 +97,7 @@ async function open(path = '/jobs/j1') {
       </Switch>
     </EventsProvider>,
   );
-  await screen.findByRole('heading', { level: 1, name: 'Tigger and Pooh' });
+  await screen.findByRole('heading', { level: 1, name: 'Otter and Finch' });
   await act(async () => {});
   return view;
 }
@@ -121,7 +121,7 @@ describe('JobPage: Process again', () => {
     const view = await open();
     fireEvent.click(screen.getByRole('button', { name: 'Process again' }));
     const dialog = await screen.findByRole('dialog', {
-      name: 'Process Tigger and Pooh S01E01.mkv again?',
+      name: 'Process Otter and Finch S01E01.mkv again?',
     });
     await waitFor(() => expect(dialog.textContent).toContain('/media/Shows/.transcoda-recycle'));
     expect(dialog.textContent).toContain('TV cleanup');
@@ -344,7 +344,7 @@ describe('JobPage: Process again', () => {
     mocks.jobs.queue.mockRejectedValue(new Error('boom'));
     const view = await open();
     fireEvent.click(screen.getByRole('button', { name: 'Dry run again' }));
-    await screen.findByText(/Couldn't queue Tigger and Pooh S01E01.mkv again/);
+    await screen.findByText(/Couldn't queue Otter and Finch S01E01.mkv again/);
     expect(view.location()).toBe('/jobs/j1');
   });
 });

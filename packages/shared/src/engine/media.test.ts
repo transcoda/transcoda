@@ -32,9 +32,9 @@ describe('parseFileName', () => {
       { kind: 'movie', title: 'Sherlock Jr', year: 1924 },
     ],
     [
-      '/lib/Bluey/Season 01/S01E04.mp4',
+      '/lib/Maple Lane/Season 01/S01E04.mp4',
       '/lib',
-      { kind: 'episode', title: 'Bluey', season: 1, episode: 4 },
+      { kind: 'episode', title: 'Maple Lane', season: 1, episode: 4 },
     ],
     ['/lib/S01E04.mp4', '/lib', { kind: 'episode', title: 'S01E04', season: 1, episode: 4 }],
     ['/lib/Show/Show.1x02.avi', '/lib', { kind: 'episode', title: 'Show', season: 1, episode: 2 }],

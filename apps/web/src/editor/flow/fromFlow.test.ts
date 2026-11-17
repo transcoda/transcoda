@@ -2,7 +2,7 @@ import type { WorkflowGraph } from '@transcoda/shared';
 import type { NodeChange } from '@xyflow/react';
 import { describe, expect, it } from 'vitest';
 import { catalogFixture } from '../../test/fixtures/catalog.ts';
-import { chainMainReplace, tiggerPoohMain, tiggerPoohSub } from '../../test/fixtures/graphs.ts';
+import { chainMainReplace, otterFinchMain, otterFinchSub } from '../../test/fixtures/graphs.ts';
 import { graphEquals } from '../model/equality.ts';
 import { type FlowChangeResult, fromEdgeChanges, fromNodeChanges } from './fromFlow.ts';
 import { toFlow } from './toFlow.ts';
@@ -11,7 +11,7 @@ const none = { nodes: [], edges: [] };
 
 /** Cleanup group at {100,100} sized 400×200, run-a at absolute {160,140}, run-b at {350,180}. */
 function grouped(): WorkflowGraph {
-  const g = tiggerPoohMain('sub', 1);
+  const g = otterFinchMain('sub', 1);
   return {
     ...g,
     nodes: g.nodes.map((n) =>
@@ -117,7 +117,7 @@ describe('fromNodeChanges', () => {
   });
 
   it('round trip: toFlow then fromFlow with no changes yields a graph equal to the input', () => {
-    for (const g of [grouped(), chainMainReplace(), tiggerPoohSub()]) {
+    for (const g of [grouped(), chainMainReplace(), otterFinchSub()]) {
       const { nodes } = toFlow(g, catalogFixture, [], none);
       expect(graphEquals(apply(fromNodeChanges([], g, nodes), g), g)).toBe(true);
       // Dropping every node where it already is changes nothing either.
@@ -311,7 +311,7 @@ describe('fromNodeChanges', () => {
   });
 
   it('a refused removal comes back as a refusal, not a silent no-op', () => {
-    const g = tiggerPoohSub();
+    const g = otterFinchSub();
     const { nodes } = toFlow(g, catalogFixture, [], none);
     const [result] = fromNodeChanges([{ id: 'start', type: 'remove' }], g, nodes);
     expect(result && 'op' in result && result.op(g)).toEqual({

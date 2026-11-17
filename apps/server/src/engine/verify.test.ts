@@ -795,32 +795,32 @@ describe.skipIf(!fixturesAvailable())('verifyOutput with real ffmpeg', { timeout
     ]);
   });
 
-  it('tigger-pooh.mp4 remuxed verbatim with targets [android-tv] verifies (the png cover is exempt)', async () => {
-    const source = await sourceOf('tigger-pooh.mp4');
+  it('otter-finch.mp4 remuxed verbatim with targets [android-tv] verifies (the png cover is exempt)', async () => {
+    const source = await sourceOf('otter-finch.mp4');
     const model: BuildModel = { ...modelFromProbe(source), targets: ['android-tv'] };
-    const out = await render('tigger-pooh.mp4', model, 'tigger.mp4');
+    const out = await render('otter-finch.mp4', model, 'otter.mp4');
     const result = await verify(out, model, source);
     expect(result).toMatchObject({ ok: true, warnings: [] });
     if (!result.ok) return;
     expect(result.probe.streams.filter((s) => s.attachedPic)).toHaveLength(1);
   });
 
-  it('tigger-pooh.mp4 → mkv verifies with the cover written last as an attachment', async () => {
+  it('otter-finch.mp4 → mkv verifies with the cover written last as an attachment', async () => {
     const { ffmpegPath } = toolPaths();
-    const source = await sourceOf('tigger-pooh.mp4');
+    const source = await sourceOf('otter-finch.mp4');
     const model: BuildModel = { ...modelFromProbe(source), container: 'mkv' };
     fitToContainer(model);
     const cover = source.streams.find((s) => s.attachedPic);
-    if (!cover) throw new Error('tigger-pooh.mp4 has no cover');
+    if (!cover) throw new Error('otter-finch.mp4 has no cover');
     const coverPath = join(dir, `cover-${cover.index}.png`);
     await execFileAsync(
       ffmpegPath,
-      coverExtractArgs(fixturePath('tigger-pooh.mp4'), cover.index, coverPath),
+      coverExtractArgs(fixturePath('otter-finch.mp4'), cover.index, coverPath),
     );
     const out = await render(
-      'tigger-pooh.mp4',
+      'otter-finch.mp4',
       model,
-      'tigger.mkv',
+      'otter.mkv',
       undefined,
       new Map([[cover.index, coverPath]]),
     );

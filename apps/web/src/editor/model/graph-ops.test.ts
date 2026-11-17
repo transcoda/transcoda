@@ -4,8 +4,8 @@ import { catalogFixture as catalog } from '../../test/fixtures/catalog.ts';
 import {
   chainMainReplace,
   oneTrigger,
-  tiggerPoohMain,
-  tiggerPoohSub,
+  otterFinchMain,
+  otterFinchSub,
 } from '../../test/fixtures/graphs.ts';
 import {
   addNode,
@@ -87,7 +87,7 @@ describe('graph operations', () => {
       refusal: { reason: 'Unknown node type acme:nope' },
     });
     const g = graphOf(
-      addNode(tiggerPoohMain('sub1', 1), 'core:remux', { x: 1, y: 2 }, catalog, {
+      addNode(otterFinchMain('sub1', 1), 'core:remux', { x: 1, y: 2 }, catalog, {
         id: 'mine',
         groupId: 'cleanup',
       }),
@@ -115,7 +115,7 @@ describe('graph operations', () => {
       }
       return v;
     };
-    const g = freeze(tiggerPoohMain('sub1', 2));
+    const g = freeze(otterFinchMain('sub1', 2));
     const before = structuredClone(g);
     const results = [
       addNode(g, 'core:remux', { x: 0, y: 0 }, catalog),
@@ -151,7 +151,7 @@ describe('graph operations', () => {
     expect(g.nodes.map((n) => n.id)).toEqual(['in', 'ro']);
     expect(g.edges).toEqual([]);
 
-    const sub = tiggerPoohSub();
+    const sub = otterFinchSub();
     expect(removeNodes(sub, ['start'])).toEqual({
       ok: false,
       refusal: { reason: 'A sub-workflow needs its start and end' },
@@ -174,7 +174,7 @@ describe('graph operations', () => {
   });
 
   it('duplicateNode offsets by 40/40, keeps settings, label, group and bypass, and has no edges', () => {
-    const base = tiggerPoohMain('sub1', 1);
+    const base = otterFinchMain('sub1', 1);
     const labelled = graphOf(toggleBypass(graphOf(setLabel(base, 'run-a', 'Clean A')), 'run-a'));
     const moved = graphOf(moveNodes(labelled, [{ id: 'run-a', position: { x: 100, y: 50 } }]));
     const g = graphOf(duplicateNode(moved, 'run-a', catalog));
@@ -193,7 +193,7 @@ describe('graph operations', () => {
 
   it('duplicateNode drops redacted webhook URLs (the server would store them as typed)', () => {
     const base = graphOf(
-      addNode(tiggerPoohMain('sub1', 1), 'core:notify-webhook', { x: 0, y: 400 }, catalog, {
+      addNode(otterFinchMain('sub1', 1), 'core:notify-webhook', { x: 0, y: 400 }, catalog, {
         id: 'hook',
       }),
     );
@@ -297,7 +297,7 @@ describe('graph operations', () => {
   });
 
   it('createGroup computes the bounding box with 24 px padding and ungroup clears groupId', () => {
-    const base = tiggerPoohMain('sub1', 1);
+    const base = otterFinchMain('sub1', 1);
     const placed = graphOf(
       moveNodes(base, [
         { id: 'in', position: { x: 100, y: 50 } },
@@ -338,7 +338,7 @@ describe('graph operations', () => {
 
   it('createGroup sizes the box from measured card sizes when given', () => {
     const placed = graphOf(
-      moveNodes(tiggerPoohMain('sub1', 1), [
+      moveNodes(otterFinchMain('sub1', 1), [
         { id: 'in', position: { x: 100, y: 50 } },
         { id: 'vi', position: { x: 400, y: 250 } },
       ]),
@@ -404,7 +404,7 @@ describe('graph operations', () => {
   });
 
   it('renameGroup refuses an empty or blank name', () => {
-    const g = tiggerPoohMain('sub1', 1);
+    const g = otterFinchMain('sub1', 1);
     for (const name of ['', '   ']) {
       expect(renameGroup(g, 'cleanup', name)).toEqual({
         ok: false,
@@ -415,7 +415,7 @@ describe('graph operations', () => {
   });
 
   it('setNodeGroup sets and clears groupId and refuses an unknown group', () => {
-    const g = tiggerPoohMain('sub1', 1);
+    const g = otterFinchMain('sub1', 1);
     expect('groupId' in nodeOf(graphOf(setNodeGroup(g, 'run-a', undefined)), 'run-a')).toBe(false);
     expect(nodeOf(graphOf(setNodeGroup(g, 'ca', 'cleanup')), 'ca').groupId).toBe('cleanup');
     expect(setNodeGroup(g, 'ca', 'nope')).toEqual({
@@ -425,7 +425,7 @@ describe('graph operations', () => {
   });
 
   it('setPinnedVersion changes only the version of a Run node', () => {
-    const g = graphOf(setPinnedVersion(tiggerPoohMain('sub1', 3), 'run-a', 4));
+    const g = graphOf(setPinnedVersion(otterFinchMain('sub1', 3), 'run-a', 4));
     expect(nodeOf(g, 'run-a').settings).toEqual({
       subworkflowId: 'sub1',
       version: 4,
@@ -439,7 +439,7 @@ describe('graph operations', () => {
   });
 
   it('setOverride(undefined) deletes the key and keeps overrides an object', () => {
-    const g = tiggerPoohMain('sub1', 1);
+    const g = otterFinchMain('sub1', 1);
     const set = graphOf(setOverride(g, 'run-a', 'sdt.audioLanguages', ['de']));
     expect(nodeOf(set, 'run-a').settings).toMatchObject({
       overrides: { 'keep.languages': ['en', 'de', 'tr'], 'sdt.audioLanguages': ['de'] },
@@ -482,7 +482,7 @@ describe('graph operations', () => {
       true,
     );
 
-    const sub = tiggerPoohSub();
+    const sub = otterFinchSub();
     expect(addNode(sub, 'core:subworkflow-start', { x: 0, y: 0 }, catalog)).toEqual(
       refusal('A sub-workflow has exactly one start'),
     );
@@ -522,7 +522,7 @@ describe('graph operations', () => {
   });
 
   it('setPinnedVersion refuses versions that are not whole numbers of at least 1', () => {
-    const g = tiggerPoohMain('sub1', 3);
+    const g = otterFinchMain('sub1', 3);
     for (const version of [0, -1, 1.5, Number.NaN, Number.POSITIVE_INFINITY]) {
       expect(setPinnedVersion(g, 'run-a', version)).toEqual({
         ok: false,
@@ -537,7 +537,7 @@ describe('graph operations', () => {
 
 describe('removeSelection', () => {
   it('disconnects edges, ungroups a group and removes nodes in one result; refusals pass through', () => {
-    const g = tiggerPoohMain('sub', 1);
+    const g = otterFinchMain('sub', 1);
     const group = g.groups[0];
     if (!group) throw new Error('fixture has a group');
     const member = g.nodes.find((n) => n.groupId === group.id);
@@ -551,7 +551,7 @@ describe('removeSelection', () => {
     expect(r.graph.nodes.some((n) => n.id === loose.id)).toBe(false);
     expect(r.graph.edges.some((e) => e.id === edge.id)).toBe(false);
 
-    const sub = tiggerPoohSub();
+    const sub = otterFinchSub();
     const start = sub.nodes.find((n) => n.type === 'core:subworkflow-start');
     if (!start) throw new Error('fixture has a start');
     const refused = removeSelection(sub, { nodes: [start.id], edges: [] });

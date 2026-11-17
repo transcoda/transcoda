@@ -2,8 +2,8 @@ import type { Edge, Group, NodeInstance, WorkflowGraph } from '@transcoda/shared
 import { GROUP_PADDING, NODE_SIZE } from '../../editor/model/graph-ops.ts';
 
 /**
- * A test fixture (once the empty state's "TV cleanup" example): the Tigger & Pooh pair of
- * `apps/server/src/workflows/fixtures/tigger-pooh.ts` with the same settings, laid out for the
+ * A test fixture (once the empty state's "TV cleanup" example): the Otter & Finch pair of
+ * `apps/server/src/workflows/fixtures/otter-finch.ts` with the same settings, laid out for the
  * canvas. The web app never imports server code, so the graphs are written out here.
  */
 export const TV_CLEANUP_SUB_NAME = 'Language cleanup';

@@ -19,7 +19,7 @@ export function languageCleanupSub(): WorkflowGraph {
  * Main workflow: HEVC files go through the cleanup then finish; other files are encoded first
  * (`extraNodes` are chained after the encoder), then cleaned up. Both runs share overrides and a group.
  */
-export function tiggerPoohMain(
+export function otterFinchMain(
   subId: string,
   subVersion: number,
   opts: { extraNodes?: NodeInstance[] } = {},

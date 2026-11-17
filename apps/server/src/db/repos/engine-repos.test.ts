@@ -211,15 +211,15 @@ describe('job media', () => {
   it('a list row without stored media parses the file name; invalid JSON does the same', () => {
     const fallback = {
       kind: 'episode',
-      title: 'Andor',
+      title: 'Starfall',
       season: 2,
       episode: 7,
       source: 'filename',
       posterPath: null,
     };
-    job('n1', { path: '/media/shows/Andor/Andor S02E07.mkv' });
+    job('n1', { path: '/media/shows/Starfall/Starfall S02E07.mkv' });
     expect(findJobListRow(db, 'n1')?.media).toMatchObject(fallback);
-    job('n2', { path: '/media/shows/Andor/Andor S02E07.mkv' });
+    job('n2', { path: '/media/shows/Starfall/Starfall S02E07.mkv' });
     db.prepare("UPDATE jobs SET media = '{not json' WHERE id = 'n2'").run();
     expect(findJob(db, 'n2')?.media).toBeNull();
     expect(findJobListRow(db, 'n2')?.media).toMatchObject(fallback);

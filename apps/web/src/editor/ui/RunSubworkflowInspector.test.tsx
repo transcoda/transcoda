@@ -13,7 +13,7 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { setBeforeNavigate } from '../../lib/navigation.tsx';
 import { catalogFixture } from '../../test/fixtures/catalog.ts';
-import { tiggerPoohSub } from '../../test/fixtures/graphs.ts';
+import { otterFinchSub } from '../../test/fixtures/graphs.ts';
 import { nodeStateFor } from '../model/issues.ts';
 import type { ApplyOptions, GraphOp } from './Canvas.tsx';
 import { OverridesEditor } from './OverridesEditor.tsx';
@@ -84,7 +84,7 @@ function settingsOf(graph: WorkflowGraph): SubworkflowSetting[] {
   return out;
 }
 
-function childDetail(graph = tiggerPoohSub(), settings = settingsOf(graph)): WorkflowDetail {
+function childDetail(graph = otterFinchSub(), settings = settingsOf(graph)): WorkflowDetail {
   return {
     ...summaryOf('sub-lang', 'Language cleanup', 3),
     version: 3,
@@ -352,7 +352,7 @@ describe('RunSubworkflowInspector', () => {
   });
 
   it('lists only the child settings schema: never start, end or nested Run node settings', async () => {
-    const graph = tiggerPoohSub();
+    const graph = otterFinchSub();
     graph.nodes.push({
       id: 'nested',
       type: RUN_SUBWORKFLOW_TYPE,
@@ -408,7 +408,7 @@ describe('RunSubworkflowInspector', () => {
 });
 
 describe('OverridesEditor', () => {
-  const settings = settingsOf(tiggerPoohSub());
+  const settings = settingsOf(otterFinchSub());
 
   it('an override cleared to nothing keeps its control open until switched off', () => {
     const onSet = vi.fn();

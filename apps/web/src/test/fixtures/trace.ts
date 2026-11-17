@@ -1,9 +1,9 @@
 import type { JobDetail, WalkStep } from '@transcoda/contract';
 import type { JsonValue, TraceChanges, TraceEntry } from '@transcoda/shared';
-import { tiggerPoohMain, tiggerPoohSub } from './graphs.ts';
+import { otterFinchMain, otterFinchSub } from './graphs.ts';
 
 /**
- * A hand-written job over `tiggerPoohMain` + `tiggerPoohSub`, shaped as the engine writes it
+ * A hand-written job over `otterFinchMain` + `otterFinchSub`, shaped as the engine writes it
  * (apps/server/src/engine/walk.ts): the decide phase traces the trigger, conditions, Run nodes and
  * the sub-workflow's Start/End (`pass`), then the build phase traces the actions and finish nodes
  * along the decided path. `path` is the walk (`JobDetail.path`), Start/End steps included.
@@ -11,8 +11,8 @@ import { tiggerPoohMain, tiggerPoohSub } from './graphs.ts';
 export const SUB_ID = 'sub1';
 export const SUB_VERSION = 3;
 
-export const traceMain = () => tiggerPoohMain(SUB_ID, SUB_VERSION);
-export const traceSub = () => tiggerPoohSub();
+export const traceMain = () => otterFinchMain(SUB_ID, SUB_VERSION);
+export const traceSub = () => otterFinchSub();
 
 const at = (s: number) => new Date(Date.UTC(2026, 9, 16, 18, 0, s)).toISOString();
 
@@ -127,7 +127,7 @@ export const ELSE_TRACE: TraceEntry[] = [
 export const RUNNING_TRACE: TraceEntry[] = TRACE.slice(0, 9);
 
 export const COMMAND =
-  'ffmpeg -i "Tigger and Pooh S01E01.mkv" -map 0:v:0 -map 0:a:0 -c copy "Tigger and Pooh S01E01.mkv.tmp"';
+  'ffmpeg -i "Otter and Finch S01E01.mkv" -map 0:v:0 -map 0:a:0 -c copy "Otter and Finch S01E01.mkv.tmp"';
 
 /** A finished job (`done`, original in the recycle folder). */
 export function jobDetail(over: Partial<JobDetail> = {}): JobDetail {
@@ -150,7 +150,7 @@ export function jobDetail(over: Partial<JobDetail> = {}): JobDetail {
     restore: null,
     media: {
       kind: 'episode',
-      title: 'Tigger and Pooh',
+      title: 'Otter and Finch',
       year: null,
       season: 1,
       episode: 1,
@@ -158,8 +158,8 @@ export function jobDetail(over: Partial<JobDetail> = {}): JobDetail {
       source: 'filename',
       poster: false,
     },
-    fileName: 'Tigger and Pooh S01E01.mkv',
-    filePath: '/media/Shows/Tigger and Pooh/Tigger and Pooh S01E01.mkv',
+    fileName: 'Otter and Finch S01E01.mkv',
+    filePath: '/media/Shows/Otter and Finch/Otter and Finch S01E01.mkv',
     libraryId: 'l1',
     libraryName: 'Shows',
     workflowId: 'w1',

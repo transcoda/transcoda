@@ -2,7 +2,7 @@ import type { Issue, WorkflowGraph } from '@transcoda/shared';
 import { describe, expect, it } from 'vitest';
 import { createTestApp, type TestApp } from '../test-app.ts';
 import { asSession, login, type Session, send, withCsrf } from '../test-http.ts';
-import { languageCleanupSub, tiggerPoohMain } from './fixtures/tigger-pooh.ts';
+import { languageCleanupSub, otterFinchMain } from './fixtures/otter-finch.ts';
 import { bumpV1, bumpV2, bumpV3, node, testRegistry } from './test-helpers.ts';
 
 interface Detail {
@@ -30,7 +30,7 @@ interface Saved {
   active: { version: number; runnable: boolean } | null;
 }
 
-const MAIN_NAME = 'Tigger & Pooh cleanup';
+const MAIN_NAME = 'Otter & Finch cleanup';
 const codes = (issues: Issue[]) => issues.map((i) => `${i.severity}:${i.code}@${i.nodeId}`);
 const has = (issues: Issue[], code: string, nodeId: string) =>
   issues.some((i) => i.code === code && i.nodeId === nodeId);
@@ -39,7 +39,7 @@ async function json<T>(res: Response): Promise<T> {
   return (await res.json()) as T;
 }
 
-describe('workflow contract scenario: Tigger & Pooh', () => {
+describe('workflow contract scenario: Otter & Finch', () => {
   const t = createTestApp({ nodes: testRegistry(bumpV1()).list() });
   let s: Session;
   let subId = '';
@@ -87,7 +87,7 @@ describe('workflow contract scenario: Tigger & Pooh', () => {
 
   it('2. saves the main workflow pinned to version 2', async () => {
     mainId = (await create(t, MAIN_NAME, 'workflow')).id;
-    fixed = tiggerPoohMain(subId, 2, {
+    fixed = otterFinchMain(subId, 2, {
       extraNodes: [node('bump', 'test:bump', { level: 1 })],
     });
     const res = await put(t, mainId, 1, fixed);

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { blueyPlan, blueyProbe, identityPlan } from '../test/fixtures/plan.ts';
+import { identityPlan, mapleLanePlan, mapleLaneProbe } from '../test/fixtures/plan.ts';
 import {
   containerLine,
   dropLine,
@@ -13,8 +13,8 @@ import {
   wouldDo,
 } from './planText.ts';
 
-const plan = blueyPlan();
-const probe = blueyProbe();
+const plan = mapleLanePlan();
+const probe = mapleLaneProbe();
 const ofType = (type: string) => plan.streams.filter((s) => s.type === type);
 function byIndex(index: number) {
   const s = plan.streams.find((x) => x.index === index);
@@ -107,9 +107,12 @@ describe('sidecarSummary', () => {
       action,
       note: '',
     });
-    expect(sidecarSummary(blueyPlan())).toBeNull();
+    expect(sidecarSummary(mapleLanePlan())).toBeNull();
     expect(
-      sidecarSummary({ ...blueyPlan(), sidecars: [entry('embed'), entry('drop'), entry('embed')] }),
+      sidecarSummary({
+        ...mapleLanePlan(),
+        sidecars: [entry('embed'), entry('drop'), entry('embed')],
+      }),
     ).toBe('2 of 3 embedded');
   });
 });
