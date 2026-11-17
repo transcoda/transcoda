@@ -1,5 +1,5 @@
 /**
- * What each denial probe must report under the host's exact flags (verified on Node 24.21.0).
+ * What each denial probe must report under the host's exact flags (verified on Node 26.13.1).
  * Plain data, not test code: the sandbox suite and `--expect-denials` (Task 11) both read it.
  */
 const BASE: Record<string, string | RegExp> = {

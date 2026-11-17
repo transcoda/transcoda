@@ -48,11 +48,6 @@ import {
   tokenizeJson,
 } from './redact.ts';
 
-/** `process.permission.drop` is not in @types/node 24.19.2. */
-interface PermissionWithDrop {
-  drop(scope: string, ref?: string): void;
-}
-
 type Limits = z.infer<typeof PluginLimitsSchema>;
 type JsonObject = Record<string, JsonValue>;
 type Hook = 'decide' | 'build' | 'finish' | 'data' | 'run';
@@ -237,7 +232,8 @@ function looksLikePlugin(d: unknown): d is TranscodaPlugin {
 }
 
 function dropGrants(): void {
-  const permission = process.permission as unknown as PermissionWithDrop | undefined;
+  // Typed as always present, but undefined when the host runs without --permission.
+  const permission: NodeJS.ProcessPermission | undefined = process.permission;
   try {
     if (permission === undefined) throw new Error('the permission model is not enabled');
     permission.drop('fs.read', bundlePath);

@@ -41,7 +41,7 @@ const fixtureOverrides = {
 };
 const handTexts = (file: string) => `hand text ${file}\n`;
 const fakeDockerfile = [
-  'ARG NODE_IMAGE=node:24.22-bookworm-slim',
+  'ARG NODE_IMAGE=node:26.13-bookworm-slim',
   'ARG JELLYFIN_FFMPEG_VERSION=8.1.3-1-bookworm',
 ].join('\n');
 

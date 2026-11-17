@@ -26,7 +26,7 @@ const version = buildVersion(pkg.version, {
 const base = {
   format: 'esm',
   platform: 'node',
-  target: 'node24',
+  target: 'node26',
   outDir: 'dist',
   // dist also holds tsc -b declaration output; only replace our own file.
   clean: false,

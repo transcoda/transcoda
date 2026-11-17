@@ -13,11 +13,12 @@ Issues labeled [`good first issue`](https://github.com/transcoda/transcoda/label
 
 ## Setting up
 
-You need Node 24 (see `.node-version`), pnpm (`corepack enable`) and ffmpeg (`brew install ffmpeg` on a Mac).
+You need Node 26 (see `.node-version`), pnpm through corepack (Node 26 no longer bundles it: `npm install -g corepack`, then `corepack enable`) and ffmpeg (`brew install ffmpeg` on a Mac).
 
 ```sh
 git clone https://github.com/<you>/transcoda.git
 cd transcoda
+npm install -g corepack
 corepack enable
 pnpm install
 pnpm fixtures                          # small test videos, made with ffmpeg

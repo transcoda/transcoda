@@ -2,12 +2,15 @@
 # Build from the repo root: docker build -f docker/Dockerfile -t transcoda:dev .
 
 # Pinned by digest (multi-arch index) next to its tag; Renovate updates both together.
-ARG NODE_IMAGE=node:24.22.3-bookworm-slim@sha256:dc26ae92c9fb15cf6b1d63e20f0944b2efe0f115b20e00be48fb23fceb061c54
+ARG NODE_IMAGE=node:26.13.1-bookworm-slim@sha256:5df79989ed685e09f0a98019db4cebfb22fb9df1a53c0161664a011f7ff6b0f1
 
 # 1. Build the web UI and the server bundle on the build host's platform.
 FROM --platform=$BUILDPLATFORM ${NODE_IMAGE} AS build
+# Node 26 no longer bundles corepack; it comes from npm, pinned, and then provides the pnpm
+# that package.json's packageManager names.
+ARG COREPACK_VERSION=0.36.0
 ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
-RUN corepack enable
+RUN npm install -g "corepack@${COREPACK_VERSION}" && corepack enable
 WORKDIR /src
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 COPY packages/contract/package.json packages/contract/
@@ -29,8 +32,9 @@ RUN TRANSCODA_BUILD_FIXTURES=1 TRANSCODA_RELEASE=${TRANSCODA_RELEASE} TRANSCODA_
 # 2. Production node_modules for the server, resolved on the target platform.
 #    better-sqlite3 ships prebuilt binaries, so no compiler is needed (allowBuilds stays false).
 FROM ${NODE_IMAGE} AS deps
+ARG COREPACK_VERSION=0.36.0
 ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
-RUN corepack enable
+RUN npm install -g "corepack@${COREPACK_VERSION}" && corepack enable
 WORKDIR /src
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 COPY packages/contract/package.json packages/contract/
@@ -64,7 +68,8 @@ RUN set -eux; \
     command -v setpriv; \
     # The base image's "node" user (uid 1000) would clash with the default PUID.
     userdel node; \
-    # npm, corepack and yarn are not used at runtime (less attack surface; no size gain).
+    # npm is not used at runtime (less attack surface; no size gain). Node 26 images no longer
+    # carry corepack or yarn; the paths stay so an older base cannot bring them back.
     rm -rf /usr/local/lib/node_modules /usr/local/bin/npm /usr/local/bin/npx \
       /usr/local/bin/corepack /usr/local/bin/yarn /usr/local/bin/yarnpkg /opt/yarn-*
 
