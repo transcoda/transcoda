@@ -277,6 +277,25 @@ describe('createMediaResolver', () => {
     ).toBe('/lib/The General (1926)-poster.jpg');
   });
 
+  it('applies movie.nfo in the library root to no file, but <stem>.nfo there still', async () => {
+    const one = fakeFs({
+      '/lib/The General (1926).mkv': 'video',
+      '/lib/movie.nfo': movieNfo('Sherlock Jr.', 1924),
+    });
+    expect(
+      await createMediaResolver({ fs: one.fs, log }).resolve('/lib/The General (1926).mkv', '/lib'),
+    ).toEqual(media({ kind: 'movie', title: 'The General', year: 1926 }));
+    expect(one.calls.filter((c) => c.op === 'readText')).toEqual([]);
+    const two = fakeFs({
+      '/lib/The General (1926).mkv': 'video',
+      '/lib/movie.nfo': movieNfo('Sherlock Jr.', 1924),
+      '/lib/The General (1926).nfo': movieNfo('The General', 1927),
+    });
+    expect(
+      await createMediaResolver({ fs: two.fs, log }).resolve('/lib/The General (1926).mkv', '/lib'),
+    ).toEqual(media({ kind: 'movie', title: 'The General', year: 1927, source: 'sidecar' }));
+  });
+
   it('never reads above the library root', async () => {
     const { fs, calls } = fakeFs({
       '/media/lib/Show - S01E02.mkv': 'video',
@@ -380,6 +399,11 @@ describe('createMediaResolver', () => {
     expect(calls.filter((c) => c.op === 'readText').map((c) => basename(c.path))).toEqual([
       'tvshow.nfo',
     ]);
+    // The show poster is checked once for the folder, not once per episode.
+    const posterChecks = (op: Call['op']) =>
+      calls.filter((c) => c.op === op && c.path === `${show}/poster.jpg`);
+    expect(posterChecks('realpath')).toHaveLength(1);
+    expect(posterChecks('lstat')).toHaveLength(1);
 
     // A new resolver starts with an empty cache.
     const before = calls.length;

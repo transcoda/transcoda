@@ -22,11 +22,15 @@ type Listing = Map<string, string> | null;
 
 const withRoot = (nfo: Nfo | null, want: NfoRoot): Nfo | null => (nfo?.root === want ? nfo : null);
 
-/** One resolver per queue call: it caches directory listings and parsed tvshow.nfo by folder. */
+/**
+ * One resolver per queue call: it caches directory listings, parsed tvshow.nfo and the show
+ * poster by folder.
+ */
 export function createMediaResolver(deps: { fs: FsOps; log: Logger }): MediaResolver {
   const { fs, log } = deps;
   const listings = new Map<string, Promise<Listing>>();
   const shows = new Map<string, Promise<Nfo | null>>();
+  const showPosters = new Map<string, Promise<string | null>>();
 
   const debug = (msg: string, path: string, err: unknown): void => {
     log.debug?.({ msg, file: basename(path), why: why(err) });
@@ -104,6 +108,16 @@ export function createMediaResolver(deps: { fs: FsOps; log: Logger }): MediaReso
     return null;
   };
 
+  /** A show folder's poster (`poster`, else `folder`), looked up once per folder. */
+  const showPosterIn = (dir: string, root: string): Promise<string | null> => {
+    let cached = showPosters.get(dir);
+    if (cached === undefined) {
+      cached = posterIn(dir, ['poster', 'folder'], root);
+      showPosters.set(dir, cached);
+    }
+    return cached;
+  };
+
   /** A step that fails leaves the earlier value. */
   const step = async <T>(what: string, path: string, run: () => Promise<T>): Promise<T | null> => {
     try {
@@ -171,18 +185,20 @@ export function createMediaResolver(deps: { fs: FsOps; log: Logger }): MediaReso
         if (showFolder !== null) {
           const folder = showFolder;
           media.posterPath = await step('could not find a show poster', path, () =>
-            posterIn(folder, ['poster', 'folder'], root),
+            showPosterIn(folder, root),
           );
         }
         return media;
       }
 
-      // Movie .nfo: <stem>.nfo, else movie.nfo.
+      // Movie .nfo: <stem>.nfo, else movie.nfo (not in the library root: it would name every file).
       const movie =
         withRoot(stemNfo, 'movie') ??
-        (await step('could not read movie.nfo', path, async () =>
-          withRoot(await nfoAt(dir, 'movie.nfo', root), 'movie'),
-        ));
+        (dir === root
+          ? null
+          : await step('could not read movie.nfo', path, async () =>
+              withRoot(await nfoAt(dir, 'movie.nfo', root), 'movie'),
+            ));
       if (movie !== null && (movie.title !== null || movie.year !== null)) {
         media.kind = 'movie';
         media.source = 'sidecar';
