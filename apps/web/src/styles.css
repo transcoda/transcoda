@@ -6378,6 +6378,43 @@ a.nav-item.is-active .nav-count {
   box-shadow: var(--focus-ring);
 }
 
+/* A job's poster thumbnail, or a film placeholder. */
+.poster {
+  display: block;
+  overflow: hidden;
+  flex: none;
+}
+.poster img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.poster-row {
+  width: 34px;
+  height: 51px;
+  border-radius: 5px;
+}
+.poster-page {
+  width: 104px;
+  height: 156px;
+  border-radius: 10px;
+}
+@media (max-width: 639px) {
+  .poster-page {
+    width: 64px;
+    height: 96px;
+  }
+}
+.poster-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--raised);
+  box-shadow: inset 0 0 0 1px var(--line-strong);
+  color: var(--faint);
+}
+
 .job-list {
   border-radius: var(--r-lg);
   background: var(--surface);

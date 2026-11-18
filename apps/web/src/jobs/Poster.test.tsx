@@ -1,0 +1,42 @@
+import { fireEvent, render } from '@testing-library/react';
+import { describe, expect, it } from 'vitest';
+import { job } from '../test/fixtures/jobs';
+import { Poster } from './Poster';
+
+const withPoster = (poster: boolean, id = 'j-1') => ({
+  id,
+  media: { ...job().media, poster },
+});
+
+describe('Poster', () => {
+  it('renders the thumbnail lazily', () => {
+    const { container } = render(<Poster job={withPoster(true)} size="row" />);
+    const img = container.querySelector('img');
+    expect(img?.getAttribute('src')).toBe('/api/v1/jobs/j-1/poster');
+    expect(img?.getAttribute('alt')).toBe('');
+    expect(img?.getAttribute('loading')).toBe('lazy');
+  });
+  it('encodes the id', () => {
+    const { container } = render(<Poster job={withPoster(true, 'a/b c')} size="row" />);
+    expect(container.querySelector('img')?.getAttribute('src')).toBe(
+      '/api/v1/jobs/a%2Fb%20c/poster',
+    );
+  });
+  it('falls back to the placeholder when the image fails', () => {
+    const { container } = render(<Poster job={withPoster(true)} size="row" />);
+    fireEvent.error(container.querySelector('img') as HTMLImageElement);
+    expect(container.querySelector('img')).toBeNull();
+    expect(container.querySelector('.poster-empty')).not.toBeNull();
+  });
+  it('shows the placeholder without a poster', () => {
+    const { container } = render(<Poster job={withPoster(false)} size="row" />);
+    expect(container.querySelector('img')).toBeNull();
+    expect(container.querySelector('.poster-empty')).not.toBeNull();
+  });
+  it('sizes by class', () => {
+    const page = render(<Poster job={withPoster(false)} size="page" />);
+    expect(page.container.querySelector('.poster')?.classList.contains('poster-page')).toBe(true);
+    const row = render(<Poster job={withPoster(false)} size="row" />);
+    expect(row.container.querySelector('.poster')?.classList.contains('poster-row')).toBe(true);
+  });
+});
