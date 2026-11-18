@@ -8270,6 +8270,14 @@ a.nav-item.is-active .nav-count {
   color: inherit;
 }
 
+/* The running node's fill copy keeps its own ink on a taken or dimmed output: the two rules above
+   come after `.tc-node .tc-node-fill *` with the same weight, so the taken label went lime on the
+   lime fill and vanished where the fill covered it. */
+.tc-node .tc-node-fill .tc-port-out.is-taken,
+.tc-node .tc-node-fill .tc-port-out.is-dimmed {
+  color: var(--on-accent);
+}
+
 .job-page {
   max-width: 1320px;
   width: 100%;
