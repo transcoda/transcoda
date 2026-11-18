@@ -111,6 +111,22 @@ describe('createMediaResolver', () => {
     );
   });
 
+  it('falls back to movie.nfo when <stem>.nfo is a movie .nfo with nothing usable', async () => {
+    const dir = '/lib/Sherlock Jr (1924)';
+    const { fs } = fakeFs({
+      [`${dir}/clip.mkv`]: 'video',
+      [`${dir}/clip.nfo`]: '<movie><title></title></movie>',
+      [`${dir}/movie.nfo`]: movieNfo('Sherlock Jr.', 1924),
+    });
+    const r = createMediaResolver({ fs, log });
+    expect(await r.resolve(`${dir}/clip.mkv`, '/lib')).toMatchObject({
+      kind: 'movie',
+      title: 'Sherlock Jr.',
+      year: 1924,
+      source: 'sidecar',
+    });
+  });
+
   it('prefers <stem>.nfo over movie.nfo and <stem>-poster over poster', async () => {
     const dir = '/lib/The General';
     const { fs, calls } = fakeFs({

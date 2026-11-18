@@ -166,8 +166,13 @@ export function createMediaResolver(deps: { fs: FsOps; log: Logger }): MediaReso
       const stemNfo = await step('could not read the .nfo beside the file', path, () =>
         nfoAt(dir, `${stem}.nfo`, root),
       );
-      const stemMovie = withRoot(stemNfo, 'movie');
-      if (stemMovie !== null && (stemMovie.title !== null || stemMovie.year !== null)) {
+      // Only a movie .nfo with a title or year counts; an empty one falls through to movie.nfo.
+      const stemMovieNfo = withRoot(stemNfo, 'movie');
+      const stemMovie =
+        stemMovieNfo !== null && (stemMovieNfo.title !== null || stemMovieNfo.year !== null)
+          ? stemMovieNfo
+          : null;
+      if (stemMovie !== null) {
         media.kind = 'movie';
         media.season = null;
         media.episode = null;
