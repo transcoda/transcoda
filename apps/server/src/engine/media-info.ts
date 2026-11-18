@@ -64,11 +64,23 @@ export function createMediaResolver(deps: { fs: FsOps; log: Logger }): MediaReso
     return cached;
   };
 
-  /** The real path of `name` in `dir`: the exact name, else a case-insensitive match; or null. */
-  const find = async (dir: string, name: string, root: string): Promise<string | null> => {
+  /**
+   * The real path of `name` in `dir`: the exact name, else (unless `exactOnly`) a
+   * case-insensitive match; or null.
+   */
+  const find = async (
+    dir: string,
+    name: string,
+    root: string,
+    exactOnly = false,
+  ): Promise<string | null> => {
     const listing = await list(dir, root);
     if (listing === null) return null;
-    const real = listing.names.has(name) ? name : listing.byLower.get(name.toLowerCase());
+    const real = listing.names.has(name)
+      ? name
+      : exactOnly
+        ? undefined
+        : listing.byLower.get(name.toLowerCase());
     return real === undefined ? null : join(dir, real);
   };
 
@@ -99,16 +111,23 @@ export function createMediaResolver(deps: { fs: FsOps; log: Logger }): MediaReso
     return cached;
   };
 
-  /** The first `<name><ext>` in `dir` that is a regular file at its own real path. */
+  /**
+   * The first `<name><ext>` in `dir` that is a regular file at its own real path: every exact-case
+   * name first, then case-insensitive matches.
+   */
   const posterIn = async (dir: string, names: string[], root: string): Promise<string | null> => {
-    for (const name of names) {
-      for (const ext of POSTER_EXTENSIONS) {
-        const p = await find(dir, `${name}${ext}`, root);
-        if (p === null) continue;
-        try {
-          if ((await isOwnRealPath(p, root)) && (await fs.lstat(p)).isFile()) return p;
-        } catch (err) {
-          debug('could not check a poster image', p, err);
+    const tried = new Set<string>();
+    for (const exactOnly of [true, false]) {
+      for (const name of names) {
+        for (const ext of POSTER_EXTENSIONS) {
+          const p = await find(dir, `${name}${ext}`, root, exactOnly);
+          if (p === null || tried.has(p)) continue;
+          tried.add(p);
+          try {
+            if ((await isOwnRealPath(p, root)) && (await fs.lstat(p)).isFile()) return p;
+          } catch (err) {
+            debug('could not check a poster image', p, err);
+          }
         }
       }
     }

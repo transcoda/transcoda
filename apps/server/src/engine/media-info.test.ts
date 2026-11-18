@@ -318,6 +318,19 @@ describe('createMediaResolver', () => {
     }
   });
 
+  it('prefers an exact-case poster of any extension over a case-insensitive match', async () => {
+    const dir = '/lib/Films';
+    const { fs } = fakeFs({
+      [`${dir}/Film.mkv`]: 'video',
+      [`${dir}/film.mkv`]: 'video',
+      [`${dir}/Film-poster.png`]: 'img',
+      [`${dir}/film-poster.jpg`]: 'img',
+    });
+    const r = createMediaResolver({ fs, log });
+    expect((await r.resolve(`${dir}/Film.mkv`, '/lib')).posterPath).toBe(`${dir}/Film-poster.png`);
+    expect((await r.resolve(`${dir}/film.mkv`, '/lib')).posterPath).toBe(`${dir}/film-poster.jpg`);
+  });
+
   it('takes no stray poster for a file in the library root, only <stem>-poster', async () => {
     const one = fakeFs({ '/lib/The General (1926).mkv': 'video', '/lib/poster.jpg': 'img' });
     expect(
