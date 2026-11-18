@@ -182,7 +182,7 @@ export function createApp(opts: AppOptions): Hono {
   // (3d) A job's whole ffmpeg log: a file stream, so a plain route beside the contract (session only).
   app.get(JOB_LOG_PATH, async (c) => {
     const { ctx, resolved } = await buildCtx(c);
-    return respond(c, jobLogResponse(c, deps, resolved, ctx.remoteAddr), ctx, resolved);
+    return respond(c, await jobLogResponse(c, deps, resolved, ctx.remoteAddr), ctx, resolved);
   });
 
   // (3d-2) A job's poster thumbnail: image bytes, so a plain route beside the contract (session only).

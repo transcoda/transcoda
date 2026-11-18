@@ -5,7 +5,7 @@ import type { AppDeps } from '../rpc/context.ts';
 import { sameOriginOk } from '../rpc/middleware.ts';
 import type { ResolvedAuth } from './auth-context.ts';
 import { requestHost } from './request-info.ts';
-import { closeQuietly } from './test-output.ts';
+import { closeHandleQuietly, type OpenedHandle, openRegularFile } from './test-output.ts';
 
 /** Route of a job's poster thumbnail, under /api/v1 (outside the oRPC contract: it returns bytes). */
 export const JOB_POSTER_PATH = '/api/v1/jobs/:id/poster';
@@ -50,30 +50,21 @@ export async function jobPosterResponse(
   ) {
     return new Response(null, { status: 304, headers });
   }
-  let fd: number;
-  let size: number;
+  // Read-only, no symlink, a regular file only; one that vanished or failed its stat → 404.
+  let opened: OpenedHandle | null;
   try {
-    fd = fs.openSync(thumb.path, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW);
+    opened = await openRegularFile(thumb.path);
   } catch {
     return c.json({ error: 'NOT_FOUND' }, 404);
   }
-  try {
-    const stat = fs.fstatSync(fd);
-    if (!stat.isFile()) {
-      closeQuietly(fd);
-      return c.json({ error: 'NOT_FOUND' }, 404);
-    }
-    size = stat.size;
-  } catch {
-    closeQuietly(fd);
-    return c.json({ error: 'NOT_FOUND' }, 404);
-  }
+  if (!opened) return c.json({ error: 'NOT_FOUND' }, 404);
+  const { handle, size } = opened;
   const sized = { ...headers, 'content-length': String(size) };
   if (c.req.method === 'HEAD' || size === 0) {
-    closeQuietly(fd);
+    await closeHandleQuietly(handle);
     return new Response(null, { status: 200, headers: sized });
   }
-  const stream = fs.createReadStream('', { fd, start: 0, end: size - 1, autoClose: true });
+  const stream = fs.createReadStream('', { fd: handle, start: 0, end: size - 1, autoClose: true });
   const { signal } = c.req.raw;
   if (signal.aborted) stream.destroy();
   else signal.addEventListener('abort', () => stream.destroy(), { once: true });
