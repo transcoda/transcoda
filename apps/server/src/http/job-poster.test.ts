@@ -1,4 +1,5 @@
-import { copyFile, mkdir, rm, writeFile } from 'node:fs/promises';
+import fs from 'node:fs';
+import { copyFile, mkdir, rm, symlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { emptyGraph, type StoredJobMedia } from '@transcoda/shared';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -9,7 +10,17 @@ import { insertWorkflow } from '../db/repos/workflows.ts';
 import { tempDir } from '../engine/fixtures.ts';
 import { PosterStore, type ThumbRunner } from '../engine/poster-store.ts';
 import { createTestApp, type TestApp } from '../test-app.ts';
-import { asSession, bearer, createToken, HOST, login, type Session, send } from '../test-http.ts';
+import {
+  asSession,
+  bearer,
+  createToken,
+  expectAllClosed,
+  HOST,
+  login,
+  type Session,
+  send,
+  trackFileHandles,
+} from '../test-http.ts';
 
 /** Starts with a JPEG signature, so the store's source check passes. */
 const SOURCE = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0, 0x10, 0x4a, 0x46, 0x49, 0x46, 0, 1]);
@@ -197,5 +208,137 @@ describe('GET /jobs/{id}/poster', () => {
     });
     expect(cross.status).toBe(403);
     expect(await cross.json()).toMatchObject({ code: 'CSRF_FAILED' });
+  });
+
+  /** Fetches the poster once so the thumbnail exists; then only the route opens files. */
+  async function warm(): Promise<string> {
+    const res = await send(t, 'GET', url('a'), { headers: asSession(s, false) });
+    expect(res.status).toBe(200);
+    await res.arrayBuffer();
+    return res.headers.get('etag') ?? '';
+  }
+
+  it('opens the thumbnail asynchronously and closes it once the body is sent', async () => {
+    await warm();
+    const opened = trackFileHandles();
+    const res = await send(t, 'GET', url('a'), { headers: asSession(s, false) });
+    expect(res.headers.get('content-length')).toBe(String(THUMB.length));
+    expect(Buffer.from(await res.arrayBuffer()).equals(THUMB)).toBe(true);
+    await expectAllClosed(opened);
+  });
+
+  it('HEAD closes the thumbnail and opens no stream', async () => {
+    await warm();
+    const opened = trackFileHandles();
+    const stream = vi.spyOn(fs, 'createReadStream');
+    const res = await t.app.request(`/api/v1${url('a')}`, {
+      method: 'HEAD',
+      headers: { host: HOST, ...asSession(s, false) },
+    });
+    expect(res.status).toBe(200);
+    expect(res.headers.get('content-length')).toBe(String(THUMB.length));
+    expect(stream).not.toHaveBeenCalled();
+    await expectAllClosed(opened);
+  });
+
+  it('a 304 never opens the thumbnail', async () => {
+    const etag = await warm();
+    const opened = trackFileHandles();
+    const res = await send(t, 'GET', url('a'), {
+      headers: { ...asSession(s, false), 'if-none-match': `"other", ${etag}` },
+    });
+    expect(res.status).toBe(304);
+    expect(res.headers.get('etag')).toBe(etag);
+    expect(opened).toHaveLength(0);
+  });
+
+  it('an empty thumbnail → 200 with no body, and the file is closed', async () => {
+    const empty = join(base, 'empty.jpg');
+    await writeFile(empty, '');
+    vi.spyOn(t.deps.engine, 'jobPoster').mockResolvedValue({ path: empty, size: 0, mtimeMs: 1 });
+    const opened = trackFileHandles();
+    const res = await send(t, 'GET', url('a'), { headers: asSession(s, false) });
+    expect(res.status).toBe(200);
+    expect(res.headers.get('content-length')).toBe('0');
+    expect(await res.text()).toBe('');
+    await expectAllClosed(opened);
+  });
+
+  it('a directory in place of the thumbnail → 404, and the opened directory is closed', async () => {
+    const dir = join(base, 'dir.jpg');
+    await mkdir(dir);
+    vi.spyOn(t.deps.engine, 'jobPoster').mockResolvedValue({ path: dir, size: 10, mtimeMs: 1 });
+    const opened = trackFileHandles();
+    const res = await send(t, 'GET', url('a'), { headers: asSession(s, false) });
+    expect(res.status).toBe(404);
+    await expectAllClosed(opened);
+  });
+
+  it('a symlink in place of the thumbnail → 404 without opening through it', async () => {
+    const link = join(base, 'link.jpg');
+    await symlink(thumbSource, link);
+    vi.spyOn(t.deps.engine, 'jobPoster').mockResolvedValue({ path: link, size: 10, mtimeMs: 1 });
+    const opened = trackFileHandles();
+    const res = await send(t, 'GET', url('a'), { headers: asSession(s, false) });
+    expect(res.status).toBe(404);
+    expect(opened).toHaveLength(0);
+  });
+
+  it('a failing stat after the open → 404, and the file is closed', async () => {
+    await warm();
+    const opened = trackFileHandles({ failStat: true });
+    const res = await send(t, 'GET', url('a'), { headers: asSession(s, false) });
+    expect(res.status).toBe(404);
+    await expectAllClosed(opened);
+  });
+
+  it('a client that goes away mid-download closes the file handle', async () => {
+    // Larger than the read stream's buffer, so the stream is still open when the client leaves:
+    // only the abort can close it.
+    const big = join(base, 'big.jpg');
+    await writeFile(big, Buffer.alloc(1024 * 1024, 1));
+    vi.spyOn(t.deps.engine, 'jobPoster').mockResolvedValue({
+      path: big,
+      size: 1024 * 1024,
+      mtimeMs: 1,
+    });
+    const opened = trackFileHandles();
+    const abort = new AbortController();
+    const res = await t.app.request(`/api/v1${url('a')}`, {
+      headers: { host: HOST, ...asSession(s, false) },
+      signal: abort.signal,
+    });
+    expect(res.status).toBe(200);
+    await new Promise((r) => setTimeout(r, 50));
+    expect(opened).toHaveLength(1);
+    expect(opened[0]?.close).not.toHaveBeenCalled();
+    expect(opened[0]?.handle.fd).toBeGreaterThan(-1);
+    abort.abort();
+    await expectAllClosed(opened);
+  });
+
+  it('the ETag of a 200 describes the file that was opened, not the stale lookup', async () => {
+    await warm();
+    // The lookup still describes an older thumbnail (a rebuild renamed a new one over the path).
+    const real = await t.deps.engine.jobPoster('a');
+    if (!real) throw new Error('no thumbnail');
+    vi.spyOn(t.deps.engine, 'jobPoster').mockResolvedValue({ ...real, size: 1, mtimeMs: 2 });
+    const res = await send(t, 'GET', url('a'), { headers: asSession(s, false) });
+    expect(res.status).toBe(200);
+    expect(res.headers.get('etag')).toBe(`"${real.size}-${Math.round(real.mtimeMs)}"`);
+    expect(res.headers.get('content-length')).toBe(String(real.size));
+  });
+
+  it('a request already aborted closes the file handle', async () => {
+    await warm();
+    const opened = trackFileHandles();
+    const abort = new AbortController();
+    abort.abort();
+    await t.app.request(`/api/v1${url('a')}`, {
+      headers: { host: HOST, ...asSession(s, false) },
+      signal: abort.signal,
+    });
+    // The route opens the file before it reads the signal; the destroyed stream closes it.
+    await expectAllClosed(opened);
   });
 });

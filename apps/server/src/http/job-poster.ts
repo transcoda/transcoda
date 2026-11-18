@@ -5,7 +5,7 @@ import type { AppDeps } from '../rpc/context.ts';
 import { sameOriginOk } from '../rpc/middleware.ts';
 import type { ResolvedAuth } from './auth-context.ts';
 import { requestHost } from './request-info.ts';
-import { closeQuietly } from './test-output.ts';
+import { closeHandleQuietly, type OpenedHandle, openRegularFile } from './test-output.ts';
 
 /** Route of a job's poster thumbnail, under /api/v1 (outside the oRPC contract: it returns bytes). */
 export const JOB_POSTER_PATH = '/api/v1/jobs/:id/poster';
@@ -21,6 +21,8 @@ const HEADERS = {
  * only (every API token → 403), never cross-site, addressed by job id only (the poster path comes
  * from the job). An unknown job, no poster, no thumbnail or a thumbnail file that vanished → 404.
  */
+const posterEtag = (size: number, mtimeMs: number): string => `"${size}-${Math.round(mtimeMs)}"`;
+
 export async function jobPosterResponse(
   c: Context,
   deps: AppDeps,
@@ -40,7 +42,7 @@ export async function jobPosterResponse(
   }
   const thumb = await deps.engine.jobPoster(c.req.param('id') ?? '');
   if (!thumb) return c.json({ error: 'NOT_FOUND' }, 404);
-  const etag = `"${thumb.size}-${Math.round(thumb.mtimeMs)}"`;
+  const etag = posterEtag(thumb.size, thumb.mtimeMs);
   const headers = { ...HEADERS, etag };
   if (
     c.req
@@ -50,30 +52,23 @@ export async function jobPosterResponse(
   ) {
     return new Response(null, { status: 304, headers });
   }
-  let fd: number;
-  let size: number;
+  // Read-only, no symlink, a regular file only; one that vanished or failed its stat → 404.
+  let opened: OpenedHandle | null;
   try {
-    fd = fs.openSync(thumb.path, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW);
+    opened = await openRegularFile(thumb.path);
   } catch {
     return c.json({ error: 'NOT_FOUND' }, 404);
   }
-  try {
-    const stat = fs.fstatSync(fd);
-    if (!stat.isFile()) {
-      closeQuietly(fd);
-      return c.json({ error: 'NOT_FOUND' }, 404);
-    }
-    size = stat.size;
-  } catch {
-    closeQuietly(fd);
-    return c.json({ error: 'NOT_FOUND' }, 404);
-  }
-  const sized = { ...headers, 'content-length': String(size) };
+  if (!opened) return c.json({ error: 'NOT_FOUND' }, 404);
+  // The ETag and length of what is sent come from the open handle: a rebuild that renamed a new
+  // thumbnail over the path while the open was pending must not go out under the old ETag.
+  const { handle, size, mtimeMs } = opened;
+  const sized = { ...HEADERS, etag: posterEtag(size, mtimeMs), 'content-length': String(size) };
   if (c.req.method === 'HEAD' || size === 0) {
-    closeQuietly(fd);
+    await closeHandleQuietly(handle);
     return new Response(null, { status: 200, headers: sized });
   }
-  const stream = fs.createReadStream('', { fd, start: 0, end: size - 1, autoClose: true });
+  const stream = fs.createReadStream('', { fd: handle, start: 0, end: size - 1, autoClose: true });
   const { signal } = c.req.raw;
   if (signal.aborted) stream.destroy();
   else signal.addEventListener('abort', () => stream.destroy(), { once: true });

@@ -1,4 +1,5 @@
-import { expect } from 'vitest';
+import fsp, { type FileHandle } from 'node:fs/promises';
+import { expect, type MockInstance, vi } from 'vitest';
 import { SESSION_COOKIE } from './auth/cookies.ts';
 import { createUser } from './db/repos/users.ts';
 import type { TestApp } from './test-app.ts';
@@ -68,4 +69,46 @@ export async function createToken(
   const res = await send(t, 'POST', '/tokens', { body, headers: asSession(s, true) });
   expect(res.status).toBe(200);
   return (await res.json()) as { id: string; token: string };
+}
+
+/** A FileHandle a route opened, with a spy on its `close` (and on `stat`, to make it fail). */
+export interface TrackedHandle {
+  path: string;
+  handle: FileHandle;
+  close: MockInstance<FileHandle['close']>;
+}
+
+/**
+ * Tracks every FileHandle opened through `fs/promises` `open` (the default export, which the file
+ * routes call): a list that fills as handles open. `failStat` makes each tracked handle's `stat`
+ * reject. Restored by `vi.restoreAllMocks()`.
+ */
+export function trackFileHandles(opts: { failStat?: boolean } = {}): TrackedHandle[] {
+  const tracked: TrackedHandle[] = [];
+  const realOpen = fsp.open;
+  vi.spyOn(fsp, 'open').mockImplementation(async (...args: Parameters<typeof fsp.open>) => {
+    const handle = await realOpen(...args);
+    const close = vi.spyOn(handle, 'close');
+    if (opts.failStat) {
+      vi.spyOn(handle, 'stat').mockRejectedValue(
+        Object.assign(new Error('EIO: i/o error, fstat'), { code: 'EIO' }),
+      );
+    }
+    tracked.push({ path: String(args[0]), handle, close });
+    return handle;
+  });
+  return tracked;
+}
+
+/** Every tracked handle was closed (a closed FileHandle's fd is -1). */
+export async function expectAllClosed(tracked: TrackedHandle[], count = 1): Promise<void> {
+  expect(tracked).toHaveLength(count);
+  await vi.waitFor(() => {
+    for (const t of tracked) expect(t.close, t.path).toHaveBeenCalled();
+  });
+  // The fd reads -1 before the native close finishes: wait for it, and let a failed close fail.
+  for (const t of tracked) {
+    for (const r of t.close.mock.results) await r.value;
+    expect(t.handle.fd, t.path).toBe(-1);
+  }
 }

@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import fsp, { type FileHandle } from 'node:fs/promises';
 import { basename, extname } from 'node:path';
 import { Readable } from 'node:stream';
 import type { Context } from 'hono';
@@ -42,6 +43,41 @@ export const closeQuietly = (fd: number): void => {
     // already closed
   }
 };
+
+/** Closes a FileHandle, ignoring an error (already closed). Await it or not. */
+export const closeHandleQuietly = (handle: FileHandle): Promise<void> =>
+  handle.close().catch(() => undefined);
+
+/** A regular file opened read-only, with its size at open. */
+/** `size` and `mtimeMs` come from the open handle's stat, so they describe the bytes it reads. */
+export type OpenedHandle = { handle: FileHandle; size: number; mtimeMs: number };
+
+/**
+ * Opens `path` read-only without following a symlink (`O_NOFOLLOW`; `O_NONBLOCK` so a FIFO cannot
+ * hang the open) and checks the open handle:
+ * null when it cannot be opened (missing, a symlink) or is not a regular file. A failing stat
+ * closes the handle and rethrows. The caller owns the handle: hand it to `fileResponse` or close it.
+ */
+export async function openRegularFile(path: string): Promise<OpenedHandle | null> {
+  let handle: FileHandle;
+  try {
+    handle = await fsp.open(
+      path,
+      fsp.constants.O_RDONLY | fsp.constants.O_NOFOLLOW | fsp.constants.O_NONBLOCK,
+    );
+  } catch {
+    return null;
+  }
+  try {
+    const stat = await handle.stat();
+    if (stat.isFile()) return { handle, size: stat.size, mtimeMs: stat.mtimeMs };
+  } catch (err) {
+    await closeHandleQuietly(handle);
+    throw err;
+  }
+  await closeHandleQuietly(handle);
+  return null;
+}
 
 /**
  * Plays or downloads a kept test output. Guarded like the backup download: a person's browser
@@ -141,21 +177,26 @@ export async function testOutputResponse(
 }
 
 /**
- * A checked fd as the response, with Range (206, or 416 when unsatisfiable). Streams from that fd
- * (no second open by path); autoClose closes it at the end, on an error, or when the client goes
- * away: the request's abort signal destroys the stream (the node server does not cancel a body it
- * stopped writing). A HEAD closes it at once.
+ * A checked fd or FileHandle as the response, with Range (206, or 416 when unsatisfiable). Streams
+ * from it (no second open by path); autoClose closes it at the end, on an error, or when the client
+ * goes away: the request's abort signal destroys the stream (the node server does not cancel a body
+ * it stopped writing). A HEAD, an empty file or a 416 closes it at once.
  */
 export function fileResponse(
   c: Context,
-  file: { fd: number; size: number },
+  file: { fd: number; size: number } | OpenedHandle,
   contentType: string,
   disposition: string,
 ): Response {
-  const { fd, size } = file;
+  const { size } = file;
+  const fd = 'handle' in file ? file.handle : file.fd;
+  const close = () => {
+    if (typeof fd === 'number') closeQuietly(fd);
+    else void closeHandleQuietly(fd);
+  };
   const range = parseRange(c.req.header('range') ?? null, size);
   if (range === 'unsatisfiable') {
-    closeQuietly(fd);
+    close();
     return new Response(null, {
       status: 416,
       headers: { ...COMMON, 'content-range': `bytes */${size}` },
@@ -173,7 +214,7 @@ export function fileResponse(
   if (range) headers['content-range'] = `bytes ${start}-${end}/${size}`;
   const status = range ? 206 : 200;
   if (c.req.method === 'HEAD' || size === 0) {
-    closeQuietly(fd);
+    close();
     return new Response(null, { status, headers });
   }
   const stream = fs.createReadStream('', { fd, start, end, autoClose: true });

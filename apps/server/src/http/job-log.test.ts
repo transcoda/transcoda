@@ -10,7 +10,17 @@ import { insertWorkflow } from '../db/repos/workflows.ts';
 import { tempDir } from '../engine/fixtures.ts';
 import { logPathFor } from '../engine/pipeline.ts';
 import { createTestApp, type TestApp } from '../test-app.ts';
-import { asSession, bearer, createToken, HOST, login, type Session, send } from '../test-http.ts';
+import {
+  asSession,
+  bearer,
+  createToken,
+  expectAllClosed,
+  HOST,
+  login,
+  type Session,
+  send,
+  trackFileHandles,
+} from '../test-http.ts';
 
 const LOG = 'ffmpeg version 7\nset_mempolicy: Operation not permitted\nframe=100\n';
 
@@ -175,5 +185,98 @@ describe('GET /jobs/{id}/log/download', () => {
     });
     expect(part.status).toBe(206);
     expect(await part.text()).toBe('ffmpeg');
+  });
+
+  it('opens the log asynchronously and closes it once the download ends', async () => {
+    await writeLog('a', LOG);
+    const opened = trackFileHandles();
+    const res = await send(t, 'GET', url('a'), { headers: asSession(s, false) });
+    expect(await res.text()).toBe(LOG);
+    await expectAllClosed(opened);
+  });
+
+  it('HEAD answers the headers, opens no stream and closes the file', async () => {
+    await writeLog('a', LOG);
+    const opened = trackFileHandles();
+    const stream = vi.spyOn(fs, 'createReadStream');
+    const res = await t.app.request(`/api/v1${url('a')}`, {
+      method: 'HEAD',
+      headers: { host: HOST, ...asSession(s, false) },
+    });
+    expect(res.status).toBe(200);
+    expect(res.headers.get('content-length')).toBe(String(Buffer.byteLength(LOG)));
+    expect(await res.text()).toBe('');
+    expect(stream).not.toHaveBeenCalled();
+    await expectAllClosed(opened);
+  });
+
+  it('an empty log and an unsatisfiable range close the file without a stream', async () => {
+    await writeLog('a', LOG);
+    await writeLog('b', '');
+    const opened = trackFileHandles();
+    const stream = vi.spyOn(fs, 'createReadStream');
+    const empty = await send(t, 'GET', url('b'), { headers: asSession(s, false) });
+    expect(empty.status).toBe(200);
+    const unsatisfiable = await send(t, 'GET', url('a'), {
+      headers: { ...asSession(s, false), range: 'bytes=9999-' },
+    });
+    expect(unsatisfiable.status).toBe(416);
+    expect(unsatisfiable.headers.get('content-range')).toBe(`bytes */${Buffer.byteLength(LOG)}`);
+    expect(stream).not.toHaveBeenCalled();
+    await expectAllClosed(opened, 2);
+  });
+
+  it('a directory in place of the log → 404, and the opened directory is closed', async () => {
+    await mkdir(logPathFor(t.deps.config, { id: 'a', attempt: 1 }), { recursive: true });
+    const opened = trackFileHandles();
+    const res = await send(t, 'GET', url('a'), { headers: asSession(s, false) });
+    expect(res.status).toBe(404);
+    await expectAllClosed(opened);
+  });
+
+  it('a failing stat after the open → 500, and the file is closed', async () => {
+    await writeLog('a', LOG);
+    const opened = trackFileHandles({ failStat: true });
+    const res = await send(t, 'GET', url('a'), { headers: asSession(s, false) });
+    expect(res.status).toBe(500);
+    expect(await res.text()).not.toContain('frame=100');
+    await expectAllClosed(opened);
+  });
+
+  it('a symlinked log is never opened through the link', async () => {
+    const target = join(base, 'secret.txt');
+    await writeFile(target, 'secret');
+    await mkdir(join(base, 'config', 'logs', 'jobs'), { recursive: true });
+    await symlink(target, logPathFor(t.deps.config, { id: 'c', attempt: 1 }));
+    const opened = trackFileHandles();
+    const res = await send(t, 'GET', url('c'), { headers: asSession(s, false) });
+    expect(res.status).toBe(404);
+    expect(opened).toHaveLength(0);
+  });
+
+  it('a token, no session and a cross-site request never open the log', async () => {
+    await writeLog('a', LOG);
+    const { token } = await createToken(t, s);
+    const opened = trackFileHandles();
+    await send(t, 'GET', url('a'), { headers: bearer(token) });
+    await send(t, 'GET', url('a'));
+    await send(t, 'GET', url('a'), {
+      headers: { ...asSession(s, false), 'sec-fetch-site': 'cross-site' },
+    });
+    expect(opened).toHaveLength(0);
+  });
+
+  it('a client that goes away mid-download closes the file handle', async () => {
+    await writeLog('a', LOG);
+    const opened = trackFileHandles();
+    const abort = new AbortController();
+    const res = await t.app.request(`/api/v1${url('a')}`, {
+      headers: { host: HOST, ...asSession(s, false) },
+      signal: abort.signal,
+    });
+    expect(res.status).toBe(200);
+    expect(opened[0]?.handle.fd).toBeGreaterThan(-1);
+    abort.abort();
+    await expectAllClosed(opened);
   });
 });
