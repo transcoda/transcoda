@@ -243,8 +243,9 @@ export function createMediaResolver(deps: { fs: FsOps; log: Logger }): MediaReso
             if (inSeason !== null) return inSeason;
           }
           if (showFolder === null) return null;
-          if (seasonNames.length > 0) {
-            const season = await posterIn(showFolder, seasonNames, root);
+          // One name at a time: any case of an earlier name beats an exact-case later one.
+          for (const name of seasonNames) {
+            const season = await posterIn(showFolder, [name], root);
             if (season !== null) return season;
           }
           return showPosterIn(showFolder, root);

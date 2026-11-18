@@ -544,6 +544,12 @@ describe('createMediaResolver', () => {
         [`${show}/poster.jpg`]: 'img',
       };
       expect(await poster(files, file)).toBe(`${show}/season-specials-poster.jpg`);
+      // Any case of the specials name still comes before season00-poster.
+      const upper = {
+        [`${show}/SEASON-SPECIALS-POSTER.JPG`]: 'img',
+        [`${show}/season00-poster.jpg`]: 'img',
+      };
+      expect(await poster(upper, file)).toBe(`${show}/SEASON-SPECIALS-POSTER.JPG`);
     });
 
     it("falls back to the show poster when the episode's season has none", async () => {
