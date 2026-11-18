@@ -129,6 +129,9 @@ interface Source {
   demuxer: PosterDemuxer;
 }
 
+/** Two file times to the millisecond (setting a time may drop its sub-millisecond part). */
+const sameMs = (a: number, b: number): boolean => Math.trunc(a) === Math.trunc(b);
+
 export class PosterStore {
   /** Builds and lookups running now, by cache key: concurrent calls share one. */
   private readonly inFlight = new Map<string, Promise<Thumbnail | null>>();
@@ -180,7 +183,9 @@ export class PosterStore {
     if (!source) return cached;
     let handed = false;
     try {
-      if (cached && cached.mtimeMs >= source.info.mtimeMs) return cached;
+      // The cache carries its source's time (see `build`): any other time is a changed source,
+      // and a source dated in the future is still built only once.
+      if (cached && sameMs(cached.mtimeMs, source.info.mtimeMs)) return cached;
       const failed = this.failedAt.get(key);
       if (failed !== undefined && this.deps.now().getTime() - failed < POSTER_FAILURE_MEMORY_MS) {
         return cached;
@@ -263,6 +268,8 @@ export class PosterStore {
         outPath: tmp,
         timeoutMs: POSTER_BUILD_TIMEOUT_MS,
       });
+      const sourceTime = source.info.mtimeMs / 1000;
+      await fsp.utimes(tmp, sourceTime, sourceTime);
       await fsp.rename(tmp, target);
       this.failedAt.delete(key);
       return await this.cached(target);

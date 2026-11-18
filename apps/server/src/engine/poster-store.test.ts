@@ -134,6 +134,21 @@ describe('PosterStore', () => {
     expect(calls.map((c) => c.demuxer)).toEqual(['png_pipe', 'png_pipe']);
   });
 
+  it('builds a source with a future time once, and rebuilds when its time moves back', async () => {
+    const p = await poster();
+    const future = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    await utimes(p, future, future);
+    const s = store();
+    expect(await s.thumbnail(p, lib)).not.toBeNull();
+    expect(await s.thumbnail(p, lib)).not.toBeNull();
+    expect(calls).toHaveLength(1);
+    // An older copy put back in its place is a change too.
+    const past = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    await utimes(p, past, past);
+    expect(await s.thumbnail(p, lib)).not.toBeNull();
+    expect(calls).toHaveLength(2);
+  });
+
   it('serves the cache once the source is gone', async () => {
     const p = await poster();
     const s = store();

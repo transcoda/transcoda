@@ -1999,11 +1999,11 @@ Approved plan: `docs/plans/2026-10-21-dryrun-depends-on-size.md` (local).
 
 ## 2026-11-17 Titles and posters from sidecar files
 
-- Sources, in order: for an episode, `<stem>.nfo` (episodedetails), then `tvshow.nfo` in the file's folder or its parent; for a movie, `<stem>.nfo`, then `movie.nfo`. Posters: `<stem>-poster`, `poster`, `folder`, `cover` (`.jpg`, `.jpeg`, `.png`, `.webp`); episodes use `poster` or `folder` in the show folder. The file name is the fallback for the title.
+- Sources, in order: for an episode, `<stem>.nfo` (episodedetails), then `tvshow.nfo` in the file's folder or its parent; for a movie, `<stem>.nfo`, then `movie.nfo` (not in the library root, where it would name every loose file). Posters: `<stem>-poster`, `poster`, `folder`, `cover` (`.jpg`, `.jpeg`, `.png`, `.webp`); episodes use `poster` or `folder` in the show folder. The file name is the fallback for the title.
 - A `.nfo` is read only up to 1 MB, never through a symlink, and nothing outside the library is read. A bad sidecar is ignored and leaves the file-name result.
 - Media info is stored on the job at queue time (`jobs.media`, migration 0019) and never refreshed. Older jobs show a file-name title and no poster. The catch-up scan reads sidecars only for new files.
-- Thumbnails are 208 px JPEGs in `<config>/posters`, named by a hash of the poster path and built on first request. At most 2 are built at once, a failed build is not retried for 10 minutes, and a failed rebuild keeps serving the older thumbnail. They are never pruned.
-- ffmpeg reads the image from stdin with a forced demuxer, so it never opens a library path.
+- Thumbnails are 208 px JPEGs in `<config>/posters`, named by a hash of the poster path and built on first request. At most 2 are built at once, a failed build is not retried for 10 minutes, and a failed rebuild keeps serving the older thumbnail. A thumbnail takes its source's modification time and is rebuilt when the source's time differs (newer or older), so a source dated in the future is built once. They are never pruned.
+- ffmpeg reads the image from stdin with a forced demuxer, so it never opens a library path, and decodes at most 40 megapixels (`-max_pixels`): a larger image gets no thumbnail.
 - `GET /api/v1/jobs/:id/poster` is session-only, like the job log: API tokens get 403.
 - Transcoda never writes into a library for this.
 - Follow-up: looking up titles and artwork through the Sonarr, Radarr and Jellyfin plugins.
