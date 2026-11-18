@@ -4,7 +4,7 @@ import { mkdir, readdir, rm, stat, symlink, unlink, utimes, writeFile } from 'no
 import { join } from 'node:path';
 import { promisify } from 'node:util';
 import { emptyGraph, type StoredJobMedia } from '@transcoda/shared';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { insertJob } from '../db/repos/jobs.ts';
 import { insertLibrary, softDeleteLibrary } from '../db/repos/libraries.ts';
 import { insertRun } from '../db/repos/runs.ts';
@@ -255,19 +255,30 @@ describe('PosterStore', () => {
     expect(peak).toBe(2);
   });
 
-  /** A runner that blocks every build until `open()` is called. */
-  const gatedRun = (): { open: () => void } => {
+  /**
+   * A runner that blocks every build until `open()` is called; `started` resolves once
+   * POSTER_MAX_BUILDS builds have reached it (every slot taken).
+   */
+  const gatedRun = (): { open: () => void; started: Promise<void> } => {
     let release!: () => void;
     const gate = new Promise<void>((r) => {
       release = r;
     });
+    let full!: () => void;
+    const started = new Promise<void>((r) => {
+      full = r;
+    });
+    let count = 0;
     run = async (o) => {
+      if (++count === POSTER_MAX_BUILDS) full();
       await gate;
       await fakeRun(o);
     };
-    return { open: release };
+    return { open: release, started };
   };
-  const settle = () => new Promise((r) => setTimeout(r, 50));
+  /** Resolves once `n` builds wait for a slot. */
+  const waitingFor = (s: PosterStore, n: number) =>
+    vi.waitFor(() => expect(s.queued).toBe(n), { timeout: 5_000, interval: 5 });
 
   it('opens a waiting build source only once it has a slot', async () => {
     const gate = gatedRun();
@@ -277,8 +288,9 @@ describe('PosterStore', () => {
     const p = await poster('late.jpg');
     const s = store();
     const running = busy.map((b) => s.thumbnail(b, lib));
+    await gate.started;
     const late = s.thumbnail(p, lib);
-    await settle();
+    await waitingFor(s, 1);
     // Replaced while it waits: a source opened before its slot would still read the old JPEG.
     await unlink(p);
     await poster('late.jpg', PNG);
@@ -305,7 +317,8 @@ describe('PosterStore', () => {
       ),
     );
     const filling = fill.map((f) => s.thumbnail(f, lib));
-    await settle();
+    await gate.started;
+    await waitingFor(s, POSTER_MAX_WAITING);
     expect(await s.thumbnail(withCache, lib)).toEqual(old);
     expect(await s.thumbnail(without, lib)).toBeNull();
     gate.open();

@@ -156,6 +156,11 @@ export class PosterStore {
     this.run = deps.run ?? runThumb;
   }
 
+  /** How many builds wait for a slot now. */
+  get queued(): number {
+    return this.waiting.length;
+  }
+
   /** The cached thumbnail for `posterPath`, built or refreshed when needed; null when there is none. Never throws. */
   thumbnail(posterPath: string, libraryRoot: string | null): Promise<Thumbnail | null> {
     // A stored path comes from the database: one that is not a string has no poster.
