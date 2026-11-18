@@ -32,7 +32,7 @@ beforeEach(() => {
   mocks.update.mockReset().mockResolvedValue(NO_UPDATE);
   mocks.backups.mockReset().mockResolvedValue({ backups: [], keep: 5 });
   mocks.health.mockReset().mockResolvedValue({ status: 'ok', version: '1.4.0' });
-  mocks.get.mockReset().mockResolvedValue({ about: { version: '1.4.0', node: 'v24.22.0' } });
+  mocks.get.mockReset().mockResolvedValue({ about: { version: '1.4.0', node: '26.13.1' } });
   mocks.capabilities.mockReset().mockResolvedValue({
     available: true,
     path: '/usr/lib/jellyfin-ffmpeg/ffmpeg',
@@ -49,7 +49,7 @@ describe('AboutSection', () => {
   it('shows the Transcoda, Node and ffmpeg versions and the ffmpeg path', async () => {
     render(<AboutSection />);
     expect(await screen.findByText('1.4.0')).toBeTruthy();
-    expect(await screen.findByText('v24.22.0')).toBeTruthy();
+    expect(await screen.findByText('26.13.1')).toBeTruthy();
     expect(await screen.findByText('8.1.3-Jellyfin')).toBeTruthy();
     expect(screen.getByText('/usr/lib/jellyfin-ffmpeg/ffmpeg')).toBeTruthy();
   });

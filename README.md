@@ -135,9 +135,10 @@ Bug reports, ideas and pull requests are welcome. Start with [CONTRIBUTING.md](C
 
 ## Development
 
-Requirements on a Mac: Node 24 (`>=24.22.1`), pnpm via corepack, and ffmpeg for the capability probe (`brew install ffmpeg`; the Docker image uses jellyfin-ffmpeg instead).
+Requirements on a Mac: Node 26 (`>=26.13.1`), pnpm via corepack (no longer bundled with Node 26: `npm install -g corepack`), and ffmpeg for the capability probe (`brew install ffmpeg`; the Docker image uses jellyfin-ffmpeg instead).
 
 ```sh
+npm install -g corepack
 corepack enable
 pnpm install
 pnpm --filter @transcoda/server dev   # API on http://localhost:8080, state in apps/server/.local/config

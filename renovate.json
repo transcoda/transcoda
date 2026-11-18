@@ -86,6 +86,14 @@
       "datasourceTemplate": "deb",
       "registryUrlTemplate": "https://repo.jellyfin.org/debian?suite=bookworm&components=main&binaryArch=amd64",
       "versioningTemplate": "deb"
+    },
+    {
+      "description": "corepack in the image's build stages: Node 26 no longer bundles it, so docker/Dockerfile installs it from npm (both ARG lines).",
+      "customType": "regex",
+      "managerFilePatterns": ["/^docker/Dockerfile$/"],
+      "matchStrings": ["ARG COREPACK_VERSION=(?<currentValue>\\S+)"],
+      "depNameTemplate": "corepack",
+      "datasourceTemplate": "npm"
     }
   ]
 }

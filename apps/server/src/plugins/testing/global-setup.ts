@@ -38,7 +38,7 @@ async function bundle(entryName: string, source: string): Promise<void> {
     entry: { [entryName]: source },
     format: 'esm',
     platform: 'node',
-    target: 'node24',
+    target: 'node26',
     outDir: BUILD_DIR,
     clean: false,
     dts: false,
