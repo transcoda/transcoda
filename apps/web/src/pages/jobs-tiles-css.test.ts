@@ -21,6 +21,19 @@ describe('Jobs row detail (#44)', () => {
   });
 });
 
+describe('Jobs table (long titles)', () => {
+  it('a title keeps one line with an ellipsis', () => {
+    const t = rule('.job-title-text');
+    expect(t).toMatch(/overflow:\s*hidden/);
+    expect(t).toMatch(/text-overflow:\s*ellipsis/);
+    expect(t).toMatch(/white-space:\s*nowrap/);
+  });
+
+  it('column widths are fixed, so a long title never widens the table', () => {
+    expect(rule('.job-table')).toMatch(/table-layout:\s*fixed/);
+  });
+});
+
 describe('Jobs stat tiles (#31)', () => {
   it('the button fills the stretched tile, so no tinted band shows under it', () => {
     expect(rule('.stat-tile.is-button')).toMatch(/display:\s*flex/);

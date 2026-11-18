@@ -3,7 +3,7 @@
 // row (title, lanes line, queue actions), today's tiles, four half-height history cards, then the
 // list: the list stays above the fold.
 import { CANCELLABLE_JOB_STATES, isFinalState, type JobState } from '@transcoda/shared';
-import { useState } from 'react';
+import { type ReactNode, useState } from 'react';
 import { Link } from 'wouter';
 import { api, isDefinedError, safe } from '../api/client.ts';
 import { describeError } from '../api/errors.ts';
@@ -29,9 +29,9 @@ import {
   QUEUED_VERSION_NOTE,
   verdictOf,
   versionText,
-  whereLine,
-  wherePrefix,
 } from '../jobs/jobText.ts';
+import { jobTitle, mediaSub, resultLines } from '../jobs/mediaText.ts';
+import { Poster } from '../jobs/Poster.tsx';
 import { QueueLanes, QueuePausedNote, QueueToggle } from '../jobs/QueueBar.tsx';
 import {
   countsScopeOf,
@@ -120,7 +120,7 @@ function useJobControls(reload: () => void) {
     if (isDefinedError(err) && err.code === 'JOB_NOT_ACTIVE') {
       toast.info('That job already finished');
     } else if (err) {
-      toast.error(`Couldn't ${kind} ${job.fileName}`);
+      toast.error(`Couldn't ${kind} ${jobTitle(job)}`);
       return;
     }
     // The event stream brings the change; a reload also covers a stream that is reconnecting.
@@ -130,7 +130,7 @@ function useJobControls(reload: () => void) {
   const dialog = (
     <Dialog
       open={cancelling !== null}
-      title={`Cancel ${cancelling?.fileName ?? ''}?`}
+      title={`Cancel ${cancelling ? jobTitle(cancelling) : ''}?`}
       tone="danger"
       onClose={() => setCancelling(null)}
       footer={
@@ -171,8 +171,8 @@ function useJobControls(reload: () => void) {
 
 type Controls = ReturnType<typeof useJobControls>;
 
-/** "Pause" alone is ambiguous in a list of rows: the accessible name adds the file. */
-const named = (word: string, job: Job) => `${word} ${job.fileName}`;
+/** "Pause" alone is ambiguous in a list of rows: the accessible name adds the job's title. */
+const named = (word: string, job: Job) => `${word} ${jobTitle(job)}`;
 
 /**
  * Pause / Resume and Cancel. While the whole queue is paused a job's own Pause would change
@@ -370,6 +370,90 @@ function DetailText({ job, queuePaused }: { job: Job; queuePaused: boolean }) {
   );
 }
 
+/** The muted line under a title: the episode code in bold, then its name; or a movie's year. */
+function TitleSub({ job }: { job: Job }) {
+  const { code, text } = mediaSub(job.media);
+  if (!code && !text) return null;
+  return (
+    <span className="job-title-sub">
+      {code ? <b className="job-title-code">{code}</b> : null}
+      {code && text ? ' · ' : null}
+      {text}
+    </span>
+  );
+}
+
+/**
+ * The job's title as the row's link: the show or movie title, named for screen readers as the
+ * buttons are ("Bluey S01E03"), the file name on hover.
+ */
+function TitleLink({ job, className }: { job: Job; className: string }) {
+  return (
+    <Link
+      href={`/jobs/${job.id}`}
+      className={className}
+      aria-label={jobTitle(job)}
+      title={job.fileName}
+    >
+      {job.media.title}
+    </Link>
+  );
+}
+
+/** "TV cleanup v7"; a queued real job's version says it can still change. */
+function WorkflowText({ job }: { job: Job }) {
+  if (job.state !== 'queued' || job.dryRun) return <>{`${job.workflowName} ${versionText(job)}`}</>;
+  return (
+    <>
+      {`${job.workflowName} `}
+      <span title={QUEUED_VERSION_NOTE} aria-describedby={`queued-version-${job.id}`}>
+        {versionText(job)}
+      </span>
+      <span id={`queued-version-${job.id}`} className="sr-only">
+        {QUEUED_VERSION_NOTE}
+      </span>
+    </>
+  );
+}
+
+/**
+ * The Result cell: a running job's progress; a finished encode's sizes over its saving (a kept
+ * original's reason over its sizes); otherwise the detail line. A replaced job with problems keeps
+ * its "needs attention" line.
+ */
+function ResultCell({ job, queuePaused }: { job: Job; queuePaused: boolean }) {
+  const percent = job.state === 'encoding' || job.state === 'verifying' ? percentOf(job) : null;
+  const lines = percent === null && verdictOf(job) !== 'attention' ? resultLines(job) : null;
+  let body: ReactNode;
+  if (percent !== null) {
+    body = (
+      <>
+        <DetailText job={job} queuePaused={queuePaused} />
+        <JobProgress job={job} percent={percent} />
+      </>
+    );
+  } else if (lines && job.state === 'kept_original') {
+    body = (
+      <>
+        {detailLine(job, { queuePaused }) ? (
+          <DetailText job={job} queuePaused={queuePaused} />
+        ) : null}
+        <span className="job-outcome-sub">{lines.sizes}</span>
+      </>
+    );
+  } else if (lines) {
+    body = (
+      <>
+        <span className="job-outcome-sizes">{lines.sizes}</span>
+        <span className={`job-outcome-change is-${lines.tone}`}>{lines.change}</span>
+      </>
+    );
+  } else {
+    body = <DetailText job={job} queuePaused={queuePaused} />;
+  }
+  return <td className="job-outcome">{body}</td>;
+}
+
 function JobRow({
   job,
   controls,
@@ -385,57 +469,103 @@ function JobRow({
   /** The list has a column for Pause / Cancel (some job on it is still active). */
   withActions: boolean;
 }) {
-  const percent = job.state === 'encoding' || job.state === 'verifying' ? percentOf(job) : null;
-  // The row is the link (convention 9): the name's hit area covers the row; the run link and the
-  // row's buttons sit above it.
+  const when = jobLastTime(job);
+  // The row is the link (convention 9): the title's hit area covers the row; the row's buttons
+  // sit above it.
   return (
-    <div className="job-row row-link">
-      <div className="job-file">
-        <Link href={`/jobs/${job.id}`} className="job-name row-link-main">
-          {job.fileName}
-        </Link>
-        <span className="job-where">
-          {job.state === 'queued' && !job.dryRun ? (
-            <>
-              {wherePrefix(job)}
-              <span title={QUEUED_VERSION_NOTE} aria-describedby={`queued-version-${job.id}`}>
-                {versionText(job)}
-              </span>
-              <span id={`queued-version-${job.id}`} className="sr-only">
-                {QUEUED_VERSION_NOTE}
-              </span>
-            </>
-          ) : (
-            whereLine(job)
-          )}
-          <span aria-hidden="true"> · </span>
-          <Link
-            href={`/runs/${job.runId}`}
-            className="job-run-link link-muted"
-            aria-label={`Run summary for ${job.fileName}`}
-          >
-            run
-          </Link>
-          <span aria-hidden="true"> · </span>
-          <time dateTime={jobLastTime(job)} title={fmtFull(jobLastTime(job))}>
-            {fmtStamp(jobLastTime(job))}
-          </time>
-        </span>
-      </div>
-      <div>
-        <JobStateChip job={job} frozen={frozen} />
-      </div>
-      <div className="job-detail">
-        {percent !== null ? <JobProgress job={job} percent={percent} /> : null}
-        <DetailText job={job} queuePaused={queuePaused} />
-      </div>
-      {withActions ? (
-        <div className="job-actions">
-          {isActive(job) ? (
-            <JobActions job={job} controls={controls} queuePaused={queuePaused} />
-          ) : null}
+    <tr className="row-link">
+      <td>
+        <div className="job-title">
+          <Poster job={job} size="row" />
+          <div className="job-title-main">
+            <TitleLink job={job} className="job-name job-title-text row-link-main" />
+            <TitleSub job={job} />
+          </div>
         </div>
+      </td>
+      <td className="job-cell-clip" title={job.libraryName}>
+        {job.libraryName}
+      </td>
+      <td className="job-cell-clip" title={`${job.workflowName} ${versionText(job)}`}>
+        <WorkflowText job={job} />
+      </td>
+      <td>
+        <JobStateChip job={job} frozen={frozen} />
+      </td>
+      <ResultCell job={job} queuePaused={queuePaused} />
+      <td className="job-when">
+        <time dateTime={when} title={fmtFull(when)}>
+          {fmtStamp(when)}
+        </time>
+      </td>
+      {withActions ? (
+        <td>
+          {isActive(job) ? (
+            <div className="job-actions">
+              <JobActions job={job} controls={controls} queuePaused={queuePaused} />
+            </div>
+          ) : null}
+        </td>
       ) : null}
+    </tr>
+  );
+}
+
+/** Desktop: the list as a table (screen 07). */
+function JobTable({
+  jobs,
+  controls,
+  queuePaused,
+  queueStatus,
+}: {
+  jobs: Job[];
+  controls: Controls;
+  queuePaused: boolean;
+  queueStatus: Parameters<typeof encodeStopped>[0];
+}) {
+  const withActions = jobs.some(isActive);
+  return (
+    <div className="job-list">
+      <table className="job-table" aria-label="Job list">
+        <colgroup>
+          <col />
+          <col className="job-col-library" />
+          <col className="job-col-workflow" />
+          <col className="job-col-status" />
+          <col className="job-col-result" />
+          <col className="job-col-when" />
+          {withActions ? <col className="job-col-actions" /> : null}
+        </colgroup>
+        <thead>
+          <tr>
+            <th scope="col">Title</th>
+            <th scope="col">Library</th>
+            <th scope="col">Workflow</th>
+            <th scope="col">Status</th>
+            <th scope="col">Result</th>
+            <th scope="col" className="job-when">
+              When
+            </th>
+            {withActions ? (
+              <th scope="col">
+                <span className="sr-only">Actions</span>
+              </th>
+            ) : null}
+          </tr>
+        </thead>
+        <tbody>
+          {jobs.map((job) => (
+            <JobRow
+              key={job.id}
+              job={job}
+              controls={controls}
+              queuePaused={queuePaused}
+              frozen={encodeStopped(queueStatus, job)}
+              withActions={withActions}
+            />
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
@@ -608,7 +738,10 @@ export function JobsPage() {
       onDone={afterCancelAll}
     />
   );
-  const fileNameOf = (id: string) => list.jobs.find((j) => j.id === id)?.fileName ?? null;
+  const fileNameOf = (id: string) => {
+    const job = list.jobs.find((j) => j.id === id);
+    return job ? jobTitle(job) : null;
+  };
   const countOf = (f: (typeof FILTERS)[number]): number | null => {
     if (f.paused) return list.pausedCount;
     if (f.problems) return list.problemCount;
@@ -710,11 +843,10 @@ export function JobsPage() {
               return (
                 <div key={job.id} className="phone-card row-link">
                   <div className="phone-card-head">
-                    <Link href={`/jobs/${job.id}`} className="job-name row-link-main">
-                      {job.fileName}
-                    </Link>
+                    <TitleLink job={job} className="job-name row-link-main" />
                     {percent !== null ? <span className="mono">{percent}%</span> : null}
                   </div>
+                  <TitleSub job={job} />
                   {percent !== null ? <JobProgress job={job} percent={percent} /> : null}
                   {job.paused || job.dryRun ? (
                     <JobStateChip job={job} frozen={encodeStopped(queue.status, job)} />
@@ -734,10 +866,9 @@ export function JobsPage() {
             {queued.map((job) => (
               <div key={job.id} className="phone-card row-link">
                 <div className="phone-card-head">
-                  <Link href={`/jobs/${job.id}`} className="job-name row-link-main">
-                    {job.fileName}
-                  </Link>
+                  <TitleLink job={job} className="job-name row-link-main" />
                 </div>
+                <TitleSub job={job} />
                 {job.dryRun ? <JobStateChip job={job} /> : null}
                 <span className="phone-card-line">{detailLine(job, { queuePaused })}</span>
                 {!job.dryRun && (
@@ -761,7 +892,7 @@ export function JobsPage() {
                   <Icon name={VERDICT_ICON[verdictOf(job)]} size={16} strokeWidth={2.6} />
                 </span>
                 <span className="phone-finished-text">
-                  <b>{job.fileName}</b>
+                  <b>{jobTitle(job)}</b>
                   <span className={`job-detail-text is-${verdictOf(job)}`}>{phoneLine(job)}</span>
                 </span>
               </Link>
@@ -773,7 +904,6 @@ export function JobsPage() {
     );
   }
 
-  const withActions = jobs.some(isActive);
   return (
     <div className="jobs-page">
       {header('div')}
@@ -795,21 +925,12 @@ export function JobsPage() {
       {filterChips}
       {listState}
       {jobs.length > 0 ? (
-        <section
-          className={withActions ? 'job-list has-actions' : 'job-list'}
-          aria-label="Job list"
-        >
-          {jobs.map((job) => (
-            <JobRow
-              key={job.id}
-              job={job}
-              controls={controls}
-              queuePaused={queuePaused}
-              frozen={encodeStopped(queue.status, job)}
-              withActions={withActions}
-            />
-          ))}
-        </section>
+        <JobTable
+          jobs={jobs}
+          controls={controls}
+          queuePaused={queuePaused}
+          queueStatus={queue.status}
+        />
       ) : null}
       {controls.dialog}
     </div>
