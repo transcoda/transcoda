@@ -76,15 +76,29 @@ const EPISODE_PATTERN =
   /(?<![A-Za-z0-9])(?:s(\d{1,2})e(\d{1,3})(?!\d)|(\d{1,2})x(\d{2,3})(?![A-Za-z0-9]))/i;
 const SEASON_FOLDER = /^(?:season\s*\d{1,2}|s\d{1,2}|specials)$/i;
 const YEAR_TOKEN = /^[([]?((?:19|20)\d\d)[)\]]?$/;
-const TRAILING_YEAR = /\s*[([]((?:19|20)\d\d)[)\]]$/;
+const TRAILING_YEAR = /[([]((?:19|20)\d\d)[)\]]$/;
 
 /** True for `Season 01`, `Season 1`, `S01`, `Specials` (case-insensitive). */
 export function isSeasonFolder(name: string): boolean {
   return SEASON_FOLDER.test(name.trim());
 }
 
+/**
+ * `text` without leading characters in `lead` and trailing ones in `trail`. A plain scan instead of `[…]+$`,
+ * which backtracks quadratically on a long run that does not reach the end.
+ */
+function trimChars(text: string, lead: string, trail: string): string {
+  let start = 0;
+  let end = text.length;
+  while (start < end && lead.includes(text[start] as string)) start++;
+  while (end > start && trail.includes(text[end - 1] as string)) end--;
+  return text.slice(start, end);
+}
+
+const SPACE_OR_DASH = ' \t\n\r\f\v-';
+
 function stripBrackets(token: string): string {
-  return token.replace(/^[([{]+/, '').replace(/[)\]}]+$/, '');
+  return trimChars(token, '([{', ')]}');
 }
 
 /** Dots and underscores to spaces, whitespace collapsed, as tokens. */
@@ -117,7 +131,7 @@ function beforeReleaseTag(tokens: string[]): string[] {
 }
 
 function trimDashes(text: string): string {
-  return text.replace(/^[\s-]+|[\s-]+$/g, '');
+  return trimChars(text, SPACE_OR_DASH, SPACE_OR_DASH);
 }
 
 /** Cleaned text from the tokens: no release tags, no trailing dash. May be empty. */
@@ -142,7 +156,7 @@ function stripMediaExtension(name: string): string {
 
 /** The nearest parent folder that is neither a season folder nor the library root. */
 function nearestShowFolder(segments: string[], libraryRoot: string | undefined): string | null {
-  const root = libraryRoot?.replace(/\/+$/, '');
+  const root = libraryRoot === undefined ? undefined : trimChars(libraryRoot, '', '/');
   for (let i = segments.length - 2; i >= 0; i--) {
     const name = segments[i] as string;
     if (name === '') return null;

@@ -102,6 +102,15 @@ describe('parseFileName', () => {
     });
   });
 
+  it('stays fast on long runs of brackets, dashes and slashes', () => {
+    const n = 50_000;
+    const started = performance.now();
+    parseFileName(`/lib/${')'.repeat(n)}x.mkv`, '/lib');
+    parseFileName(`/lib/a ${'- '.repeat(n)}b.mkv`, '/lib');
+    parseFileName(`/lib/Show/S01E01.mkv`, `/lib${'/'.repeat(n)}x`);
+    expect(performance.now() - started).toBeLessThan(500);
+  });
+
   it('never throws on odd input and never returns an empty title', () => {
     for (const p of ['', '/', '/a/', 'x', '///']) {
       expect(parseFileName(p, '/').title).not.toBe('');
