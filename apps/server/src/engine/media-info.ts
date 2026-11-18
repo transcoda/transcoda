@@ -17,8 +17,11 @@ export interface MediaResolver {
   resolve(path: string, libraryRoot: string): Promise<StoredJobMedia>;
 }
 
-/** A folder's entries by lower-cased name → real name; null when it cannot be listed. */
-type Listing = Map<string, string> | null;
+/**
+ * A folder's entries: the real names, and lower-cased name → first real name for a
+ * case-insensitive fallback; null when it cannot be listed.
+ */
+type Listing = { names: Set<string>; byLower: Map<string, string> } | null;
 
 const withRoot = (nfo: Nfo | null, want: NfoRoot): Nfo | null => (nfo?.root === want ? nfo : null);
 
@@ -43,12 +46,14 @@ export function createMediaResolver(deps: { fs: FsOps; log: Logger }): MediaReso
     if (cached === undefined) {
       cached = (async () => {
         try {
-          const byName = new Map<string, string>();
+          const names = new Set<string>();
+          const byLower = new Map<string, string>();
           for (const e of await fs.readdir(dir)) {
+            names.add(e.name);
             const key = e.name.toLowerCase();
-            if (!byName.has(key)) byName.set(key, e.name);
+            if (!byLower.has(key)) byLower.set(key, e.name);
           }
-          return byName;
+          return { names, byLower };
         } catch (err) {
           debug('could not list a folder for media info', dir, err);
           return null;
@@ -59,9 +64,11 @@ export function createMediaResolver(deps: { fs: FsOps; log: Logger }): MediaReso
     return cached;
   };
 
-  /** The real path of `name` in `dir` (matched case-insensitively), or null. */
+  /** The real path of `name` in `dir`: the exact name, else a case-insensitive match; or null. */
   const find = async (dir: string, name: string, root: string): Promise<string | null> => {
-    const real = (await list(dir, root))?.get(name.toLowerCase());
+    const listing = await list(dir, root);
+    if (listing === null) return null;
+    const real = listing.names.has(name) ? name : listing.byLower.get(name.toLowerCase());
     return real === undefined ? null : join(dir, real);
   };
 

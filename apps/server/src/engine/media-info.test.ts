@@ -252,6 +252,39 @@ describe('createMediaResolver', () => {
     );
   });
 
+  it('prefers the exact-case sidecar when two names differ only in case', async () => {
+    const dir = '/lib/Films';
+    const files = {
+      [`${dir}/Film.mkv`]: 'video',
+      [`${dir}/film.mkv`]: 'video',
+      [`${dir}/Film.nfo`]: movieNfo('The General', 1926),
+      [`${dir}/film.nfo`]: movieNfo('Sherlock Jr.', 1924),
+      [`${dir}/Film-poster.jpg`]: 'img',
+      [`${dir}/film-poster.jpg`]: 'img',
+    };
+    for (const order of [files, Object.fromEntries(Object.entries(files).reverse())]) {
+      const r = createMediaResolver({ fs: fakeFs(order).fs, log });
+      expect(await r.resolve(`${dir}/Film.mkv`, '/lib')).toEqual(
+        media({
+          kind: 'movie',
+          title: 'The General',
+          year: 1926,
+          source: 'sidecar',
+          posterPath: `${dir}/Film-poster.jpg`,
+        }),
+      );
+      expect(await r.resolve(`${dir}/film.mkv`, '/lib')).toEqual(
+        media({
+          kind: 'movie',
+          title: 'Sherlock Jr.',
+          year: 1924,
+          source: 'sidecar',
+          posterPath: `${dir}/film-poster.jpg`,
+        }),
+      );
+    }
+  });
+
   it('takes no stray poster for a file in the library root, only <stem>-poster', async () => {
     const one = fakeFs({ '/lib/The General (1926).mkv': 'video', '/lib/poster.jpg': 'img' });
     expect(
