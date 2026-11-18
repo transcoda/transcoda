@@ -19,6 +19,8 @@ import {
   LibrariesListOutputSchema,
   LibraryCreateInputSchema,
   LibraryFeedsSchema,
+  LibraryFileInputSchema,
+  LibraryFilesInputSchema,
   LibraryRefSchema,
   LibrarySchema,
   LibraryUpdateInputSchema,
@@ -297,6 +299,41 @@ describe('contract', () => {
     });
   });
 
+  it('the library files input has defaults, bounds the page and refuses a season without a show', () => {
+    expect(LibraryFilesInputSchema.parse({ id: 'l' })).toEqual({
+      id: 'l',
+      sort: 'title',
+      desc: false,
+      offset: 0,
+      limit: 100,
+    });
+    expect(LibraryFilesInputSchema.safeParse({ id: 'l', limit: 200 }).success).toBe(true);
+    expect(LibraryFilesInputSchema.safeParse({ id: 'l', limit: 201 }).success).toBe(false);
+    expect(LibraryFilesInputSchema.safeParse({ id: 'l', show: 's', season: 'x' }).success).toBe(
+      false,
+    );
+    expect(LibraryFilesInputSchema.safeParse({ id: 'l', season: '1' }).success).toBe(false);
+    expect(LibraryFilesInputSchema.safeParse({ id: 'l', show: 's', season: 'none' }).success).toBe(
+      true,
+    );
+    expect(LibraryFilesInputSchema.safeParse({ id: 'l', sort: 'path' }).success).toBe(false);
+  });
+
+  it('library file detail bounds the job history page', () => {
+    expect(LibraryFileInputSchema.parse({ id: 'l', fileId: 'f' })).toEqual({
+      id: 'l',
+      fileId: 'f',
+      jobsOffset: 0,
+      jobsLimit: 50,
+    });
+    expect(LibraryFileInputSchema.safeParse({ id: 'l', fileId: 'f', jobsLimit: 201 }).success).toBe(
+      false,
+    );
+    expect(LibraryFileInputSchema.safeParse({ id: 'l', fileId: 'f', jobsLimit: 0 }).success).toBe(
+      false,
+    );
+  });
+
   it('exposes the engine routers', () => {
     expect(Object.keys(contract.libraries)).toEqual([
       'list',
@@ -306,7 +343,15 @@ describe('contract', () => {
       'update',
       'dismissNotices',
       'delete',
+      'titles',
+      'seasons',
+      'files',
+      'file',
     ]);
+    expect(contract.libraries.file['~orpc'].route).toMatchObject({
+      method: 'GET',
+      path: '/libraries/{id}/files/{fileId}',
+    });
     expect(Object.keys(contract.jobs)).toEqual([
       'queue',
       'list',

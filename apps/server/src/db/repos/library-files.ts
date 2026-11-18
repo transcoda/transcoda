@@ -1,11 +1,11 @@
 import { basename } from 'node:path';
-import { parseFileName, type StoredJobMedia } from '@transcoda/shared';
+import type { FileSort } from '@transcoda/contract';
+import { type JsonValue, parseFileName, type StoredJobMedia } from '@transcoda/shared';
 import type { Database } from '../open.ts';
 import { type JobListRow, listJobListRows, parseMedia } from './jobs.ts';
 import { findLibrary } from './libraries.ts';
 
 export const LIBRARY_FILES_MAX = 200;
-export type FileSort = 'title' | 'size' | 'lastRun' | 'result';
 export interface ShowRef {
   title: string;
   year: number | null;
@@ -506,4 +506,12 @@ export function listSeasons(db: Database, libraryId: string, show: ShowRef): Sea
     outcomes: outcomesOf(r),
     savedBytes: r.saved,
   }));
+}
+
+/** The probe stored with the file (what it is now); null when it was never probed or the file is unknown. */
+export function findFileProbe(db: Database, fileId: string): JsonValue | null {
+  const r = db.prepare('SELECT last_probe FROM files WHERE id = ?').get(fileId) as
+    | { last_probe: string | null }
+    | undefined;
+  return r?.last_probe ? (JSON.parse(r.last_probe) as JsonValue) : null;
 }
