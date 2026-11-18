@@ -6269,11 +6269,16 @@ a.nav-item.is-active .nav-count {
   /* One header row (.head-row): the title block, then the queue actions on the right. */
   margin-bottom: 4px;
 }
+/* Narrow: the queue buttons move under the title rather than squeezing it ("Job…"). */
+.jobs-head.head-row {
+  flex-wrap: wrap;
+}
 .jobs-title {
   display: flex;
   flex-direction: column;
-  /* The block takes the row's free width, so a lane's name ("Quick tasks") is never cut short. */
-  flex: 1;
+  /* The block takes the row's free width, so a lane's name ("Quick tasks") is never cut short;
+     below 280px of it the actions wrap to their own line. */
+  flex: 1 1 280px;
   min-width: 0;
 }
 /* Who holds each lane, one row per lane: its name, then the file, cut short with an ellipsis. */
@@ -6436,24 +6441,6 @@ a.nav-item.is-active .nav-count {
 .job-table.has-actions {
   min-width: 1144px;
 }
-/* No room for every column: Library and Workflow give way (both are on the job's page, and the
-   library filter stays), so Status, Result and When stay in view. The Title keeps its 240px. */
-@container job-list (max-width: 993px) {
-  .job-table:not(.has-actions) {
-    min-width: 714px;
-  }
-  .job-table:not(.has-actions) .job-optional {
-    display: none;
-  }
-}
-@container job-list (max-width: 1143px) {
-  .job-table.has-actions {
-    min-width: 864px;
-  }
-  .job-table.has-actions .job-optional {
-    display: none;
-  }
-}
 /* Title takes the rest. */
 .job-col-library {
   width: 110px;
@@ -6509,6 +6496,33 @@ a.nav-item.is-active .nav-count {
   font-size: var(--fs-small);
   color: var(--faint);
   font-variant-numeric: tabular-nums;
+}
+/* No room for every column: Library and Workflow give way (both are on the job's page, and the
+   library filter stays). The Title keeps its 240px. These come after the column widths and the
+   When rules, so they win on order as well as weight. */
+@container job-list (max-width: 993px) {
+  .job-table:not(.has-actions) {
+    min-width: 714px;
+  }
+  .job-table:not(.has-actions) .job-optional {
+    display: none;
+  }
+}
+/* With running jobs the Actions column needs room too: When also gives way (the job's page has
+   it) and Result is narrower, so the whole row, Pause and Cancel included, fits at 1024px beside
+   the full sidebar. The Title keeps 200px. */
+@container job-list (max-width: 1143px) {
+  .job-table.has-actions {
+    min-width: 710px;
+  }
+  .job-table.has-actions .job-optional,
+  .job-table.has-actions .job-when,
+  .job-table.has-actions .job-col-when {
+    display: none;
+  }
+  .job-table.has-actions .job-col-result {
+    width: 180px;
+  }
 }
 /* Library and workflow: one line, the whole text on hover. */
 .job-cell-clip {
@@ -7028,28 +7042,6 @@ a.nav-item.is-active .nav-count {
   flex-direction: column;
   gap: 12px;
 }
-/* Too narrow for one row: "Saved all time" under the tiles, the cards 2 × 2. */
-@container jobs-overview (max-width: 819px) {
-  .stat-row {
-    flex-wrap: wrap;
-  }
-  .stat-row > .stat-tiles,
-  .stat-row > .stat-tile.is-alltime {
-    flex: 1 1 100%;
-  }
-  .history-cards {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-/* Too narrow for four tiles in a row: 2 × 2, so no label is cut. */
-@container jobs-overview (max-width: 559px) {
-  .stat-row > .stat-tiles {
-    flex-wrap: wrap;
-  }
-  .stat-row > .stat-tiles > .stat-tile {
-    flex: 1 1 calc(50% - 4px);
-  }
-}
 /* Last 7 days and the encoder's last hour: one row of four half-height cards (2 × 2 on a phone),
    title and total on one line, the chart under them. */
 .jobs-history {
@@ -7173,6 +7165,29 @@ a.nav-item.is-active .nav-count {
 .is-phone .encoder-gpu {
   order: 2;
   margin: 0;
+}
+/* Too narrow for one row: "Saved all time" under the tiles, the cards 2 × 2. After the base
+   .stat-row and .history-cards rules, which have the same weight. */
+@container jobs-overview (max-width: 699px) {
+  .stat-row {
+    flex-wrap: wrap;
+  }
+  .stat-row > .stat-tiles,
+  .stat-row > .stat-tile.is-alltime {
+    flex: 1 1 100%;
+  }
+  .history-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+/* Too narrow for four tiles in a row: 2 × 2, so no label is cut. */
+@container jobs-overview (max-width: 559px) {
+  .stat-row > .stat-tiles {
+    flex-wrap: wrap;
+  }
+  .stat-row > .stat-tiles > .stat-tile {
+    flex: 1 1 calc(50% - 4px);
+  }
 }
 .phone-section {
   display: flex;

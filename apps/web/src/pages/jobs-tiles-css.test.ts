@@ -76,7 +76,7 @@ describe('Jobs on a narrow window', () => {
   });
 
   it('below one row, "Saved all time" goes under the tiles and the cards go 2 × 2', () => {
-    const block = container(819);
+    const block = container(699);
     expect(block).toMatch(/\.stat-row\s*\{\s*flex-wrap:\s*wrap/);
     expect(block).toMatch(/\.history-cards\s*\{\s*grid-template-columns:\s*repeat\(2,/);
   });
@@ -105,10 +105,40 @@ describe('Jobs on a narrow window', () => {
     expect(narrowPlain).toMatch(
       /\.job-table:not\(\.has-actions\) \.job-optional\s*\{\s*display:\s*none/,
     );
-    expect(narrowActions).toMatch(/\.job-table\.has-actions \.job-optional\s*\{\s*display:\s*none/);
     const minOf = (b: string) => Number(b.match(/min-width:\s*(\d+)px/)?.[1] ?? Number.NaN);
     expect(minOf(narrowPlain) - kept).toBeGreaterThanOrEqual(240);
-    expect(minOf(narrowActions) - kept - col('actions')).toBeGreaterThanOrEqual(240);
+    // With running jobs, When gives way too and Result narrows, so Pause and Cancel stay in view
+    // at 1024 px beside the full sidebar (about 720 px of list); the Title keeps 200 px.
+    expect(narrowActions).toMatch(
+      /\.job-table\.has-actions \.job-optional,\s*\.job-table\.has-actions \.job-when,\s*\.job-table\.has-actions \.job-col-when\s*\{\s*display:\s*none/,
+    );
+    const narrowResult = px(
+      narrowActions.match(/\.job-table\.has-actions \.job-col-result\s*\{([^}]*)\}/)?.[1] ?? '',
+      'width',
+    );
+    const activeMin = minOf(narrowActions);
+    expect(activeMin).toBeLessThanOrEqual(720);
+    expect(activeMin - col('status') - narrowResult - col('actions')).toBeGreaterThanOrEqual(200);
+  });
+
+  it('each narrow-window rule comes after the base rule it overrides (same weight: order wins)', () => {
+    const at = (needle: string) => {
+      const i = css.indexOf(needle);
+      expect(i, needle).toBeGreaterThanOrEqual(0);
+      return i;
+    };
+    const overview = at('@container jobs-overview (max-width: 699px)');
+    expect(overview).toBeGreaterThan(at('\n.history-cards {'));
+    expect(overview).toBeGreaterThan(at('\n.stat-row > .stat-tiles {'));
+    expect(at('@container jobs-overview (max-width: 559px)')).toBeGreaterThan(overview);
+    const list = at('@container job-list (max-width: 993px)');
+    expect(list).toBeGreaterThan(at('\n.job-col-result {'));
+    expect(list).toBeGreaterThan(at('\n.job-table td.job-when {'));
+  });
+
+  it('the queue buttons wrap under the title instead of squeezing it', () => {
+    expect(rule('.jobs-head.head-row')).toMatch(/flex-wrap:\s*wrap/);
+    expect(rule('.jobs-title')).toMatch(/flex:\s*1 1 280px/);
   });
 
   it('a long status wraps inside its column instead of running into Result', () => {
