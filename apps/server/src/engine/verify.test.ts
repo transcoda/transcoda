@@ -16,7 +16,7 @@ import {
 import { MemoryLimitError } from './memory-guard.ts';
 import { probeFile } from './probe.ts';
 import { coverExtractArgs, renderArgs } from './render.ts';
-import { probeOf, withSidecar, withStream } from './test-helpers.ts';
+import { packetRows, probeOf, withSidecar, withStream } from './test-helpers.ts';
 import {
   confirmSourceDamage,
   mediaMaps,
@@ -99,13 +99,13 @@ describe('verifyOutput without ffmpeg', () => {
         return { stdout: JSON.stringify(json), stderr: '' };
       }
       const at = args.indexOf('-read_intervals');
-      if (at >= 0 && args.includes('packet=pts_time,duration_time')) {
+      if (at >= 0 && args.includes('packet=stream_index,pts_time,duration_time')) {
         const n = count.get(path) ?? 0;
         count.set(path, n + 1);
         reads.push(`${path} ${args[at + 1]}`);
-        return { stdout: ends(path, n), stderr: '' };
+        return { stdout: packetRows(ends(path, n)), stderr: '' };
       }
-      if (at >= 0) return { stdout: '7190.000000,1000,K__\n', stderr: '' };
+      if (at >= 0) return { stdout: packetRows('7190.000000,1000,K__'), stderr: '' };
       expect(file).toBe('ffmpeg');
       return { stdout: '', stderr: '' };
     };
@@ -183,6 +183,65 @@ describe('verifyOutput without ffmpeg', () => {
       ],
     });
   });
+  it('reads stream ends without selecting a stream, keeping only the asked-for stream', async () => {
+    // A Matroska file indexes only its video: `-select_streams 1` makes ffprobe seek by the audio
+    // stream and read the whole file from its start, past the verify timeout on a large remux.
+    const streams = [
+      { index: 0, codec_type: 'video', codec_name: 'hevc', disposition: { default: 1 } },
+      { index: 1, codec_type: 'audio', codec_name: 'aac', disposition: { default: 1 } },
+    ];
+    const source = probeOf(
+      [
+        { type: 'video', default: true },
+        { type: 'audio', default: true },
+      ],
+      {
+        durationSeconds: 60,
+        raw: { format: { duration: '60.000000', start_time: '0.000000' }, streams },
+      },
+    );
+    const probes: string[][] = [];
+    const exec: Exec = async (file, args) => {
+      const path = args.at(-1) as string;
+      if (args.includes('-show_format')) {
+        const json = {
+          format: { format_name: 'matroska,webm', duration: '60.000000', start_time: '0.000000' },
+          streams,
+        };
+        return { stdout: JSON.stringify(json), stderr: '' };
+      }
+      if (file === 'ffprobe') probes.push(args);
+      if (args.includes('packet=stream_index,pts_time,duration_time')) {
+        // The output's audio stops at 30 s; its video row alone would pass.
+        const audio = path === '/lib/in.mkv' ? '59.980000,0.020000' : '30.000000,0.020000';
+        return { stdout: `0,59.960000,0.040000\n1,${audio}\n`, stderr: '' };
+      }
+      if (args.includes('-read_intervals'))
+        return { stdout: packetRows('50.000000,1000,K__'), stderr: '' };
+      return { stdout: '', stderr: '' };
+    };
+    const result = await verifyOutput({
+      outputPath: '/tmp/job/out.mkv',
+      sourcePath: '/lib/in.mkv',
+      model: modelFromProbe(source),
+      sourceProbe: source,
+      ffmpegPath: 'ffmpeg',
+      ffprobePath: 'ffprobe',
+      exec,
+    });
+    expect(probes.filter((a) => a.includes('-read_intervals')).length).toBeGreaterThan(0);
+    for (const args of probes) expect(args).not.toContain('-select_streams');
+    expect(result).toMatchObject({
+      ok: false,
+      failures: [
+        {
+          check: 'duration',
+          message: 'output #1 (audio #1) ends at 30.02s, the source stream at 60.00s',
+        },
+      ],
+    });
+  });
+
   it('decodes 10 keyframe-aligned one-second spots across the output, and the whole file with fullDecode', async () => {
     const decodes: string[][] = [];
     const { exec: tools } = fakeTools(() => '7199.960000,0.040000\n');
@@ -455,10 +514,11 @@ describe('decode passes never map a cover stored as a video track', () => {
         return { stdout: JSON.stringify(json), stderr: '' };
       }
       if (file === 'ffmpeg') runs.push(args);
-      if (args.includes('packet=pts_time,duration_time')) {
-        return { stdout: '59.960000,0.040000\n', stderr: '' };
+      if (args.includes('packet=stream_index,pts_time,duration_time')) {
+        return { stdout: packetRows('59.960000,0.040000'), stderr: '' };
       }
-      if (args.includes('-read_intervals')) return { stdout: '50.000000,1000,K__\n', stderr: '' };
+      if (args.includes('-read_intervals'))
+        return { stdout: packetRows('50.000000,1000,K__'), stderr: '' };
       return { stdout: '', stderr: '' };
     };
     return { exec, runs };
@@ -555,10 +615,11 @@ describe('verifyOutput: sidecar subtitle streams', () => {
         return { stdout: JSON.stringify(json), stderr: '' };
       }
       if (file === 'ffmpeg') mapped.push(args.join(' '));
-      if (args.includes('packet=pts_time,duration_time')) {
-        return { stdout: '59.960000,0.040000\n', stderr: '' };
+      if (args.includes('packet=stream_index,pts_time,duration_time')) {
+        return { stdout: packetRows('59.960000,0.040000'), stderr: '' };
       }
-      if (args.includes('-read_intervals')) return { stdout: '50.000000,1000,K__\n', stderr: '' };
+      if (args.includes('-read_intervals'))
+        return { stdout: packetRows('50.000000,1000,K__'), stderr: '' };
       return { stdout: '', stderr: '' };
     };
     return { exec, mapped };
@@ -1319,10 +1380,11 @@ describe('byte-seek sources are mapped by stream id', () => {
         return { stdout: JSON.stringify(json), stderr: '' };
       }
       if (file === 'ffmpeg') runs.push(args);
-      if (args.includes('packet=pts_time,duration_time')) {
-        return { stdout: '59.960000,0.040000\n', stderr: '' };
+      if (args.includes('packet=stream_index,pts_time,duration_time')) {
+        return { stdout: packetRows('59.960000,0.040000'), stderr: '' };
       }
-      if (args.includes('-read_intervals')) return { stdout: '20.000000,1000,K__\n', stderr: '' };
+      if (args.includes('-read_intervals'))
+        return { stdout: packetRows('20.000000,1000,K__'), stderr: '' };
       return { stdout: '', stderr: '' };
     };
     await confirmSourceDamage({

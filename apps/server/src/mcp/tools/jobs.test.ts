@@ -11,6 +11,7 @@ import { tempDir } from '../../engine/fixtures.ts';
 import { type FsOps, nodeFsOps } from '../../engine/fs-ops.ts';
 import { logPathFor } from '../../engine/pipeline.ts';
 import { FakeSpawner } from '../../engine/process.ts';
+import { packetRows } from '../../engine/test-helpers.ts';
 import { createTestApp, type TestApp } from '../../test-app.ts';
 import { createToken, login } from '../../test-http.ts';
 import { chain, node } from '../../workflows/test-helpers.ts';
@@ -48,8 +49,9 @@ const exec: Exec = async (_file, args) => {
     };
     return { stdout: JSON.stringify(json), stderr: '' };
   }
-  if (args.includes('packet=pts_time,duration_time')) return { stdout: '59.96,0.04\n', stderr: '' };
-  if (args.includes('-read_intervals')) return { stdout: '55.0,1000,K__\n', stderr: '' };
+  if (args.includes('packet=stream_index,pts_time,duration_time'))
+    return { stdout: packetRows('59.96,0.04'), stderr: '' };
+  if (args.includes('-read_intervals')) return { stdout: packetRows('55.0,1000,K__'), stderr: '' };
   return { stdout: '', stderr: '' };
 };
 const fsOps: FsOps = { ...nodeFsOps, statfs: async () => ({ bavail: 1e9, bsize: 4096 }) };
