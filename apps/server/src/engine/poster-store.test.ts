@@ -141,6 +141,14 @@ describe('PosterStore', () => {
     expect(calls).toHaveLength(1);
   });
 
+  it('is null, never a throw, for a poster path that is not a string', async () => {
+    const s = store();
+    const call = () => s.thumbnail(42 as unknown as string, lib);
+    expect(call).not.toThrow();
+    expect(await call()).toBeNull();
+    expect(calls).toHaveLength(0);
+  });
+
   it('is null for a missing source without a cache', async () => {
     expect(await store().thumbnail(join(lib, 'nope.jpg'), lib)).toBeNull();
     expect(calls).toHaveLength(0);

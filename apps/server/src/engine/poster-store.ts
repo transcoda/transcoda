@@ -147,6 +147,8 @@ export class PosterStore {
 
   /** The cached thumbnail for `posterPath`, built or refreshed when needed; null when there is none. Never throws. */
   thumbnail(posterPath: string, libraryRoot: string | null): Promise<Thumbnail | null> {
+    // A stored path comes from the database: one that is not a string has no poster.
+    if (typeof posterPath !== 'string' || posterPath === '') return Promise.resolve(null);
     const key = createHash('sha256').update(posterPath).digest('hex');
     const running = this.inFlight.get(key);
     if (running) return running;

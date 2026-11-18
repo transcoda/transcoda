@@ -224,6 +224,30 @@ describe('job media', () => {
     expect(findJob(db, 'n2')?.media).toBeNull();
     expect(findJobListRow(db, 'n2')?.media).toMatchObject(fallback);
   });
+
+  it('reads a cell of the wrong shape as none, so the list row parses the file name', () => {
+    const fallback = { kind: 'movie', title: 'The General', year: 1926, source: 'filename' };
+    const bad = [
+      { ...stored, title: null },
+      { ...stored, title: '' },
+      { ...stored, kind: 'documentary' },
+      { ...stored, source: 'web' },
+      { ...stored, year: '1924' },
+      { ...stored, season: 1.5 },
+      { ...stored, episodeTitle: 7 },
+      { ...stored, posterPath: 42 },
+      { kind: 'movie' },
+      [stored],
+      'Sherlock Jr.',
+    ];
+    bad.forEach((cell, i) => {
+      const id = `w${i}`;
+      job(id, { path: '/media/movies/The General (1926).mkv' });
+      db.prepare('UPDATE jobs SET media = ? WHERE id = ?').run(JSON.stringify(cell), id);
+      expect(findJob(db, id)?.media, JSON.stringify(cell)).toBeNull();
+      expect(findJobListRow(db, id)?.media).toMatchObject(fallback);
+    });
+  });
 });
 
 describe('job GPU fields', () => {

@@ -362,12 +362,37 @@ const parseStringList = (s: string): string[] => {
     return [];
   }
 };
-/** The stored media; a corrupt cell reads as none, so one bad row cannot break every job read. */
+const MEDIA_KINDS: readonly unknown[] = ['movie', 'episode', 'unknown'];
+const MEDIA_SOURCES: readonly unknown[] = ['sidecar', 'filename'];
+const isIntOrNull = (v: unknown): boolean => v === null || Number.isInteger(v);
+const isStringOrNull = (v: unknown): boolean => v === null || typeof v === 'string';
+
+/** Whether a parsed cell has the shape of StoredJobMedia (the list's output schema checks it too). */
+function isStoredMedia(v: unknown): v is StoredJobMedia {
+  if (typeof v !== 'object' || v === null || Array.isArray(v)) return false;
+  const m = v as Record<string, unknown>;
+  return (
+    MEDIA_KINDS.includes(m.kind) &&
+    MEDIA_SOURCES.includes(m.source) &&
+    typeof m.title === 'string' &&
+    m.title !== '' &&
+    isIntOrNull(m.year) &&
+    isIntOrNull(m.season) &&
+    isIntOrNull(m.episode) &&
+    isStringOrNull(m.episodeTitle) &&
+    isStringOrNull(m.posterPath)
+  );
+}
+
+/**
+ * The stored media; a corrupt or wrong-shaped cell reads as none, so one bad row cannot break
+ * every job read (the list then parses the file name).
+ */
 const parseMedia = (s: string | null): StoredJobMedia | null => {
   if (s === null) return null;
   try {
     const v: unknown = JSON.parse(s);
-    return typeof v === 'object' && v !== null && !Array.isArray(v) ? (v as StoredJobMedia) : null;
+    return isStoredMedia(v) ? v : null;
   } catch {
     return null;
   }
