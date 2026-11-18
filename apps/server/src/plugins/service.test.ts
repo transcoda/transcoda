@@ -2321,8 +2321,11 @@ describe('blocklist', () => {
   it('install of a listed name is refused before anything is downloaded: no files, no row, no nodes', async () => {
     await serve('example');
     const t = setup();
-    await t.deps.plugins.start();
+    // Listed before start, then loaded: install checks the list in memory, and the startup
+    // read runs in the background (a write after start() could land after that read).
     await writeFile(t.blocklistFile, listed([byName('example')]));
+    await t.deps.plugins.start();
+    await t.deps.plugins.recheckBlocklist();
     const result = await install(t, 'example');
     expect(result).toEqual({ ok: false, reason: 'blocklisted: test entry' });
     expect(await files(t)).toEqual([]);
@@ -2334,11 +2337,13 @@ describe('blocklist', () => {
     await serve('example');
     await serve('example', '0.2.0');
     const t = setup();
-    await t.deps.plugins.start();
+    // Listed before start, then loaded (see "install of a listed name").
     await writeFile(
       t.blocklistFile,
       listed([{ ...byName('example'), versions: '>=0.2.0 <1.0.0' }]),
     );
+    await t.deps.plugins.start();
+    await t.deps.plugins.recheckBlocklist();
     expect((await install(t, 'example', '0.1.0')).ok).toBe(true);
     expect(await update(t, 'example', '0.2.0')).toEqual({
       ok: false,
