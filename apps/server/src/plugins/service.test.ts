@@ -2220,11 +2220,19 @@ describe('blocklist', () => {
     added: '2026-10-17T00:00:00.000Z',
   });
   const recheck = (app: TestApp) => app.deps.plugins.recheckBlocklist();
+  /**
+   * start(), then wait for its background blocklist read. A forced refresh joins a read still in
+   * flight, so a list written while the startup read runs would be missed by the next recheck.
+   */
+  const startSettled = async (app: TestApp): Promise<void> => {
+    await app.deps.plugins.start();
+    await recheck(app);
+  };
 
   it('a listed sha256 stops the running plugin with the reason; plugins.changed is emitted and list() shows it', async () => {
     const entry = await serve('example');
     const t = setup();
-    await t.deps.plugins.start();
+    await startSettled(t);
     expect((await install(t, 'example')).ok).toBe(true);
     expect(t.deps.plugins.list()[0]?.blocked).toBeNull();
     const pid = pidOf(t, 'example');
@@ -2258,7 +2266,7 @@ describe('blocklist', () => {
   it('catalog(refresh=true) also rechecks the blocklist: a running plugin newly listed is stopped at once', async () => {
     const entry = await serve('example');
     const t = setup();
-    await t.deps.plugins.start();
+    await startSettled(t);
     await install(t, 'example');
     const pid = pidOf(t, 'example');
     await writeFile(t.blocklistFile, listed([bySha(sha(entry.bundle))]));
@@ -2299,7 +2307,7 @@ describe('blocklist', () => {
   it('enable and restart stay refused by the verify seam while the build is listed; removing the entry lets a restart through', async () => {
     const entry = await serve('example');
     const t = setup();
-    await t.deps.plugins.start();
+    await startSettled(t);
     await install(t, 'example');
     await writeFile(t.blocklistFile, listed([byName('example')]));
     await recheck(t);
@@ -2357,7 +2365,7 @@ describe('blocklist', () => {
     const entry = await serve('example');
     await serve('example', '0.2.0');
     const t = setup();
-    await t.deps.plugins.start();
+    await startSettled(t);
     await writeFile(t.blocklistFile, listed([bySha(sha(entry.bundle))]));
     const out = await t.deps.plugins.catalog(true);
     const versions = out.catalogs[0]?.plugins[0]?.versions ?? [];
@@ -2376,7 +2384,7 @@ describe('blocklist', () => {
   it('a disabled plugin stays disabled when it is listed; enable is then refused', async () => {
     await serve('example');
     const t = setup();
-    await t.deps.plugins.start();
+    await startSettled(t);
     await install(t, 'example');
     await t.deps.plugins.disable('example');
     t.events.length = 0;
@@ -2395,7 +2403,7 @@ describe('blocklist', () => {
     await serve('example');
     const first = setup({ blocklistUrl: `${base}/blocklist.json` });
     blocklistServed.body = listed([]);
-    await first.deps.plugins.start();
+    await startSettled(first);
     await install(first, 'example');
     blocklistServed.body = listed([byName('example')]);
     await first.deps.plugins.catalog(true);
