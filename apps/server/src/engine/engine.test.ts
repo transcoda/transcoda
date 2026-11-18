@@ -298,6 +298,21 @@ describe('EngineService', () => {
     expect(await t2.deps.engine.sweepTestOutputs()).toBe(0);
   });
 
+  it('a queued run kicks the media pass once', async () => {
+    const kick = vi.spyOn(t.deps.engine.mediaPass, 'kick');
+    await queued();
+    expect(kick).toHaveBeenCalledTimes(1);
+  });
+
+  it('start() fills the media of a job that has none', async () => {
+    const { id } = await queued();
+    await t.deps.engine.mediaPass.idle();
+    t.db.prepare('UPDATE jobs SET media = NULL WHERE id = ?').run(id);
+    await t.deps.engine.start();
+    await t.deps.engine.mediaPass.idle();
+    expect(row(id).media).not.toBeNull();
+  });
+
   it('stop() kills an attached fake process and leaves the row as it was', async () => {
     const { id } = await queued();
     await t.deps.engine.start();

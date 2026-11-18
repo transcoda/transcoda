@@ -6,6 +6,9 @@ export const PathStringSchema = z
   .string()
   .refine((p) => !p.includes('\0'), { message: 'A path must not contain NUL' });
 
+/** A season number, or `none` for episodes without one. */
+export const SeasonParamSchema = z.string().regex(/^(\d+|none)$/);
+
 /** A library named by id and name (error data, read fields). */
 export const LibraryRefSchema = z.object({ id: z.string(), name: z.string() });
 /** A workflow version that takes (or would take) files from a library. */
@@ -52,12 +55,22 @@ export const LibrarySchema = z.object({
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
 });
+/** The server's clock: run hours are in its time zone. */
+export const ServerClockSchema = z.object({ now: z.iso.datetime(), timeZone: z.string() });
 export const LibrariesListOutputSchema = z.object({
   libraries: z.array(LibrarySchema),
   /** What the upgrade to library triggers changed (migration 0008), until dismissed. */
   notices: z.array(z.string()),
   /** The server's clock when the list was read: run hours are in its time zone. */
-  clock: z.object({ now: z.iso.datetime(), timeZone: z.string() }),
+  clock: ServerClockSchema,
+});
+/**
+ * One library, with the server's clock when it was read (the same `clock` the list carries) and
+ * how many files its library page lists (present files that have a job).
+ */
+export const LibraryGetOutputSchema = LibrarySchema.extend({
+  clock: ServerClockSchema,
+  fileCount: z.number().int().nonnegative(),
 });
 /** The issue message for a `defaultWorkflowId` sent to create or update (a 400). */
 export const REMOVED_DEFAULT_WORKFLOW =
@@ -112,6 +125,7 @@ export const LibraryBrowseOutputSchema = z.object({
 export type LibraryRef = z.infer<typeof LibraryRefSchema>;
 export type LibraryFeeds = z.infer<typeof LibraryFeedsSchema>;
 export type Library = z.infer<typeof LibrarySchema>;
+export type LibraryGetOutput = z.infer<typeof LibraryGetOutputSchema>;
 export type LibrariesListOutput = z.infer<typeof LibrariesListOutputSchema>;
 export type LibraryCreateInput = z.infer<typeof LibraryCreateInputSchema>;
 export type LibraryUpdateInput = z.infer<typeof LibraryUpdateInputSchema>;

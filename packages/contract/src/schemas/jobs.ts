@@ -8,7 +8,7 @@ import {
   WorkflowGraphSchema,
 } from '@transcoda/shared';
 import { z } from 'zod';
-import { PathStringSchema } from './libraries.ts';
+import { PathStringSchema, SeasonParamSchema } from './libraries.ts';
 
 /**
  * Where a verify stands. `checks`: the output probe, each stream end and each spot decode, `done`
@@ -277,6 +277,51 @@ export const JobsQueueOutputSchema = z.object({
 });
 
 export const JOBS_LIST_MAX = 200;
+/** The most files one "run on a selection" request may name (the server checks it too). */
+export const QUEUE_FILES_MAX = 5000;
+
+const FilesSelection = {
+  libraryId: z.string(),
+  fileIds: z.array(z.string()).min(1).max(QUEUE_FILES_MAX).optional(),
+  paths: z.array(PathStringSchema.min(1)).min(1).max(QUEUE_FILES_MAX).optional(),
+  /** A show key (libraries.titles) and optionally one season: all its listed files. */
+  show: z.string().optional(),
+  season: SeasonParamSchema.optional(),
+  workflowId: z.string(),
+  dryRun: z.boolean().default(false),
+};
+const oneSelection = (i: { fileIds?: unknown; paths?: unknown; show?: unknown }) =>
+  [i.fileIds, i.paths, i.show].filter((v) => v !== undefined).length === 1;
+const oneSelectionIssue = { message: 'send exactly one of fileIds, paths or show' };
+/** A season names a season of the selected show: it means nothing without `show`. */
+const seasonNeedsShow = (i: { show?: unknown; season?: unknown }) =>
+  i.season === undefined || i.show !== undefined;
+const seasonNeedsShowIssue = { message: 'season needs show', path: ['season'] };
+/** `jobs.queueFiles`: a run of a chosen set of one library's files (ids, paths, or a show/season). */
+export const JobsQueueFilesInputSchema = z
+  .object({
+    ...FilesSelection,
+    force: z.boolean().default(false),
+    priority: z.number().int().min(-10).max(10).default(0),
+    start: z.enum(['now', 'runHours']).default('now'),
+  })
+  .refine(oneSelection, oneSelectionIssue)
+  .refine(seasonNeedsShow, seasonNeedsShowIssue);
+/** `jobs.queueFilesPreview`: what the same request would do without force; writes nothing. */
+export const JobsQueueFilesPreviewInputSchema = z
+  .object(FilesSelection)
+  .refine(oneSelection, oneSelectionIssue)
+  .refine(seasonNeedsShow, seasonNeedsShowIssue);
+export const JobsQueueFilesPreviewOutputSchema = z.object({
+  willRun: z.number().int(),
+  alreadyHandled: z.number().int(),
+  heldByAnotherRun: z.number().int(),
+  /** Ids that name no file of this library (unknown, or another library's). */
+  notFound: z.number().int(),
+  skipped: z.number().int(),
+  workflowVersion: z.number().int(),
+  dryRun: z.boolean(),
+});
 export const JobsListInputSchema = z.object({
   runId: z.string().optional(),
   libraryId: z.string().optional(),
@@ -363,6 +408,9 @@ export type JobProbe = z.infer<typeof JobProbeSchema>;
 export type WalkStep = z.infer<typeof WalkStepSchema>;
 export type JobsQueueInput = z.infer<typeof JobsQueueInputSchema>;
 export type JobsQueueOutput = z.infer<typeof JobsQueueOutputSchema>;
+export type JobsQueueFilesInput = z.infer<typeof JobsQueueFilesInputSchema>;
+export type JobsQueueFilesPreviewInput = z.infer<typeof JobsQueueFilesPreviewInputSchema>;
+export type JobsQueueFilesPreviewOutput = z.infer<typeof JobsQueueFilesPreviewOutputSchema>;
 export type JobsListInput = z.infer<typeof JobsListInputSchema>;
 export type JobsListOutput = z.infer<typeof JobsListOutputSchema>;
 export type JobStatsOutput = z.infer<typeof JobStatsOutputSchema>;

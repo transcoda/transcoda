@@ -211,7 +211,13 @@ describe('libraries', () => {
 
     const list = await json<{ libraries: { id: string }[] }>(await get('/libraries'));
     expect(list.libraries.map((l) => l.id)).toEqual([id]);
-    expect((await get(`/libraries/${id}`)).status).toBe(200);
+    const got = await get(`/libraries/${id}`);
+    expect(got.status).toBe(200);
+    // The same clock the list carries: the server's time and zone, for run hours.
+    expect(await json(got)).toMatchObject({
+      id,
+      clock: { now: t.clock.now().toISOString(), timeZone: expect.any(String) },
+    });
 
     const patched = await send(t, 'PATCH', `/libraries/${id}`, {
       body: { name: 'Shows', verifyFullDecode: true },

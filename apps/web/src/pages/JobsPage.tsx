@@ -3,7 +3,7 @@
 // row (title, lanes line, queue actions), today's tiles, four half-height history cards, then the
 // list: the list stays above the fold.
 import { CANCELLABLE_JOB_STATES, isFinalState, type JobState } from '@transcoda/shared';
-import { type ReactNode, useState } from 'react';
+import { useState } from 'react';
 import { Link } from 'wouter';
 import { api, isDefinedError, safe } from '../api/client.ts';
 import { describeError } from '../api/errors.ts';
@@ -17,6 +17,7 @@ import { StatTile } from '../components/StatTile.tsx';
 import { useToast } from '../components/Toast.tsx';
 import { useAsync } from '../hooks/useAsync.ts';
 import { useRefetchOn } from '../hooks/useRefetchOn.ts';
+import { ResultCell, TitleSub, WorkflowText } from '../jobs/JobCells.tsx';
 import { JobProgress } from '../jobs/JobProgress.tsx';
 import { JobStateChip, VERDICT_ICON } from '../jobs/JobStateChip.tsx';
 import {
@@ -30,7 +31,7 @@ import {
   verdictOf,
   versionText,
 } from '../jobs/jobText.ts';
-import { jobTitle, mediaSub, resultLines } from '../jobs/mediaText.ts';
+import { jobTitle } from '../jobs/mediaText.ts';
 import { Poster } from '../jobs/Poster.tsx';
 import { QueueLanes, QueuePausedNote, QueueToggle } from '../jobs/QueueBar.tsx';
 import {
@@ -358,32 +359,6 @@ function CancelAll({
 }
 
 /**
- * The row's detail line, clamped to two lines so a long reason cannot stretch the row; the whole
- * line is its tooltip (and stays in the text for screen readers).
- */
-function DetailText({ job, queuePaused }: { job: Job; queuePaused: boolean }) {
-  const text = detailLine(job, { queuePaused });
-  return (
-    <span className={`job-detail-text job-detail-clamp is-${verdictOf(job)}`} title={text}>
-      {text}
-    </span>
-  );
-}
-
-/** The muted line under a title: the episode code in bold, then its name; or a movie's year. */
-function TitleSub({ job }: { job: Job }) {
-  const { code, text } = mediaSub(job.media);
-  if (!code && !text) return null;
-  return (
-    <span className="job-title-sub">
-      {code ? <b className="job-title-code">{code}</b> : null}
-      {code && text ? ' · ' : null}
-      {text}
-    </span>
-  );
-}
-
-/**
  * The job's title as the row's link: the show or movie title, named for screen readers as the
  * buttons are ("Maple Lane S01E03"), the file name on hover.
  */
@@ -400,60 +375,6 @@ function TitleLink({ job, className }: { job: Job; className: string }) {
   );
 }
 
-/** "TV cleanup v7"; a queued real job's version says it can still change. */
-function WorkflowText({ job }: { job: Job }) {
-  if (job.state !== 'queued' || job.dryRun) return <>{`${job.workflowName} ${versionText(job)}`}</>;
-  return (
-    <>
-      {`${job.workflowName} `}
-      <span title={QUEUED_VERSION_NOTE} aria-describedby={`queued-version-${job.id}`}>
-        {versionText(job)}
-      </span>
-      <span id={`queued-version-${job.id}`} className="sr-only">
-        {QUEUED_VERSION_NOTE}
-      </span>
-    </>
-  );
-}
-
-/**
- * The Result cell: a running job's progress; a finished encode's sizes over its saving (a kept
- * original's reason over its sizes); otherwise the detail line. A replaced job with problems keeps
- * its "needs attention" line.
- */
-function ResultCell({ job, queuePaused }: { job: Job; queuePaused: boolean }) {
-  const percent = job.state === 'encoding' || job.state === 'verifying' ? percentOf(job) : null;
-  const lines = percent === null && verdictOf(job) !== 'attention' ? resultLines(job) : null;
-  let body: ReactNode;
-  if (percent !== null) {
-    body = (
-      <>
-        <DetailText job={job} queuePaused={queuePaused} />
-        <JobProgress job={job} percent={percent} />
-      </>
-    );
-  } else if (lines && job.state === 'kept_original') {
-    body = (
-      <>
-        {detailLine(job, { queuePaused }) ? (
-          <DetailText job={job} queuePaused={queuePaused} />
-        ) : null}
-        <span className="job-outcome-sub">{lines.sizes}</span>
-      </>
-    );
-  } else if (lines) {
-    body = (
-      <>
-        <span className="job-outcome-sizes">{lines.sizes}</span>
-        <span className={`job-outcome-change is-${lines.tone}`}>{lines.change}</span>
-      </>
-    );
-  } else {
-    body = <DetailText job={job} queuePaused={queuePaused} />;
-  }
-  return <td className="job-outcome">{body}</td>;
-}
-
 function JobRow({
   job,
   controls,
@@ -462,7 +383,8 @@ function JobRow({
   withActions,
 }: {
   job: Job;
-  controls: Controls;
+  /** Null: a read-only row without Pause / Cancel. */
+  controls: Controls | null;
   queuePaused: boolean;
   /** An encode that stands still (paused queue, or waiting for a lane); its icon stays still. */
   frozen: boolean;
@@ -479,7 +401,7 @@ function JobRow({
           <Poster job={job} size="row" />
           <div className="job-title-main">
             <TitleLink job={job} className="job-name job-title-text row-link-main" />
-            <TitleSub job={job} />
+            <TitleSub media={job.media} />
           </div>
         </div>
       </td>
@@ -500,7 +422,7 @@ function JobRow({
       </td>
       {withActions ? (
         <td>
-          {isActive(job) ? (
+          {controls && isActive(job) ? (
             <div className="job-actions">
               <JobActions job={job} controls={controls} queuePaused={queuePaused} />
             </div>
@@ -517,16 +439,19 @@ function JobTable({
   controls,
   queuePaused,
   queueStatus,
+  label = 'Job list',
 }: {
   jobs: Job[];
-  controls: Controls;
+  /** Null: no Actions column and no Pause / Cancel (the history of one file). */
+  controls: Controls | null;
   queuePaused: boolean;
   queueStatus: Parameters<typeof encodeStopped>[0];
+  label?: string;
 }) {
-  const withActions = jobs.some(isActive);
+  const withActions = controls !== null && jobs.some(isActive);
   return (
     <div className="job-list">
-      <table className={withActions ? 'job-table has-actions' : 'job-table'} aria-label="Job list">
+      <table className={withActions ? 'job-table has-actions' : 'job-table'} aria-label={label}>
         <colgroup>
           <col />
           {/* Library and Workflow give way first when the table is narrow (styles.css). */}
@@ -572,6 +497,80 @@ function JobTable({
         </tbody>
       </table>
     </div>
+  );
+}
+
+/** A phone card of the Jobs page's own markup, without Pause / Cancel (one file's history). */
+function HistoryCard({
+  job,
+  queuePaused,
+  frozen,
+}: {
+  job: Job;
+  queuePaused: boolean;
+  frozen: boolean;
+}) {
+  if (!isActive(job)) {
+    return (
+      <Link href={`/jobs/${job.id}`} className="phone-finished">
+        <span className={`phone-finished-icon is-${verdictOf(job)}`}>
+          <Icon name={VERDICT_ICON[verdictOf(job)]} size={16} strokeWidth={2.6} />
+        </span>
+        <span className="phone-finished-text">
+          <b>{jobTitle(job)}</b>
+          <span className={`job-detail-text is-${verdictOf(job)}`}>{phoneLine(job)}</span>
+        </span>
+      </Link>
+    );
+  }
+  const running = job.state !== 'queued';
+  const percent = running && job.state === 'encoding' ? percentOf(job) : null;
+  return (
+    <div className="phone-card row-link">
+      <div className="phone-card-head">
+        <TitleLink job={job} className="job-name row-link-main" />
+        {percent !== null ? <span className="mono">{percent}%</span> : null}
+      </div>
+      <TitleSub media={job.media} />
+      {percent !== null ? <JobProgress job={job} percent={percent} /> : null}
+      {job.paused || job.dryRun ? <JobStateChip job={job} frozen={frozen} /> : null}
+      <span className="phone-card-line">
+        {running ? phoneRunningLine(job) : detailLine(job, { queuePaused })}
+      </span>
+    </div>
+  );
+}
+
+/**
+ * The jobs of one file, without Pause / Cancel: the Jobs page's table on a desktop, its phone
+ * cards (same markup and classes) on a phone, newest first.
+ */
+export function JobHistoryTable({ jobs, label }: { jobs: Job[]; label: string }) {
+  const queue = useQueue();
+  const phone = usePhone();
+  const queuePaused = queue.status?.paused ?? false;
+  if (phone) {
+    return (
+      <section className="phone-section" aria-label={label}>
+        {jobs.map((job) => (
+          <HistoryCard
+            key={job.id}
+            job={job}
+            queuePaused={queuePaused}
+            frozen={encodeStopped(queue.status, job)}
+          />
+        ))}
+      </section>
+    );
+  }
+  return (
+    <JobTable
+      jobs={jobs}
+      controls={null}
+      queuePaused={queuePaused}
+      queueStatus={queue.status}
+      label={label}
+    />
   );
 }
 
@@ -851,7 +850,7 @@ export function JobsPage() {
                     <TitleLink job={job} className="job-name row-link-main" />
                     {percent !== null ? <span className="mono">{percent}%</span> : null}
                   </div>
-                  <TitleSub job={job} />
+                  <TitleSub media={job.media} />
                   {percent !== null ? <JobProgress job={job} percent={percent} /> : null}
                   {job.paused || job.dryRun ? (
                     <JobStateChip job={job} frozen={encodeStopped(queue.status, job)} />
@@ -873,7 +872,7 @@ export function JobsPage() {
                 <div className="phone-card-head">
                   <TitleLink job={job} className="job-name row-link-main" />
                 </div>
-                <TitleSub job={job} />
+                <TitleSub media={job.media} />
                 {job.dryRun ? <JobStateChip job={job} /> : null}
                 <span className="phone-card-line">{detailLine(job, { queuePaused })}</span>
                 {!job.dryRun && (

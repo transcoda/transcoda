@@ -14,11 +14,15 @@ import {
   HealthInputSchema,
   JobSchema,
   JobsListInputSchema,
+  JobsQueueFilesInputSchema,
+  JobsQueueFilesPreviewInputSchema,
   JobsQueueInputSchema,
   JobsQueueOutputSchema,
   LibrariesListOutputSchema,
   LibraryCreateInputSchema,
   LibraryFeedsSchema,
+  LibraryFileInputSchema,
+  LibraryFilesInputSchema,
   LibraryRefSchema,
   LibrarySchema,
   LibraryUpdateInputSchema,
@@ -35,6 +39,7 @@ import {
   PluginSummarySchema,
   PluginsListOutputSchema,
   PortSpecSchema,
+  QUEUE_FILES_MAX,
   REMOVED_DEFAULT_WORKFLOW,
   RunDetailSchema,
   RunSchema,
@@ -297,6 +302,41 @@ describe('contract', () => {
     });
   });
 
+  it('the library files input has defaults, bounds the page and refuses a season without a show', () => {
+    expect(LibraryFilesInputSchema.parse({ id: 'l' })).toEqual({
+      id: 'l',
+      sort: 'title',
+      desc: false,
+      offset: 0,
+      limit: 100,
+    });
+    expect(LibraryFilesInputSchema.safeParse({ id: 'l', limit: 200 }).success).toBe(true);
+    expect(LibraryFilesInputSchema.safeParse({ id: 'l', limit: 201 }).success).toBe(false);
+    expect(LibraryFilesInputSchema.safeParse({ id: 'l', show: 's', season: 'x' }).success).toBe(
+      false,
+    );
+    expect(LibraryFilesInputSchema.safeParse({ id: 'l', season: '1' }).success).toBe(false);
+    expect(LibraryFilesInputSchema.safeParse({ id: 'l', show: 's', season: 'none' }).success).toBe(
+      true,
+    );
+    expect(LibraryFilesInputSchema.safeParse({ id: 'l', sort: 'path' }).success).toBe(false);
+  });
+
+  it('library file detail bounds the job history page', () => {
+    expect(LibraryFileInputSchema.parse({ id: 'l', fileId: 'f' })).toEqual({
+      id: 'l',
+      fileId: 'f',
+      jobsOffset: 0,
+      jobsLimit: 50,
+    });
+    expect(LibraryFileInputSchema.safeParse({ id: 'l', fileId: 'f', jobsLimit: 201 }).success).toBe(
+      false,
+    );
+    expect(LibraryFileInputSchema.safeParse({ id: 'l', fileId: 'f', jobsLimit: 0 }).success).toBe(
+      false,
+    );
+  });
+
   it('exposes the engine routers', () => {
     expect(Object.keys(contract.libraries)).toEqual([
       'list',
@@ -306,7 +346,15 @@ describe('contract', () => {
       'update',
       'dismissNotices',
       'delete',
+      'titles',
+      'seasons',
+      'files',
+      'file',
     ]);
+    expect(contract.libraries.file['~orpc'].route).toMatchObject({
+      method: 'GET',
+      path: '/libraries/{id}/files/{fileId}',
+    });
     expect(Object.keys(contract.jobs)).toEqual([
       'queue',
       'list',
@@ -320,7 +368,17 @@ describe('contract', () => {
       'cancel',
       'cancelAll',
       'deleteTestOutput',
+      'queueFiles',
+      'queueFilesPreview',
     ]);
+    expect(contract.jobs.queueFiles['~orpc'].route).toMatchObject({
+      method: 'POST',
+      path: '/jobs/queue-files',
+    });
+    expect(contract.jobs.queueFilesPreview['~orpc'].route).toMatchObject({
+      method: 'POST',
+      path: '/jobs/queue-files/preview',
+    });
     expect(contract.jobs.cancelAll['~orpc'].route).toMatchObject({
       method: 'POST',
       path: '/jobs/cancel-all',
@@ -1003,5 +1061,73 @@ describe('EncodeDeviceSchema', () => {
     for (const v of ['intel:7:0.0', 'intel:0000:07:00.8', 'intel:0', 'intel:0000:07:00.0:x']) {
       expect(EncodeDeviceSchema.safeParse(v).success).toBe(false);
     }
+  });
+});
+
+describe('jobs.queueFiles input', () => {
+  const base = { libraryId: 'l', workflowId: 'w' };
+  it('defaults dryRun, force, priority and start', () => {
+    expect(JobsQueueFilesInputSchema.parse({ ...base, fileIds: ['f'] })).toEqual({
+      ...base,
+      fileIds: ['f'],
+      dryRun: false,
+      force: false,
+      priority: 0,
+      start: 'now',
+    });
+    expect(JobsQueueFilesPreviewInputSchema.parse({ ...base, show: 'k' })).toEqual({
+      ...base,
+      show: 'k',
+      dryRun: false,
+    });
+  });
+
+  it('takes exactly one of fileIds, paths and show, with the same message in both schemas', () => {
+    for (const schema of [JobsQueueFilesInputSchema, JobsQueueFilesPreviewInputSchema]) {
+      expect(schema.safeParse({ ...base, fileIds: ['f'], paths: ['/a'] }).success).toBe(false);
+      expect(schema.safeParse({ ...base, fileIds: ['f'], show: 'k' }).success).toBe(false);
+      expect(schema.safeParse(base).success).toBe(false);
+      expect(schema.safeParse({ ...base, paths: ['/a'] }).success).toBe(true);
+      expect(schema.safeParse({ ...base, show: 'k', season: '2' }).success).toBe(true);
+      expect(schema.safeParse({ ...base, show: 'k', season: 'x' }).success).toBe(false);
+      const r = schema.safeParse({ ...base, fileIds: ['f'], paths: ['/a'] });
+      expect(r.success ? '' : r.error.issues[0]?.message).toBe(
+        'send exactly one of fileIds, paths or show',
+      );
+    }
+  });
+
+  it('a season needs a show: with fileIds, paths or alone it is refused', () => {
+    for (const schema of [JobsQueueFilesInputSchema, JobsQueueFilesPreviewInputSchema]) {
+      for (const sel of [{ fileIds: ['f'] }, { paths: ['/a'] }]) {
+        const r = schema.safeParse({ ...base, ...sel, season: '1' });
+        expect(r.success).toBe(false);
+        expect(r.success ? null : r.error.issues.map((i) => [i.path, i.message])).toEqual([
+          [['season'], 'season needs show'],
+        ]);
+      }
+      expect(schema.safeParse({ ...base, show: 'k', season: 'none' }).success).toBe(true);
+    }
+  });
+
+  it('refuses 5001 ids or paths, an empty list and an out-of-range priority or start', () => {
+    const ids = (n: number) => Array.from({ length: n }, (_, i) => `f${i}`);
+    expect(
+      JobsQueueFilesInputSchema.safeParse({ ...base, fileIds: ids(QUEUE_FILES_MAX) }).success,
+    ).toBe(true);
+    expect(
+      JobsQueueFilesInputSchema.safeParse({ ...base, fileIds: ids(QUEUE_FILES_MAX + 1) }).success,
+    ).toBe(false);
+    expect(
+      JobsQueueFilesPreviewInputSchema.safeParse({ ...base, fileIds: ids(5001) }).success,
+    ).toBe(false);
+    expect(JobsQueueFilesInputSchema.safeParse({ ...base, fileIds: [] }).success).toBe(false);
+    expect(JobsQueueFilesInputSchema.safeParse({ ...base, paths: [''] }).success).toBe(false);
+    expect(
+      JobsQueueFilesInputSchema.safeParse({ ...base, fileIds: ['f'], priority: 11 }).success,
+    ).toBe(false);
+    expect(
+      JobsQueueFilesInputSchema.safeParse({ ...base, fileIds: ['f'], start: 'later' }).success,
+    ).toBe(false);
   });
 });

@@ -244,6 +244,10 @@ a:hover {
   background: var(--raised);
 }
 
+.btn-ghost:disabled {
+  color: var(--faint);
+}
+
 .btn-danger {
   background: var(--st-failed);
   color: var(--st-failed-ink);
@@ -1743,7 +1747,8 @@ a.nav-item.is-active:focus-visible,
   inset: 0;
 }
 .row-link a:not(.row-link-main),
-.row-link button {
+.row-link button,
+.row-link input[type="checkbox"] {
   position: relative;
   z-index: 1;
 }
@@ -6437,6 +6442,11 @@ a.nav-item.is-active .nav-count {
     height: 96px;
   }
 }
+.poster-card {
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  border-radius: 8px;
+}
 .poster-empty {
   display: flex;
   align-items: center;
@@ -6459,13 +6469,13 @@ a.nav-item.is-active .nav-count {
 /* The minimum width is the fixed columns plus 240px for the Title. */
 .job-table {
   width: 100%;
-  min-width: 994px;
+  min-width: 1010px;
   table-layout: fixed;
   border-collapse: collapse;
   font-size: 14px;
 }
 .job-table.has-actions {
-  min-width: 1144px;
+  min-width: 1160px;
 }
 /* Title takes the rest. */
 .job-col-library {
@@ -6482,7 +6492,7 @@ a.nav-item.is-active .nav-count {
   width: 210px;
 }
 .job-col-when {
-  width: 84px;
+  width: 100px;
 }
 .job-col-actions {
   width: 150px;
@@ -6526,9 +6536,9 @@ a.nav-item.is-active .nav-count {
 /* No room for every column: Library and Workflow give way (both are on the job's page, and the
    library filter stays). The Title keeps its 240px. These come after the column widths and the
    When rules, so they win on order as well as weight. */
-@container job-list (max-width: 993px) {
+@container job-list (max-width: 1009px) {
   .job-table:not(.has-actions) {
-    min-width: 714px;
+    min-width: 730px;
   }
   .job-table:not(.has-actions) .job-optional {
     display: none;
@@ -6537,7 +6547,7 @@ a.nav-item.is-active .nav-count {
 /* With running jobs the Actions column needs room too: When also gives way (the job's page has
    it) and Result is narrower, so the whole row, Pause and Cancel included, fits at 1024px beside
    the full sidebar. The Title keeps 200px. */
-@container job-list (max-width: 1143px) {
+@container job-list (max-width: 1159px) {
   .job-table.has-actions {
     min-width: 710px;
   }
@@ -7564,10 +7574,17 @@ a.nav-item.is-active .nav-count {
   cursor: pointer;
 }
 
+.lib-radio span,
+.lib-check span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 .lib-radio input,
 .lib-check input {
   width: 20px;
   height: 20px;
+  flex: none;
   margin: 0;
   accent-color: var(--accent-text);
 }
@@ -10891,4 +10908,165 @@ button.job-step-more:hover {
 }
 .recycle-table td:first-child {
   min-width: 14em;
+}
+
+/* ---------- Library page ---------- */
+.library-head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.library-crumb {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.library-count {
+  margin-left: var(--sp-3);
+  font-family: var(--font-mono);
+  font-size: var(--fs-small);
+  color: var(--muted);
+}
+.library-empty {
+  color: var(--muted);
+}
+.library-toolbar {
+  justify-content: space-between;
+}
+.lib-name-text {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* The library's file table: the Jobs table's columns, plus a Size column and a pager. */
+.library-col-size {
+  width: 96px;
+}
+.library-col-check {
+  width: 44px;
+  text-align: center;
+}
+.selection-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  margin-top: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--raised);
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  padding-bottom: max(8px, env(safe-area-inset-bottom));
+}
+.selection-count {
+  font-weight: 600;
+  margin-right: auto;
+}
+.file-head-actions {
+  margin-top: 12px;
+}
+.library-table td.library-col-size {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.library-sort {
+  all: unset;
+  cursor: pointer;
+  text-transform: inherit;
+}
+.library-sort:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+.library-pager {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 0;
+}
+.library-pager-range {
+  margin-right: 8px;
+  font-size: var(--fs-small);
+  color: var(--muted);
+}
+
+/* The library's poster grid: shows, movies and seasons as 2:3 cards. */
+.library-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: var(--sp-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.library-grid > li {
+  min-width: 0;
+}
+.library-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: inherit;
+  text-decoration: none;
+  border-radius: 8px;
+}
+.library-card:hover .library-card-title {
+  text-decoration: underline;
+}
+.library-card:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+.library-card-title {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  margin-top: 4px;
+  font-weight: 600;
+}
+.library-card-line {
+  overflow-wrap: anywhere;
+  font-size: var(--fs-small);
+  color: var(--muted);
+}
+.library-more {
+  display: flex;
+  justify-content: center;
+  padding: var(--sp-4) 0;
+}
+@media (max-width: 639px) {
+  .library-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* A file's page: the facts, what the file was before, and the jobs that ran on it. */
+.file-was {
+  margin-left: var(--sp-2);
+  color: var(--faint);
+}
+.file-tracks {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.file-before {
+  max-width: 720px;
+}
+.file-before .disclosure-body {
+  padding: var(--sp-2) 0 0 var(--sp-6);
+}
+.file-jobs {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+.file-jobs-title {
+  margin: 0;
+  font-size: var(--fs-h3, 16px);
 }

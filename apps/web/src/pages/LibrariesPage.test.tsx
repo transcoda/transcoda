@@ -226,6 +226,16 @@ describe('LibrariesPage', () => {
     ]);
   });
 
+  it('a library name links to its library page', async () => {
+    renderAt('/libraries', <LibrariesPage />);
+    const row = await rowOf('Shows');
+    expect(within(row).getByRole('link', { name: 'Shows' }).getAttribute('href')).toBe(
+      '/libraries/l1',
+    );
+    expect(within(row).getByRole('button', { name: 'Scan Shows now' })).toBeTruthy();
+    expect(within(row).getByRole('button', { name: 'Actions for Shows' })).toBeTruthy();
+  });
+
   it('shows a recycle folder outside the root in full, and the pill says when the feeder cannot run', async () => {
     mocks.libraries.list.mockResolvedValue({
       libraries: [{ ...shows, recycleFolder: '/trash/shows' }],

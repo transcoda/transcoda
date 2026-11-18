@@ -12,6 +12,9 @@ import {
   JobsCancelAllOutputSchema,
   JobsListInputSchema,
   JobsListOutputSchema,
+  JobsQueueFilesInputSchema,
+  JobsQueueFilesPreviewInputSchema,
+  JobsQueueFilesPreviewOutputSchema,
   JobsQueueInputSchema,
   JobsQueueOutputSchema,
   JobsRetryFailedOutputSchema,
@@ -19,6 +22,11 @@ import {
 
 const tags = ['jobs'];
 const controlErrors = { ...mutationErrors, ...pickErrors('NOT_FOUND', 'JOB_NOT_ACTIVE') };
+
+const queueFilesErrors = {
+  ...mutationErrors,
+  ...pickErrors('PATH_REJECTED', 'NOT_FOUND', 'WORKFLOW_INVALID'),
+};
 
 export const jobs = {
   queue: oc
@@ -116,4 +124,26 @@ export const jobs = {
     .errors({ ...mutationErrors, ...pickErrors('NOT_FOUND') })
     .input(JobIdInputSchema)
     .output(OkOutputSchema),
+  queueFiles: oc
+    .route({
+      method: 'POST',
+      path: '/jobs/queue-files',
+      tags,
+      summary: "Queue a selection of one library's files (one run, one job per file)",
+      description: 'Needs jobs:create, or plan for a dry run.',
+    })
+    .errors(queueFilesErrors)
+    .input(JobsQueueFilesInputSchema)
+    .output(JobsQueueOutputSchema),
+  queueFilesPreview: oc
+    .route({
+      method: 'POST',
+      path: '/jobs/queue-files/preview',
+      tags,
+      summary: 'Count what queueing a selection of files would do, without queueing',
+      description: 'Needs jobs:create, or plan for a dry run.',
+    })
+    .errors(queueFilesErrors)
+    .input(JobsQueueFilesPreviewInputSchema)
+    .output(JobsQueueFilesPreviewOutputSchema),
 };

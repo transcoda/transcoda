@@ -2,6 +2,7 @@
 import { randomUUID } from 'node:crypto';
 import type { Stats } from 'node:fs';
 import { basename, isAbsolute, join, resolve } from 'node:path';
+import { QUEUE_FILES_MAX } from '@transcoda/contract';
 import {
   ACTIVE_JOB_STATES,
   type Issue,
@@ -21,6 +22,7 @@ import {
   hasReplaceJournal,
   insertJob,
   type JobRow,
+  markFolderListing,
   updateJob,
   upsertFile,
 } from '../db/repos/jobs.ts';
@@ -77,11 +79,38 @@ export interface QueueInput {
 
 export type QueueResult =
   | { kind: 'queued'; run: RunRow; jobs: JobRow[] }
-  | { kind: 'path-rejected'; reason: string }
+  /** `path`: the path refused, when it is not the one asked for (a selection's offending file). */
+  | { kind: 'path-rejected'; reason: string; path?: string }
   | { kind: 'workflow-missing' }
   | { kind: 'version-missing' }
   | { kind: 'workflow-invalid'; issues: Issue[] }
   | { kind: 'no-feeding-workflow' };
+
+/** A run of a chosen set of one library's files ("Run on a selection"). */
+export interface QueueFilesInput {
+  libraryId: string;
+  /** Absolute paths inside the library root (as stored or through a symlink to it). */
+  paths: string[];
+  workflowId: string;
+  dryRun: boolean;
+  force: boolean;
+  priority: number;
+  /** 'now': a manual run, starts at once. 'runHours': held to the library's run hours (dry runs too). */
+  start: 'now' | 'runHours';
+  createdBy: string;
+}
+
+/** What `queueFiles` would do with the same files, without force. */
+export interface QueuePreview {
+  kind: 'preview';
+  willRun: number;
+  alreadyHandled: number;
+  heldByAnotherRun: number;
+  /** Skipped for any other reason (vanished, still growing, hardlinked, in the recycle folder, …). */
+  skipped: number;
+  workflowVersion: number;
+  dryRun: boolean;
+}
 
 /** The catch-up scan found no file to queue: nothing was written. */
 export type NothingNew = { kind: 'nothing-new' };
@@ -172,6 +201,9 @@ type Candidate =
   | { path: string; skip: SkipReason; fp?: undefined }
   | { path: string; skip: null; fp: Fingerprint };
 
+/** A selection checked against its library: the paths to look at and what the run names. */
+type Selection = { library: LibraryRow; paths: string[]; requestedPath: string };
+
 /**
  * Whether a catch-up scan for `workflowId` still has to queue `c`: not skipped, never seen as it
  * is now, and neither this feeder's output (it replaced the file) nor a source it finished at any
@@ -192,6 +224,7 @@ const ACTIVE_SQL = ACTIVE_JOB_STATES.map((s) => `'${s}'`).join(',');
 /** The reason of a real job skipped because another real job still held its file. */
 export const HELD_BY_ANOTHER_RUN = 'already queued in another run';
 const DENIED = new Set(['EACCES', 'EPERM']);
+const MISSING = new Set(['ENOENT', 'ENOTDIR']);
 
 async function realpathOrNull(fs: FsOps, p: string): Promise<string | null> {
   try {
@@ -199,6 +232,17 @@ async function realpathOrNull(fs: FsOps, p: string): Promise<string | null> {
   } catch {
     return null;
   }
+}
+
+type Statement = ReturnType<Database['prepare']>;
+
+/** The source a run is stored with (see `writeRun`'s `source`). */
+function storedSource(
+  source: 'library' | 'manual' | 'runHours',
+  dryRun: boolean,
+): 'library' | 'manual' {
+  if (source === 'runHours') return 'library';
+  return source === 'library' && !dryRun ? 'library' : 'manual';
 }
 
 const RECYCLE_FOLDER_OUTSIDE = 'the recycle folder must be a folder inside the library root';
@@ -271,12 +315,16 @@ export class QueueService {
     }
     if (input.fileOnly && st.isDirectory()) return { kind: 'path-rejected', reason: 'not a file' };
     let paths: string[];
+    const unlisted: string[] = [];
     if (st.isDirectory()) {
+      // Rows written after this (another request queueing meanwhile) are newer than the listing.
+      const listedFrom = this.deps.now();
       try {
-        paths = await listMediaFiles(realPath, library, this.fs);
+        paths = await listMediaFiles(realPath, library, this.fs, unlisted);
       } catch (err) {
         return { kind: 'path-rejected', reason: this.statFailure(err) };
       }
+      await this.recordListing(library.id, realPath, paths, unlisted, listedFrom);
     } else {
       paths = [realPath];
     }
@@ -351,6 +399,119 @@ export class QueueService {
   }
 
   /**
+   * Runs a workflow on a chosen set of a library's files as one run, by the same rules as any
+   * other: a real run takes the active version (with nothing active, a dry run of the newest), a
+   * dry run the newest; each file is checked as it is now. `start: 'now'` is a `manual` run;
+   * `'runHours'` a `library` run, held to the library's run hours, also when it is a dry run.
+   */
+  async queueFiles(input: QueueFilesInput): Promise<QueueResult> {
+    const sel = await this.selection(input.libraryId, input.paths);
+    if ('kind' in sel) return sel;
+    const early = this.resolveWorkflow(input.workflowId, input.dryRun, undefined);
+    if (early.kind !== 'ok') return early;
+    const r = await this.writeRun({
+      library: sel.library,
+      requestedPath: sel.requestedPath,
+      paths: sel.paths,
+      known: null,
+      workflowId: input.workflowId,
+      testEncode: false,
+      source: input.start === 'runHours' ? 'runHours' : 'manual',
+      input: {
+        path: sel.requestedPath,
+        workflowId: input.workflowId,
+        dryRun: input.dryRun,
+        force: input.force,
+        priority: input.priority,
+        createdBy: input.createdBy,
+      },
+      newOnly: false,
+    });
+    if (r.kind === 'nothing-new') throw new Error('nothing-new outside a catch-up scan');
+    return r;
+  }
+
+  /**
+   * What `queueFiles` would do without force, counted by the same per-file decision; writes
+   * nothing (reads the files' stats, like the run would).
+   */
+  async previewFiles(
+    input: Pick<QueueFilesInput, 'libraryId' | 'paths' | 'workflowId' | 'dryRun'>,
+  ): Promise<QueuePreview | Exclude<QueueResult, { kind: 'queued' }>> {
+    const sel = await this.selection(input.libraryId, input.paths);
+    if ('kind' in sel) return sel;
+    const workflow = this.resolveWorkflow(input.workflowId, input.dryRun, undefined);
+    if (workflow.kind !== 'ok') return workflow;
+    const candidates = await this.candidates(sel.paths, sel.requestedPath, null, sel.library);
+    const preview: QueuePreview = {
+      kind: 'preview',
+      willRun: 0,
+      alreadyHandled: 0,
+      heldByAnotherRun: 0,
+      skipped: 0,
+      workflowVersion: workflow.version,
+      dryRun: workflow.dryRun,
+    };
+    const pinned = { id: input.workflowId, version: workflow.version, dryRun: workflow.dryRun };
+    for (const c of candidates) {
+      const { state, reason } = this.decide(c, pinned, false);
+      if (state === 'queued') preview.willRun += 1;
+      else if (state === 'already_processed') preview.alreadyHandled += 1;
+      else if (reason === HELD_BY_ANOTHER_RUN) preview.heldByAnotherRun += 1;
+      else preview.skipped += 1;
+    }
+    return preview;
+  }
+
+  /**
+   * The library and paths of a selection, or why it is refused: an unknown or deleted library (or
+   * one whose root cannot be resolved) is `not found`, as is an empty selection; more than
+   * QUEUE_FILES_MAX paths is `too many files` (with the library's root as `path`); a path that is
+   * not absolute or lies outside the root (as written, by the root's stored or real path, or once
+   * resolved) is `outside library root`, with that path. Each path is checked again, file by file,
+   * by `candidate`.
+   */
+  private async selection(
+    libraryId: string,
+    paths: readonly string[],
+  ): Promise<Selection | { kind: 'path-rejected'; reason: string; path?: string }> {
+    const rejected = (reason: string, path?: string) => ({
+      kind: 'path-rejected' as const,
+      reason,
+      ...(path !== undefined && { path }),
+    });
+    const row = findLibrary(this.db, libraryId);
+    if (!row || row.deletedAt !== null) return rejected('not found');
+    if (paths.length > QUEUE_FILES_MAX) return rejected('too many files', row.path);
+    if (paths.length === 0) return rejected('not found');
+    const lexicalRoot = trimSlash(resolve(row.path));
+    const realRoot = await realpathOrNull(this.fs, lexicalRoot);
+    if (realRoot === null) return rejected('not found');
+    // The library as `checkPath` gives it: its real root and its recycle folder resolved.
+    const rootCheck = await checkPath(this.db, realRoot, this.fs);
+    if (!rootCheck.ok || rootCheck.library.id !== row.id) return rejected('not found');
+    const library = rootCheck.library;
+
+    const out: string[] = [];
+    for (const p of paths) {
+      if (!isAbsolute(p)) return rejected('outside library root', p);
+      const abs = resolve(p);
+      if (!isWithin(abs, lexicalRoot) && !isWithin(abs, realRoot)) {
+        // Written outside the root: accepted only when it resolves into it (an alias of the root).
+        const real = await realpathOrNull(this.fs, abs);
+        if (real === null || !isWithin(real, realRoot)) return rejected('outside library root', p);
+      }
+      out.push(abs);
+    }
+    const [only] = out;
+    const requestedPath =
+      out.length === 1 && only !== undefined
+        ? ((await realpathOrNull(this.fs, only)) ?? only)
+        : library.path;
+    return { library, paths: out, requestedPath };
+  }
+
+  /**
    * Writes one run of `paths` (already listed, realpaths) with a job per file: each is checked as
    * it is now, then queued, skipped or `already_processed` (unless `input.force`). `known` is the
    * check of `requestedPath` when that is one of the paths. With `newOnly` (the catch-up scan) only
@@ -363,8 +524,11 @@ export class QueueService {
     known: PathCheck | null;
     workflowId: string;
     testEncode: boolean;
-    /** `library` becomes `manual` for a dry run. */
-    source: 'library' | 'manual';
+    /**
+     * The run's stored source: `library` (a feeder's run) becomes `manual` for a dry run;
+     * `runHours` (a selection held to run hours) is stored as `library`, also for a dry run.
+     */
+    source: 'library' | 'manual' | 'runHours';
     input: QueueInput;
     newOnly: boolean;
   }): Promise<QueueResult | NothingNew> {
@@ -380,20 +544,16 @@ export class QueueService {
     } = args;
 
     const now = this.deps.now();
-    const candidates: Candidate[] = [];
-    const seen = new Set<string>();
-    for (const p of paths) {
-      const c = await this.candidate(p, p === realPath ? known : null, library, now);
-      // Two names for one file (a symlink to a sibling): one job.
-      if (seen.has(c.path)) continue;
-      seen.add(c.path);
-      candidates.push(c);
-    }
+    const candidates = await this.candidates(paths, realPath, known, library, now);
 
     const media = await this.resolveMedia(candidates, library, newOnly ? workflowId : null);
 
     const { db } = this;
     const written = db.transaction(() => {
+      // When the files are seen, for their rows: `now` is from before the awaits above, and a
+      // folder listing that began meanwhile (markFolderListing's `startedAt`) must count these
+      // rows as written after it.
+      const observedAt = this.deps.now();
       const workflow = this.resolveWorkflow(workflowId, input.dryRun, input.workflowVersion);
       if (workflow.kind !== 'ok') return workflow;
       if (newOnly) {
@@ -419,43 +579,20 @@ export class QueueService {
           note: workflow.note,
           force: input.force,
           createdBy: input.createdBy,
-          source: args.source === 'library' && !workflow.dryRun ? 'library' : 'manual',
+          source: storedSource(args.source, workflow.dryRun),
         },
         now,
       );
-      const realJobActiveAt = db.prepare(
-        `SELECT 1 FROM jobs WHERE path = ? AND dry_run = 0 AND state IN (${ACTIVE_SQL}) LIMIT 1`,
-      );
+      const pinned = { id: workflowId, version: workflow.version, dryRun: workflow.dryRun };
       const jobs = candidates.map((c) => {
-        let state: JobState = 'queued';
-        let reason: string | null = null;
+        const { state, reason } = this.decide(c, pinned, input.force);
         let fileId: string | null = null;
-        if (c.skip !== null) {
-          state = 'skipped';
-          reason = c.skip;
-        } else if (!workflow.dryRun && realJobActiveAt.get(c.path) !== undefined) {
-          // Two real jobs never work on one file at once (the history check below only sees
-          // finished jobs); a forced run waits for the other job too.
-          state = 'skipped';
-          reason = HELD_BY_ANOTHER_RUN;
-        } else {
-          const key = fingerprintKey(c.fp);
-          // Never re-run a file any version of this workflow processed (a dry run keeps its own
-          // version's history); Process again (`force`) overrides.
-          const prior = input.force
-            ? null
-            : findPriorRun(db, key, workflowId, workflow.version, {
-                sameVersion: workflow.dryRun,
-              });
-          if (prior) {
-            state = 'already_processed';
-            reason = alreadyProcessedReason(prior);
-          }
+        if (c.skip === null && state !== 'skipped') {
           // Recorded for an already-processed file too: the run summary shows its size.
           const file = upsertFile(
             db,
             { libraryId: library.id, path: c.path, fingerprint: c.fp, lastProbe: null },
-            now,
+            observedAt,
           );
           fileId = file.id;
         }
@@ -487,6 +624,67 @@ export class QueueService {
     this.deps.events.publish({ type: 'run.changed', runId: run.id });
     this.deps.onQueued();
     return { kind: 'queued', run, jobs };
+  }
+
+  /**
+   * The candidates of `paths`, each checked as it is now (`known` is the check of `requestedPath`
+   * when that is one of them); two names for one real file (a symlink to a sibling) give one.
+   */
+  private async candidates(
+    paths: readonly string[],
+    requestedPath: string,
+    known: PathCheck | null,
+    library: LibraryRow,
+    now: Date = this.deps.now(),
+  ): Promise<Candidate[]> {
+    const out: Candidate[] = [];
+    const seen = new Set<string>();
+    for (const p of paths) {
+      const c = await this.candidate(p, p === requestedPath ? known : null, library, now);
+      if (seen.has(c.path)) continue;
+      seen.add(c.path);
+      out.push(c);
+    }
+    return out;
+  }
+
+  /**
+   * What a run of `workflow` (its pinned version) does with one candidate: `skipped` with its
+   * reason; `skipped` as held by another run while a real job still holds the file (real runs
+   * only, also when forced); `already_processed` when its history says so (unless `force`); else
+   * `queued`. Reads only: `writeRun` and `previewFiles` both use it, so the counts match the run.
+   */
+  private decide(
+    c: Candidate,
+    workflow: { id: string; version: number; dryRun: boolean },
+    force: boolean,
+  ): { state: JobState; reason: string | null } {
+    if (c.skip !== null) return { state: 'skipped', reason: c.skip };
+    // Two real jobs never work on one file at once (the history check below only sees finished
+    // jobs); a forced run waits for the other job too.
+    if (!workflow.dryRun && this.realJobActiveAt().get(c.path) !== undefined) {
+      return { state: 'skipped', reason: HELD_BY_ANOTHER_RUN };
+    }
+    // Never re-run a file any version of this workflow processed (a dry run keeps its own
+    // version's history); Process again (`force`) overrides.
+    const prior = force
+      ? null
+      : findPriorRun(this.db, fingerprintKey(c.fp), workflow.id, workflow.version, {
+          sameVersion: workflow.dryRun,
+        });
+    return prior
+      ? { state: 'already_processed', reason: alreadyProcessedReason(prior) }
+      : { state: 'queued', reason: null };
+  }
+
+  private activeAtStmt: Statement | null = null;
+
+  /** Finds a real job in an active state that holds a path (one row or none). */
+  private realJobActiveAt(): Statement {
+    this.activeAtStmt ??= this.db.prepare(
+      `SELECT 1 FROM jobs WHERE path = ? AND dry_run = 0 AND state IN (${ACTIVE_SQL}) LIMIT 1`,
+    );
+    return this.activeAtStmt;
   }
 
   /**
@@ -817,6 +1015,44 @@ export class QueueService {
   /** A configured recycle folder, absolute (a relative one is under the root). */
   private recycleFolderFor(root: string, folder: string | null): string | null {
     return folder === null ? null : trimSlash(resolve(root, folder));
+  }
+
+  /**
+   * Tells the file rows what a folder listing found (`files.gone_at`). The listing's names are
+   * resolved to real paths first, the form the rows are stored in, so a symlinked file is not
+   * taken for a missing one. When a name cannot be resolved for a reason other than the file being
+   * gone, nothing is marked: a late hide is better than a false one. A row written since
+   * `startedAt` (when the listing began) is left alone: the listing could not have seen it.
+   */
+  private async recordListing(
+    libraryId: string,
+    folder: string,
+    listed: readonly string[],
+    unlisted: readonly string[],
+    startedAt: Date,
+  ): Promise<void> {
+    const real: string[] = [];
+    for (let i = 0; i < listed.length; i += 64) {
+      const batch = await Promise.all(
+        listed.slice(i, i + 64).map(async (p) => {
+          try {
+            return await this.fs.realpath(p);
+          } catch (err) {
+            const code = errorCode(err);
+            // Gone since the listing, or a dangling link: its row, if any, is rightly absent.
+            if (code !== undefined && MISSING.has(code)) return null;
+            throw err;
+          }
+        }),
+      ).catch(() => undefined);
+      if (batch === undefined) return;
+      for (const p of batch) if (p !== null) real.push(p);
+    }
+    markFolderListing(
+      this.db,
+      { libraryId, folder, paths: real, unlisted, startedAt },
+      this.deps.now(),
+    );
   }
 
   private statFailure(err: unknown): 'not found' | 'unreadable' | 'path too long' {

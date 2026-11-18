@@ -93,6 +93,8 @@ export function ListboxSelect({
         pick(active);
         break;
       case 'Escape':
+        // Only the list closes; a dialog around it stays.
+        e.stopPropagation();
         close();
         break;
       case 'Tab':
