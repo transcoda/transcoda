@@ -26,6 +26,16 @@ type Listing = { names: Set<string>; byLower: Map<string, string> } | null;
 const withRoot = (nfo: Nfo | null, want: NfoRoot): Nfo | null => (nfo?.root === want ? nfo : null);
 
 /**
+ * A season's poster names in the show folder, as Kodi and Jellyfin write them: `season03-poster`,
+ * and `season-specials-poster` (else `season00-poster`) for season 0; none without a season.
+ */
+function seasonPosterNames(season: number | null): string[] {
+  if (season === null) return [];
+  if (season === 0) return ['season-specials-poster', 'season00-poster'];
+  return [`season${String(season).padStart(2, '0')}-poster`];
+}
+
+/**
  * One resolver per queue call: it caches directory listings, parsed tvshow.nfo and the show
  * poster by folder.
  */
@@ -210,8 +220,8 @@ export function createMediaResolver(deps: { fs: FsOps; log: Logger }): MediaReso
         if (show?.title == null && episodeUsable && episodeNfo?.showTitle != null) {
           media.title = episodeNfo.showTitle;
         }
-        // The show poster: in the folder that held tvshow.nfo, else a season folder's parent, else
-        // the file's folder; never the library root itself unless tvshow.nfo is there.
+        // The show folder: the one that held tvshow.nfo, else a season folder's parent, else the
+        // file's folder; never the library root itself unless tvshow.nfo is there.
         let showFolder: string | null = found?.folder ?? null;
         if (showFolder === null) {
           const parent = dirname(dir);
@@ -221,12 +231,24 @@ export function createMediaResolver(deps: { fs: FsOps; log: Logger }): MediaReso
             showFolder = dir;
           }
         }
-        if (showFolder !== null) {
-          const folder = showFolder;
-          media.posterPath = await step('could not find a show poster', path, () =>
-            showPosterIn(folder, root),
-          );
-        }
+        // The most specific poster: the episode's own, then its season's, then the show's.
+        // Episode `-thumb` images are landscape stills, not posters, and are never used.
+        const seasonFolder = showFolder !== null && dir !== showFolder ? dir : null;
+        const seasonNames = seasonPosterNames(media.season);
+        media.posterPath = await step('could not find a poster', path, async () => {
+          const own = await posterIn(dir, [`${stem}-poster`], root);
+          if (own !== null) return own;
+          if (seasonFolder !== null && isSeasonFolder(basename(seasonFolder))) {
+            const inSeason = await posterIn(seasonFolder, ['poster', 'folder'], root);
+            if (inSeason !== null) return inSeason;
+          }
+          if (showFolder === null) return null;
+          if (seasonNames.length > 0) {
+            const season = await posterIn(showFolder, seasonNames, root);
+            if (season !== null) return season;
+          }
+          return showPosterIn(showFolder, root);
+        });
         return media;
       }
 
