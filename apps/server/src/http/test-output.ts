@@ -49,7 +49,8 @@ export const closeHandleQuietly = (handle: FileHandle): Promise<void> =>
   handle.close().catch(() => undefined);
 
 /** A regular file opened read-only, with its size at open. */
-export type OpenedHandle = { handle: FileHandle; size: number };
+/** `size` and `mtimeMs` come from the open handle's stat, so they describe the bytes it reads. */
+export type OpenedHandle = { handle: FileHandle; size: number; mtimeMs: number };
 
 /**
  * Opens `path` read-only without following a symlink (`O_NOFOLLOW`; `O_NONBLOCK` so a FIFO cannot
@@ -69,7 +70,7 @@ export async function openRegularFile(path: string): Promise<OpenedHandle | null
   }
   try {
     const stat = await handle.stat();
-    if (stat.isFile()) return { handle, size: stat.size };
+    if (stat.isFile()) return { handle, size: stat.size, mtimeMs: stat.mtimeMs };
   } catch (err) {
     await closeHandleQuietly(handle);
     throw err;

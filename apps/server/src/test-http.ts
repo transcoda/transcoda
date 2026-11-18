@@ -104,9 +104,11 @@ export function trackFileHandles(opts: { failStat?: boolean } = {}): TrackedHand
 export async function expectAllClosed(tracked: TrackedHandle[], count = 1): Promise<void> {
   expect(tracked).toHaveLength(count);
   await vi.waitFor(() => {
-    for (const t of tracked) {
-      expect(t.close, t.path).toHaveBeenCalled();
-      expect(t.handle.fd, t.path).toBe(-1);
-    }
+    for (const t of tracked) expect(t.close, t.path).toHaveBeenCalled();
   });
+  // The fd reads -1 before the native close finishes: wait for it, and let a failed close fail.
+  for (const t of tracked) {
+    for (const r of t.close.mock.results) await r.value;
+    expect(t.handle.fd, t.path).toBe(-1);
+  }
 }

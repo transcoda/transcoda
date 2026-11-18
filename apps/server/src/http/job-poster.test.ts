@@ -293,7 +293,15 @@ describe('GET /jobs/{id}/poster', () => {
   });
 
   it('a client that goes away mid-download closes the file handle', async () => {
-    await warm();
+    // Larger than the read stream's buffer, so the stream is still open when the client leaves:
+    // only the abort can close it.
+    const big = join(base, 'big.jpg');
+    await writeFile(big, Buffer.alloc(1024 * 1024, 1));
+    vi.spyOn(t.deps.engine, 'jobPoster').mockResolvedValue({
+      path: big,
+      size: 1024 * 1024,
+      mtimeMs: 1,
+    });
     const opened = trackFileHandles();
     const abort = new AbortController();
     const res = await t.app.request(`/api/v1${url('a')}`, {
@@ -301,9 +309,24 @@ describe('GET /jobs/{id}/poster', () => {
       signal: abort.signal,
     });
     expect(res.status).toBe(200);
+    await new Promise((r) => setTimeout(r, 50));
+    expect(opened).toHaveLength(1);
+    expect(opened[0]?.close).not.toHaveBeenCalled();
     expect(opened[0]?.handle.fd).toBeGreaterThan(-1);
     abort.abort();
     await expectAllClosed(opened);
+  });
+
+  it('the ETag of a 200 describes the file that was opened, not the stale lookup', async () => {
+    await warm();
+    // The lookup still describes an older thumbnail (a rebuild renamed a new one over the path).
+    const real = await t.deps.engine.jobPoster('a');
+    if (!real) throw new Error('no thumbnail');
+    vi.spyOn(t.deps.engine, 'jobPoster').mockResolvedValue({ ...real, size: 1, mtimeMs: 2 });
+    const res = await send(t, 'GET', url('a'), { headers: asSession(s, false) });
+    expect(res.status).toBe(200);
+    expect(res.headers.get('etag')).toBe(`"${real.size}-${Math.round(real.mtimeMs)}"`);
+    expect(res.headers.get('content-length')).toBe(String(real.size));
   });
 
   it('a request already aborted closes the file handle', async () => {
@@ -311,12 +334,11 @@ describe('GET /jobs/{id}/poster', () => {
     const opened = trackFileHandles();
     const abort = new AbortController();
     abort.abort();
-    await Promise.resolve(
-      t.app.request(`/api/v1${url('a')}`, {
-        headers: { host: HOST, ...asSession(s, false) },
-        signal: abort.signal,
-      }),
-    ).catch(() => null);
-    for (const o of opened) await vi.waitFor(() => expect(o.handle.fd).toBe(-1));
+    await t.app.request(`/api/v1${url('a')}`, {
+      headers: { host: HOST, ...asSession(s, false) },
+      signal: abort.signal,
+    });
+    // The route opens the file before it reads the signal; the destroyed stream closes it.
+    await expectAllClosed(opened);
   });
 });
