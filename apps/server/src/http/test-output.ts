@@ -52,14 +52,18 @@ export const closeHandleQuietly = (handle: FileHandle): Promise<void> =>
 export type OpenedHandle = { handle: FileHandle; size: number };
 
 /**
- * Opens `path` read-only without following a symlink (`O_NOFOLLOW`) and checks the open handle:
+ * Opens `path` read-only without following a symlink (`O_NOFOLLOW`; `O_NONBLOCK` so a FIFO cannot
+ * hang the open) and checks the open handle:
  * null when it cannot be opened (missing, a symlink) or is not a regular file. A failing stat
  * closes the handle and rethrows. The caller owns the handle: hand it to `fileResponse` or close it.
  */
 export async function openRegularFile(path: string): Promise<OpenedHandle | null> {
   let handle: FileHandle;
   try {
-    handle = await fsp.open(path, fsp.constants.O_RDONLY | fsp.constants.O_NOFOLLOW);
+    handle = await fsp.open(
+      path,
+      fsp.constants.O_RDONLY | fsp.constants.O_NOFOLLOW | fsp.constants.O_NONBLOCK,
+    );
   } catch {
     return null;
   }
