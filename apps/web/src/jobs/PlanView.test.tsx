@@ -2,7 +2,12 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { blueyPlan, blueyProbe, blueyResult, identityPlan } from '../test/fixtures/plan.ts';
+import {
+  identityPlan,
+  mapleLanePlan,
+  mapleLaneProbe,
+  mapleLaneResult,
+} from '../test/fixtures/plan.ts';
 import { PlanView } from './PlanView.tsx';
 
 afterEach(cleanup);
@@ -33,9 +38,9 @@ describe('PlanView', () => {
     const onTryAnother = vi.fn();
     render(
       <PlanView
-        plan={blueyPlan()}
-        probe={blueyProbe()}
-        result={blueyResult()}
+        plan={mapleLanePlan()}
+        probe={mapleLaneProbe()}
+        result={mapleLaneResult()}
         workflow={workflow}
         onActivate={onActivate}
         onTryAnother={onTryAnother}
@@ -106,8 +111,8 @@ describe('PlanView', () => {
     render(
       <PlanView
         plan={identityPlan()}
-        probe={blueyProbe()}
-        result={blueyResult({ outcome: 'nothing_to_do', estimatedBytes: null, command: null })}
+        probe={mapleLaneProbe()}
+        result={mapleLaneResult({ outcome: 'nothing_to_do', estimatedBytes: null, command: null })}
         workflow={{ ...workflow, active: { ...ACTIVE, version: 8 } }}
         onActivate={() => {}}
         onTryAnother={() => {}}
@@ -126,10 +131,10 @@ describe('PlanView', () => {
   });
   it('lists subtitle files in their own table: File, Language, Forced, SDH, Result', () => {
     const plan = {
-      ...blueyPlan(),
+      ...mapleLanePlan(),
       sidecars: [
         {
-          file: 'Bluey.S01E03.de.srt',
+          file: 'Maple Lane.S01E03.de.srt',
           language: 'deu',
           forced: true,
           sdh: false,
@@ -138,7 +143,7 @@ describe('PlanView', () => {
           note: '',
         },
         {
-          file: 'Bluey.S01E03.en.hi.sup',
+          file: 'Maple Lane.S01E03.en.hi.sup',
           language: 'eng',
           forced: false,
           sdh: true,
@@ -147,7 +152,7 @@ describe('PlanView', () => {
           note: "container can't hold it",
         },
         {
-          file: 'Bluey.S01E03.xx.srt',
+          file: 'Maple Lane.S01E03.xx.srt',
           language: null,
           forced: false,
           sdh: false,
@@ -160,8 +165,8 @@ describe('PlanView', () => {
     render(
       <PlanView
         plan={plan}
-        probe={blueyProbe()}
-        result={blueyResult()}
+        probe={mapleLaneProbe()}
+        result={mapleLaneResult()}
         workflow={workflow}
         onActivate={() => {}}
         onTryAnother={() => {}}
@@ -184,7 +189,7 @@ describe('PlanView', () => {
       );
     const th = (r: number) =>
       within(table).getAllByRole('row')[r + 1]?.querySelector('th')?.textContent;
-    expect(th(0)).toBe('Bluey.S01E03.de.srt');
+    expect(th(0)).toBe('Maple Lane.S01E03.de.srt');
     expect(rows).toEqual([
       ['German', 'Yes', 'No', 'Embed'],
       ['English', 'No', 'Yes', 'Drop'],
@@ -196,9 +201,9 @@ describe('PlanView', () => {
   it('shows no subtitle-files table without sidecars', () => {
     render(
       <PlanView
-        plan={blueyPlan()}
-        probe={blueyProbe()}
-        result={blueyResult()}
+        plan={mapleLanePlan()}
+        probe={mapleLaneProbe()}
+        result={mapleLaneResult()}
         workflow={workflow}
         onActivate={() => {}}
         onTryAnother={() => {}}
@@ -210,9 +215,9 @@ describe('PlanView', () => {
   it('says "NOW 2.41 GB → ?" when a rewrite has no size estimate, not an estimate that contradicts itself', () => {
     render(
       <PlanView
-        plan={blueyPlan()}
-        probe={blueyProbe()}
-        result={blueyResult({ estimatedBytes: null })}
+        plan={mapleLanePlan()}
+        probe={mapleLaneProbe()}
+        result={mapleLaneResult({ estimatedBytes: null })}
         workflow={workflow}
         onActivate={() => {}}
         onTryAnother={() => {}}
@@ -226,9 +231,9 @@ describe('PlanView', () => {
   it('a test encode shows the measured size, not "→ ?" or an estimate', () => {
     render(
       <PlanView
-        plan={blueyPlan()}
-        probe={blueyProbe()}
-        result={blueyResult({ estimatedBytes: null, afterBytes: 1_660_000_000 })}
+        plan={mapleLanePlan()}
+        probe={mapleLaneProbe()}
+        result={mapleLaneResult({ estimatedBytes: null, afterBytes: 1_660_000_000 })}
         measured
         workflow={workflow}
         onActivate={() => {}}
@@ -244,8 +249,8 @@ describe('PlanView', () => {
   it('a test encode still running says "Now 2.41 GB → …", not a size under the measured label', () => {
     render(
       <PlanView
-        plan={blueyPlan()}
-        probe={blueyProbe()}
+        plan={mapleLanePlan()}
+        probe={mapleLaneProbe()}
         result={null}
         measured
         workflow={workflow}
@@ -260,9 +265,9 @@ describe('PlanView', () => {
   it('a test encode that ended without a measured size says "Now 2.41 GB", not "no estimate yet"', () => {
     render(
       <PlanView
-        plan={blueyPlan()}
-        probe={blueyProbe()}
-        result={blueyResult({ estimatedBytes: null, afterBytes: null })}
+        plan={mapleLanePlan()}
+        probe={mapleLaneProbe()}
+        result={mapleLaneResult({ estimatedBytes: null, afterBytes: null })}
         measured
         workflow={workflow}
         onActivate={() => {}}
@@ -277,9 +282,9 @@ describe('PlanView', () => {
   it('carries one dry-run marker in the hero: a plain line, not a second "Dry run" pill', () => {
     const { container } = render(
       <PlanView
-        plan={blueyPlan()}
-        probe={blueyProbe()}
-        result={blueyResult()}
+        plan={mapleLanePlan()}
+        probe={mapleLaneProbe()}
+        result={mapleLaneResult()}
         workflow={workflow}
         onActivate={() => {}}
         onTryAnother={() => {}}
@@ -293,9 +298,9 @@ describe('PlanView', () => {
   it('the Audio and Subtitles tables share one fixed column layout', () => {
     const { container } = render(
       <PlanView
-        plan={blueyPlan()}
-        probe={blueyProbe()}
-        result={blueyResult()}
+        plan={mapleLanePlan()}
+        probe={mapleLaneProbe()}
+        result={mapleLaneResult()}
         workflow={workflow}
         onActivate={() => {}}
         onTryAnother={() => {}}
@@ -323,9 +328,9 @@ describe('PlanView', () => {
   it('labels every cell for the phone cards and repeats the language on each card', () => {
     render(
       <PlanView
-        plan={blueyPlan()}
-        probe={blueyProbe()}
-        result={blueyResult()}
+        plan={mapleLanePlan()}
+        probe={mapleLaneProbe()}
+        result={mapleLaneResult()}
         workflow={workflow}
         onActivate={() => {}}
         onTryAnother={() => {}}
@@ -362,7 +367,7 @@ describe('PlanView', () => {
   });
 
   it('shows why the engine set a default flag the workflow did not ask for (the mp4 rule)', () => {
-    const plan = blueyPlan();
+    const plan = mapleLanePlan();
     const sub = plan.streams.find((s) => s.type === 'subtitle' && s.action === 'keep');
     if (!sub) throw new Error('fixture has a kept subtitle');
     sub.default = { before: false, after: true };
@@ -370,8 +375,8 @@ describe('PlanView', () => {
     render(
       <PlanView
         plan={plan}
-        probe={blueyProbe()}
-        result={blueyResult()}
+        probe={mapleLaneProbe()}
+        result={mapleLaneResult()}
         workflow={workflow}
         onActivate={() => {}}
         onTryAnother={() => {}}
@@ -386,9 +391,9 @@ describe('PlanView', () => {
   it('shows "Activate v8 of TV cleanup…" when nothing is active, and waits while the workflow has not loaded', () => {
     const { rerender } = render(
       <PlanView
-        plan={blueyPlan()}
-        probe={blueyProbe()}
-        result={blueyResult()}
+        plan={mapleLanePlan()}
+        probe={mapleLaneProbe()}
+        result={mapleLaneResult()}
         workflow={{ ...workflow, active: null }}
         onActivate={() => {}}
         onTryAnother={() => {}}
@@ -399,9 +404,9 @@ describe('PlanView', () => {
     expect(activate.closest('.plan-hero')).toBeTruthy();
     rerender(
       <PlanView
-        plan={blueyPlan()}
-        probe={blueyProbe()}
-        result={blueyResult()}
+        plan={mapleLanePlan()}
+        probe={mapleLaneProbe()}
+        result={mapleLaneResult()}
         workflow={{ ...workflow, active: undefined }}
         onActivate={() => {}}
         onTryAnother={() => {}}

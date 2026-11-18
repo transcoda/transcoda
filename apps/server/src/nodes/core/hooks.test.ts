@@ -37,10 +37,10 @@ import { fileMatches, hasStream, videoIs } from './conditions.ts';
 import { moveCopy, notifyWebhook, render, replaceOriginal, sizeGate } from './finish.ts';
 import { NodeHookError } from './stream-rules.ts';
 
-const tigger: ProbeResult = parseProbe(
+const otter: ProbeResult = parseProbe(
   JSON.parse(
     readFileSync(
-      new URL('../../engine/fixtures/ffprobe-tigger-pooh.json', import.meta.url),
+      new URL('../../engine/fixtures/ffprobe-otter-finch.json', import.meta.url),
       'utf8',
     ),
   ),
@@ -258,8 +258,8 @@ describe('core:has-stream', () => {
 });
 
 describe('core:keep-languages', () => {
-  it('Tigger & Pooh 20 audio with settings [en, de] → keeps eng, deu, untagged', async () => {
-    const { model, reason } = await build(keepLanguages, buildCtx(tigger), {
+  it('Otter & Finch 20 audio with settings [en, de] → keeps eng, deu, untagged', async () => {
+    const { model, reason } = await build(keepLanguages, buildCtx(otter), {
       languages: ['en', 'de'],
     });
     expect(languages(streamsOf(model, 'audio'))).toEqual(['eng', 'deu']);

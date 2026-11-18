@@ -172,7 +172,7 @@ describe('JobPage header: title and poster', () => {
     await open(runningJobDetail({ state: 'encoding' }));
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
     expect(
-      await screen.findByRole('dialog', { name: 'Cancel Tigger and Pooh S01E01?' }),
+      await screen.findByRole('dialog', { name: 'Cancel Otter and Finch S01E01?' }),
     ).toBeTruthy();
   });
 });

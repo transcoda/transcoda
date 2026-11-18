@@ -7,7 +7,7 @@ import { Route } from 'wouter';
 import { VALIDATE_DEBOUNCE_MS } from '../editor/ui/useValidation.ts';
 import { resetCatalogCache } from '../hooks/useCatalog.ts';
 import { nodesFixture } from '../test/fixtures/catalog.ts';
-import { chainMainReplace, tiggerPoohMain, tiggerPoohSub } from '../test/fixtures/graphs.ts';
+import { chainMainReplace, otterFinchMain, otterFinchSub } from '../test/fixtures/graphs.ts';
 import { renderAt } from '../test/render.tsx';
 import { transformOf } from '../test/transform.ts';
 
@@ -449,14 +449,14 @@ describe('EditorPage', () => {
   });
 
   it('collapsing a group is an edit; on a past version it is view-only', async () => {
-    mocks.get.mockResolvedValue(detail(tiggerPoohMain('sub', 1)));
+    mocks.get.mockResolvedValue(detail(otterFinchMain('sub', 1)));
     renderEditor();
     fireEvent.click(await screen.findByRole('button', { name: 'Collapse group Cleanup' }));
     expect(screen.getByRole('button', { name: 'Expand group Cleanup' })).toBeTruthy();
     expect(pill().textContent).toBe('v3 · Not active · unsaved changes');
     cleanup();
 
-    mocks.get.mockResolvedValue(detail(tiggerPoohMain('sub', 1), 2));
+    mocks.get.mockResolvedValue(detail(otterFinchMain('sub', 1), 2));
     renderEditor('/workflows/wf1?version=2');
     fireEvent.click(await screen.findByRole('button', { name: 'Collapse group Cleanup' }));
     expect(screen.getByRole('button', { name: 'Expand group Cleanup' })).toBeTruthy();
@@ -857,7 +857,7 @@ describe('EditorPage', () => {
     });
 
     it('deleting a selected group keeps its members', async () => {
-      mocks.get.mockResolvedValue(detail(tiggerPoohMain('sub', 1)));
+      mocks.get.mockResolvedValue(detail(otterFinchMain('sub', 1)));
       const { container } = renderEditor();
       await screen.findByRole('group', { name: 'Group Cleanup' });
       fireEvent.click(flowNode(container, 'cleanup'));
@@ -872,7 +872,7 @@ describe('EditorPage', () => {
     });
 
     it('Delete removes a selected edge; a mixed selection is one undo step; redo removes it again', async () => {
-      mocks.get.mockResolvedValue(detail(tiggerPoohMain('sub', 1)));
+      mocks.get.mockResolvedValue(detail(otterFinchMain('sub', 1)));
       const { container } = renderEditor();
       await screen.findByRole('group', { name: 'Group Cleanup' });
       const edge = (id: string) =>
@@ -927,7 +927,7 @@ describe('EditorPage', () => {
 
     it('deleting the Start of a sub-workflow is refused with a toast and the node stays', async () => {
       mocks.get.mockResolvedValue({
-        ...detail(tiggerPoohSub()),
+        ...detail(otterFinchSub()),
         kind: 'subworkflow',
       });
       const { container } = renderEditor();
@@ -1008,7 +1008,7 @@ describe('EditorPage', () => {
 
     it('saves with note "Layout only" when only positions changed, no note for a settings change, and the user note when given', async () => {
       // jsdom cannot drag a node; collapsing a group is the same kind of layout-only change.
-      mocks.get.mockResolvedValue(detail(tiggerPoohMain('sub', 1)));
+      mocks.get.mockResolvedValue(detail(otterFinchMain('sub', 1)));
       mocks.save
         .mockResolvedValueOnce(saveOk(4))
         .mockResolvedValueOnce(saveOk(5))
@@ -1121,7 +1121,7 @@ describe('EditorPage', () => {
     });
 
     it('"Save over it" after a layout-only edit sends no automatic note (final review I2)', async () => {
-      mocks.get.mockResolvedValue(detail(tiggerPoohMain('sub', 1)));
+      mocks.get.mockResolvedValue(detail(otterFinchMain('sub', 1)));
       mocks.save.mockRejectedValueOnce(conflictError(5)).mockResolvedValueOnce(saveOk(6));
       renderEditor();
       fireEvent.click(await screen.findByRole('button', { name: 'Collapse group Cleanup' }));
@@ -1303,7 +1303,7 @@ describe('EditorPage on-node settings, groups and bypass (Task 14)', () => {
   });
 
   it('EditorPage: collapsing a group hides its nodes and shows "Group · 2 nodes" on the tile', async () => {
-    mocks.get.mockResolvedValue(detail(tiggerPoohMain('sub', 1)));
+    mocks.get.mockResolvedValue(detail(otterFinchMain('sub', 1)));
     const { container } = renderEditor();
     await screen.findByRole('group', { name: 'Group Cleanup' });
     fireEvent.click(flowNode(container, 'cleanup'));
@@ -1354,7 +1354,7 @@ describe('EditorPage on-node settings, groups and bypass (Task 14)', () => {
       currentVersion: 2,
     };
     const subDetail = (usedBy: WorkflowSummary['usedBy'] = []): WorkflowDetail => ({
-      ...detail(tiggerPoohSub()),
+      ...detail(otterFinchSub()),
       id: 'sub-lang',
       name: 'Language cleanup',
       kind: 'subworkflow',
@@ -1446,7 +1446,7 @@ describe('EditorPage on-node settings, groups and bypass (Task 14)', () => {
       mocks.get.mockImplementation(async ({ id }: { id: string }) =>
         id === 'sub-lang'
           ? { ...subDetail(), version: 1, settings: [] }
-          : detail(tiggerPoohMain('sub-lang', 1)),
+          : detail(otterFinchMain('sub-lang', 1)),
       );
       const { container } = renderEditor();
       await waitFor(() => expect(flowNode(container, 'run-a')).toBeTruthy());
@@ -1980,22 +1980,22 @@ describe('EditorPage try on a file (Task 24)', () => {
     mocks.librariesList.mockReset().mockResolvedValue({ libraries: [shows], notices: [] });
     mocks.browse.mockReset().mockResolvedValue({
       dirs: [],
-      files: [{ name: 'tigger-pooh.mp4', sizeBytes: 2_410_000_000, mtime: minutesAgo(60) }],
+      files: [{ name: 'otter-finch.mp4', sizeBytes: 2_410_000_000, mtime: minutesAgo(60) }],
     });
   });
 
-  async function pickTigger(title = 'Dry run Smoke on a file') {
+  async function pickOtter(title = 'Dry run Smoke on a file') {
     const dialog = await screen.findByRole('dialog', { name: title });
-    fireEvent.click(await within(dialog).findByRole('button', { name: /tigger-pooh\.mp4/ }));
+    fireEvent.click(await within(dialog).findByRole('button', { name: /otter-finch\.mp4/ }));
   }
 
   it('EditorPage "Dry run on a file" queues a dry run for the saved version and navigates to the job; with a dirty draft the button reads "Save, then try" and saves first', async () => {
     const view = await loadedEditor();
     fireEvent.click(screen.getByRole('button', { name: 'Dry run on a file' }));
-    await pickTigger();
+    await pickOtter();
     await waitFor(() => expect(view.location()).toBe('/jobs/j1'));
     expect(mocks.queue).toHaveBeenCalledWith({
-      path: '/media/Shows/tigger-pooh.mp4',
+      path: '/media/Shows/otter-finch.mp4',
       workflowId: 'wf1',
       dryRun: true,
     });
@@ -2006,7 +2006,7 @@ describe('EditorPage try on a file (Task 24)', () => {
     fireEvent.click(paletteButton('Action', 'Keep languages'));
     expect(screen.queryByRole('button', { name: 'Dry run on a file' })).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Save, then try' }));
-    await pickTigger();
+    await pickOtter();
     await waitFor(() => expect(view.location()).toBe('/jobs/j1'));
     expect(mocks.save).toHaveBeenCalledTimes(1);
     expect(mocks.save.mock.calls[0]?.[0]).toMatchObject({ id: 'wf1', baseVersion: 3 });
@@ -2037,15 +2037,15 @@ describe('EditorPage try on a file (Task 24)', () => {
     const live = await loadedEditor();
     fireEvent.click(menuItem('Run on a file') as HTMLElement);
     const picker = await screen.findByRole('dialog', { name: 'Run Smoke v2 on a file' });
-    fireEvent.click(await within(picker).findByRole('button', { name: /tigger-pooh\.mp4/ }));
+    fireEvent.click(await within(picker).findByRole('button', { name: /otter-finch\.mp4/ }));
     const confirm = await screen.findByRole('dialog', { name: 'Run Smoke on this file?' });
     expect(confirm.textContent).toContain(
-      'Applies Smoke v2 (active) to /media/Shows/tigger-pooh.mp4. The original moves to /media/Shows/.transcoda-recycle.',
+      'Applies Smoke v2 (active) to /media/Shows/otter-finch.mp4. The original moves to /media/Shows/.transcoda-recycle.',
     );
     fireEvent.click(within(confirm).getByRole('button', { name: 'Run' }));
     await waitFor(() => expect(live.location()).toBe('/jobs/j1'));
     expect(mocks.queue).toHaveBeenCalledWith({
-      path: '/media/Shows/tigger-pooh.mp4',
+      path: '/media/Shows/otter-finch.mp4',
       workflowId: 'wf1',
       dryRun: false,
       fileOnly: true,
@@ -2057,10 +2057,10 @@ describe('EditorPage try on a file (Task 24)', () => {
     mocks.get.mockResolvedValue({ ...detail(chainMainReplace(), 2), currentVersion: 3 });
     const view = await loadedEditor('/workflows/wf1?version=2');
     fireEvent.click(screen.getByRole('button', { name: 'Dry run on a file' }));
-    await pickTigger();
+    await pickOtter();
     await waitFor(() => expect(view.location()).toBe('/jobs/j1'));
     expect(mocks.queue).toHaveBeenCalledWith({
-      path: '/media/Shows/tigger-pooh.mp4',
+      path: '/media/Shows/otter-finch.mp4',
       workflowId: 'wf1',
       dryRun: true,
       workflowVersion: 2,
@@ -2076,7 +2076,7 @@ describe('EditorPage try on a file (Task 24)', () => {
     await screen.findByRole('dialog', { name: 'Dry run Smoke on a file' });
     // A save starts (header) while the picker is open.
     fireEvent.click(screen.getByRole('button', { name: 'Save v4' }));
-    await pickTigger();
+    await pickOtter();
     expect(mocks.queue).not.toHaveBeenCalled();
     await act(async () => pending.resolve(saveOk(4)));
     await waitFor(() => expect(view.location()).toBe('/jobs/j1'));
@@ -2088,7 +2088,7 @@ describe('EditorPage try on a file (Task 24)', () => {
     mocks.queue.mockResolvedValueOnce({ runId: 'r9', jobIds: ['j1', 'j2'] });
     const view = await loadedEditor();
     fireEvent.click(screen.getByRole('button', { name: 'Dry run on a file' }));
-    await pickTigger();
+    await pickOtter();
     await waitFor(() => expect(view.location()).toBe('/runs/r9'));
   });
 
@@ -2097,7 +2097,7 @@ describe('EditorPage try on a file (Task 24)', () => {
     const view = await loadedEditor();
     fireEvent.click(paletteButton('Action', 'Keep languages'));
     fireEvent.click(screen.getByRole('button', { name: 'Save, then try' }));
-    await pickTigger();
+    await pickOtter();
     expect(await screen.findByText('The workflow is too large to save (2 MB limit)')).toBeTruthy();
     expect(mocks.queue).not.toHaveBeenCalled();
     expect(view.location()).toBe('/workflows/wf1');
@@ -2107,7 +2107,7 @@ describe('EditorPage try on a file (Task 24)', () => {
       new ORPCError('WORKFLOW_INVALID', { defined: true, status: 422, data: { issues: [] } }),
     );
     fireEvent.click(screen.getByRole('button', { name: 'Save, then try' }));
-    await pickTigger();
+    await pickOtter();
     expect(await screen.findByText('Fix the errors first')).toBeTruthy();
     expect(view.location()).toBe('/workflows/wf1');
   });
@@ -2118,13 +2118,13 @@ describe('EditorPage try on a file (Task 24)', () => {
     fireEvent.click(flowNode(container, 'keep'));
     await waitFor(() => expect(flowNode(container, 'keep').classList).toContain('selected'));
     fireEvent.click(await screen.findByRole('button', { name: 'Try this node' }));
-    await pickTigger();
+    await pickOtter();
     await waitFor(() => expect(view.location()).toBe('/jobs/j1?node=keep'));
   });
 
   it('a sub-workflow cannot be tried on a file', async () => {
     mocks.get.mockResolvedValue({
-      ...detail(tiggerPoohSub()),
+      ...detail(otterFinchSub()),
       kind: 'subworkflow',
     });
     renderEditor();

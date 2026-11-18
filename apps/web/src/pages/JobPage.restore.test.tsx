@@ -33,8 +33,8 @@ import { jobDetail, runningJobDetail } from '../test/fixtures/trace.ts';
 import { renderAt } from '../test/render.tsx';
 import { JobPage } from './JobPage.tsx';
 
-const FILE = '/media/Shows/Tigger and Pooh/Tigger and Pooh S01E01.mkv';
-const BIN = '/media/Shows/.transcoda-recycle/Tigger and Pooh/Tigger and Pooh S01E01.mkv';
+const FILE = '/media/Shows/Otter and Finch/Otter and Finch S01E01.mkv';
+const BIN = '/media/Shows/.transcoda-recycle/Otter and Finch/Otter and Finch S01E01.mkv';
 const KEPT = '2026-11-09T10:00:00.000Z';
 const AT = '2026-11-03T08:30:00.000Z';
 
@@ -89,7 +89,7 @@ async function open() {
       </Switch>
     </EventsProvider>,
   );
-  await screen.findByRole('heading', { level: 1, name: 'Tigger and Pooh' });
+  await screen.findByRole('heading', { level: 1, name: 'Otter and Finch' });
   await act(async () => {});
   return view;
 }
@@ -110,7 +110,7 @@ describe('JobPage: Restore original', () => {
     await open();
     fireEvent.click(await screen.findByRole('button', { name: 'Restore original' }));
     const dialog = await screen.findByRole('dialog', {
-      name: 'Restore the original of Tigger and Pooh S01E01.mkv?',
+      name: 'Restore the original of Otter and Finch S01E01.mkv?',
     });
     expect(
       within(dialog).getByText(

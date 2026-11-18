@@ -176,12 +176,12 @@ const s = (codec, language, isDefault = false) => ({
 
 // Disney+ style: original (eng) first, Turkish is the default, 20 audio and 21 subtitle tracks.
 // biome-ignore format: one row of language codes per ten
-const TIGGER_LANGS = [
+const OTTER_LANGS = [
   'eng', 'deu', 'fra', 'spa', 'ita', 'tur', 'por', 'nld', 'pol', 'ces',
   'hun', 'dan', 'nor', 'swe', 'fin', 'jpn', 'kor', 'ell', 'heb', 'ara',
 ];
-const TIGGER_AUDIO = TIGGER_LANGS.map((lang) => ({ lang, default: lang === 'tur' }));
-const TIGGER_SUBS = [...TIGGER_AUDIO, { lang: null, default: false }];
+const OTTER_AUDIO = OTTER_LANGS.map((lang) => ({ lang, default: lang === 'tur' }));
+const OTTER_SUBS = [...OTTER_AUDIO, { lang: null, default: false }];
 
 const FONT_CANDIDATES = [
   '/System/Library/Fonts/Supplemental/Arial.ttf',
@@ -201,14 +201,14 @@ function findFont() {
 
 const FIXTURES = [
   {
-    name: 'tigger-pooh',
-    file: 'tigger-pooh.mp4',
+    name: 'otter-finch',
+    file: 'otter-finch.mp4',
     format: 'mp4',
     purpose:
       'Reference problem file: HEVC, 20 AAC tracks and 21 mov_text subs with Turkish default, ' +
       'one untagged sub, PNG cover. Target keeps eng, deu, original (eng) and untagged tracks.',
     async build(ctx) {
-      const sub = await ctx.text('tigger.srt', srt('Tigger & Pooh'));
+      const sub = await ctx.text('otter.srt', srt('Otter & Finch'));
       const cover = join(WORK, 'cover.png');
       // biome-ignore format: flag/value pairs
       await ffmpeg([
@@ -221,8 +221,8 @@ const FIXTURES = [
         '-i', sub,
         '-i', cover,
         '-map', '0:v',
-        ...TIGGER_AUDIO.flatMap(() => ['-map', '1:a']),
-        ...TIGGER_SUBS.flatMap(() => ['-map', '2:s']),
+        ...OTTER_AUDIO.flatMap(() => ['-map', '1:a']),
+        ...OTTER_SUBS.flatMap(() => ['-map', '2:s']),
         '-map', '3:v',
         ...hevcArgs(ctx.hevc, 'v:0'),
         '-tag:v:0', 'hvc1',
@@ -231,14 +231,14 @@ const FIXTURES = [
         '-disposition:v:1', 'attached_pic',
         ...AAC,
         '-c:s', 'mov_text',
-        ...trackArgs('a', TIGGER_AUDIO),
-        ...trackArgs('s', TIGGER_SUBS),
+        ...trackArgs('a', OTTER_AUDIO),
+        ...trackArgs('s', OTTER_SUBS),
       ];
     },
     expect: [
       v(),
-      ...TIGGER_AUDIO.map((t) => a(t.lang, t.default)),
-      ...TIGGER_SUBS.map((t) => s('mov_text', t.lang, t.default)),
+      ...OTTER_AUDIO.map((t) => a(t.lang, t.default)),
+      ...OTTER_SUBS.map((t) => s('mov_text', t.lang, t.default)),
       { type: 'video', codec: 'png', default: false, attached_pic: true },
     ],
   },

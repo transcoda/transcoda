@@ -6,7 +6,7 @@ verifies each with `ffprobe` and writes `.local/fixtures/manifest.json` with wha
 
 ```sh
 pnpm fixtures                      # generate all, verify, write manifest
-pnpm fixtures tigger-pooh compliant  # regenerate only these (other manifest entries are kept)
+pnpm fixtures otter-finch compliant  # regenerate only these (other manifest entries are kept)
 pnpm fixtures --check              # verify existing files only; exit 1 on mismatch or missing file
 ```
 
@@ -15,7 +15,7 @@ a second.
 
 | File | What it is | Engine should |
 | --- | --- | --- |
-| `tigger-pooh.mp4` | The reference problem file: HEVC (`hvc1`), 20 AAC tracks and 21 `mov_text` subs, original language (eng) first, **Turkish default** in both, one untagged sub, PNG cover as an `attached_pic` video stream | keep eng, deu, original and untagged tracks with exactly one default per type |
+| `otter-finch.mp4` | The reference problem file: HEVC (`hvc1`), 20 AAC tracks and 21 `mov_text` subs, original language (eng) first, **Turkish default** in both, one untagged sub, PNG cover as an `attached_pic` video stream | keep eng, deu, original and untagged tracks with exactly one default per type |
 | `compliant.mkv` | HEVC, eng (default) + deu audio, eng (default) + deu SRT | do nothing |
 | `untagged.mkv` | two untagged audio (first default), two untagged SRT | keep untagged tracks |
 | `pgs-subs.mkv` | PGS sub (eng, default) + DVD sub (deu) | refuse remux to MP4 |
@@ -29,7 +29,7 @@ a second.
 ## Notes
 
 - **Untagged.** The manifest reports `language: null` for both a missing tag and `und` — MP4 cannot
-  store "no language", so `tigger-pooh.mp4`'s untagged sub is written as `und`.
+  store "no language", so `otter-finch.mp4`'s untagged sub is written as `und`.
 - **PGS.** ffmpeg has no PGS encoder and cannot render text to bitmaps, so the script writes a
   minimal valid `.sup` by hand (one 64×16 box shown from 0.5 s, cleared at 2.5 s) and
   stream-copies it; the DVD track is transcoded from that (bitmap → bitmap). ffmpeg shifts the

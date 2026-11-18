@@ -1,7 +1,7 @@
 import type { JobProbe, JobResult } from '@transcoda/contract';
 import type { JobPlan, ProbeStream } from '@transcoda/shared';
 
-// Screen 06 as data: "Bluey S01E03.mp4" through TV cleanup. 20 audio tracks (eng a:2 becomes the
+// Screen 06 as data: "Maple Lane S01E03.mp4" through TV cleanup. 20 audio tracks (eng a:2 becomes the
 // default, ger a:5, jpn a:11 is the original, tur a:0 was the default and is dropped, 16 more
 // dropped in 14 languages), 21 subtitles with 4 kept, HEVC video copied, cover.png kept,
 // MP4 → MKV.
@@ -75,7 +75,7 @@ function probeStream(over: Partial<ProbeStream> & Pick<ProbeStream, 'index' | 't
   } satisfies JobProbe['streams'][number];
 }
 
-export function blueyProbe(): JobProbe {
+export function mapleLaneProbe(): JobProbe {
   return {
     container: 'mp4',
     durationSeconds: 1440,
@@ -127,7 +127,7 @@ function planStream(over: Partial<PlanStream> & Pick<PlanStream, 'index' | 'type
   } satisfies PlanStream;
 }
 
-export function blueyPlan(): JobPlan {
+export function mapleLanePlan(): JobPlan {
   return {
     container: { from: 'mp4', to: 'mkv' },
     rewrite: true,
@@ -174,7 +174,7 @@ export function blueyPlan(): JobPlan {
 
 /** The same file when the workflow changes nothing: every stream kept as it is, MKV in and out. */
 export function identityPlan(): JobPlan {
-  const plan = blueyPlan();
+  const plan = mapleLanePlan();
   return {
     container: { from: 'mkv', to: 'mkv' },
     rewrite: false,
@@ -187,14 +187,14 @@ export function identityPlan(): JobPlan {
   };
 }
 
-export function blueyResult(over: Partial<JobResult> = {}): JobResult {
+export function mapleLaneResult(over: Partial<JobResult> = {}): JobResult {
   return {
     outcome: 'dry_run',
     beforeBytes: 2_410_000_000,
     afterBytes: null,
     estimatedBytes: 1_620_000_000,
     command:
-      'ffmpeg -i "Bluey S01E03.mp4" -map 0:v:0 -map 0:a:2 -map 0:a:5 -map 0:a:11 -c copy "Bluey S01E03.mkv.tmp"',
+      'ffmpeg -i "Maple Lane S01E03.mp4" -map 0:v:0 -map 0:a:2 -map 0:a:5 -map 0:a:11 -c copy "Maple Lane S01E03.mkv.tmp"',
     replacedTo: null,
     sourceDamaged: false,
     warnings: [],

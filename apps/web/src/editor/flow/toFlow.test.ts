@@ -3,16 +3,16 @@ import type { Issue, IssueCode, WorkflowGraph } from '@transcoda/shared';
 import { describe, expect, it } from 'vitest';
 import { buildCatalog } from '../../hooks/useCatalog.ts';
 import { catalogFixture, nodesFixture } from '../../test/fixtures/catalog.ts';
-import { chainMainReplace, tiggerPoohMain } from '../../test/fixtures/graphs.ts';
+import { chainMainReplace, otterFinchMain } from '../../test/fixtures/graphs.ts';
 import { NODE_SIZE } from '../model/graph-ops.ts';
 import { toFlow, withViewCollapse } from './toFlow.ts';
 import type { TcEdge, TcFlowEdge, TcFlowNode, TcGroupNode, TcNode, TraceOverlay } from './types.ts';
 
 const none = { nodes: [], edges: [] };
 
-/** Tigger & Pooh main with the cleanup group at {100,100} and run-a inside it at {160,140}. */
+/** Otter & Finch main with the cleanup group at {100,100} and run-a inside it at {160,140}. */
 function grouped(collapsed = false): WorkflowGraph {
-  const g = tiggerPoohMain('sub', 1);
+  const g = otterFinchMain('sub', 1);
   return {
     ...g,
     nodes: g.nodes.map((n) =>
@@ -126,7 +126,7 @@ describe('toFlow', () => {
   });
 
   it('names edges by node titles (labels first), with the output port when there are several', () => {
-    const g = tiggerPoohMain('sub', 1);
+    const g = otterFinchMain('sub', 1);
     const run = g.nodes.find((n) => n.id === 'run-a');
     if (run) run.label = 'Languages';
     const { edges } = toFlow(g, catalogFixture, [], none);
@@ -350,7 +350,7 @@ describe('toFlow', () => {
   });
 
   it('carries a trace overlay onto node data and edge data', () => {
-    const g = tiggerPoohMain('sub', 1);
+    const g = otterFinchMain('sub', 1);
     const trace: TraceOverlay = {
       nodes: new Map([
         [
@@ -432,7 +432,7 @@ describe('toFlow', () => {
       ]),
       currentNodeId: null,
     };
-    const traced = toFlow(tiggerPoohMain('sub', 1), catalogFixture, [], none, trace).edges;
+    const traced = toFlow(otterFinchMain('sub', 1), catalogFixture, [], none, trace).edges;
     expect(flowEdge(traced, 'vi-run-a').ariaLabel).toMatch(/, Yes, to .+, path taken$/);
     expect(flowEdge(traced, 'vi-ev').ariaLabel).toMatch(/, No, to .+, not taken$/);
     // Plain file flow keeps its name exactly (a value on it does not make it a data edge).

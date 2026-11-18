@@ -385,7 +385,7 @@ function TitleSub({ job }: { job: Job }) {
 
 /**
  * The job's title as the row's link: the show or movie title, named for screen readers as the
- * buttons are ("Bluey S01E03"), the file name on hover.
+ * buttons are ("Maple Lane S01E03"), the file name on hover.
  */
 function TitleLink({ job, className }: { job: Job; className: string }) {
   return (

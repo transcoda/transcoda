@@ -5,7 +5,7 @@ import type { FinishPhase, WorkflowGraph } from '@transcoda/shared';
 import { describe, expect, it } from 'vitest';
 import { buildCatalog } from '../../hooks/useCatalog.ts';
 import { catalogFixture as catalog, nodesFixture } from '../../test/fixtures/catalog.ts';
-import { chainMainReplace, tiggerPoohSub } from '../../test/fixtures/graphs.ts';
+import { chainMainReplace, otterFinchSub } from '../../test/fixtures/graphs.ts';
 import {
   checkConnection,
   compatibleTargets,
@@ -365,7 +365,7 @@ describe('connection rules', () => {
   });
 
   it('freeOutputs lists the outputs without an edge', () => {
-    const sub = tiggerPoohSub();
+    const sub = otterFinchSub();
     expect(freeOutputs(sub, 'rt', catalog)).toEqual([]);
     expect(freeOutputs({ ...sub, edges: [] }, 'rt', catalog).map((p) => p.id)).toEqual(['file']);
     const g = chainMainReplace();

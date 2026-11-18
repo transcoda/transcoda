@@ -81,9 +81,9 @@ function scanRun(extra: Partial<RunDetail['run']> = {}): RunDetail {
     libraryName: 'Shows',
     counts: { ...zero, done: 1, already_processed: 2, total: 3 },
     files: [
-      file('j1', 'Bluey S01E01.mkv', 'done'),
-      file('j2', 'Bluey S01E02.mkv', 'already_processed'),
-      file('j3', 'Bluey S01E03.mkv', 'already_processed'),
+      file('j1', 'Maple Lane S01E01.mkv', 'done'),
+      file('j2', 'Maple Lane S01E02.mkv', 'already_processed'),
+      file('j3', 'Maple Lane S01E03.mkv', 'already_processed'),
     ],
   };
 }
@@ -147,7 +147,7 @@ describe('RunPage: Process again', () => {
     mocks.runs.get.mockResolvedValue({
       ...scanRun(),
       counts: { ...zero, done: 1, total: 1 },
-      files: [file('j1', 'Bluey S01E01.mkv', 'done')],
+      files: [file('j1', 'Maple Lane S01E01.mkv', 'done')],
     });
     await open();
     expect(screen.queryByRole('button', { name: 'Process again' })).toBeNull();
