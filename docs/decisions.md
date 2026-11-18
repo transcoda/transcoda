@@ -1997,6 +1997,17 @@ Approved plan: `docs/plans/2026-10-21-dryrun-depends-on-size.md` (local).
 - **Where it is set.** Every write of `failed` names a code: the pipeline's `Failure` (built by `final(code, …)`/`retryable(code, …)`) and its `finish`, whose `failed` overload requires one; the startup sweep (`interrupted` for a second interruption and a rolled-back replace, `replace` for the other recovery outcomes); the scheduler's `failUnexpected` (`internal`). A replace that settles in the pipeline is rewritten by the pipeline's own failure (`replace`, or `source_changed` when the file changed or moved). Walk failures are `workflow`, plugin errors included. Any other final state clears the code, and so does Retry failed (as it clears `reason`).
 - **Metric.** `transcoda_jobs_failed{library, reason}`: a gauge from the database like `transcoda_jobs_finished` (a retry takes a failure out again), `reason` = the code or `unknown` for rows from before 0018 (`COALESCE`; old rows are not guessed from their text). Cardinality is bounded: 9 values × live libraries, only non-zero combinations listed.
 
+## 2026-11-17 Titles and posters from sidecar files
+
+- Sources, in order: for an episode, `<stem>.nfo` (episodedetails), then `tvshow.nfo` in the file's folder or its parent; for a movie, `<stem>.nfo`, then `movie.nfo`. Posters: `<stem>-poster`, `poster`, `folder`, `cover` (`.jpg`, `.jpeg`, `.png`, `.webp`); episodes use `poster` or `folder` in the show folder. The file name is the fallback for the title.
+- A `.nfo` is read only up to 1 MB, never through a symlink, and nothing outside the library is read. A bad sidecar is ignored and leaves the file-name result.
+- Media info is stored on the job at queue time (`jobs.media`, migration 0019) and never refreshed. Older jobs show a file-name title and no poster. The catch-up scan reads sidecars only for new files.
+- Thumbnails are 208 px JPEGs in `<config>/posters`, named by a hash of the poster path and built on first request. At most 2 are built at once, a failed build is not retried for 10 minutes, and a failed rebuild keeps serving the older thumbnail. They are never pruned.
+- ffmpeg reads the image from stdin with a forced demuxer, so it never opens a library path.
+- `GET /api/v1/jobs/:id/poster` is session-only, like the job log: API tokens get 403.
+- Transcoda never writes into a library for this.
+- Follow-up: looking up titles and artwork through the Sonarr, Radarr and Jellyfin plugins.
+
 ## Follow-ups (2026-10-17)
 
 - **mp4 video default normalization.** `normalizeDefaults` treats video like subtitle when the output container is mp4: extra default video flags are cleared and the first kept non-cover video is flagged when none is (note `mp4 cannot have no default video`). The mp4 muxer enables a video track that was told "not default", which verify would report as a stream mismatch. Matroska passes the flag through, so mkv output is unchanged; cover pictures are never touched.
