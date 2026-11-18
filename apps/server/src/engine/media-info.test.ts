@@ -472,6 +472,100 @@ describe('createMediaResolver', () => {
     );
   });
 
+  describe('episode posters: episode, then season, then show', () => {
+    const show = '/lib/The Show';
+    const season = `${show}/Season 03`;
+    const inSeason = `${season}/The Show - S03E01.mkv`;
+    const flat = `${show}/The Show - S03E01.mkv`;
+    const poster = (files: Record<string, Entry>, file: string) =>
+      createMediaResolver({ fs: fakeFs({ [file]: 'video', ...files }).fs, log })
+        .resolve(file, '/lib')
+        .then((m) => m.posterPath);
+
+    it("takes the episode's own <stem>-poster over every other poster", async () => {
+      const files = {
+        [`${season}/The Show - S03E01-poster.jpg`]: 'img',
+        [`${season}/poster.jpg`]: 'img',
+        [`${show}/season03-poster.jpg`]: 'img',
+        [`${show}/poster.jpg`]: 'img',
+      };
+      expect(await poster(files, inSeason)).toBe(`${season}/The Show - S03E01-poster.jpg`);
+    });
+
+    it("never takes the episode's -thumb still (a landscape frame)", async () => {
+      const files = {
+        [`${show}/The Show - S03E01-thumb.jpg`]: 'img',
+        [`${show}/folder.jpg`]: 'img',
+      };
+      expect(await poster(files, flat)).toBe(`${show}/folder.jpg`);
+    });
+
+    it("takes the season folder's poster, then its folder image, over the show's", async () => {
+      expect(
+        await poster(
+          {
+            [`${season}/poster.jpg`]: 'img',
+            [`${season}/folder.jpg`]: 'img',
+            [`${show}/poster.jpg`]: 'img',
+          },
+          inSeason,
+        ),
+      ).toBe(`${season}/poster.jpg`);
+      expect(
+        await poster({ [`${season}/folder.jpg`]: 'img', [`${show}/poster.jpg`]: 'img' }, inSeason),
+      ).toBe(`${season}/folder.jpg`);
+    });
+
+    it('takes seasonNN-poster in the show folder over the show poster', async () => {
+      const files = {
+        [`${show}/season02-poster.jpg`]: 'img',
+        [`${show}/season03-poster.jpg`]: 'img',
+        [`${show}/folder.jpg`]: 'img',
+      };
+      expect(await poster(files, flat)).toBe(`${show}/season03-poster.jpg`);
+      expect(await poster(files, inSeason)).toBe(`${show}/season03-poster.jpg`);
+    });
+
+    it('uses the season from the episode .nfo over the file name', async () => {
+      const files = {
+        [`${show}/The Show - S03E01.nfo`]:
+          '<episodedetails><title>Pilot</title><season>4</season><episode>1</episode></episodedetails>',
+        [`${show}/season03-poster.jpg`]: 'img',
+        [`${show}/season04-poster.png`]: 'img',
+      };
+      expect(await poster(files, flat)).toBe(`${show}/season04-poster.png`);
+    });
+
+    it('takes season-specials-poster for season 0', async () => {
+      const file = `${show}/The Show - S00E02.mkv`;
+      const files = {
+        [`${show}/season-specials-poster.jpg`]: 'img',
+        [`${show}/season00-poster.jpg`]: 'img',
+        [`${show}/poster.jpg`]: 'img',
+      };
+      expect(await poster(files, file)).toBe(`${show}/season-specials-poster.jpg`);
+      // Any case of the specials name still comes before season00-poster.
+      const upper = {
+        [`${show}/SEASON-SPECIALS-POSTER.JPG`]: 'img',
+        [`${show}/season00-poster.jpg`]: 'img',
+      };
+      expect(await poster(upper, file)).toBe(`${show}/SEASON-SPECIALS-POSTER.JPG`);
+    });
+
+    it("falls back to the show poster when the episode's season has none", async () => {
+      const files = { [`${show}/season01-poster.jpg`]: 'img', [`${show}/poster.jpg`]: 'img' };
+      expect(await poster(files, flat)).toBe(`${show}/poster.jpg`);
+    });
+
+    it('a folder in the library root is no season folder: its poster is the show poster', async () => {
+      // A flat show folder named like a season folder is still checked for poster.jpg once.
+      const file = '/lib/Season 3/S03E01.mkv';
+      expect(await poster({ '/lib/Season 3/poster.jpg': 'img' }, file)).toBe(
+        '/lib/Season 3/poster.jpg',
+      );
+    });
+  });
+
   it('lists each folder once and reads tvshow.nfo once for a season', async () => {
     const show = '/lib/The Beverly Hillbillies';
     const season = `${show}/Season 01`;

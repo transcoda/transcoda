@@ -2,7 +2,7 @@
 // The store opens the image itself (no symlink following), checks the open handle and its first
 // bytes, and pipes it into ffmpeg's stdin with the demuxer forced from those bytes: ffmpeg never
 // opens a path from a library and never guesses a format from content. One thumbnail per poster
-// path, kept in `dir` (no pruning: they are small, and one per show or movie).
+// path, kept in `dir` (no pruning: they are small, and one per show, season, episode or movie).
 import childProcess from 'node:child_process';
 import { createHash, randomBytes } from 'node:crypto';
 import type { Stats } from 'node:fs';
