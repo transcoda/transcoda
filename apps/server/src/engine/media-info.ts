@@ -142,10 +142,18 @@ export function createMediaResolver(deps: { fs: FsOps; log: Logger }): MediaReso
       const dir = dirname(path);
       const stem = basename(path, extname(path));
 
-      // <stem>.nfo beside the file, read once: an episode's or a movie's.
+      // <stem>.nfo beside the file, read once: an episode's or a movie's. A usable one decides
+      // the kind before the file name does.
       const stemNfo = await step('could not read the .nfo beside the file', path, () =>
         nfoAt(dir, `${stem}.nfo`, root),
       );
+      const stemMovie = withRoot(stemNfo, 'movie');
+      if (stemMovie !== null && (stemMovie.title !== null || stemMovie.year !== null)) {
+        media.kind = 'movie';
+        media.season = null;
+        media.episode = null;
+        media.episodeTitle = null;
+      }
       const episodeNfo = withRoot(stemNfo, 'episodedetails');
       const episodeUsable =
         episodeNfo !== null &&
@@ -200,7 +208,7 @@ export function createMediaResolver(deps: { fs: FsOps; log: Logger }): MediaReso
 
       // Movie .nfo: <stem>.nfo, else movie.nfo (not in the library root: it would name every file).
       const movie =
-        withRoot(stemNfo, 'movie') ??
+        stemMovie ??
         (dir === root
           ? null
           : await step('could not read movie.nfo', path, async () =>

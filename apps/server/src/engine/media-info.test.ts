@@ -147,6 +147,39 @@ describe('createMediaResolver', () => {
     );
   });
 
+  it('makes an episode-looking file a movie when its own .nfo is a movie .nfo', async () => {
+    const dir = '/lib/Films';
+    const { fs } = fakeFs({
+      [`${dir}/Film.S01E01.mkv`]: 'video',
+      [`${dir}/Film.S01E01.nfo`]: movieNfo('The General', 1926),
+      [`${dir}/tvshow.nfo`]: '<tvshow><title>Wrong Show</title></tvshow>',
+      [`${dir}/poster.jpg`]: 'img',
+    });
+    const r = createMediaResolver({ fs, log });
+    expect(await r.resolve(`${dir}/Film.S01E01.mkv`, '/lib')).toEqual(
+      media({
+        kind: 'movie',
+        title: 'The General',
+        year: 1926,
+        source: 'sidecar',
+        posterPath: `${dir}/poster.jpg`,
+      }),
+    );
+  });
+
+  it('keeps an episode-looking file an episode beside a stray movie.nfo', async () => {
+    const dir = '/lib/Films';
+    const { fs } = fakeFs({
+      [`${dir}/Film.S01E01.mkv`]: 'video',
+      [`${dir}/movie.nfo`]: movieNfo('The General', 1926),
+    });
+    const r = createMediaResolver({ fs, log });
+    const got = await r.resolve(`${dir}/Film.S01E01.mkv`, '/lib');
+    expect(got.kind).toBe('episode');
+    expect(got.title).toBe('Film');
+    expect(got.source).toBe('filename');
+  });
+
   it('reads an episode: episode .nfo, tvshow.nfo and the show poster', async () => {
     const show = '/lib/Show (1962)';
     const file = `${show}/Season 01/Show - S01E17.mkv`;
