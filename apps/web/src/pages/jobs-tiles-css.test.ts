@@ -58,6 +58,68 @@ describe('Jobs table (long titles)', () => {
   });
 });
 
+describe('Jobs on a narrow window', () => {
+  /** The body of the `@container jobs-overview (max-width: Npx)` block. */
+  const container = (max: number): string => {
+    const start = css.indexOf(`@container jobs-overview (max-width: ${max}px) {`);
+    if (start < 0) return '';
+    let depth = 0;
+    for (let i = css.indexOf('{', start); i < css.length; i++) {
+      if (css[i] === '{') depth++;
+      else if (css[i] === '}' && --depth === 0) return css.slice(start, i);
+    }
+    return '';
+  };
+
+  it('the tiles and history cards respond to the space beside the sidebar', () => {
+    expect(rule('.jobs-overview')).toMatch(/container:\s*jobs-overview\s*\/\s*inline-size/);
+  });
+
+  it('below one row, "Saved all time" goes under the tiles and the cards go 2 × 2', () => {
+    const block = container(819);
+    expect(block).toMatch(/\.stat-row\s*\{\s*flex-wrap:\s*wrap/);
+    expect(block).toMatch(/\.history-cards\s*\{\s*grid-template-columns:\s*repeat\(2,/);
+  });
+
+  it('narrower still, the four tiles go 2 × 2 so no label is cut', () => {
+    const block = container(559);
+    expect(block).toMatch(/\.stat-row > \.stat-tiles\s*\{\s*flex-wrap:\s*wrap/);
+    expect(block).toMatch(/flex:\s*1 1 calc\(50% - 4px\)/);
+  });
+
+  it('without room for every column, Library and Workflow give way and the Title keeps 240 px', () => {
+    expect(rule('.job-list')).toMatch(/container:\s*job-list\s*\/\s*inline-size/);
+    const px = (decls: string, prop: string): number =>
+      Number(decls.match(new RegExp(`(?:^|[;\\s])${prop}:\\s*(\\d+)px`))?.[1] ?? Number.NaN);
+    const col = (name: string) => px(rule(`.job-col-${name}`), 'width');
+    const kept = ['status', 'result', 'when'].reduce((sum, c) => sum + col(c), 0);
+    const plain = px(rule('.job-table'), 'min-width');
+    const actions = px(rule('.job-table.has-actions'), 'min-width');
+    // The queries start one pixel below each full minimum width.
+    const block = (max: number) => {
+      const start = css.indexOf(`@container job-list (max-width: ${max}px) {`);
+      return start < 0 ? '' : css.slice(start, css.indexOf('\n}', start));
+    };
+    const narrowPlain = block(plain - 1);
+    const narrowActions = block(actions - 1);
+    expect(narrowPlain).toMatch(
+      /\.job-table:not\(\.has-actions\) \.job-optional\s*\{\s*display:\s*none/,
+    );
+    expect(narrowActions).toMatch(/\.job-table\.has-actions \.job-optional\s*\{\s*display:\s*none/);
+    const minOf = (b: string) => Number(b.match(/min-width:\s*(\d+)px/)?.[1] ?? Number.NaN);
+    expect(minOf(narrowPlain) - kept).toBeGreaterThanOrEqual(240);
+    expect(minOf(narrowActions) - kept - col('actions')).toBeGreaterThanOrEqual(240);
+  });
+
+  it('a long status wraps inside its column instead of running into Result', () => {
+    const chip = rule('.job-table .job-chip');
+    expect(chip).toMatch(/white-space:\s*normal/);
+    expect(chip).toMatch(/max-width:\s*100%/);
+    expect(chip).toMatch(/height:\s*auto/);
+    expect(rule('.job-table .job-chips')).toMatch(/max-width:\s*100%/);
+  });
+});
+
 describe('Jobs stat tiles (#31)', () => {
   it('the button fills the stretched tile, so no tinted band shows under it', () => {
     expect(rule('.stat-tile.is-button')).toMatch(/display:\s*flex/);
