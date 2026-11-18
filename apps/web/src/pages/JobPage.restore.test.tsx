@@ -73,6 +73,11 @@ beforeEach(() => {
 });
 afterEach(() => cleanup());
 
+function factOf(term: string): string | null {
+  const dt = [...document.querySelectorAll('.job-facts dt')].find((n) => n.textContent === term);
+  return dt?.nextElementSibling?.textContent ?? null;
+}
+
 async function open() {
   const view = renderAt(
     '/jobs/j1',
@@ -84,7 +89,7 @@ async function open() {
       </Switch>
     </EventsProvider>,
   );
-  await screen.findByRole('heading', { level: 1, name: 'Tigger and Pooh S01E01.mkv' });
+  await screen.findByRole('heading', { level: 1, name: 'Tigger and Pooh' });
   await act(async () => {});
   return view;
 }
@@ -93,7 +98,7 @@ describe('JobPage: Restore original', () => {
   it('a done job with a recycled original shows Restore original and when the original goes', async () => {
     await open();
     expect(await screen.findByRole('button', { name: 'Restore original' })).toBeTruthy();
-    expect(screen.getByText(`Original kept until ${fmtDate(KEPT)}`)).toBeTruthy();
+    expect(factOf('Original kept until')).toBe(fmtDate(KEPT));
   });
 
   it('Restore original asks first, then restores and reloads the job', async () => {
@@ -174,7 +179,7 @@ describe('JobPage: Restore original', () => {
       }),
     );
     await open();
-    expect(screen.getByText(`Original restored on ${fmtDate(AT)} by jan`)).toBeTruthy();
+    expect(factOf('Original restored')).toBe(`${fmtDate(AT)} by jan`);
     expect(screen.queryByRole('button', { name: 'Restore original' })).toBeNull();
   });
 

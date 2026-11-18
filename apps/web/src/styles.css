@@ -8312,15 +8312,96 @@ a.nav-item.is-active .nav-count {
   padding-top: 0;
 }
 
-/* The one muted meta line: library · workflow · run · when (convention 1). */
-.job-head-meta {
+/* Poster left, the facts column right; the column may shrink so a long path wraps. */
+.job-head-body {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-4);
+}
+
+.job-head-main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  flex: 1;
+  min-width: 0;
+}
+
+.job-title-line {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-3);
+  min-width: 0;
+}
+
+.job-year {
+  font-size: 22px;
+  font-weight: 500;
   color: var(--faint);
 }
 
-.job-head-meta .link-muted:focus-visible {
+.job-sub {
+  margin: 0;
+  font-size: var(--fs-small);
+  color: var(--muted);
+}
+
+.job-sub strong {
+  font-weight: 600;
+}
+
+.job-path-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.job-path {
+  min-width: 0;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.job-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 28px;
+  margin: 0;
+}
+
+.job-fact dt {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+.job-fact dd {
+  margin: 0;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.job-facts .link-muted:focus-visible {
   outline: none;
   border-radius: var(--r-sm);
   box-shadow: var(--focus-ring);
+}
+
+@media (max-width: 639px) {
+  .job-head-body {
+    flex-wrap: wrap;
+    gap: var(--sp-3);
+  }
+
+  /* The facts wrap under the 64x96 poster. */
+  .job-head-main {
+    flex-basis: 100%;
+  }
 }
 
 .job-head-chips {

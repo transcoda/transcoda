@@ -97,7 +97,7 @@ async function open(path = '/jobs/j1') {
       </Switch>
     </EventsProvider>,
   );
-  await screen.findByRole('heading', { level: 1, name: 'Tigger and Pooh S01E01.mkv' });
+  await screen.findByRole('heading', { level: 1, name: 'Tigger and Pooh' });
   await act(async () => {});
   return view;
 }

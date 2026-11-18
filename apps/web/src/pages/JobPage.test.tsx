@@ -96,16 +96,22 @@ async function open(path = '/jobs/j1') {
       </Route>
     </EventsProvider>,
   );
-  await screen.findByRole('heading', { level: 1, name: 'Tigger and Pooh S01E01.mkv' });
+  await screen.findByRole('heading', { level: 1, name: 'Tigger and Pooh' });
   await act(async () => {});
   return view;
+}
+
+/** The text of the value (`dd`) that follows the term (`dt`) named `term`, in the header's facts. */
+function factOf(term: string): string | null {
+  const dt = [...document.querySelectorAll('.job-facts dt')].find((n) => n.textContent === term);
+  return dt?.nextElementSibling?.textContent ?? null;
 }
 
 describe('JobPage', () => {
   it('shows which GPU encoded the job, and no row when none did', async () => {
     mocks.jobs.get.mockResolvedValue({ ...jobDetail(), encodedOn: 'Intel Arc A310 · 07:00.0' });
     const view = await open();
-    expect(screen.getByText('Encoded on Intel Arc A310 · 07:00.0')).toBeTruthy();
+    expect(factOf('Encoded on')).toBe('Intel Arc A310 · 07:00.0');
     view.unmount();
     mocks.jobs.get.mockResolvedValue(jobDetail());
     await open();
@@ -117,7 +123,7 @@ describe('JobPage', () => {
       jobDetail({ state: 'building', lane: 'encode', encodedOn: 'GPU 0' }),
     );
     await open();
-    expect(screen.getByText('Encoding on GPU 0')).toBeTruthy();
+    expect(factOf('Encoding on')).toBe('GPU 0');
     expect(screen.queryByText(/^Encoded on/)).toBeNull();
   });
 
@@ -144,9 +150,9 @@ describe('JobPage', () => {
     await open();
     expect(mocks.jobs.get).toHaveBeenCalledWith({ id: 'j1' });
     // One muted meta line: where, then when it finished and how long it took.
-    expect(document.querySelector('.job-head-meta')?.textContent).toMatch(
-      /^Shows · TV cleanup v7 · Run · Finished .* · took /,
-    );
+    expect(factOf('Library')).toBe('Shows');
+    expect(factOf('Workflow')).toBe('TV cleanup v7');
+    expect(factOf('When')).toMatch(/^Finished .* · took /);
     // The crumb names only the parent.
     expect(document.querySelector('.job-crumbs')?.textContent).toBe('Jobs/');
     expect(screen.getAllByText('Replaced').length).toBeGreaterThan(0);
@@ -439,7 +445,7 @@ describe('JobPage', () => {
     await open();
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
     const dialog = await screen.findByRole('dialog', {
-      name: 'Cancel Tigger and Pooh S01E01.mkv?',
+      name: 'Cancel Tigger and Pooh S01E01?',
     });
     expect(within(dialog).getByText('The original stays untouched.')).toBeTruthy();
     // Focus starts on the safe choice.
@@ -462,9 +468,15 @@ describe('JobPage', () => {
     expect(document.querySelector('.react-flow__node.selected')).not.toBeNull();
 
     mocks.jobs.log.mockResolvedValue({ log: '' });
-    mocks.jobs.get.mockResolvedValue(jobDetail({ id: 'j2', fileName: 'Andor S02E07.mkv' }));
+    mocks.jobs.get.mockResolvedValue(
+      jobDetail({
+        id: 'j2',
+        fileName: 'Andor S02E07.mkv',
+        media: { ...jobDetail().media, title: 'Andor' },
+      }),
+    );
     view.navigate('/jobs/j2');
-    await screen.findByRole('heading', { level: 1, name: 'Andor S02E07.mkv' });
+    await screen.findByRole('heading', { level: 1, name: 'Andor' });
     await act(async () => {});
     expect(mocks.jobs.get).toHaveBeenLastCalledWith({ id: 'j2' });
     expect(screen.queryByText('frame=100 fps=118')).toBeNull();
@@ -521,9 +533,7 @@ describe('JobPage', () => {
     expect((await screen.findByRole('alert')).textContent).toBe(
       'Could not refresh: server restarting — showing the last state.',
     );
-    expect(
-      screen.getByRole('heading', { level: 1, name: 'Tigger and Pooh S01E01.mkv' }),
-    ).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 1, name: 'Tigger and Pooh' })).toBeTruthy();
     expect(screen.getByRole('list', { name: 'What the workflow is doing' })).toBeTruthy();
   });
 
@@ -698,7 +708,7 @@ describe('JobPage', () => {
   });
   it("M12: the subtitle links the library, the workflow at the job's version, and the run", async () => {
     await open();
-    const where = document.querySelector('.job-head-meta') as HTMLElement;
+    const where = document.querySelector('.job-facts') as HTMLElement;
     const link = (name: string) => within(where).getByRole('link', { name }) as HTMLAnchorElement;
     expect(link('Shows').getAttribute('href')).toBe('/libraries');
     expect(link('TV cleanup v7').getAttribute('href')).toBe('/workflows/w1?version=7');
