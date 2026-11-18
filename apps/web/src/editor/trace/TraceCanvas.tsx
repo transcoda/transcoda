@@ -23,7 +23,7 @@ import { toFlow, withViewCollapse } from '../flow/toFlow.ts';
 import type { TcFlowEdge, TcFlowNode, TraceOverlay } from '../flow/types.ts';
 import { MIN_ZOOM } from '../ui/Canvas.tsx';
 import { TraceActionsContext } from './trace-context.ts';
-import { spreadCards } from './traceLayout.ts';
+import { spreadCards, spreadMembers } from './traceLayout.ts';
 import { buildTraceOverlay, pathKey, type TraceSource } from './traceOverlay.ts';
 
 type FlowNode = TcFlowNode;
@@ -201,7 +201,8 @@ export function TraceCanvas({
   // (and hidden) on each trace update. View state only.
   const measured = useRef(new Map<string, { width: number; height: number }>());
   const [tick, setTick] = useState(0);
-  // Cards grown by their trace rows are moved apart (#36) once measured.
+  // Cards grown by their trace rows (or drawn as the large icon tiles) are moved apart (#36) once
+  // measured: a group's members inside their group first, then the top-level cards.
   // biome-ignore lint/correctness/useExhaustiveDependencies: tick re-reads the measurements ref
   const { nodes, laidOut } = useMemo(() => {
     const withSizes = derived.nodes.map((n) => {
@@ -209,7 +210,7 @@ export function TraceCanvas({
       return m ? ({ ...n, measured: m } as FlowNode) : n;
     });
     return {
-      nodes: spreadCards(withSizes),
+      nodes: spreadCards(spreadMembers(withSizes)),
       laidOut: withSizes.every((n) => n.hidden || n.measured !== undefined),
     };
   }, [derived.nodes, tick]);
