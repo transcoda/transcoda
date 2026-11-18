@@ -5,7 +5,8 @@ import { useState } from 'react';
 import { Icon } from '../components/Icon';
 
 export function Poster({ job, size }: { job: Pick<Job, 'id' | 'media'>; size: 'row' | 'page' }) {
-  const [failed, setFailed] = useState(false);
+  const [failedId, setFailedId] = useState<string | null>(null);
+  const failed = failedId === job.id;
   const cls = `poster poster-${size}`;
   if (job.media.poster && !failed) {
     return (
@@ -14,7 +15,7 @@ export function Poster({ job, size }: { job: Pick<Job, 'id' | 'media'>; size: 'r
           src={`/api/v1/jobs/${encodeURIComponent(job.id)}/poster`}
           alt=""
           loading="lazy"
-          onError={() => setFailed(true)}
+          onError={() => setFailedId(job.id)}
         />
       </span>
     );

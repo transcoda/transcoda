@@ -39,4 +39,11 @@ describe('Poster', () => {
     const row = render(<Poster job={withPoster(false)} size="row" />);
     expect(row.container.querySelector('.poster')?.classList.contains('poster-row')).toBe(true);
   });
+  it('tries the image again for another job', () => {
+    const { container, rerender } = render(<Poster job={withPoster(true)} size="row" />);
+    fireEvent.error(container.querySelector('img') as HTMLImageElement);
+    expect(container.querySelector('img')).toBeNull();
+    rerender(<Poster job={withPoster(true, 'j-2')} size="row" />);
+    expect(container.querySelector('img')?.getAttribute('src')).toBe('/api/v1/jobs/j-2/poster');
+  });
 });
