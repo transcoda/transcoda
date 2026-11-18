@@ -235,6 +235,7 @@ export function TraceCanvas({
   );
   const traceActions = useMemo(
     () => ({
+      bigIcons: true,
       toggleRun(runNodeId: string) {
         onExpand(openRun === runNodeId ? [...path] : [...path, runNodeId]);
       },
