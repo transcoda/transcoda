@@ -53,6 +53,8 @@ describe('thumbArgs', () => {
     expect(args[args.indexOf('-vf') + 1]).toContain('scale=208:-2');
     expect(args.at(-1)).toBe('/x/t.jpg');
     expect(args.indexOf('-f')).toBeLessThan(args.indexOf('-i'));
+    // A decoder cap of 40 megapixels, before the input it applies to.
+    expect(joined).toContain('-max_pixels 40000000 -f png_pipe -i pipe:0');
   });
 
   it('never names a library path', () => {

@@ -34,12 +34,12 @@ describe.skipIf(!toolsAvailable())('poster thumbnails with real ffmpeg', () => {
     if (base) await rm(base, { recursive: true, force: true });
   });
 
-  async function image(name: string): Promise<string> {
+  async function image(name: string, size = '600x900'): Promise<string> {
     const out = join(lib, name);
     // biome-ignore format: flag/value pairs
     await execFileAsync(ffmpegPath, [
       '-nostdin', '-v', 'error', '-y',
-      '-f', 'lavfi', '-i', 'color=c=navy:size=600x900', '-frames:v', '1', out,
+      '-f', 'lavfi', '-i', `color=c=navy:size=${size}`, '-frames:v', '1', out,
     ]);
     return out;
   }
@@ -65,6 +65,17 @@ describe.skipIf(!toolsAvailable())('poster thumbnails with real ffmpeg', () => {
     expect(thumb).not.toBeNull();
     expect(thumb?.size).toBeGreaterThan(0);
     expect(await probe(thumb?.path ?? '')).toEqual({ codec_name: 'mjpeg', width: 208 });
+  });
+
+  it('makes no thumbnail from an image over 40 megapixels', async () => {
+    const src = await image('huge.png', '8000x5004');
+    const store = new PosterStore({
+      dir: join(base, 'posters'),
+      ffmpegPath,
+      now: () => new Date(),
+      log,
+    });
+    expect(await store.thumbnail(src, join(base, 'lib'))).toBeNull();
   });
 
   it('kills ffmpeg when it runs past the timeout', async () => {

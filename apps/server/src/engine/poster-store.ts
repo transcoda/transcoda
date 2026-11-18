@@ -53,12 +53,18 @@ export function sniffPoster(head: Buffer): PosterDemuxer | null {
   return null;
 }
 
-/** ffmpeg arguments: forced demuxer on stdin, one frame, 208 px wide, JPEG to `outPath`. */
+/** The largest image a poster may decode to (40 megapixels): a small file cannot ask for more memory. */
+export const POSTER_MAX_PIXELS = 40_000_000;
+
+/**
+ * ffmpeg arguments: forced demuxer on stdin, decoded to at most POSTER_MAX_PIXELS, one frame,
+ * 208 px wide, JPEG to `outPath`.
+ */
 export function thumbArgs(demuxer: PosterDemuxer, outPath: string): string[] {
   // No -nostdin: stdin is the image.
   return [
     ...['-hide_banner', '-loglevel', 'error', '-y'],
-    ...['-f', demuxer, '-i', 'pipe:0'],
+    ...['-max_pixels', String(POSTER_MAX_PIXELS), '-f', demuxer, '-i', 'pipe:0'],
     ...['-frames:v', '1', '-vf', `scale=${POSTER_WIDTH}:-2`, '-q:v', '4'],
     ...['-f', 'mjpeg', outPath],
   ];
