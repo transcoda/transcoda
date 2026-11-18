@@ -1057,6 +1057,7 @@ describe('Jobs table', () => {
       { name: 'Actions' },
     );
     expect(actions.querySelector('.sr-only')?.textContent).toBe('Actions');
+    expect(screen.getByRole('table', { name: 'Job list' }).classList).toContain('has-actions');
     cleanup();
     mocks.list.mockResolvedValue({
       jobs: [fx.replaced, fx.failed],
@@ -1066,6 +1067,7 @@ describe('Jobs table', () => {
     renderAt('/jobs', <JobsPage />);
     await screen.findByRole('link', { name: 'Bluey S01E03' });
     expect(headers()).toEqual(['Title', 'Library', 'Workflow', 'Status', 'Result', 'When']);
+    expect(screen.getByRole('table', { name: 'Job list' }).classList).not.toContain('has-actions');
   });
 
   it('an episode row: the show title links to the job with the file name on hover, then code, library, workflow and state; no file name', async () => {

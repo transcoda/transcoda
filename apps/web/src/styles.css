@@ -6424,12 +6424,16 @@ a.nav-item.is-active .nav-count {
   border: 1px solid var(--line);
   overflow-x: auto;
 }
+/* The minimum width is the fixed columns plus 240px for the Title. */
 .job-table {
   width: 100%;
-  min-width: 900px;
+  min-width: 964px;
   table-layout: fixed;
   border-collapse: collapse;
   font-size: 14px;
+}
+.job-table.has-actions {
+  min-width: 1114px;
 }
 /* Title takes the rest. */
 .job-col-library {

@@ -526,7 +526,7 @@ function JobTable({
   const withActions = jobs.some(isActive);
   return (
     <div className="job-list">
-      <table className="job-table" aria-label="Job list">
+      <table className={withActions ? 'job-table has-actions' : 'job-table'} aria-label="Job list">
         <colgroup>
           <col />
           <col className="job-col-library" />
