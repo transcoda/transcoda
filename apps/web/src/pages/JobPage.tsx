@@ -127,7 +127,6 @@ function useSubgraphs(job: JobDetail | undefined): Subgraphs {
   return state;
 }
 
-/** A queued job's line: whether it waits for a lane or for the paused queue. */
 /** One label/value pair in the header's facts. */
 function Fact({ term, children }: { term: string; children: ReactNode }) {
   return (
@@ -138,6 +137,7 @@ function Fact({ term, children }: { term: string; children: ReactNode }) {
   );
 }
 
+/** A queued job's line: whether it waits for a lane or for the paused queue. */
 function QueuedDetail({ job }: { job: JobDetail }) {
   const queue = useQueue();
   return (
