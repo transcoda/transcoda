@@ -47,18 +47,19 @@ const FIT_MIN_HEIGHT = 240;
 const FIT_MIN_ZOOM = 0.2;
 
 /**
- * The viewport that shows the whole graph in a pane `paneWidth` wide (at most 100 %, never below
- * `minZoom`), and the canvas height the graph needs at that zoom: the pane is sized to the
- * graph, not the graph squeezed into a fixed box. A graph narrower than the pane is centred; one
- * wider than the floor allows starts `FIT_PAD` in from the left.
+ * The viewport that shows the whole graph in a pane `paneWidth` wide (at most `maxZoom`, 100 % by
+ * default, never below `minZoom`), and the canvas height the graph needs at that zoom: the pane is
+ * sized to the graph, not the graph squeezed into a fixed box. A graph narrower than the pane is
+ * centred; one wider than the floor allows starts `FIT_PAD` in from the left.
  */
 export function fitTrace(
   bounds: { x: number; y: number; width: number; height: number },
   paneWidth: number,
   minZoom = FIT_MIN_ZOOM,
+  maxZoom = 1,
 ): { viewport: Viewport; height: number } {
   const room = paneWidth - 2 * FIT_PAD;
-  const zoom = Math.min(1, Math.max(minZoom, room / Math.max(bounds.width, 1)));
+  const zoom = Math.min(maxZoom, Math.max(minZoom, room / Math.max(bounds.width, 1)));
   const contentWidth = bounds.width * zoom;
   const left = contentWidth <= room ? (paneWidth - contentWidth) / 2 : FIT_PAD;
   return {
@@ -67,12 +68,41 @@ export function fitTrace(
   };
 }
 
+type Fit = ReturnType<typeof fitTrace>;
+
+/** The same viewport, give or take the rounding of React Flow's pan-zoom transform. */
+const sameViewport = (a: Viewport, b: Viewport): boolean =>
+  Math.abs(a.x - b.x) < 0.5 && Math.abs(a.y - b.y) < 0.5 && Math.abs(a.zoom - b.zoom) < 1e-6;
+
+/**
+ * The fit again after the layout changed under the last one (`fitted`), or null to leave it. The
+ * first fit is taken from the full cards; zoomed out that far they turn into icon tiles, which
+ * are spread again and can reach below the first fit's canvas. The refit never zooms in past the
+ * last fit (so the cards keep their level and the layout settles), and is skipped once the
+ * viewer has panned or zoomed (`current` is no longer the viewport the fit set).
+ */
+export function refitTrace(
+  fitted: Fit,
+  current: Viewport,
+  bounds: { x: number; y: number; width: number; height: number },
+  paneWidth: number,
+  minZoom = FIT_MIN_ZOOM,
+): Fit | null {
+  if (!sameViewport(current, fitted.viewport)) return null;
+  const next = fitTrace(bounds, paneWidth, minZoom, fitted.viewport.zoom);
+  return sameViewport(next.viewport, fitted.viewport) && next.height === fitted.height
+    ? null
+    : next;
+}
+
 const paneWidth = (s: ReactFlowState) => s.width;
 
 /**
  * The first fit, once the cards are measured and spread (`laidOut`), and the pane has a size (a
  * page opened in a background tab has none yet): the whole graph across the pane's width
- * (`fitTrace`), and the canvas height that goes with it, reported through `onHeight`.
+ * (`fitTrace`), and the canvas height that goes with it, reported through `onHeight`. When the
+ * fit's zoom re-lays the cards (the icon tiles), it fits again to the new layout (`refitTrace`)
+ * until the viewer pans or zooms.
  */
 function FitOnce({
   nodes,
@@ -88,15 +118,19 @@ function FitOnce({
   const flow = useReactFlow();
   const ready = useNodesInitialized();
   const width = useStore(paneWidth);
-  const done = useRef(false);
+  const fitted = useRef<Fit | null>(null);
   useEffect(() => {
-    if (!ready || !laidOut || width === 0 || done.current) return;
+    if (!ready || !laidOut || width === 0) return;
     // Top-level cards from `nodes` (the spread positions, which the store may not have taken
     // yet); a group's members lie inside their group.
     const shown = nodes.filter((n) => !n.hidden && n.parentId === undefined);
     if (shown.length === 0) return;
-    done.current = true;
-    const fit = fitTrace(getNodesBounds(shown), width, minZoom);
+    const bounds = getNodesBounds(shown);
+    const fit = fitted.current
+      ? refitTrace(fitted.current, flow.getViewport(), bounds, width, minZoom)
+      : fitTrace(bounds, width, minZoom);
+    if (!fit) return;
+    fitted.current = fit;
     onHeight(fit.height);
     void flow.setViewport(fit.viewport);
   }, [ready, laidOut, width, flow, nodes, onHeight, minZoom]);
