@@ -498,7 +498,16 @@ export class QueueService {
       (c) => !newOnly || (c.skip === null && !fileSeen(this.db, c.path, fingerprintKey(c.fp))),
     );
     if (todo.length === 0) return out;
-    const resolver = (this.deps.mediaResolver ?? (() => this.defaultResolver()))();
+    let resolver: MediaResolver;
+    try {
+      resolver = (this.deps.mediaResolver ?? (() => this.defaultResolver()))();
+    } catch (err) {
+      this.deps.log?.debug?.({
+        msg: 'media resolver could not start; using file names',
+        why: err instanceof Error ? err.message : String(err),
+      });
+      return out;
+    }
     let next = 0;
     const worker = async (): Promise<void> => {
       while (next < todo.length) {

@@ -1231,6 +1231,17 @@ describe('QueueService media info', () => {
     expect(r.jobs[0]?.media).toEqual(parseFileName(file, lib.path));
   });
 
+  it('a resolver factory that throws still queues the job, with the file-name media', async () => {
+    const file = await settled(join(root, 'Show', 'The General (1926).mkv'));
+    const broken = withResolver(() => {
+      throw new Error('x');
+    });
+    const r = await broken.queue(input(file));
+    if (r.kind !== 'queued') throw new Error('expected queued');
+    expect(r.jobs[0]?.state).toBe('queued');
+    expect(r.jobs[0]?.media).toEqual(parseFileName(file, lib.path));
+  });
+
   it('processAgain jobs get media', async () => {
     const a = await settled(join(root, 'Show', 'a.mkv'));
     const first = await queued(a);
