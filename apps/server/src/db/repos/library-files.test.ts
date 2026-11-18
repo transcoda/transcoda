@@ -17,6 +17,10 @@ import {
   latestJobPerFileSql,
   listFileJobs,
   listLibraryFiles,
+  listSeasons,
+  listTitles,
+  parseShowKey,
+  showKey,
 } from './library-files.ts';
 import { insertRestore } from './restores.ts';
 import { insertRun } from './runs.ts';
@@ -574,3 +578,209 @@ it('stays fast at 20,000 files', () => {
   ).map((r) => r.detail);
   expect(plan.some((d) => /\bj\b.*jobs_file_queued/.test(d))).toBe(true);
 }, 60_000);
+
+describe('titles and seasons', () => {
+  const HILL = { title: SHOW, year: 1962 };
+  const done = { beforeBytes: 1000, afterBytes: 600, replacedTo: 'recycle' as const };
+  const withPoster = (m: StoredJobMedia, posterPath: string): StoredJobMedia => ({
+    ...m,
+    posterPath,
+  });
+  const tq = (over: Partial<Parameters<typeof listTitles>[1]> = {}) =>
+    listTitles(db, { libraryId: 'l1', offset: 0, limit: 100, ...over });
+  const label = (i: ReturnType<typeof listTitles>['items'][number]) =>
+    i.type === 'show' ? i.title : (i.poster?.media.title ?? '');
+  const titles = (over: Partial<Parameters<typeof listTitles>[1]> = {}) =>
+    tq(over).items.map(label);
+  const showCard = (over: Partial<Parameters<typeof listTitles>[1]> = {}, title = SHOW) => {
+    const s = tq(over).items.find((i) => i.type === 'show' && i.title === title);
+    if (s?.type !== 'show') throw new Error('no show card');
+    return s;
+  };
+  const addEp = (id: string, season: number | null, episode: number, state: JobState = 'done') => {
+    file(id, `/media/tv/${id}.mkv`, 1000);
+    job(`j-${id}`, id, { state, queuedAt: 1, media: ep(season, episode) });
+  };
+
+  function seedHillbillies(): void {
+    file('e1', '/media/tv/e1.mkv', 1000);
+    job('j-e1', 'e1', { state: 'done', queuedAt: 1, media: ep(1, 1), result: done });
+    file('e2', '/media/tv/e2.mkv', 1000);
+    job('j-e2', 'e2', {
+      state: 'kept_original',
+      queuedAt: 1,
+      media: ep(1, 2),
+      result: { beforeBytes: 1000, afterBytes: 1200 },
+    });
+    file('e3', '/media/tv/e3.mkv', 1000);
+    job('j-e3', 'e3', { state: 'failed', queuedAt: 1, media: ep(2, 1) });
+  }
+
+  it('groups episodes into one show card and lists movies one per file, by title', () => {
+    seedHillbillies();
+    file('m1', '/media/tv/m1.mkv', 1000);
+    job('j-m1', 'm1', {
+      state: 'done',
+      queuedAt: 1,
+      media: movie('Night of the Living Dead', 1968),
+    });
+    file('m2', '/media/tv/m2.mkv', 1000);
+    job('j-m2', 'm2', { state: 'done', queuedAt: 1, media: movie('Sherlock Jr.', 1924) });
+    expect(tq().items.map((i) => [i.type, label(i)])).toEqual([
+      ['movie', 'Night of the Living Dead'],
+      ['movie', 'Sherlock Jr.'],
+      ['show', SHOW],
+    ]);
+    const m = tq().items[0];
+    expect(m).toMatchObject({ type: 'movie', fileId: 'm1', latest: { id: 'j-m1' } });
+    expect(tq().total).toBe(3);
+  });
+
+  it('a show card counts episodes, seasons, outcomes and space saved', () => {
+    seedHillbillies();
+    expect(showCard()).toMatchObject({
+      key: showKey(HILL),
+      year: 1962,
+      episodes: 3,
+      seasons: 2,
+      outcomes: { replaced: 1, kept: 1, failed: 1, other: 0 },
+      savedBytes: 400,
+    });
+  });
+
+  it('a restored replace no longer counts as replaced or as space saved; running jobs are other', () => {
+    seedHillbillies();
+    insertRestore(db, {
+      id: 'x1',
+      jobId: 'j-e1',
+      restoredAt: at(2).toISOString(),
+      restoredBy: 'u',
+      sidecarPaths: [],
+    });
+    addEp('e4', 2, 2, 'encoding');
+    expect(showCard().episodes).toBe(4);
+    // e1 has an active restore, so it is other; e4 is still encoding.
+    expect(showCard().outcomes).toEqual({ replaced: 0, kept: 1, failed: 1, other: 2 });
+    expect(showCard().savedBytes).toBe(0);
+  });
+
+  it('the same title with another year is another show; gone and job-less files are not counted', () => {
+    seedHillbillies();
+    file('r1', '/media/tv/r1.mkv', 1000);
+    job('j-r1', 'r1', { state: 'done', queuedAt: 1, media: { ...ep(1, 1), year: 2026 } });
+    file('nojob', '/media/tv/nojob.mkv', 1000);
+    file('gone', '/media/tv/gone.mkv', 1000);
+    job('j-gone', 'gone', { state: 'done', queuedAt: 1, media: ep(3, 1) });
+    db.prepare('UPDATE files SET gone_at = ? WHERE id = ?').run(at(5).toISOString(), 'gone');
+    const shows = tq().items.flatMap((i) => (i.type === 'show' ? [[i.year, i.episodes]] : []));
+    expect(shows).toEqual([
+      [1962, 3],
+      [2026, 1],
+    ]);
+    expect(showCard().seasons).toBe(2);
+  });
+
+  it('the show poster is the lowest episode that has one', () => {
+    addEp('e1', 1, 1);
+    file('e2', '/media/tv/e2.mkv', 1000);
+    job('j-e2', 'e2', { state: 'done', queuedAt: 1, media: withPoster(ep(1, 2), '/p/2.jpg') });
+    file('e3', '/media/tv/e3.mkv', 1000);
+    job('j-e3', 'e3', { state: 'done', queuedAt: 1, media: withPoster(ep(2, 1), '/p/3.jpg') });
+    expect(showCard().poster).toMatchObject({
+      jobId: 'j-e2',
+      media: { posterPath: '/p/2.jpg', episode: 2 },
+    });
+  });
+
+  it('with no poster anywhere the poster is the lowest file; with no media at all it is null', () => {
+    addEp('e2', 1, 2);
+    addEp('e1', 1, 1);
+    expect(showCard().poster).toMatchObject({ jobId: 'j-e1', media: { episode: 1 } });
+    file('m', '/media/tv/Superman (1978).mkv', 1000);
+    job('j-m', 'm', { state: 'done', queuedAt: 1 });
+    const m = tq().items.find((i) => i.type === 'movie');
+    expect(m).toMatchObject({ type: 'movie', fileId: 'm', poster: null });
+  });
+
+  it('search finds shows and movies by title only', () => {
+    seedHillbillies();
+    file('m1', '/media/tv/m1.mkv', 1000);
+    job('j-m1', 'm1', { state: 'done', queuedAt: 1, media: movie('Sherlock Jr.', 1924) });
+    expect(titles({ search: 'hillbil' })).toEqual([SHOW]);
+    expect(showCard({ search: 'hillbil' }).episodes).toBe(3);
+    expect(titles({ search: 'sherlock' })).toEqual(['Sherlock Jr.']);
+    expect(titles({ search: 'S01E01' })).toEqual([]);
+    expect(titles({ search: 'e1.mkv' })).toEqual([]);
+    expect(titles({ search: '%' })).toEqual([]);
+  });
+
+  it('pages the items with a total', () => {
+    for (const n of [1, 2, 3, 4, 5]) {
+      file(`m${n}`, `/media/tv/m${n}.mkv`, 1000);
+      job(`j-m${n}`, `m${n}`, { state: 'done', queuedAt: 1, media: movie(`Movie ${n}`, 1950) });
+    }
+    const page = tq({ offset: 2, limit: 2 });
+    expect(page.total).toBe(5);
+    expect(page.items.map(label)).toEqual(['Movie 3', 'Movie 4']);
+    expect(tq({ offset: 10, limit: 2 })).toEqual({ items: [], total: 5 });
+  });
+
+  it('showKey round-trips, and parseShowKey refuses garbage', () => {
+    expect(parseShowKey(showKey(HILL))).toEqual(HILL);
+    expect(parseShowKey(showKey({ title: 'Superman', year: null }))).toEqual({
+      title: 'Superman',
+      year: null,
+    });
+    expect(parseShowKey('not-a-key')).toBeNull();
+    expect(parseShowKey(Buffer.from('{"a":1}').toString('base64url'))).toBeNull();
+    expect(parseShowKey(Buffer.from('["a","1962"]').toString('base64url'))).toBeNull();
+    expect(parseShowKey(Buffer.from('["a",1962,3]').toString('base64url'))).toBeNull();
+  });
+
+  it('a show card counts exactly the files listLibraryFiles returns for its show', () => {
+    seedHillbillies();
+    addEp('e4', null, 1);
+    file('r1', '/media/tv/r1.mkv', 1000);
+    job('j-r1', 'r1', { state: 'done', queuedAt: 1, media: { ...ep(1, 1), year: null } });
+    file('gone', '/media/tv/gone.mkv', 1000);
+    job('j-gone', 'gone', { state: 'done', queuedAt: 1, media: ep(3, 1) });
+    db.prepare('UPDATE files SET gone_at = ? WHERE id = ?').run(at(5).toISOString(), 'gone');
+    file('c', '/media/tv/c.mkv', 1000);
+    job('j-c', 'c', {
+      state: 'done',
+      queuedAt: 1,
+      media: { ...ep(1, 1), title: SHOW.toLowerCase() },
+    });
+    const shows = tq().items.filter((i) => i.type === 'show');
+    expect(shows.length).toBe(3);
+    for (const s of shows) {
+      const ref = parseShowKey(s.type === 'show' ? s.key : '');
+      if (!ref) throw new Error('bad key');
+      expect(listLibraryFiles(db, q({ show: ref })).total).toBe(
+        s.type === 'show' ? s.episodes : -1,
+      );
+    }
+  });
+
+  it('listSeasons gives each season its episodes, outcomes and poster; no season comes last as none', () => {
+    seedHillbillies();
+    file('e4', '/media/tv/e4.mkv', 1000);
+    job('j-e4', 'e4', { state: 'done', queuedAt: 1, media: withPoster(ep(null, 1), '/p/n.jpg') });
+    const seasons = listSeasons(db, 'l1', HILL);
+    expect(seasons.map((s) => [s.season, s.episodes])).toEqual([
+      [1, 2],
+      [2, 1],
+      ['none', 1],
+    ]);
+    expect(seasons[0]).toMatchObject({
+      outcomes: { replaced: 1, kept: 1, failed: 0, other: 0 },
+      savedBytes: 400,
+      poster: { jobId: 'j-e1' },
+    });
+    expect(seasons[2]).toMatchObject({
+      poster: { jobId: 'j-e4', media: { posterPath: '/p/n.jpg' } },
+    });
+    expect(listSeasons(db, 'l1', { title: SHOW, year: 1999 })).toEqual([]);
+    expect(listSeasons(db, 'l2', HILL)).toEqual([]);
+  });
+});

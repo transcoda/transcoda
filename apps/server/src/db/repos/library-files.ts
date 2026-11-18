@@ -291,3 +291,219 @@ export function listFileJobs(
     .get(fileId) as number;
   return { jobs: listJobListRows(db, ids), total };
 }
+
+export interface OutcomeCounts {
+  replaced: number;
+  kept: number;
+  failed: number;
+  other: number;
+}
+/** One file's poster reference: the media job's id (else the latest job's) and its media. */
+export interface PosterRef {
+  jobId: string;
+  media: StoredJobMedia;
+}
+export interface ShowGroup {
+  key: string;
+  title: string;
+  year: number | null;
+  /** Null when no job of any episode has media. */
+  poster: PosterRef | null;
+  episodes: number;
+  seasons: number;
+  outcomes: OutcomeCounts;
+  savedBytes: number;
+}
+export interface MovieItem {
+  fileId: string;
+  /** Null when no job of the file has media. */
+  poster: PosterRef | null;
+  latest: JobListRow;
+}
+export type TitleItem = ({ type: 'show' } & ShowGroup) | ({ type: 'movie' } & MovieItem);
+export interface SeasonGroup {
+  season: SeasonRef;
+  episodes: number;
+  poster: PosterRef | null;
+  outcomes: OutcomeCounts;
+  savedBytes: number;
+}
+
+/** Base64url of the JSON `[title, year]`; the key a show card carries. */
+export function showKey(show: ShowRef): string {
+  return Buffer.from(JSON.stringify([show.title, show.year])).toString('base64url');
+}
+
+/** The show a {@link showKey} names; null for anything that is not that shape. */
+export function parseShowKey(key: string): ShowRef | null {
+  try {
+    const v: unknown = JSON.parse(Buffer.from(key, 'base64url').toString('utf8'));
+    if (!Array.isArray(v) || v.length !== 2) return null;
+    const [title, year] = v as [unknown, unknown];
+    if (typeof title !== 'string') return null;
+    if (year !== null && !(typeof year === 'number' && Number.isInteger(year))) return null;
+    return { title, year };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The `tagged` CTE (after `latest`, `base`, `listed`): the listed, not-gone files with their
+ * outcome class, space saved and poster rank within `(title, year)` for shows or `(season)` of one show.
+ */
+const TAGGED_SQL = `tagged AS (
+  SELECT l.*,
+    CASE
+      WHEN latest_state = 'done' AND NOT EXISTS
+        (SELECT 1 FROM restores x WHERE x.job_id = l.latest_id AND x.undone_at IS NULL) THEN 'replaced'
+      WHEN latest_state = 'kept_original' THEN 'kept'
+      WHEN latest_state = 'failed' THEN 'failed'
+      ELSE 'other'
+    END AS outcome,
+    (json_extract(media_json, '$.posterPath') IS NOT NULL) AS has_poster
+  FROM listed l
+  WHERE gone_at IS NULL
+)`;
+
+/** Per-group aggregates over `tagged`; `poster_id` / `poster_media` are the group's poster file's. */
+const GROUP_AGG_SQL = `COUNT(*) AS episodes,
+    COUNT(DISTINCT IFNULL(season, 'none')) AS seasons,
+    SUM(outcome = 'replaced') AS replaced,
+    SUM(outcome = 'kept') AS kept,
+    SUM(outcome = 'failed') AS failed,
+    SUM(outcome = 'other') AS other,
+    COALESCE(SUM(CASE WHEN outcome = 'replaced' AND before_bytes IS NOT NULL AND after_bytes IS NOT NULL
+      THEN MAX(0, before_bytes - after_bytes) ELSE 0 END), 0) AS saved,
+    MAX(CASE WHEN prn = 1 THEN COALESCE(media_id, latest_id) END) AS poster_id,
+    MAX(CASE WHEN prn = 1 THEN media END) AS poster_media`;
+
+const POSTER_ORDER = 'has_poster DESC, season IS NULL, season, episode IS NULL, episode, path';
+
+interface DbGroup {
+  title: string;
+  year: number | null;
+  season?: number | null;
+  episodes: number;
+  seasons: number;
+  replaced: number;
+  kept: number;
+  failed: number;
+  other: number;
+  saved: number;
+  poster_id: string | null;
+  poster_media: string | null;
+}
+
+function posterOf(id: string | null, media: string | null): PosterRef | null {
+  const stored = parseMedia(media);
+  return id !== null && stored ? { jobId: id, media: stored } : null;
+}
+
+const outcomesOf = (g: DbGroup): OutcomeCounts => ({
+  replaced: g.replaced,
+  kept: g.kept,
+  failed: g.failed,
+  other: g.other,
+});
+
+/**
+ * One page of a library's titles: a show card per `(title, year)` of its episodes, one movie item
+ * per other file. Files that are gone or have no job are not counted. Search matches the title only.
+ */
+export function listTitles(
+  db: Database,
+  q: { libraryId: string; search?: string; offset: number; limit: number },
+): { items: TitleItem[]; total: number } {
+  const latest = latestJobPerFileSql({ libraryId: q.libraryId });
+  const params: Record<string, string | number> = { ...latest.params };
+  let search = '';
+  if (q.search !== undefined && q.search !== '') {
+    search = "AND title LIKE @search ESCAPE '\\'";
+    params.search = `%${escapeLike(q.search)}%`;
+  }
+  params.limit = Math.max(0, Math.min(q.limit, LIBRARY_FILES_MAX));
+  params.offset = Math.max(0, q.offset);
+  const sql = `${latest.sql}, ${LISTED_SQL}, ${TAGGED_SQL},
+    grouped AS (
+      SELECT *, ROW_NUMBER() OVER (PARTITION BY title, year ORDER BY ${POSTER_ORDER}) AS prn
+      FROM tagged WHERE kind = 'episode' ${search}
+    ),
+    items AS (
+      SELECT 'show' AS type, title, year, NULL AS file_id, NULL AS latest_id, ${GROUP_AGG_SQL}
+      FROM grouped GROUP BY title, year
+      UNION ALL
+      SELECT 'movie', title, year, id, latest_id, 1, 0, 0, 0, 0, 0, 0,
+        COALESCE(media_id, latest_id), media
+      FROM tagged WHERE kind IS NOT 'episode' ${search}
+    )
+    SELECT *, COUNT(*) OVER () AS total FROM items
+    ORDER BY title COLLATE NOCASE, year, type, file_id LIMIT @limit OFFSET @offset`;
+  type Item = DbGroup & {
+    type: 'show' | 'movie';
+    file_id: string | null;
+    latest_id: string | null;
+  };
+  const page = db.prepare(sql).all(params) as (Item & { total: number })[];
+  let total = (page[0] as { total: number } | undefined)?.total ?? 0;
+  if (page.length === 0 && params.offset > 0) {
+    total = db
+      .prepare(
+        `${latest.sql}, ${LISTED_SQL}, ${TAGGED_SQL}
+           SELECT COUNT(*) FROM (SELECT 1 FROM tagged WHERE kind = 'episode' ${search} GROUP BY title, year
+             UNION ALL SELECT 1 FROM tagged WHERE kind IS NOT 'episode' ${search})`,
+      )
+      .pluck()
+      .get(params) as number;
+  }
+  const latestJobs = new Map(
+    listJobListRows(
+      db,
+      page.flatMap((r) => (r.latest_id !== null ? [r.latest_id] : [])),
+    ).map((j) => [j.id, j]),
+  );
+  const items = page.flatMap((r): TitleItem[] => {
+    const poster = posterOf(r.poster_id, r.poster_media);
+    if (r.type === 'show') {
+      return [
+        {
+          type: 'show',
+          key: showKey({ title: r.title, year: r.year }),
+          title: r.title,
+          year: r.year,
+          poster,
+          episodes: r.episodes,
+          seasons: r.seasons,
+          outcomes: outcomesOf(r),
+          savedBytes: r.saved,
+        },
+      ];
+    }
+    const latestJob = r.latest_id !== null ? latestJobs.get(r.latest_id) : undefined;
+    if (r.file_id === null || !latestJob) return [];
+    return [{ type: 'movie', fileId: r.file_id, poster, latest: latestJob }];
+  });
+  return { items, total };
+}
+
+/** A show's seasons, ascending with `'none'` (no season number) last. */
+export function listSeasons(db: Database, libraryId: string, show: ShowRef): SeasonGroup[] {
+  const latest = latestJobPerFileSql({ libraryId });
+  const rows = db
+    .prepare(
+      `${latest.sql}, ${LISTED_SQL}, ${TAGGED_SQL},
+       grouped AS (
+         SELECT *, ROW_NUMBER() OVER (PARTITION BY season ORDER BY ${POSTER_ORDER}) AS prn
+         FROM tagged WHERE kind = 'episode' AND title = @showTitle AND year IS @showYear
+       )
+       SELECT season, ${GROUP_AGG_SQL} FROM grouped GROUP BY season ORDER BY season IS NULL, season`,
+    )
+    .all({ ...latest.params, showTitle: show.title, showYear: show.year }) as DbGroup[];
+  return rows.map((r) => ({
+    season: r.season ?? 'none',
+    episodes: r.episodes,
+    poster: posterOf(r.poster_id, r.poster_media),
+    outcomes: outcomesOf(r),
+    savedBytes: r.saved,
+  }));
+}
