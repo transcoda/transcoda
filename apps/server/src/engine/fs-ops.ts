@@ -67,7 +67,7 @@ async function fsync(p: string): Promise<void> {
  * Opens `p` for reading with O_NOFOLLOW and checks the open handle: a regular file of at most
  * `maxBytes`. Throws an Error whose message says why (symlink, not a regular file, too large).
  */
-async function openRegular(p: string, maxBytes: number): Promise<fsp.FileHandle> {
+export async function openRegular(p: string, maxBytes: number): Promise<fsp.FileHandle> {
   let input: fsp.FileHandle;
   try {
     input = await fsp.open(
