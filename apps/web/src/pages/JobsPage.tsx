@@ -483,10 +483,10 @@ function JobRow({
           </div>
         </div>
       </td>
-      <td className="job-cell-clip" title={job.libraryName}>
+      <td className="job-cell-clip job-optional" title={job.libraryName}>
         {job.libraryName}
       </td>
-      <td className="job-cell-clip" title={`${job.workflowName} ${versionText(job)}`}>
+      <td className="job-cell-clip job-optional" title={`${job.workflowName} ${versionText(job)}`}>
         <WorkflowText job={job} />
       </td>
       <td>
@@ -529,8 +529,9 @@ function JobTable({
       <table className={withActions ? 'job-table has-actions' : 'job-table'} aria-label="Job list">
         <colgroup>
           <col />
-          <col className="job-col-library" />
-          <col className="job-col-workflow" />
+          {/* Library and Workflow give way first when the table is narrow (styles.css). */}
+          <col className="job-col-library job-optional" />
+          <col className="job-col-workflow job-optional" />
           <col className="job-col-status" />
           <col className="job-col-result" />
           <col className="job-col-when" />
@@ -539,8 +540,12 @@ function JobTable({
         <thead>
           <tr>
             <th scope="col">Title</th>
-            <th scope="col">Library</th>
-            <th scope="col">Workflow</th>
+            <th scope="col" className="job-optional">
+              Library
+            </th>
+            <th scope="col" className="job-optional">
+              Workflow
+            </th>
             <th scope="col">Status</th>
             <th scope="col">Result</th>
             <th scope="col" className="job-when">
@@ -908,20 +913,23 @@ export function JobsPage() {
     <div className="jobs-page">
       {header('div')}
       <QueuePausedNote queue={queue} />
-      <div className="stat-row">
-        <StatTiles
-          stats={stats}
-          problemCount={problemCount}
-          active={FILTERS[filterIndex]?.label}
-          onSelect={(label) => {
-            const i = FILTERS.findIndex((f) => f.label === label);
-            // Clicking the active tile again clears the filter.
-            setFilterIndex((cur) => (cur === i ? 0 : i));
-          }}
-        />
-        <AllTimeTile history={history} />
+      {/* Sized by the space beside the sidebar, not the window: the tiles and cards wrap there. */}
+      <div className="jobs-overview">
+        <div className="stat-row">
+          <StatTiles
+            stats={stats}
+            problemCount={problemCount}
+            active={FILTERS[filterIndex]?.label}
+            onSelect={(label) => {
+              const i = FILTERS.findIndex((f) => f.label === label);
+              // Clicking the active tile again clears the filter.
+              setFilterIndex((cur) => (cur === i ? 0 : i));
+            }}
+          />
+          <AllTimeTile history={history} />
+        </div>
+        <JobsHistory history={history} />
       </div>
-      <JobsHistory history={history} />
       {filterChips}
       {listState}
       {jobs.length > 0 ? (

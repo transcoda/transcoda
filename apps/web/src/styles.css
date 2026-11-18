@@ -6269,11 +6269,16 @@ a.nav-item.is-active .nav-count {
   /* One header row (.head-row): the title block, then the queue actions on the right. */
   margin-bottom: 4px;
 }
+/* Narrow: the queue buttons move under the title rather than squeezing it ("Job…"). */
+.jobs-head.head-row {
+  flex-wrap: wrap;
+}
 .jobs-title {
   display: flex;
   flex-direction: column;
-  /* The block takes the row's free width, so a lane's name ("Quick tasks") is never cut short. */
-  flex: 1;
+  /* The block takes the row's free width, so a lane's name ("Quick tasks") is never cut short;
+     below 280px of it the actions wrap to their own line. */
+  flex: 1 1 280px;
   min-width: 0;
 }
 /* Who holds each lane, one row per lane: its name, then the file, cut short with an ellipsis. */
@@ -6423,17 +6428,18 @@ a.nav-item.is-active .nav-count {
   background: var(--surface);
   border: 1px solid var(--line);
   overflow-x: auto;
+  container: job-list / inline-size;
 }
 /* The minimum width is the fixed columns plus 240px for the Title. */
 .job-table {
   width: 100%;
-  min-width: 964px;
+  min-width: 994px;
   table-layout: fixed;
   border-collapse: collapse;
   font-size: 14px;
 }
 .job-table.has-actions {
-  min-width: 1114px;
+  min-width: 1144px;
 }
 /* Title takes the rest. */
 .job-col-library {
@@ -6442,8 +6448,9 @@ a.nav-item.is-active .nav-count {
 .job-col-workflow {
   width: 170px;
 }
+/* Fits "Nothing to do" and "Would keep original" on one line; longer states wrap. */
 .job-col-status {
-  width: 150px;
+  width: 180px;
 }
 .job-col-result {
   width: 210px;
@@ -6489,6 +6496,33 @@ a.nav-item.is-active .nav-count {
   font-size: var(--fs-small);
   color: var(--faint);
   font-variant-numeric: tabular-nums;
+}
+/* No room for every column: Library and Workflow give way (both are on the job's page, and the
+   library filter stays). The Title keeps its 240px. These come after the column widths and the
+   When rules, so they win on order as well as weight. */
+@container job-list (max-width: 993px) {
+  .job-table:not(.has-actions) {
+    min-width: 714px;
+  }
+  .job-table:not(.has-actions) .job-optional {
+    display: none;
+  }
+}
+/* With running jobs the Actions column needs room too: When also gives way (the job's page has
+   it) and Result is narrower, so the whole row, Pause and Cancel included, fits at 1024px beside
+   the full sidebar. The Title keeps 200px. */
+@container job-list (max-width: 1143px) {
+  .job-table.has-actions {
+    min-width: 710px;
+  }
+  .job-table.has-actions .job-optional,
+  .job-table.has-actions .job-when,
+  .job-table.has-actions .job-col-when {
+    display: none;
+  }
+  .job-table.has-actions .job-col-result {
+    width: 180px;
+  }
 }
 /* Library and workflow: one line, the whole text on hover. */
 .job-cell-clip {
@@ -6673,6 +6707,23 @@ a.nav-item.is-active .nav-count {
 /* The Jobs table's Result cell: the bar under its line. */
 .job-outcome .progress {
   margin-top: 6px;
+}
+/* Status: a long state ("Would replace if it saves ≥ 25%") wraps inside its column instead of
+   running into Result. */
+.job-table .job-chips {
+  max-width: 100%;
+}
+.job-table .job-chip {
+  height: auto;
+  min-height: 28px;
+  max-width: 100%;
+  padding-block: 4px;
+  line-height: 1.25;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.job-table .job-chip > svg {
+  flex: none;
 }
 /* Two buttons fit the 150 px column at the compact size; they wrap rather than overlap. */
 .job-table .job-actions {
@@ -6984,6 +7035,13 @@ a.nav-item.is-active .nav-count {
 .is-phone .stat-row > .stat-tile.is-alltime {
   flex: 1 1 100%;
 }
+/* Desktop: the Today tiles and the history cards, sized by the space beside the sidebar. */
+.jobs-overview {
+  container: jobs-overview / inline-size;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
 /* Last 7 days and the encoder's last hour: one row of four half-height cards (2 × 2 on a phone),
    title and total on one line, the chart under them. */
 .jobs-history {
@@ -7107,6 +7165,29 @@ a.nav-item.is-active .nav-count {
 .is-phone .encoder-gpu {
   order: 2;
   margin: 0;
+}
+/* Too narrow for one row: "Saved all time" under the tiles, the cards 2 × 2. After the base
+   .stat-row and .history-cards rules, which have the same weight. */
+@container jobs-overview (max-width: 699px) {
+  .stat-row {
+    flex-wrap: wrap;
+  }
+  .stat-row > .stat-tiles,
+  .stat-row > .stat-tile.is-alltime {
+    flex: 1 1 100%;
+  }
+  .history-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+/* Too narrow for four tiles in a row: 2 × 2, so no label is cut. */
+@container jobs-overview (max-width: 559px) {
+  .stat-row > .stat-tiles {
+    flex-wrap: wrap;
+  }
+  .stat-row > .stat-tiles > .stat-tile {
+    flex: 1 1 calc(50% - 4px);
+  }
 }
 .phone-section {
   display: flex;
