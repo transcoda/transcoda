@@ -222,7 +222,8 @@ export const files = os.libraries.files
     let show: ShowRef | undefined;
     if (input.show !== undefined) {
       const parsed = parseShowKey(input.show);
-      if (!parsed) throw errors.NOT_FOUND();
+      // A key naming a show with no episodes here is as unknown as one that does not parse.
+      if (!parsed || listSeasons(db, input.id, parsed).length === 0) throw errors.NOT_FOUND();
       show = parsed;
     }
     const season: SeasonRef | undefined =

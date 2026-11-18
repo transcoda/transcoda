@@ -283,6 +283,8 @@ describe('library browser read routes', () => {
     const bad = await get('/libraries/l1/files?season=1');
     expect(bad.status).toBe(400);
     expect((await get('/libraries/l1/files?limit=201')).status).toBe(400);
+    const noMatch = await get(`/libraries/l1/files?show=${key}&search=zzz`);
+    expect([noMatch.status, noMatch.body]).toEqual([200, { files: [], total: 0 }]);
   });
 
   it('GET /libraries/:id/files/:fileId: a replaced file shows the output probe as now and its own probe as before, jobs newest first', async () => {
@@ -342,6 +344,7 @@ describe('library browser read routes', () => {
       `/libraries/l1/seasons?show=${showKey({ title: 'Superman', year: 1978 })}`,
       '/libraries/l1/seasons?show=%25%25',
       '/libraries/l1/files?show=%25%25',
+      `/libraries/l1/files?show=${showKey({ title: 'Superman', year: 1978 })}`,
     ];
     for (const path of missing) {
       const res = await get(path);
