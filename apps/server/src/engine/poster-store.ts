@@ -31,6 +31,8 @@ export const POSTER_MAX_BYTES = 20 * 1024 * 1024;
 export const POSTER_WIDTH = 208;
 export const POSTER_BUILD_TIMEOUT_MS = 15_000;
 export const POSTER_MAX_BUILDS = 2;
+/** Builds that may wait for a slot; past this a request builds nothing and gets the cache. */
+export const POSTER_MAX_WAITING = 32;
 export const POSTER_FAILURE_MEMORY_MS = 10 * 60 * 1000;
 
 /** Bytes read for {@link sniffPoster}: enough for the WebP signature. */
@@ -179,21 +181,34 @@ export class PosterStore {
     const target = join(this.deps.dir, `${key}.jpg`);
     const cached = await this.cached(target);
     if (libraryRoot === null) return cached;
-    const source = await this.open(key, posterPath, libraryRoot);
-    if (!source) return cached;
-    let handed = false;
+    // Decided without opening the source: the cache carries its source's time (see `build`), so
+    // the same time is an unchanged source; one that is gone keeps the cache.
+    let time: number;
     try {
-      // The cache carries its source's time (see `build`): any other time is a changed source,
-      // and a source dated in the future is still built only once.
-      if (cached && sameMs(cached.mtimeMs, source.info.mtimeMs)) return cached;
-      const failed = this.failedAt.get(key);
-      if (failed !== undefined && this.deps.now().getTime() - failed < POSTER_FAILURE_MEMORY_MS) {
+      time = (await fsp.lstat(posterPath)).mtimeMs;
+    } catch (err) {
+      this.refused(key, why(err));
+      return cached;
+    }
+    if (cached && sameMs(cached.mtimeMs, time)) return cached;
+    const failed = this.failedAt.get(key);
+    if (failed !== undefined && this.deps.now().getTime() - failed < POSTER_FAILURE_MEMORY_MS) {
+      return cached;
+    }
+    // A slot before the source is opened: a waiting build holds no file. A full queue builds
+    // nothing (and is no failure).
+    if (!(await this.acquire())) return cached;
+    try {
+      const source = await this.open(key, posterPath, libraryRoot);
+      if (!source) return cached;
+      // Any time other than the cache's is a changed source; a future one is still built once.
+      if (cached && sameMs(cached.mtimeMs, source.info.mtimeMs)) {
+        await source.handle.close();
         return cached;
       }
-      handed = true;
       return (await this.build(key, target, source)) ?? cached;
     } finally {
-      if (!handed) await source.handle.close();
+      this.release();
     }
   }
 
@@ -254,9 +269,8 @@ export class PosterStore {
     this.deps.log.debug?.({ msg: 'poster not used', key, reason });
   }
 
-  /** Builds `target` from `source` (whose handle it owns) in a slot; null when ffmpeg failed. */
+  /** Builds `target` from `source` (whose handle it owns), in the caller's slot; null when ffmpeg failed. */
   private async build(key: string, target: string, source: Source): Promise<Thumbnail | null> {
-    await this.acquire();
     const tmp = join(this.deps.dir, `${key}.${randomBytes(6).toString('hex')}.tmp`);
     try {
       await fsp.mkdir(this.deps.dir, { recursive: true });
@@ -281,17 +295,19 @@ export class PosterStore {
     } finally {
       // The stream closes the handle when it ends; a runner that never read it leaves it open.
       await source.handle.close().catch(() => {});
-      this.release();
     }
   }
 
-  private async acquire(): Promise<void> {
+  /** A build slot; false (no slot) when POSTER_MAX_WAITING builds already wait. */
+  private async acquire(): Promise<boolean> {
     if (this.active < POSTER_MAX_BUILDS) {
       this.active++;
-      return;
+      return true;
     }
+    if (this.waiting.length >= POSTER_MAX_WAITING) return false;
     // release() hands its slot straight to the next waiter, so `active` stays counted.
     await new Promise<void>((resolve) => this.waiting.push(resolve));
+    return true;
   }
 
   private release(): void {

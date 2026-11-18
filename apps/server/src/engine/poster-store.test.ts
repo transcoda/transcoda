@@ -15,7 +15,9 @@ import { tempDir } from './fixtures.ts';
 import {
   POSTER_BUILD_TIMEOUT_MS,
   POSTER_FAILURE_MEMORY_MS,
+  POSTER_MAX_BUILDS,
   POSTER_MAX_BYTES,
+  POSTER_MAX_WAITING,
   PosterStore,
   sniffPoster,
   type ThumbRunner,
@@ -251,6 +253,70 @@ describe('PosterStore', () => {
     expect(out.every((t) => t !== null)).toBe(true);
     expect(calls).toHaveLength(5);
     expect(peak).toBe(2);
+  });
+
+  /** A runner that blocks every build until `open()` is called. */
+  const gatedRun = (): { open: () => void } => {
+    let release!: () => void;
+    const gate = new Promise<void>((r) => {
+      release = r;
+    });
+    run = async (o) => {
+      await gate;
+      await fakeRun(o);
+    };
+    return { open: release };
+  };
+  const settle = () => new Promise((r) => setTimeout(r, 50));
+
+  it('opens a waiting build source only once it has a slot', async () => {
+    const gate = gatedRun();
+    const busy = await Promise.all(
+      Array.from({ length: POSTER_MAX_BUILDS }, (_, n) => poster(`busy${n}.jpg`)),
+    );
+    const p = await poster('late.jpg');
+    const s = store();
+    const running = busy.map((b) => s.thumbnail(b, lib));
+    const late = s.thumbnail(p, lib);
+    await settle();
+    // Replaced while it waits: a source opened before its slot would still read the old JPEG.
+    await unlink(p);
+    await poster('late.jpg', PNG);
+    gate.open();
+    await Promise.all(running);
+    expect(await late).not.toBeNull();
+    expect(calls.map((c) => c.demuxer)).toEqual(['jpeg_pipe', 'jpeg_pipe', 'png_pipe']);
+  });
+
+  it('builds nothing when the queue is full: the cache or null, and no failure remembered', async () => {
+    const withCache = await poster('cached.jpg');
+    const without = await poster('uncached.jpg');
+    const old = await store().thumbnail(withCache, lib);
+    expect(old).not.toBeNull();
+    const future = new Date(Date.now() + 60_000);
+    await utimes(withCache, future, future);
+    calls = [];
+
+    const gate = gatedRun();
+    const s = store();
+    const fill = await Promise.all(
+      Array.from({ length: POSTER_MAX_BUILDS + POSTER_MAX_WAITING }, (_, n) =>
+        poster(`fill${n}.jpg`),
+      ),
+    );
+    const filling = fill.map((f) => s.thumbnail(f, lib));
+    await settle();
+    expect(await s.thumbnail(withCache, lib)).toEqual(old);
+    expect(await s.thumbnail(without, lib)).toBeNull();
+    gate.open();
+    await Promise.all(filling);
+    expect(calls).toHaveLength(fill.length);
+
+    // Not a failure: both build once the queue has room.
+    expect(await s.thumbnail(withCache, lib)).not.toEqual(old);
+    expect(await s.thumbnail(without, lib)).not.toBeNull();
+    expect(calls).toHaveLength(fill.length + 2);
+    expect(POSTER_MAX_WAITING).toBe(32);
   });
 
   it('remembers a failed build for ten minutes', async () => {
