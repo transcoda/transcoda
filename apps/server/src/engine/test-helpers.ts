@@ -136,3 +136,13 @@ export function withSidecar(
   };
   return { ...model, extraInputs, streams: add ? [...model.streams, stream] : model.streams };
 }
+
+/**
+ * A fake ffprobe packet read's stdout (`-show_entries packet=stream_index,…`): each row of `rows`
+ * once for every stream index 0–7, stream_index first as ffprobe prints it. The reader keeps the
+ * stream it asked for.
+ */
+export function packetRows(rows: string): string {
+  const lines = rows.split('\n').filter((l) => l !== '');
+  return Array.from({ length: 8 }, (_, i) => lines.map((l) => `${i},${l}\n`).join('')).join('');
+}

@@ -245,7 +245,13 @@ function interval(file: MediaFile, from: number, to: number): string {
   return from <= 0 ? `%${t(to)}` : `${t(from)}%${t(to)}`;
 }
 
-/** Packet rows `entries` of stream `index` in [from, to] (file time); null when ffprobe fails. */
+/**
+ * Packet rows `entries` of stream `index` in [from, to] (file time); null when ffprobe fails.
+ *
+ * Reads every stream and keeps `index`'s rows: with `-select_streams` ffprobe seeks by the selected
+ * stream, and a Matroska file indexes (Cues) only its video, so a seek by an audio stream reads the
+ * whole file from its start (minutes for a 40 GB remux, past the verify timeout).
+ */
 async function packets(
   exec: Exec,
   ffprobePath: string,
@@ -257,22 +263,23 @@ async function packets(
   const r = await run(exec, ffprobePath, [
     '-v',
     'error',
-    '-select_streams',
-    String(index),
     '-read_intervals',
     range,
     '-show_entries',
-    `packet=${entries}`,
+    `packet=stream_index,${entries}`,
     '-of',
     'csv=p=0',
     file.path,
   ]);
   if (!r.ok) return { error: r.detail };
+  // ffprobe prints stream_index before the other packet fields.
   return r.stdout
     .split('\n')
     .map((l) => l.trim())
     .filter((l) => l !== '')
-    .map((l) => l.split(','));
+    .map((l) => l.split(','))
+    .filter(([stream]) => stream === String(index))
+    .map((row) => row.slice(1));
 }
 
 /** Where a stream's packets end (`pts + duration` of its last packet, file time) and that duration. */

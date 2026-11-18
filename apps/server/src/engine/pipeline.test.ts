@@ -83,7 +83,7 @@ import {
 } from './pipeline.ts';
 import { FakeSpawner, type RunnerProcess, type SpawnOptions } from './process.ts';
 import { renderEncoders } from './render.ts';
-import { probeOf, withSidecar, withStream } from './test-helpers.ts';
+import { packetRows, probeOf, withSidecar, withStream } from './test-helpers.ts';
 
 /** How long `until` waits; well above any healthy run, below the raised test timeout. */
 const UNTIL_MS = 10_000;
@@ -304,11 +304,11 @@ const fakeExec: Exec = async (file, args, opts) => {
     };
   }
   const at = args.indexOf('-read_intervals');
-  if (at >= 0 && args.includes('packet=pts_time,duration_time')) {
+  if (at >= 0 && args.includes('packet=stream_index,pts_time,duration_time')) {
     if (isOutput && brokenOutput) return { stdout: '', stderr: '' };
-    return { stdout: '59.960000,0.040000\n', stderr: '' };
+    return { stdout: packetRows('59.960000,0.040000'), stderr: '' };
   }
-  if (at >= 0) return { stdout: '55.000000,1000,K__\n', stderr: '' };
+  if (at >= 0) return { stdout: packetRows('55.000000,1000,K__'), stderr: '' };
   if (args.includes('image2')) {
     if (coverExtracts) await writeFile(path, 'png');
     return { stdout: '', stderr: '' };

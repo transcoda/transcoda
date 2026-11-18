@@ -18,6 +18,7 @@ import { fingerprintOf } from './fingerprint.ts';
 import { tempDir } from './fixtures.ts';
 import { type FsOps, nodeFsOps } from './fs-ops.ts';
 import { FakeSpawner } from './process.ts';
+import { packetRows } from './test-helpers.ts';
 
 /** How long `until` waits; well above any healthy run, below the raised test timeout. */
 const UNTIL_MS = 10_000;
@@ -64,8 +65,9 @@ const exec: Exec = async (_file, args) => {
     };
     return { stdout: JSON.stringify(json), stderr: '' };
   }
-  if (args.includes('packet=pts_time,duration_time')) return { stdout: '59.96,0.04\n', stderr: '' };
-  if (args.includes('-read_intervals')) return { stdout: '55.0,1000,K__\n', stderr: '' };
+  if (args.includes('packet=stream_index,pts_time,duration_time'))
+    return { stdout: packetRows('59.96,0.04'), stderr: '' };
+  if (args.includes('-read_intervals')) return { stdout: packetRows('55.0,1000,K__'), stderr: '' };
   return { stdout: '', stderr: '' };
 };
 
