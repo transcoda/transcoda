@@ -391,7 +391,7 @@ function isStoredMedia(v: unknown): v is StoredJobMedia {
  * The stored media; a corrupt or wrong-shaped cell reads as none, so one bad row cannot break
  * every job read (the list then parses the file name).
  */
-const parseMedia = (s: string | null): StoredJobMedia | null => {
+export const parseMedia = (s: string | null): StoredJobMedia | null => {
   if (s === null) return null;
   try {
     const v: unknown = JSON.parse(s);
@@ -669,6 +669,19 @@ export const DEPENDS_ON_SIZE_SQL =
 export function findJobListRow(db: Database, id: string): JobListRow | null {
   const r = db.prepare(`${LIST_SELECT} WHERE j.id = ?`).get(id) as DbJobList | undefined;
   return r ? toListRow(r) : null;
+}
+
+/** The jobs as list rows, in the order of `ids`; unknown ids are left out. */
+export function listJobListRows(db: Database, ids: readonly string[]): JobListRow[] {
+  if (ids.length === 0) return [];
+  const found = db
+    .prepare(`${LIST_SELECT} WHERE j.id IN (SELECT value FROM json_each(?))`)
+    .all(JSON.stringify(ids)) as DbJobList[];
+  const byId = new Map(found.map((r) => [r.id, r]));
+  return ids.flatMap((id) => {
+    const r = byId.get(id);
+    return r ? [toListRow(r)] : [];
+  });
 }
 
 interface Cursor {
