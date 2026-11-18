@@ -1,7 +1,7 @@
 // Libraries, runs and queueing: a file or a folder becomes a run with one job per media file.
-import { randomUUID } from "node:crypto";
-import type { Stats } from "node:fs";
-import { basename, isAbsolute, join, resolve } from "node:path";
+import { randomUUID } from 'node:crypto';
+import type { Stats } from 'node:fs';
+import { basename, isAbsolute, join, resolve } from 'node:path';
 import {
   ACTIVE_JOB_STATES,
   type Issue,
@@ -11,8 +11,8 @@ import {
   planSummary,
   type RunHours,
   type StoredJobMedia,
-} from "@transcoda/shared";
-import type { Database } from "../db/open.ts";
+} from '@transcoda/shared';
+import type { Database } from '../db/open.ts';
 import {
   alreadyProcessedReason,
   fileSeen,
@@ -23,7 +23,7 @@ import {
   type JobRow,
   updateJob,
   upsertFile,
-} from "../db/repos/jobs.ts";
+} from '../db/repos/jobs.ts';
 import {
   findLibrary,
   insertLibrary,
@@ -32,21 +32,15 @@ import {
   softDeleteLibrary,
   trimSlash,
   updateLibrary,
-} from "../db/repos/libraries.ts";
-import {
-  findRun,
-  insertRun,
-  listRuns,
-  type RunRow,
-  runCounts,
-} from "../db/repos/runs.ts";
-import { findFeeder, findWorkflow } from "../db/repos/workflows.ts";
-import type { Logger } from "../logger.ts";
-import type { WorkflowService } from "../workflows/service.ts";
-import type { EngineEvents } from "./events.ts";
-import { type Fingerprint, fingerprintKey } from "./fingerprint.ts";
-import { errorCode, type FsOps, nodeFsOps } from "./fs-ops.ts";
-import { createMediaResolver, type MediaResolver } from "./media-info.ts";
+} from '../db/repos/libraries.ts';
+import { findRun, insertRun, listRuns, type RunRow, runCounts } from '../db/repos/runs.ts';
+import { findFeeder, findWorkflow } from '../db/repos/workflows.ts';
+import type { Logger } from '../logger.ts';
+import type { WorkflowService } from '../workflows/service.ts';
+import type { EngineEvents } from './events.ts';
+import { type Fingerprint, fingerprintKey } from './fingerprint.ts';
+import { errorCode, type FsOps, nodeFsOps } from './fs-ops.ts';
+import { createMediaResolver, type MediaResolver } from './media-info.ts';
 import {
   checkPath,
   isMediaFile,
@@ -57,8 +51,8 @@ import {
   SETTLE_MINUTES,
   type SkipReason,
   skipReasonFor,
-} from "./paths.ts";
-import { fingerprintFromStats } from "./replace.ts";
+} from './paths.ts';
+import { fingerprintFromStats } from './replace.ts';
 
 export interface QueueInput {
   path: string;
@@ -72,7 +66,7 @@ export interface QueueInput {
    * `'if-single-file'`: only when the path is one file. Absent: false. Ignored for a real run,
    * also one that becomes a dry run because no version is active.
    */
-  testEncode?: boolean | "if-single-file";
+  testEncode?: boolean | 'if-single-file';
   /** Queue files even when this workflow version already has a final result for them. */
   force: boolean;
   /** One file only ("Run on a file"): a folder is rejected as `not a file`. */
@@ -82,15 +76,15 @@ export interface QueueInput {
 }
 
 export type QueueResult =
-  | { kind: "queued"; run: RunRow; jobs: JobRow[] }
-  | { kind: "path-rejected"; reason: string }
-  | { kind: "workflow-missing" }
-  | { kind: "version-missing" }
-  | { kind: "workflow-invalid"; issues: Issue[] }
-  | { kind: "no-feeding-workflow" };
+  | { kind: 'queued'; run: RunRow; jobs: JobRow[] }
+  | { kind: 'path-rejected'; reason: string }
+  | { kind: 'workflow-missing' }
+  | { kind: 'version-missing' }
+  | { kind: 'workflow-invalid'; issues: Issue[] }
+  | { kind: 'no-feeding-workflow' };
 
 /** The catch-up scan found no file to queue: nothing was written. */
-export type NothingNew = { kind: "nothing-new" };
+export type NothingNew = { kind: 'nothing-new' };
 
 export interface RunSummary {
   run: RunRow;
@@ -107,7 +101,7 @@ export interface RunFile {
   reason: string | null;
   beforeBytes: number | null;
   afterBytes: number | null;
-  replacedTo: "recycle" | "deleted" | null;
+  replacedTo: 'recycle' | 'deleted' | null;
   workflowVersion: number;
   /** Dry runs only: the estimated output size; null for a real run or a row without one. */
   estimatedBytes: number | null;
@@ -131,8 +125,8 @@ export type BrowseResult = {
 
 /** Why `browse` refused a folder, in the queue's words (`outside library root`, …). */
 export type BrowseRejection = {
-  kind: "path-rejected";
-  reason: Exclude<PathCheck, { ok: true }>["reason"] | "in recycle folder";
+  kind: 'path-rejected';
+  reason: Exclude<PathCheck, { ok: true }>['reason'] | 'in recycle folder';
 };
 
 export interface LibraryInput {
@@ -151,12 +145,7 @@ export interface LibraryInput {
 export type LibraryPatch = Partial<
   Pick<
     LibraryRow,
-    | "name"
-    | "recycleFolder"
-    | "processHardlinked"
-    | "verifyFullDecode"
-    | "runHours"
-    | "watchFolder"
+    'name' | 'recycleFolder' | 'processHardlinked' | 'verifyFullDecode' | 'runHours' | 'watchFolder'
   >
 >;
 
@@ -188,30 +177,21 @@ type Candidate =
  * is now, and neither this feeder's output (it replaced the file) nor a source it finished at any
  * version. The media lookup and the run's transaction both use it.
  */
-function isNewForFeeder(
-  db: Database,
-  c: Candidate,
-  workflowId: string,
-): boolean {
+function isNewForFeeder(db: Database, c: Candidate, workflowId: string): boolean {
   if (c.skip !== null) return false;
   const key = fingerprintKey(c.fp);
   if (fileSeen(db, c.path, key)) return false;
-  const by = {
-    by: "fingerprint" as const,
-    key,
-    workflowId,
-    workflowVersion: null,
-  };
+  const by = { by: 'fingerprint' as const, key, workflowId, workflowVersion: null };
   return findProcessedResult(db, by) === null;
 }
 
 /** How many files have their media info looked up at once. */
 const MEDIA_CONCURRENCY = 8;
 
-const ACTIVE_SQL = ACTIVE_JOB_STATES.map((s) => `'${s}'`).join(",");
+const ACTIVE_SQL = ACTIVE_JOB_STATES.map((s) => `'${s}'`).join(',');
 /** The reason of a real job skipped because another real job still held its file. */
-export const HELD_BY_ANOTHER_RUN = "already queued in another run";
-const DENIED = new Set(["EACCES", "EPERM"]);
+export const HELD_BY_ANOTHER_RUN = 'already queued in another run';
+const DENIED = new Set(['EACCES', 'EPERM']);
 
 async function realpathOrNull(fs: FsOps, p: string): Promise<string | null> {
   try {
@@ -221,8 +201,7 @@ async function realpathOrNull(fs: FsOps, p: string): Promise<string | null> {
   }
 }
 
-const RECYCLE_FOLDER_OUTSIDE =
-  "the recycle folder must be a folder inside the library root";
+const RECYCLE_FOLDER_OUTSIDE = 'the recycle folder must be a folder inside the library root';
 
 /**
  * A configured recycle folder must lie strictly inside the root: the root itself (or a parent)
@@ -254,8 +233,7 @@ export class QueueService {
    */
   async queue(input: QueueInput): Promise<QueueResult> {
     const r = await this.queueRun(input, false);
-    if (r.kind === "nothing-new")
-      throw new Error("nothing-new outside a catch-up scan");
+    if (r.kind === 'nothing-new') throw new Error('nothing-new outside a catch-up scan');
     return r;
   }
 
@@ -265,54 +243,39 @@ export class QueueService {
    * (still growing, hardlinked, …) are left out to be looked at again next time, and nothing is
    * written when no file is left. A library whose feeder has no active version is never dry-run.
    */
-  async queueNew(
-    path: string,
-    createdBy: string,
-  ): Promise<QueueResult | NothingNew> {
-    return this.queueRun(
-      { path, dryRun: false, force: false, priority: 0, createdBy },
-      true,
-    );
+  async queueNew(path: string, createdBy: string): Promise<QueueResult | NothingNew> {
+    return this.queueRun({ path, dryRun: false, force: false, priority: 0, createdBy }, true);
   }
 
-  private async queueRun(
-    input: QueueInput,
-    newOnly: boolean,
-  ): Promise<QueueResult | NothingNew> {
+  private async queueRun(input: QueueInput, newOnly: boolean): Promise<QueueResult | NothingNew> {
     const check = await checkPath(this.db, input.path, this.fs);
-    if (!check.ok) return { kind: "path-rejected", reason: check.reason };
+    if (!check.ok) return { kind: 'path-rejected', reason: check.reason };
     const { library, realPath } = check;
     // A file or folder in the recycle folder (or a replace tmp) is never queued.
     if (isRecycleOrTemp(realPath, library)) {
-      return { kind: "path-rejected", reason: "in recycle folder" };
+      return { kind: 'path-rejected', reason: 'in recycle folder' };
     }
 
-    const workflowId =
-      input.workflowId ?? findFeeder(this.db, library.id)?.workflowId ?? null;
-    if (workflowId === null) return { kind: "no-feeding-workflow" };
+    const workflowId = input.workflowId ?? findFeeder(this.db, library.id)?.workflowId ?? null;
+    if (workflowId === null) return { kind: 'no-feeding-workflow' };
     // A fast refusal; the version is resolved again inside the transaction below, since a person
     // may activate or deactivate while the folder is being listed.
-    const early = this.resolveWorkflow(
-      workflowId,
-      input.dryRun,
-      input.workflowVersion,
-    );
-    if (early.kind !== "ok") return early;
+    const early = this.resolveWorkflow(workflowId, input.dryRun, input.workflowVersion);
+    if (early.kind !== 'ok') return early;
 
     let st: Stats;
     try {
       st = await this.fs.stat(realPath);
     } catch (err) {
-      return { kind: "path-rejected", reason: this.statFailure(err) };
+      return { kind: 'path-rejected', reason: this.statFailure(err) };
     }
-    if (input.fileOnly && st.isDirectory())
-      return { kind: "path-rejected", reason: "not a file" };
+    if (input.fileOnly && st.isDirectory()) return { kind: 'path-rejected', reason: 'not a file' };
     let paths: string[];
     if (st.isDirectory()) {
       try {
         paths = await listMediaFiles(realPath, library, this.fs);
       } catch (err) {
-        return { kind: "path-rejected", reason: this.statFailure(err) };
+        return { kind: 'path-rejected', reason: this.statFailure(err) };
       }
     } else {
       paths = [realPath];
@@ -320,8 +283,7 @@ export class QueueService {
 
     const testEncode =
       input.dryRun &&
-      (input.testEncode === true ||
-        (input.testEncode === "if-single-file" && !st.isDirectory()));
+      (input.testEncode === true || (input.testEncode === 'if-single-file' && !st.isDirectory()));
     return this.writeRun({
       library,
       requestedPath: realPath,
@@ -329,7 +291,7 @@ export class QueueService {
       known: check,
       workflowId,
       testEncode,
-      source: input.workflowId === undefined ? "library" : "manual",
+      source: input.workflowId === undefined ? 'library' : 'manual',
       input,
       newOnly,
     });
@@ -345,11 +307,9 @@ export class QueueService {
   async processAgain(
     runId: string,
     opts: { dryRun: boolean; createdBy: string },
-  ): Promise<
-    QueueResult | { kind: "run-missing" } | { kind: "nothing-to-process" }
-  > {
+  ): Promise<QueueResult | { kind: 'run-missing' } | { kind: 'nothing-to-process' }> {
     const old = findRun(this.db, runId);
-    if (!old) return { kind: "run-missing" };
+    if (!old) return { kind: 'run-missing' };
     const paths = (
       this.db
         .prepare(
@@ -357,15 +317,15 @@ export class QueueService {
         )
         .all(runId) as { path: string }[]
     ).map((r) => r.path);
-    if (paths.length === 0) return { kind: "nothing-to-process" };
+    if (paths.length === 0) return { kind: 'nothing-to-process' };
     const library = findLibrary(this.db, old.libraryId);
     if (!library || library.deletedAt !== null) {
-      return { kind: "path-rejected", reason: "not found" };
+      return { kind: 'path-rejected', reason: 'not found' };
     }
     // A dry run plans the run's own version again; a real run takes the active one.
     const version = opts.dryRun ? old.workflowVersion : undefined;
     const early = this.resolveWorkflow(old.workflowId, opts.dryRun, version);
-    if (early.kind !== "ok") return early;
+    if (early.kind !== 'ok') return early;
     const input: QueueInput = {
       path: old.requestedPath,
       workflowId: old.workflowId,
@@ -382,12 +342,11 @@ export class QueueService {
       known: null,
       workflowId: old.workflowId,
       testEncode: false,
-      source: "manual",
+      source: 'manual',
       input,
       newOnly: false,
     });
-    if (r.kind === "nothing-new")
-      throw new Error("nothing-new outside a catch-up scan");
+    if (r.kind === 'nothing-new') throw new Error('nothing-new outside a catch-up scan');
     return r;
   }
 
@@ -405,7 +364,7 @@ export class QueueService {
     workflowId: string;
     testEncode: boolean;
     /** `library` becomes `manual` for a dry run. */
-    source: "library" | "manual";
+    source: 'library' | 'manual';
     input: QueueInput;
     newOnly: boolean;
   }): Promise<QueueResult | NothingNew> {
@@ -424,42 +383,27 @@ export class QueueService {
     const candidates: Candidate[] = [];
     const seen = new Set<string>();
     for (const p of paths) {
-      const c = await this.candidate(
-        p,
-        p === realPath ? known : null,
-        library,
-        now,
-      );
+      const c = await this.candidate(p, p === realPath ? known : null, library, now);
       // Two names for one file (a symlink to a sibling): one job.
       if (seen.has(c.path)) continue;
       seen.add(c.path);
       candidates.push(c);
     }
 
-    const media = await this.resolveMedia(
-      candidates,
-      library,
-      newOnly ? workflowId : null,
-    );
+    const media = await this.resolveMedia(candidates, library, newOnly ? workflowId : null);
 
     const { db } = this;
     const written = db.transaction(() => {
-      const workflow = this.resolveWorkflow(
-        workflowId,
-        input.dryRun,
-        input.workflowVersion,
-      );
-      if (workflow.kind !== "ok") return workflow;
+      const workflow = this.resolveWorkflow(workflowId, input.dryRun, input.workflowVersion);
+      if (workflow.kind !== 'ok') return workflow;
       if (newOnly) {
-        if (workflow.dryRun) return { kind: "no-feeding-workflow" as const };
+        if (workflow.dryRun) return { kind: 'no-feeding-workflow' as const };
         // Another feeder took the library while it was listed: leave its files to the next scan.
         if (findFeeder(db, library.id)?.workflowId !== workflowId) {
-          return { kind: "nothing-new" as const };
+          return { kind: 'nothing-new' as const };
         }
-        const fresh = candidates.filter((c) =>
-          isNewForFeeder(db, c, workflowId),
-        );
-        if (fresh.length === 0) return { kind: "nothing-new" as const };
+        const fresh = candidates.filter((c) => isNewForFeeder(db, c, workflowId));
+        if (fresh.length === 0) return { kind: 'nothing-new' as const };
         candidates.splice(0, candidates.length, ...fresh);
       }
       const run = insertRun(
@@ -475,10 +419,7 @@ export class QueueService {
           note: workflow.note,
           force: input.force,
           createdBy: input.createdBy,
-          source:
-            args.source === "library" && !workflow.dryRun
-              ? "library"
-              : "manual",
+          source: args.source === 'library' && !workflow.dryRun ? 'library' : 'manual',
         },
         now,
       );
@@ -486,19 +427,16 @@ export class QueueService {
         `SELECT 1 FROM jobs WHERE path = ? AND dry_run = 0 AND state IN (${ACTIVE_SQL}) LIMIT 1`,
       );
       const jobs = candidates.map((c) => {
-        let state: JobState = "queued";
+        let state: JobState = 'queued';
         let reason: string | null = null;
         let fileId: string | null = null;
         if (c.skip !== null) {
-          state = "skipped";
+          state = 'skipped';
           reason = c.skip;
-        } else if (
-          !workflow.dryRun &&
-          realJobActiveAt.get(c.path) !== undefined
-        ) {
+        } else if (!workflow.dryRun && realJobActiveAt.get(c.path) !== undefined) {
           // Two real jobs never work on one file at once (the history check below only sees
           // finished jobs); a forced run waits for the other job too.
-          state = "skipped";
+          state = 'skipped';
           reason = HELD_BY_ANOTHER_RUN;
         } else {
           const key = fingerprintKey(c.fp);
@@ -510,18 +448,13 @@ export class QueueService {
                 sameVersion: workflow.dryRun,
               });
           if (prior) {
-            state = "already_processed";
+            state = 'already_processed';
             reason = alreadyProcessedReason(prior);
           }
           // Recorded for an already-processed file too: the run summary shows its size.
           const file = upsertFile(
             db,
-            {
-              libraryId: library.id,
-              path: c.path,
-              fingerprint: c.fp,
-              lastProbe: null,
-            },
+            { libraryId: library.id, path: c.path, fingerprint: c.fp, lastProbe: null },
             now,
           );
           fileId = file.id;
@@ -546,14 +479,14 @@ export class QueueService {
           now,
         );
       });
-      return { kind: "queued" as const, run, jobs };
+      return { kind: 'queued' as const, run, jobs };
     })();
-    if (written.kind !== "queued") return written;
+    if (written.kind !== 'queued') return written;
     const { run, jobs } = written;
 
-    this.deps.events.publish({ type: "run.changed", runId: run.id });
+    this.deps.events.publish({ type: 'run.changed', runId: run.id });
     this.deps.onQueued();
-    return { kind: "queued", run, jobs };
+    return { kind: 'queued', run, jobs };
   }
 
   /**
@@ -578,7 +511,7 @@ export class QueueService {
       resolver = (this.deps.mediaResolver ?? (() => this.defaultResolver()))();
     } catch (err) {
       this.deps.log?.debug?.({
-        msg: "media resolver could not start; using file names",
+        msg: 'media resolver could not start; using file names',
         why: err instanceof Error ? err.message : String(err),
       });
       return out;
@@ -592,16 +525,14 @@ export class QueueService {
           out.set(c.path, await resolver.resolve(c.path, library.path));
         } catch (err) {
           this.deps.log?.debug?.({
-            msg: "media info failed; using the file name",
+            msg: 'media info failed; using the file name',
             file: basename(c.path),
             why: err instanceof Error ? err.message : String(err),
           });
         }
       }
     };
-    await Promise.all(
-      Array.from({ length: Math.min(MEDIA_CONCURRENCY, todo.length) }, worker),
-    );
+    await Promise.all(Array.from({ length: Math.min(MEDIA_CONCURRENCY, todo.length) }, worker));
     return out;
   }
 
@@ -614,33 +545,27 @@ export class QueueService {
   async createLibrary(
     input: LibraryInput,
   ): Promise<
-    | LibraryRow
-    | { kind: "path-invalid"; reason: string }
-    | { kind: "overlaps"; other: LibraryRow }
+    LibraryRow | { kind: 'path-invalid'; reason: string } | { kind: 'overlaps'; other: LibraryRow }
   > {
     let real: string;
     try {
       real = await this.fs.realpath(resolve(input.path));
       if (!(await this.fs.stat(real)).isDirectory()) {
-        return { kind: "path-invalid", reason: "not a directory" };
+        return { kind: 'path-invalid', reason: 'not a directory' };
       }
     } catch (err) {
-      return { kind: "path-invalid", reason: this.statFailure(err) };
+      return { kind: 'path-invalid', reason: this.statFailure(err) };
     }
-    const recycleFolder = this.recycleFolderFor(
-      real,
-      input.recycleFolder ?? null,
-    );
+    const recycleFolder = this.recycleFolderFor(real, input.recycleFolder ?? null);
     if (!recycleFolderFits(real, recycleFolder)) {
-      return { kind: "path-invalid", reason: RECYCLE_FOLDER_OUTSIDE };
+      return { kind: 'path-invalid', reason: RECYCLE_FOLDER_OUTSIDE };
     }
     for (const other of listLibraries(this.db)) {
       const roots = new Set([trimSlash(resolve(other.path))]);
       const otherReal = await realpathOrNull(this.fs, other.path);
       if (otherReal !== null) roots.add(otherReal);
       for (const root of roots) {
-        if (isWithin(real, root) || isWithin(root, real))
-          return { kind: "overlaps", other };
+        if (isWithin(real, root) || isWithin(root, real)) return { kind: 'overlaps', other };
       }
     }
     const created = insertLibrary(
@@ -665,17 +590,14 @@ export class QueueService {
   updateLibrary(
     id: string,
     patch: LibraryPatch,
-  ): LibraryRow | null | { kind: "path-invalid"; reason: string } {
+  ): LibraryRow | null | { kind: 'path-invalid'; reason: string } {
     const library = findLibrary(this.db, id);
     if (!library || library.deletedAt !== null) return null;
     const next: LibraryPatch = { ...patch };
     if (patch.recycleFolder !== undefined) {
-      next.recycleFolder = this.recycleFolderFor(
-        library.path,
-        patch.recycleFolder,
-      );
+      next.recycleFolder = this.recycleFolderFor(library.path, patch.recycleFolder);
       if (!recycleFolderFits(library.path, next.recycleFolder)) {
-        return { kind: "path-invalid", reason: RECYCLE_FOLDER_OUTSIDE };
+        return { kind: 'path-invalid', reason: RECYCLE_FOLDER_OUTSIDE };
       }
     }
     const updated = updateLibrary(this.db, id, next, this.deps.now());
@@ -709,7 +631,7 @@ export class QueueService {
         this.db,
         id,
         {
-          state: "queued",
+          state: 'queued',
           attempt: attempt + 1,
           failedGpus: [],
           reason: null,
@@ -729,18 +651,16 @@ export class QueueService {
   }
 
   /** Soft-deletes a library; `busy` while any of its jobs is active. */
-  deleteLibrary(id: string): "ok" | "not-found" | "busy" {
+  deleteLibrary(id: string): 'ok' | 'not-found' | 'busy' {
     const library = findLibrary(this.db, id);
-    if (!library || library.deletedAt !== null) return "not-found";
+    if (!library || library.deletedAt !== null) return 'not-found';
     const active = this.db
-      .prepare(
-        `SELECT 1 FROM jobs WHERE library_id = ? AND state IN (${ACTIVE_SQL}) LIMIT 1`,
-      )
+      .prepare(`SELECT 1 FROM jobs WHERE library_id = ? AND state IN (${ACTIVE_SQL}) LIMIT 1`)
       .get(id);
-    if (active !== undefined) return "busy";
-    if (!softDeleteLibrary(this.db, id, this.deps.now())) return "not-found";
+    if (active !== undefined) return 'busy';
+    if (!softDeleteLibrary(this.db, id, this.deps.now())) return 'not-found';
     this.deps.onLibrariesChanged?.();
-    return "ok";
+    return 'ok';
   }
 
   /** A run with its counts and every file; null when unknown. */
@@ -759,10 +679,7 @@ export class QueueService {
            LEFT JOIN files f ON f.id = j.file_id
          WHERE j.run_id = ? ORDER BY j.rowid`,
       )
-      .all(runId) as (Omit<
-      RunFile,
-      "fileName" | "planSummary" | "dependsOnSize" | "paused"
-    > & {
+      .all(runId) as (Omit<RunFile, 'fileName' | 'planSummary' | 'dependsOnSize' | 'paused'> & {
       dryRun: number;
       paused: number;
       plan: string | null;
@@ -771,10 +688,7 @@ export class QueueService {
       ...this.summarize(run),
       files: rows.map((r) => {
         // Dry runs only: the stored plan, parsed once for the summary and the size-gate outcome.
-        const plan =
-          r.dryRun !== 0 && r.plan !== null
-            ? (JSON.parse(r.plan) as JobPlan)
-            : null;
+        const plan = r.dryRun !== 0 && r.plan !== null ? (JSON.parse(r.plan) as JobPlan) : null;
         return {
           jobId: r.jobId,
           fileName: basename(r.filePath),
@@ -787,8 +701,7 @@ export class QueueService {
           workflowVersion: r.workflowVersion,
           estimatedBytes: r.dryRun !== 0 ? r.estimatedBytes : null,
           planSummary: plan ? planSummary(plan) : null,
-          dependsOnSize:
-            r.state === "dry_run" ? (plan?.dependsOnSize ?? null) : null,
+          dependsOnSize: r.state === 'dry_run' ? (plan?.dependsOnSize ?? null) : null,
           paused: r.paused !== 0,
         };
       }),
@@ -808,34 +721,30 @@ export class QueueService {
   async browse(
     libraryId: string,
     relPath: string,
-  ): Promise<BrowseResult | BrowseRejection | "not-found"> {
-    const rejected = (reason: BrowseRejection["reason"]): BrowseRejection => ({
-      kind: "path-rejected",
+  ): Promise<BrowseResult | BrowseRejection | 'not-found'> {
+    const rejected = (reason: BrowseRejection['reason']): BrowseRejection => ({
+      kind: 'path-rejected',
       reason,
     });
     const library = findLibrary(this.db, libraryId);
-    if (!library || library.deletedAt !== null) return "not-found";
-    if (isAbsolute(relPath)) return rejected("outside library root");
+    if (!library || library.deletedAt !== null) return 'not-found';
+    if (isAbsolute(relPath)) return rejected('outside library root');
     const root = await realpathOrNull(this.fs, library.path);
-    if (root === null) return "not-found";
+    if (root === null) return 'not-found';
     const target = resolve(root, relPath);
-    if (!isWithin(target, root)) return rejected("outside library root");
+    if (!isWithin(target, root)) return rejected('outside library root');
     const check = await checkPath(this.db, target, this.fs);
-    if (!check.ok)
-      return check.reason === "not found"
-        ? "not-found"
-        : rejected(check.reason);
-    if (check.library.id !== libraryId) return rejected("symlink escapes root");
-    if (isRecycleOrTemp(check.realPath, check.library))
-      return rejected("in recycle folder");
+    if (!check.ok) return check.reason === 'not found' ? 'not-found' : rejected(check.reason);
+    if (check.library.id !== libraryId) return rejected('symlink escapes root');
+    if (isRecycleOrTemp(check.realPath, check.library)) return rejected('in recycle folder');
     const dir = check.realPath;
-    let entries: Awaited<ReturnType<FsOps["readdir"]>>;
+    let entries: Awaited<ReturnType<FsOps['readdir']>>;
     try {
-      if (!(await this.fs.stat(dir)).isDirectory()) return "not-found";
+      if (!(await this.fs.stat(dir)).isDirectory()) return 'not-found';
       entries = await this.fs.readdir(dir);
     } catch (err) {
       const why = this.statFailure(err);
-      return why === "not found" ? "not-found" : rejected(why);
+      return why === 'not found' ? 'not-found' : rejected(why);
     }
 
     const result: BrowseResult = { dirs: [], files: [] };
@@ -862,17 +771,11 @@ export class QueueService {
       }
       if (st.isDirectory()) result.dirs.push(e.name);
       else if (st.isFile() && isMediaFile(e.name)) {
-        result.files.push({
-          name: e.name,
-          sizeBytes: st.size,
-          mtime: st.mtime.toISOString(),
-        });
+        result.files.push({ name: e.name, sizeBytes: st.size, mtime: st.mtime.toISOString() });
       }
     }
     result.dirs.sort();
-    result.files.sort((a, b) =>
-      a.name < b.name ? -1 : a.name > b.name ? 1 : 0,
-    );
+    result.files.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
     return result;
   }
 
@@ -888,28 +791,27 @@ export class QueueService {
     askedDryRun: boolean,
     askedVersion: number | undefined,
   ):
-    | { kind: "ok"; version: number; dryRun: boolean; note: string | null }
-    | { kind: "workflow-missing" }
-    | { kind: "version-missing" }
-    | { kind: "workflow-invalid"; issues: Issue[] } {
+    | { kind: 'ok'; version: number; dryRun: boolean; note: string | null }
+    | { kind: 'workflow-missing' }
+    | { kind: 'version-missing' }
+    | { kind: 'workflow-invalid'; issues: Issue[] } {
     const row = findWorkflow(this.db, id);
-    if (row?.kind !== "workflow") return { kind: "workflow-missing" };
+    if (row?.kind !== 'workflow') return { kind: 'workflow-missing' };
     let version = row.currentVersion;
     let dryRun = true;
     let note: string | null = null;
     if (askedDryRun) {
       version = askedVersion ?? row.currentVersion;
     } else if (row.activeVersion === null) {
-      note = "no active version";
+      note = 'no active version';
     } else {
       version = row.activeVersion;
       dryRun = false;
     }
     const loaded = this.deps.workflows.loadForRun(id, version);
-    if (loaded.kind === "missing") return { kind: "version-missing" };
-    if (loaded.kind === "invalid")
-      return { kind: "workflow-invalid", issues: loaded.issues };
-    return { kind: "ok", version, dryRun, note };
+    if (loaded.kind === 'missing') return { kind: 'version-missing' };
+    if (loaded.kind === 'invalid') return { kind: 'workflow-invalid', issues: loaded.issues };
+    return { kind: 'ok', version, dryRun, note };
   }
 
   /** A configured recycle folder, absolute (a relative one is under the root). */
@@ -917,13 +819,11 @@ export class QueueService {
     return folder === null ? null : trimSlash(resolve(root, folder));
   }
 
-  private statFailure(
-    err: unknown,
-  ): "not found" | "unreadable" | "path too long" {
+  private statFailure(err: unknown): 'not found' | 'unreadable' | 'path too long' {
     const code = errorCode(err);
-    if (code === "ENOENT" || code === "ENOTDIR") return "not found";
-    if (code === "ENAMETOOLONG") return "path too long";
-    if (code !== undefined && DENIED.has(code)) return "unreadable";
+    if (code === 'ENOENT' || code === 'ENOTDIR') return 'not found';
+    if (code === 'ENAMETOOLONG') return 'path too long';
+    if (code !== undefined && DENIED.has(code)) return 'unreadable';
     throw err;
   }
 
@@ -936,17 +836,12 @@ export class QueueService {
     const check = known ?? (await checkPath(this.db, listed, this.fs));
     if (!check.ok) {
       // A file that vanished between the listing and now cannot be read.
-      return {
-        path: listed,
-        skip: check.reason === "not found" ? "unreadable" : check.reason,
-      };
+      return { path: listed, skip: check.reason === 'not found' ? 'unreadable' : check.reason };
     }
     const path = check.realPath;
-    if (check.library.id !== library.id)
-      return { path: listed, skip: "symlink escapes root" };
-    if (isRecycleOrTemp(path, library))
-      return { path, skip: "in recycle folder" };
-    if (!isMediaFile(path)) return { path, skip: "not media" };
+    if (check.library.id !== library.id) return { path: listed, skip: 'symlink escapes root' };
+    if (isRecycleOrTemp(path, library)) return { path, skip: 'in recycle folder' };
+    if (!isMediaFile(path)) return { path, skip: 'not media' };
     let fp: Fingerprint;
     let st: Stats;
     try {
@@ -954,7 +849,7 @@ export class QueueService {
       fp = fingerprintFromStats(st);
       if (st.isFile()) await this.fs.canRead(path);
     } catch {
-      return { path, skip: "unreadable" };
+      return { path, skip: 'unreadable' };
     }
     const skip = skipReasonFor(fp, st, library, now, this.settleMinutes);
     return skip === null ? { path, skip: null, fp } : { path, skip };
@@ -964,10 +859,8 @@ export class QueueService {
     return {
       run,
       counts: runCounts(this.db, run.id),
-      workflowName:
-        findWorkflow(this.db, run.workflowId, { includeDeleted: true })?.name ??
-        "",
-      libraryName: findLibrary(this.db, run.libraryId)?.name ?? "",
+      workflowName: findWorkflow(this.db, run.workflowId, { includeDeleted: true })?.name ?? '',
+      libraryName: findLibrary(this.db, run.libraryId)?.name ?? '',
     };
   }
 }
