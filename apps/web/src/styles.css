@@ -6494,6 +6494,19 @@ a.nav-item.is-active .nav-count {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* A job's name as a link (phone cards, the Run page): one line, ellipsis. */
+.job-name {
+  color: var(--text);
+  font-weight: 600;
+  text-decoration: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border-radius: var(--r-sm);
+}
+.job-name:hover {
+  color: var(--text);
+}
 .job-title {
   display: flex;
   align-items: center;
@@ -6605,12 +6618,6 @@ a.nav-item.is-active .nav-count {
   color: var(--st-dry);
 }
 
-.job-detail {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
 .job-detail-text {
   font-size: var(--fs-small);
   color: var(--muted);

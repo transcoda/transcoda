@@ -29,6 +29,13 @@ describe('Jobs table (long titles)', () => {
     expect(t).toMatch(/white-space:\s*nowrap/);
   });
 
+  it('a job name (phone cards, Run page) keeps one line with an ellipsis', () => {
+    const n = rule('.job-name');
+    expect(n).toMatch(/overflow:\s*hidden/);
+    expect(n).toMatch(/text-overflow:\s*ellipsis/);
+    expect(n).toMatch(/white-space:\s*nowrap/);
+  });
+
   it('column widths are fixed, so a long title never widens the table', () => {
     expect(rule('.job-table')).toMatch(/table-layout:\s*fixed/);
   });

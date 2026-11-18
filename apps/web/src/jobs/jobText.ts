@@ -581,19 +581,9 @@ export function phoneLine(job: Job): string {
 /** The one accessible name of a job's link on the Jobs and Run pages: "Details for <file>". */
 export const detailsLinkName = (fileName: string) => `Details for ${fileName}`;
 
-/** "Shows · TV cleanup " (the where-line before its version). */
-export function wherePrefix(job: Job): string {
-  return `${job.libraryName} · ${job.workflowName} `;
-}
-
 /** "v7" */
 export function versionText(job: Job): string {
   return `v${job.workflowVersion}`;
-}
-
-/** "Shows · TV cleanup v7" */
-export function whereLine(job: Job): string {
-  return `${wherePrefix(job)}${versionText(job)}`;
 }
 
 /** What a queued real job's version means; it can change before the job starts. */
