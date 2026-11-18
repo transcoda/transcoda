@@ -2,6 +2,34 @@
 
 All notable changes to Transcoda, newest first. Generated from the notes in `.changes/` when a release is cut.
 
+## 0.6.0 — 2026-11-18
+
+#### Jobs show titles and posters
+
+The Jobs list is now a table that shows each job by its show or movie title, with the episode code or the year under it and a poster beside it. Titles, episode names and posters come from the `.nfo` and `poster.jpg` files that Jellyfin, Kodi, Sonarr or Radarr already write next to your media. Without them, Transcoda works the title out from the file name. The file name is still one hover or click away, and the job page opens with the same poster and title.
+
+![The Jobs table: public-domain films and shows with their posters and titles, then library, workflow, status, result and when](docs/releases/0.6.0/jobs-table.png)
+
+#### See why jobs fail
+
+Prometheus metrics now count failed jobs per library by why they failed: interrupted, encode, verify, replace and the other reasons. The Grafana dashboard has a new "Failures by reason" panel.
+
+### New
+
+- Prometheus metrics now count failed jobs by why they failed (for example interrupted, encode, verify or replace), and the Grafana dashboard has a "Failures by reason" panel. Jobs that failed before this update show as "unknown".
+
+### Improved
+
+- Each installed plugin on the Plugins page now lists the hosts it connects to, the same list the install dialog shows. Plugins built before host lists existed say that their hosts aren't listed.
+- The Jobs list is now a table that shows each show or movie by its title, with a poster when one sits next to the file. Titles, episode names and posters are read from the `.nfo` and `poster.jpg` files that Jellyfin, Kodi, Sonarr or Radarr write; without them, Transcoda works the title out from the file name.
+- The Docker image now runs Node.js 26, the current long-term support release.
+
+### Fixed
+
+- The Jobs page fits narrow windows without anything overlapping. The queue buttons move under the title instead of squeezing it. The Today tiles and the weekly charts wrap into two columns instead of squeezing into one row. A long status such as "Would replace if it saves ≥ 25%" wraps inside its column instead of running into Result. When the table is short of room it hides Library and Workflow, and with running jobs also When, so it fits a 1024 px window beside the sidebar. Both values are still on each job's page. On narrower windows the table scrolls sideways inside its box.
+- On a job's workflow view, the output label of the running node no longer disappears where the progress fill covers it.
+- Verify no longer fails with "the end of source stream cannot be read" on large Matroska files. Reading the end of an audio track used to read the whole file from its start, which took longer than the verify time limit on a large remux.
+
 ## 0.5.0 — 2026-11-15
 
 #### Chart Transcoda in Grafana

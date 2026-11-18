@@ -1,5 +1,39 @@
 [
   {
+    "version": "0.6.0",
+    "date": "2026-11-18",
+    "entries": [
+      {
+        "type": "new",
+        "text": "Prometheus metrics now count failed jobs by why they failed (for example interrupted, encode, verify or replace), and the Grafana dashboard has a \"Failures by reason\" panel. Jobs that failed before this update show as \"unknown\"."
+      },
+      {
+        "type": "improved",
+        "text": "Each installed plugin on the Plugins page now lists the hosts it connects to, the same list the install dialog shows. Plugins built before host lists existed say that their hosts aren't listed."
+      },
+      {
+        "type": "improved",
+        "text": "The Jobs list is now a table that shows each show or movie by its title, with a poster when one sits next to the file. Titles, episode names and posters are read from the `.nfo` and `poster.jpg` files that Jellyfin, Kodi, Sonarr or Radarr write; without them, Transcoda works the title out from the file name."
+      },
+      {
+        "type": "improved",
+        "text": "The Docker image now runs Node.js 26, the current long-term support release."
+      },
+      {
+        "type": "fixed",
+        "text": "The Jobs page fits narrow windows without anything overlapping. The queue buttons move under the title instead of squeezing it. The Today tiles and the weekly charts wrap into two columns instead of squeezing into one row. A long status such as \"Would replace if it saves ≥ 25%\" wraps inside its column instead of running into Result. When the table is short of room it hides Library and Workflow, and with running jobs also When, so it fits a 1024 px window beside the sidebar. Both values are still on each job's page. On narrower windows the table scrolls sideways inside its box."
+      },
+      {
+        "type": "fixed",
+        "text": "On a job's workflow view, the output label of the running node no longer disappears where the progress fill covers it."
+      },
+      {
+        "type": "fixed",
+        "text": "Verify no longer fails with \"the end of source stream cannot be read\" on large Matroska files. Reading the end of an audio track used to read the whole file from its start, which took longer than the verify time limit on a large remux."
+      }
+    ]
+  },
+  {
     "version": "0.5.0",
     "date": "2026-11-15",
     "entries": [
