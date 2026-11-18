@@ -21,6 +21,7 @@ import {
   hasReplaceJournal,
   insertJob,
   type JobRow,
+  markFolderListing,
   updateJob,
   upsertFile,
 } from '../db/repos/jobs.ts';
@@ -192,6 +193,7 @@ const ACTIVE_SQL = ACTIVE_JOB_STATES.map((s) => `'${s}'`).join(',');
 /** The reason of a real job skipped because another real job still held its file. */
 export const HELD_BY_ANOTHER_RUN = 'already queued in another run';
 const DENIED = new Set(['EACCES', 'EPERM']);
+const MISSING = new Set(['ENOENT', 'ENOTDIR']);
 
 async function realpathOrNull(fs: FsOps, p: string): Promise<string | null> {
   try {
@@ -271,12 +273,14 @@ export class QueueService {
     }
     if (input.fileOnly && st.isDirectory()) return { kind: 'path-rejected', reason: 'not a file' };
     let paths: string[];
+    const unlisted: string[] = [];
     if (st.isDirectory()) {
       try {
-        paths = await listMediaFiles(realPath, library, this.fs);
+        paths = await listMediaFiles(realPath, library, this.fs, unlisted);
       } catch (err) {
         return { kind: 'path-rejected', reason: this.statFailure(err) };
       }
+      await this.recordListing(library.id, realPath, paths, unlisted);
     } else {
       paths = [realPath];
     }
@@ -817,6 +821,38 @@ export class QueueService {
   /** A configured recycle folder, absolute (a relative one is under the root). */
   private recycleFolderFor(root: string, folder: string | null): string | null {
     return folder === null ? null : trimSlash(resolve(root, folder));
+  }
+
+  /**
+   * Tells the file rows what a folder listing found (`files.gone_at`). The listing's names are
+   * resolved to real paths first, the form the rows are stored in, so a symlinked file is not
+   * taken for a missing one. When a name cannot be resolved for a reason other than the file being
+   * gone, nothing is marked: a late hide is better than a false one.
+   */
+  private async recordListing(
+    libraryId: string,
+    folder: string,
+    listed: readonly string[],
+    unlisted: readonly string[],
+  ): Promise<void> {
+    const real: string[] = [];
+    for (let i = 0; i < listed.length; i += 64) {
+      const batch = await Promise.all(
+        listed.slice(i, i + 64).map(async (p) => {
+          try {
+            return await this.fs.realpath(p);
+          } catch (err) {
+            const code = errorCode(err);
+            // Gone since the listing, or a dangling link: its row, if any, is rightly absent.
+            if (code !== undefined && MISSING.has(code)) return null;
+            throw err;
+          }
+        }),
+      ).catch(() => undefined);
+      if (batch === undefined) return;
+      for (const p of batch) if (p !== null) real.push(p);
+    }
+    markFolderListing(this.db, { libraryId, folder, paths: real, unlisted }, this.deps.now());
   }
 
   private statFailure(err: unknown): 'not found' | 'unreadable' | 'path too long' {

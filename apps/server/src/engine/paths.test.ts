@@ -9,6 +9,7 @@ import { insertWorkflow } from '../db/repos/workflows.ts';
 import { createTestDb } from '../db/test-db.ts';
 import type { Fingerprint } from './fingerprint.ts';
 import { tempDir } from './fixtures.ts';
+import { type FsOps, nodeFsOps } from './fs-ops.ts';
 import { checkPath, isRecycleOrTemp, listMediaFiles, skipReasonFor } from './paths.ts';
 
 const NOW = new Date('2026-10-16T20:00:00.000Z');
@@ -190,6 +191,24 @@ describe('listMediaFiles', () => {
     await symlink(root, join(root, 'loop'));
     await symlink(outside, join(root, 'escape'));
     expect(await listMediaFiles(root, lib)).toEqual([join(root, 'sub', 'x.mkv')]);
+  });
+});
+
+describe('listMediaFiles unlisted folders', () => {
+  it('reports a sub-folder it could not read', async () => {
+    const lib = addLibrary(root);
+    await writeFile(join(root, 'b.webm'), '');
+    const bad = join(root, 'sub');
+    const fs: FsOps = {
+      ...nodeFsOps,
+      readdir: async (p) => {
+        if (p === bad) throw Object.assign(new Error('injected'), { code: 'EACCES' });
+        return nodeFsOps.readdir(p);
+      },
+    };
+    const unlisted: string[] = [];
+    expect(await listMediaFiles(root, lib, fs, unlisted)).toEqual([join(root, 'b.webm')]);
+    expect(unlisted).toEqual([bad]);
   });
 });
 

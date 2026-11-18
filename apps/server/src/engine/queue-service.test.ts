@@ -728,6 +728,79 @@ describe('QueueService.queue', () => {
   });
 });
 
+describe('QueueService folder listings and files.gone_at', () => {
+  const goneAt = (path: string): string | null | undefined =>
+    (
+      db.prepare('SELECT gone_at FROM files WHERE path = ?').get(path) as
+        | { gone_at: string | null }
+        | undefined
+    )?.gone_at;
+
+  it('a second listing marks the file deleted from disk; the other stays present', async () => {
+    const season = join(root, 'Show', 'Season 1');
+    const e1 = await settled(join(season, 'e1.mkv'));
+    const e2 = await settled(join(season, 'e2.mkv'));
+    await queued(root);
+    cancelQueued();
+    expect([goneAt(e1), goneAt(e2)]).toEqual([null, null]);
+    await rm(e1);
+    await queued(root, { force: true });
+    expect(goneAt(e1)).not.toBeNull();
+    expect(goneAt(e2)).toBeNull();
+  });
+
+  it('queuing a single file never marks files outside it', async () => {
+    const season = join(root, 'Show', 'Season 1');
+    const e1 = await settled(join(season, 'e1.mkv'));
+    const e2 = await settled(join(season, 'e2.mkv'));
+    await queued(root);
+    cancelQueued();
+    await rm(e1);
+    await queued(e2, { force: true });
+    expect(goneAt(e1)).toBeNull();
+  });
+
+  it('a symlinked file is matched by its real path, so a listing clears its gone mark', async () => {
+    const target = await settled(join(root, 'Show', 'Season 1', 'e1.mkv'));
+    await mkdir(join(root, 'Links'));
+    await symlink(target, join(root, 'Links', 'alias.mkv'));
+    await queued(target);
+    cancelQueued();
+    db.prepare("UPDATE files SET gone_at = '2026-01-01T00:00:00.000Z' WHERE path = ?").run(target);
+    await queued(join(root, 'Links'), { force: true });
+    expect(goneAt(target)).toBeNull();
+    expect(goneAt(join(root, 'Links', 'alias.mkv'))).toBeUndefined();
+  });
+
+  it('files under a sub-folder whose listing failed are not marked gone', async () => {
+    const season = join(root, 'Show', 'Season 1');
+    const e1 = await settled(join(season, 'e1.mkv'));
+    const top = await settled(join(root, 'Show', 'top.mkv'));
+    await queued(root);
+    cancelQueued();
+    await rm(top);
+    const fs: FsOps = {
+      ...nodeFsOps,
+      readdir: async (p) => {
+        if (p === season) throw Object.assign(new Error('injected'), { code: 'EACCES' });
+        return nodeFsOps.readdir(p);
+      },
+    };
+    const faulty = new QueueService({
+      db,
+      workflows,
+      events,
+      now: () => new Date(),
+      fs,
+      onQueued: () => {},
+    });
+    const r = await faulty.queue(input(root, { force: true }));
+    expect(r.kind).toBe('queued');
+    expect(goneAt(e1)).toBeNull();
+    expect(goneAt(top)).not.toBeNull();
+  });
+});
+
 describe('QueueService libraries', () => {
   it('stores the realpath without a trailing slash', async () => {
     const other = join(base, 'movies');

@@ -173,6 +173,8 @@ export interface FileRow {
   /** `fingerprintKey` of the identity columns. */
   fingerprint: string;
   lastProbe: JsonValue | null;
+  /** When a folder listing last failed to find the file (null: present). */
+  goneAt: string | null;
   updatedAt: string;
 }
 
@@ -338,6 +340,7 @@ interface DbFile {
   dev: number;
   fingerprint: string;
   last_probe: string | null;
+  gone_at: string | null;
   updated_at: string;
 }
 
@@ -466,6 +469,7 @@ const toFile = (r: DbFile): FileRow => ({
   dev: r.dev,
   fingerprint: r.fingerprint,
   lastProbe: parseJson<JsonValue>(r.last_probe),
+  goneAt: r.gone_at,
   updatedAt: r.updated_at,
 });
 
@@ -1197,7 +1201,8 @@ export function findJobProbe(db: Database, jobId: string): JsonValue | null {
 
 /**
  * Inserts the file or, when the path is known, refreshes its identity (keeping its id). A null
- * `lastProbe` keeps the stored probe (a re-queue does not wipe it); a probe replaces it.
+ * `lastProbe` keeps the stored probe (a re-queue does not wipe it); a probe replaces it. A file
+ * seen again is present, so `gone_at` is cleared.
  */
 export function upsertFile(
   db: Database,
@@ -1212,7 +1217,7 @@ export function upsertFile(
        size_bytes = excluded.size_bytes, mtime_ms = excluded.mtime_ms, ino = excluded.ino,
        dev = excluded.dev, fingerprint = excluded.fingerprint,
        last_probe = COALESCE(excluded.last_probe, files.last_probe),
-       updated_at = excluded.updated_at`,
+       gone_at = NULL, updated_at = excluded.updated_at`,
   ).run(
     crypto.randomUUID(),
     input.libraryId,
@@ -1227,6 +1232,48 @@ export function upsertFile(
   );
   const r = db.prepare('SELECT * FROM files WHERE path = ?').get(input.path) as DbFile;
   return toFile(r);
+}
+
+/**
+ * Records what a listing of `folder` found. Rows of the library under the folder (never a sibling
+ * that merely shares the name's prefix) that `paths` lacks get `gone_at` (the first time is kept);
+ * rows `paths` lists are present again. `paths` must be in the form `upsertFile` stores (real
+ * paths). Files under a folder of `unlisted` are left alone: that part of the listing failed.
+ */
+export function markFolderListing(
+  db: Database,
+  input: {
+    libraryId: string;
+    folder: string;
+    paths: readonly string[];
+    unlisted?: readonly string[];
+  },
+  now: Date,
+): { gone: number; back: number } {
+  const prefix = input.folder.endsWith('/') ? input.folder : `${input.folder}/`;
+  const listed = JSON.stringify(input.paths);
+  const unlisted = JSON.stringify(
+    (input.unlisted ?? []).map((f) => (f.endsWith('/') ? f : `${f}/`)),
+  );
+  return db.transaction(() => {
+    const gone = db
+      .prepare(
+        `UPDATE files SET gone_at = ?
+         WHERE library_id = ? AND gone_at IS NULL AND substr(path, 1, length(?)) = ?
+           AND path NOT IN (SELECT value FROM json_each(?))
+           AND NOT EXISTS (SELECT 1 FROM json_each(?) u
+                           WHERE substr(files.path, 1, length(u.value)) = u.value)`,
+      )
+      .run(now.toISOString(), input.libraryId, prefix, prefix, listed, unlisted).changes;
+    const back = db
+      .prepare(
+        `UPDATE files SET gone_at = NULL
+         WHERE library_id = ? AND gone_at IS NOT NULL
+           AND path IN (SELECT value FROM json_each(?))`,
+      )
+      .run(input.libraryId, listed).changes;
+    return { gone, back };
+  })();
 }
 
 /**
