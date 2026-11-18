@@ -41,14 +41,14 @@ export interface StoredJobMedia {
   posterPath: string | null;
 }
 
-const RELEASE_TAGS = new Set([
+/** Tags that never start a title: a resolution, a source or a codec. Always a cut point. */
+const HARD_TAGS = new Set([
   '480p',
   '576p',
   '720p',
   '1080p',
   '2160p',
   '4k',
-  'uhd',
   'bluray',
   'brrip',
   'bdrip',
@@ -57,19 +57,19 @@ const RELEASE_TAGS = new Set([
   'webrip',
   'hdtv',
   'dvdrip',
-  'remux',
   'x264',
   'x265',
   'h264',
   'h265',
   'hevc',
-  'avc',
   'av1',
-  'hdr',
-  'dv',
-  'proper',
-  'repack',
 ]);
+
+/**
+ * Tags that are also words (`A Proper Job`, `The DV Files`): a cut point only after a year, so a
+ * title that starts with one stays whole.
+ */
+const WORD_TAGS = new Set(['proper', 'repack', 'dv', 'hdr', 'uhd', 'avc', 'remux']);
 
 /** First match wins: `S01E17`, `s1e2`, then `1x02`. */
 const EPISODE_PATTERN =
@@ -95,10 +95,25 @@ function tokenize(text: string): string[] {
     .filter((t) => t !== '');
 }
 
-/** Tokens up to (not including) the first release tag. */
+const tagOf = (token: string): string => stripBrackets(token).toLowerCase();
+
+/**
+ * Tokens up to (not including) the first release tag: the first hard tag, or a word tag after a
+ * year (the year of a title never starts it, so it is looked for from the second token on).
+ */
 function beforeReleaseTag(tokens: string[]): string[] {
-  const cut = tokens.findIndex((t) => RELEASE_TAGS.has(stripBrackets(t).toLowerCase()));
-  return cut === -1 ? tokens : tokens.slice(0, cut);
+  const hard = tokens.findIndex((t) => HARD_TAGS.has(tagOf(t)));
+  const head = hard === -1 ? tokens : tokens.slice(0, hard);
+  let year = -1;
+  for (let i = head.length - 1; i >= 1; i--) {
+    if (YEAR_TOKEN.test(head[i] as string)) {
+      year = i;
+      break;
+    }
+  }
+  if (year === -1) return head;
+  const word = head.findIndex((t, i) => i > year && WORD_TAGS.has(tagOf(t)));
+  return word === -1 ? head : head.slice(0, word);
 }
 
 function trimDashes(text: string): string {
