@@ -134,6 +134,18 @@ describe('TraceCanvas', () => {
         /@media \(prefers-reduced-motion: no-preference\)\s*\{\s*\.tc-node \.tc-node-fill\s*\{[^}]*transition:/,
       );
     });
+
+    it('css: a taken or dimmed output keeps the fill ink inside the fill (not lime on lime)', () => {
+      const css = readFileSync(join(__dirname, '../../styles.css'), 'utf8');
+      const fill = css.match(
+        /\.tc-node \.tc-node-fill \.tc-port-out\.is-taken,\s*\.tc-node \.tc-node-fill \.tc-port-out\.is-dimmed\s*\{([^}]*)\}/,
+      );
+      expect(fill?.[1]).toMatch(/color:\s*var\(--on-accent\)/);
+      // It must also come after the plain taken rule, so the order never decides against it.
+      expect(css.indexOf(fill?.[0] ?? '\u0000')).toBeGreaterThan(
+        css.indexOf('.tc-port-out.is-taken {'),
+      );
+    });
   });
 
   it('dims untaken nodes and marks taken edges once the job is final', async () => {
