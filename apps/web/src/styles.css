@@ -10871,3 +10871,31 @@ button.job-step-more:hover {
 .recycle-table td:first-child {
   min-width: 14em;
 }
+
+/* ---------- Library page ---------- */
+.library-head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.library-crumb {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.library-count {
+  margin-left: var(--sp-3);
+  font-family: var(--font-mono);
+  font-size: var(--fs-small);
+  color: var(--muted);
+}
+.library-empty {
+  color: var(--muted);
+}
+.library-toolbar {
+  justify-content: space-between;
+}
+.lib-name-text {
+  color: inherit;
+  text-decoration: none;
+}
