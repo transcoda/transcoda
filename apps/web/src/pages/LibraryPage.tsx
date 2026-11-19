@@ -131,9 +131,10 @@ function FilesBody({
   const [sort, setSort] = useState<FileSort>('title');
   const [desc, setDesc] = useState(false);
   // The offset belongs to the list it was chosen on: another search, show, season or sort starts
-  // again at the first page.
+  // again at the first page, and so does coming back to an earlier one.
   const scope = JSON.stringify([id, show, season, search, sort, desc]);
   const [paged, setPaged] = useState({ scope, offset: 0 });
+  if (paged.scope !== scope) setPaged({ scope, offset: 0 });
   const offset = paged.scope === scope ? paged.offset : 0;
   const files = useLibraryFiles(id, {
     ...(show !== undefined ? { show } : {}),

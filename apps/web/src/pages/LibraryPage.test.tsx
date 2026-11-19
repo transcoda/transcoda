@@ -381,6 +381,52 @@ describe('LibraryPage', () => {
       ),
     );
   });
+  it('going back to an earlier sort or search starts at its first page, not the page left there', async () => {
+    mocks.libraries.files.mockImplementation(async (q: { offset: number; limit: number }) =>
+      filesPage(q, 250),
+    );
+    await renderPage();
+    fireEvent.click(screen.getByRole('radio', { name: 'Table' }));
+    await screen.findByText('1–100 of 250');
+    fireEvent.click(screen.getByRole('button', { name: 'Size' }));
+    await screen.findByText('1–100 of 250');
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+    await screen.findByText('101–200 of 250');
+    // Size descending, then ascending again: the first page, not the second.
+    fireEvent.click(screen.getByRole('button', { name: 'Size' }));
+    await waitFor(() =>
+      expect(mocks.libraries.files).toHaveBeenLastCalledWith(
+        expect.objectContaining({ sort: 'size', desc: true, offset: 0 }),
+      ),
+    );
+    await screen.findByText('1–100 of 250');
+    fireEvent.click(screen.getByRole('button', { name: 'Size' }));
+    await waitFor(() =>
+      expect(mocks.libraries.files).toHaveBeenLastCalledWith(
+        expect.objectContaining({ sort: 'size', desc: false, offset: 0 }),
+      ),
+    );
+    expect(await screen.findByText('1–100 of 250')).toBeTruthy();
+
+    // The same for a search typed and cleared.
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+    await screen.findByText('101–200 of 250');
+    const box = screen.getByRole('searchbox', { name: 'Search this library' });
+    fireEvent.change(box, { target: { value: 'night' } });
+    await waitFor(() =>
+      expect(mocks.libraries.files).toHaveBeenLastCalledWith(
+        expect.objectContaining({ search: 'night', offset: 0 }),
+      ),
+    );
+    await screen.findByText('1–100 of 250');
+    fireEvent.change(box, { target: { value: '' } });
+    await waitFor(() =>
+      expect(mocks.libraries.files.mock.lastCall?.[0]).not.toHaveProperty('search'),
+    );
+    expect(mocks.libraries.files).toHaveBeenLastCalledWith(expect.objectContaining({ offset: 0 }));
+    expect(await screen.findByText('1–100 of 250')).toBeTruthy();
+  });
+
   it('a refresh that shrinks the list below the shown page moves to its last page', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ['setTimeout', 'clearTimeout', 'Date'] });
     let total = 250;
