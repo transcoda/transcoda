@@ -407,6 +407,42 @@ describe('MediaPass', () => {
     expect(logs).toContainEqual(expect.objectContaining({ msg: 'media pass failed' }));
   });
 
+  it('a write that throws ends the pass only after the other files in flight finish', async () => {
+    for (let i = 0; i < 3; i++) {
+      file(`f${i}`, 'l1', `/media/tv/${i}.mkv`);
+      job(`j${i}`, `f${i}`, i);
+    }
+    let release: () => void = () => {};
+    const gate = new Promise<void>((r) => {
+      release = r;
+    });
+    let done = 0;
+    const resolver = fake(async (p) => {
+      // JSON.stringify throws on a BigInt: the media write fails for this file.
+      if (p.endsWith('/0.mkv')) return { ...media(p), year: 1n as unknown as number };
+      await gate;
+      done++;
+      return media(p);
+    });
+    const mp = pass(resolver);
+    mp.kick();
+    await vi.waitFor(() => expect(resolver.resolve).toHaveBeenCalledTimes(3));
+    let idle = false;
+    const waiting = mp.idle().then(() => {
+      idle = true;
+    });
+    await new Promise((r) => setTimeout(r, 20));
+    expect(idle).toBe(false);
+    mp.kick(); // still running: only queues one more pass
+    expect(resolver.resolve).toHaveBeenCalledTimes(3);
+    release();
+    await waiting;
+    expect(done).toBe(2);
+    expect(mediaOf('j1')).not.toBeNull();
+    expect(mediaOf('j2')).not.toBeNull();
+    expect(logs).toContainEqual(expect.objectContaining({ msg: 'media pass failed' }));
+  });
+
   it('skips files of a deleted library', async () => {
     library('l2', '/media/movies');
     file('f1', 'l1', '/media/tv/a.mkv');
