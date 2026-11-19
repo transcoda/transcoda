@@ -44,6 +44,27 @@ const SHOW_KEY = 'WyJUaGUgQmV2ZXJseSBIaWxsYmlsbGllcyIsMTk2Ml0';
 const CLOCK = { now: '2026-10-16T03:00:00.000Z', timeZone: 'America/New_York' };
 const TITLES = { items: [], total: 0 };
 const files = (total: number): LibraryFilesOutput => ({ files: [], total });
+/** The page of a `total`-file listing that a files request asks for, each file titled by its index. */
+function filesPage(q: { offset: number; limit: number }, total: number): LibraryFilesOutput {
+  const n = Math.max(0, Math.min(q.limit, total - q.offset));
+  return {
+    files: Array.from({ length: n }, (_, i) => {
+      const k = q.offset + i;
+      return {
+        id: `f${k}`,
+        path: `/media/classic-tv/File ${k}.mkv`,
+        fileName: `File ${k}.mkv`,
+        sizeBytes: 1000,
+        originalBytes: null,
+        mtime: at,
+        gone: false,
+        poster: null,
+        latest: { ...fx.kept, media: { ...fx.kept.media, title: `File ${k}` } },
+      };
+    }),
+    total,
+  };
+}
 
 let fake: ReturnType<typeof fakeEventSource>;
 const realMatchMedia = window.matchMedia;
@@ -222,6 +243,29 @@ describe('LibraryPage', () => {
     expect(mocks.libraries.get).toHaveBeenCalledTimes(gets + 1);
   });
 
+  it('pausing or resuming a job refetches; progress while paused does not', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+    await renderPage();
+    await push(queueSnapshot);
+    await waitFor(() => expect(mocks.libraries.titles.mock.calls.length).toBeGreaterThan(1));
+    await push(jobChanged('j1'));
+    await act(() => vi.advanceTimersByTimeAsync(REFETCH_COALESCE_MS * 2));
+    const titles = mocks.libraries.titles.mock.calls.length;
+
+    // Same state, now paused: the row's status changes.
+    await push({ ...jobChanged('j1'), paused: true } as EngineEvent);
+    await act(() => vi.advanceTimersByTimeAsync(REFETCH_COALESCE_MS * 2));
+    await waitFor(() => expect(mocks.libraries.titles).toHaveBeenCalledTimes(titles + 1));
+
+    await push({ ...jobChanged('j1'), paused: true, progress: { percent: 40 } } as EngineEvent);
+    await act(() => vi.advanceTimersByTimeAsync(REFETCH_COALESCE_MS * 2));
+    expect(mocks.libraries.titles).toHaveBeenCalledTimes(titles + 1);
+
+    await push(jobChanged('j1'));
+    await act(() => vi.advanceTimersByTimeAsync(REFETCH_COALESCE_MS * 2));
+    await waitFor(() => expect(mocks.libraries.titles).toHaveBeenCalledTimes(titles + 2));
+  });
+
   it('the header count follows the library: it reloads on a state change', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ['setTimeout', 'clearTimeout', 'Date'] });
     await renderPage();
@@ -346,6 +390,125 @@ describe('LibraryPage', () => {
       ),
     );
   });
+  it('going back to an earlier sort or search starts at its first page, not the page left there', async () => {
+    mocks.libraries.files.mockImplementation(async (q: { offset: number; limit: number }) =>
+      filesPage(q, 250),
+    );
+    await renderPage();
+    fireEvent.click(screen.getByRole('radio', { name: 'Table' }));
+    await screen.findByText('1–100 of 250');
+    fireEvent.click(screen.getByRole('button', { name: 'Size' }));
+    await screen.findByText('1–100 of 250');
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+    await screen.findByText('101–200 of 250');
+    // Size descending, then ascending again: the first page, not the second.
+    fireEvent.click(screen.getByRole('button', { name: 'Size' }));
+    await waitFor(() =>
+      expect(mocks.libraries.files).toHaveBeenLastCalledWith(
+        expect.objectContaining({ sort: 'size', desc: true, offset: 0 }),
+      ),
+    );
+    await screen.findByText('1–100 of 250');
+    fireEvent.click(screen.getByRole('button', { name: 'Size' }));
+    await waitFor(() =>
+      expect(mocks.libraries.files).toHaveBeenLastCalledWith(
+        expect.objectContaining({ sort: 'size', desc: false, offset: 0 }),
+      ),
+    );
+    expect(await screen.findByText('1–100 of 250')).toBeTruthy();
+
+    // The same for a search typed and cleared.
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+    await screen.findByText('101–200 of 250');
+    const box = screen.getByRole('searchbox', { name: 'Search this library' });
+    fireEvent.change(box, { target: { value: 'night' } });
+    await waitFor(() =>
+      expect(mocks.libraries.files).toHaveBeenLastCalledWith(
+        expect.objectContaining({ search: 'night', offset: 0 }),
+      ),
+    );
+    await screen.findByText('1–100 of 250');
+    fireEvent.change(box, { target: { value: '' } });
+    await waitFor(() =>
+      expect(mocks.libraries.files.mock.lastCall?.[0]).not.toHaveProperty('search'),
+    );
+    expect(mocks.libraries.files).toHaveBeenLastCalledWith(expect.objectContaining({ offset: 0 }));
+    expect(await screen.findByText('1–100 of 250')).toBeTruthy();
+  });
+
+  it('a refresh that shrinks the list below the shown page moves to its last page', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+    let total = 250;
+    mocks.libraries.files.mockImplementation(async (q: { offset: number; limit: number }) =>
+      filesPage(q, total),
+    );
+    await renderPage();
+    await push(queueSnapshot);
+    fireEvent.click(screen.getByRole('radio', { name: 'Table' }));
+    await screen.findByText('1–100 of 250');
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+    await screen.findByText('101–200 of 250');
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+    await screen.findByText('201–250 of 250');
+    await act(() => vi.advanceTimersByTimeAsync(REFETCH_COALESCE_MS * 2));
+
+    total = 150;
+    await push({ ...jobChanged('j1'), state: 'done' } as EngineEvent);
+    await act(() => vi.advanceTimersByTimeAsync(REFETCH_COALESCE_MS * 2));
+    await waitFor(() =>
+      expect(mocks.libraries.files).toHaveBeenLastCalledWith(
+        expect.objectContaining({ offset: 100 }),
+      ),
+    );
+    expect(await screen.findByText('101–150 of 150')).toBeTruthy();
+  });
+
+  it('the next page shows no rows of the last one while it loads, and no pager to skip it', async () => {
+    let release: (() => void) | undefined;
+    mocks.libraries.files.mockImplementation(async (q: { offset: number; limit: number }) => {
+      if (q.offset > 0) await new Promise<void>((r) => (release = r));
+      return filesPage(q, 250);
+    });
+    await renderPage();
+    fireEvent.click(screen.getByRole('radio', { name: 'Table' }));
+    await screen.findByText('1–100 of 250');
+    expect(screen.getByRole('link', { name: /^File 0\b/ })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+    expect(await screen.findByText('Loading files…')).toBeTruthy();
+    expect(screen.queryByRole('link', { name: /^File 0\b/ })).toBeNull();
+    expect(screen.queryByText('101–200 of 250')).toBeNull();
+    // No pager while the page loads: a second Next cannot skip the page being asked for.
+    expect(screen.queryByRole('button', { name: 'Next' })).toBeNull();
+    await waitFor(() => expect(release).toBeDefined());
+    await act(async () => release?.());
+    expect(await screen.findByText('101–200 of 250')).toBeTruthy();
+    expect(screen.getByRole('link', { name: /^File 100\b/ })).toBeTruthy();
+    expect(mocks.libraries.files).toHaveBeenLastCalledWith(
+      expect.objectContaining({ offset: 100 }),
+    );
+  });
+
+  it('a live refresh of the same page keeps its rows while it reloads', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+    let hold = false;
+    let release: (() => void) | undefined;
+    mocks.libraries.files.mockImplementation(async (q: { offset: number; limit: number }) => {
+      if (hold) await new Promise<void>((r) => (release = r));
+      return filesPage(q, 250);
+    });
+    await renderPage();
+    await push(queueSnapshot);
+    fireEvent.click(screen.getByRole('radio', { name: 'Table' }));
+    await screen.findByText('1–100 of 250');
+    await act(() => vi.advanceTimersByTimeAsync(REFETCH_COALESCE_MS * 2));
+    hold = true;
+    await push({ ...jobChanged('j1'), state: 'done' } as EngineEvent);
+    await waitFor(() => expect(release).toBeDefined());
+    expect(screen.getByRole('link', { name: /^File 0\b/ })).toBeTruthy();
+    expect(screen.queryByText('Loading files…')).toBeNull();
+    await act(async () => release?.());
+  });
+
   it('a show route in Posters view asks for the show seasons and shows the season cards', async () => {
     mocks.libraries.seasons.mockResolvedValue({
       title: 'The Beverly Hillbillies',
@@ -486,6 +649,51 @@ describe('LibraryPage', () => {
     const grid = screen.getByRole('list', { name: 'Titles' });
     expect(within(grid).getAllByRole('listitem')).toHaveLength(100);
     expect(screen.queryByRole('button', { name: 'Show more' })).toBeNull();
+  });
+
+  it('a live refresh after Show more reloads every page shown; Show more alone asks for the next page only', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+    let rev = 1;
+    const movie = (n: number) => ({
+      type: 'movie' as const,
+      fileId: `f${n}`,
+      poster: null,
+      latest: {
+        ...fx.kept,
+        media: { ...fx.kept.media, title: `Film ${n} rev ${rev}`, kind: 'movie' as const },
+      },
+    });
+    const items = (from: number, n: number) => Array.from({ length: n }, (_, i) => movie(from + i));
+    mocks.libraries.titles.mockImplementation(async (q: { offset: number }) => ({
+      items: q.offset === 0 ? items(0, 60) : q.offset === 60 ? items(60, 60) : items(120, 30),
+      total: 150,
+    }));
+    await renderPage();
+    await push(queueSnapshot);
+    await screen.findByRole('link', { name: /^Film 59 rev 1/ });
+    await act(() => vi.advanceTimersByTimeAsync(REFETCH_COALESCE_MS * 2));
+
+    mocks.libraries.titles.mockClear();
+    fireEvent.click(screen.getByRole('button', { name: 'Show more' }));
+    expect(await screen.findByRole('link', { name: /^Film 119 rev 1/ })).toBeTruthy();
+    expect(mocks.libraries.titles).toHaveBeenCalledTimes(1);
+    expect(mocks.libraries.titles).toHaveBeenCalledWith(expect.objectContaining({ offset: 60 }));
+    await act(() => vi.advanceTimersByTimeAsync(REFETCH_COALESCE_MS * 2));
+
+    mocks.libraries.titles.mockClear();
+    rev = 2;
+    await push({ ...jobChanged('j1'), state: 'done' } as EngineEvent);
+    await act(() => vi.advanceTimersByTimeAsync(REFETCH_COALESCE_MS * 2));
+    expect(await screen.findByRole('link', { name: /^Film 0 rev 2/ })).toBeTruthy();
+    expect(screen.getByRole('link', { name: /^Film 119 rev 2/ })).toBeTruthy();
+    expect(screen.queryByRole('link', { name: /rev 1/ })).toBeNull();
+    const offsets = mocks.libraries.titles.mock.calls.map(
+      ([q]) => (q as { offset: number }).offset,
+    );
+    expect(offsets.sort((x, y) => x - y)).toEqual([0, 60]);
+    const grid = screen.getByRole('list', { name: 'Titles' });
+    expect(within(grid).getAllByRole('listitem')).toHaveLength(120);
+    expect(screen.getByRole('button', { name: 'Show more' })).toBeTruthy();
   });
 
   it('the search box takes at most 200 characters, the server’s limit', async () => {

@@ -1,4 +1,4 @@
-import type { FileSort, Library, LibraryTitle, LibraryTitlesOutput } from '@transcoda/contract';
+import type { FileSort, Library } from '@transcoda/contract';
 import { useEffect, useId, useState } from 'react';
 import { useParams } from 'wouter';
 import { api } from '../api/client.ts';
@@ -14,12 +14,12 @@ import { type Crumb, Crumbs, seasonLabel } from '../libraries/Crumbs.tsx';
 import { LibraryFileTable } from '../libraries/LibraryFileTable.tsx';
 import { RunFilesDialog, type RunSelection } from '../libraries/RunFilesDialog.tsx';
 import { SelectionBar } from '../libraries/SelectionBar.tsx';
-import { SeasonGrid, TitleGrid, titleKey } from '../libraries/TitleGrid.tsx';
+import { SeasonGrid, TitleGrid } from '../libraries/TitleGrid.tsx';
 import {
   useLibraryFiles,
   useLibraryRefetch,
   useLibrarySeasons,
-  useLibraryTitles,
+  useLibraryTitlePages,
 } from '../libraries/useLibraryListing.ts';
 import { useScanNow } from '../libraries/useScanNow.tsx';
 import { type Selection, useSelection } from '../libraries/useSelection.ts';
@@ -60,29 +60,20 @@ function LoadError({ what, onRetry, error }: { what: string; onRetry(): void; er
   );
 }
 
-/** Shows and movies, a page at a time: "Show more" appends the next page below. */
+/**
+ * Shows and movies, a page at a time: "Show more" appends the next page below, and a live refresh
+ * reloads every page shown.
+ */
 function TitlesBody({ id, search }: { id: string; search: string }) {
-  const [more, setMore] = useState<{
-    offset: number;
-    earlier: LibraryTitle[];
-    /** The page before this one: `useAsync` keeps it until the new page arrives. */
-    prev: LibraryTitlesOutput | null;
-  }>({ offset: 0, earlier: [], prev: null });
-  const titles = useLibraryTitles(id, { search, limit: TITLES_PAGE, offset: more.offset });
-  const page = titles.data && titles.data !== more.prev ? titles.data : undefined;
-  const total = page?.total ?? more.prev?.total;
-  if (total === undefined) {
+  const titles = useLibraryTitlePages(id, search, TITLES_PAGE);
+  const items = titles.items;
+  if (items === undefined) {
     return titles.error ? (
       <LoadError what="the titles" error={titles.error} onRetry={titles.reload} />
     ) : (
       <Loading label="Loading titles…" />
     );
   }
-  // Offset paging over a list that changes underneath: a card already shown that moved onto
-  // the next page is not shown twice.
-  const seen = new Set(more.earlier.map(titleKey));
-  const items = [...more.earlier, ...(page?.items ?? []).filter((t) => !seen.has(titleKey(t)))];
-  const nextOffset = more.offset + TITLES_PAGE;
   return (
     <section aria-label="Titles">
       {items.length === 0 ? (
@@ -90,19 +81,13 @@ function TitlesBody({ id, search }: { id: string; search: string }) {
       ) : (
         <TitleGrid libraryId={id} items={items} />
       )}
-      {page === undefined ? (
-        titles.error ? (
-          <LoadError what="more titles" error={titles.error} onRetry={titles.reload} />
-        ) : (
-          <Loading label="Loading titles…" />
-        )
-      ) : nextOffset < total ? (
+      {titles.loadingMore ? (
+        <Loading label="Loading titles…" />
+      ) : titles.error ? (
+        <LoadError what="more titles" error={titles.error} onRetry={titles.more} />
+      ) : titles.hasMore ? (
         <div className="library-more">
-          <button
-            type="button"
-            className="btn btn-secondary"
-            onClick={() => setMore({ offset: nextOffset, earlier: items, prev: page })}
-          >
+          <button type="button" className="btn btn-secondary" onClick={titles.more}>
             Show more
           </button>
         </div>
@@ -151,9 +136,10 @@ function FilesBody({
   const [sort, setSort] = useState<FileSort>('title');
   const [desc, setDesc] = useState(false);
   // The offset belongs to the list it was chosen on: another search, show, season or sort starts
-  // again at the first page.
+  // again at the first page, and so does coming back to an earlier one.
   const scope = JSON.stringify([id, show, season, search, sort, desc]);
   const [paged, setPaged] = useState({ scope, offset: 0 });
+  if (paged.scope !== scope) setPaged({ scope, offset: 0 });
   const offset = paged.scope === scope ? paged.offset : 0;
   const files = useLibraryFiles(id, {
     ...(show !== undefined ? { show } : {}),
@@ -177,6 +163,11 @@ function FilesBody({
       );
     }
     return <Loading label="Loading files…" />;
+  }
+  // A refresh shrank the list below this page: go to its last page (the first, when it is empty).
+  if (offset > 0 && offset >= files.data.total) {
+    const lastPage = Math.max(0, Math.ceil(files.data.total / FILES_PAGE) - 1) * FILES_PAGE;
+    setPaged({ scope, offset: lastPage });
   }
   return (
     <LibraryFileTable
