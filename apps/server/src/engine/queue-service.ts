@@ -550,6 +550,10 @@ export class QueueService {
 
     const { db } = this;
     const written = db.transaction(() => {
+      // When the files are seen, for their rows: `now` is from before the awaits above, and a
+      // folder listing that began meanwhile (markFolderListing's `startedAt`) must count these
+      // rows as written after it.
+      const observedAt = this.deps.now();
       const workflow = this.resolveWorkflow(workflowId, input.dryRun, input.workflowVersion);
       if (workflow.kind !== 'ok') return workflow;
       if (newOnly) {
@@ -588,7 +592,7 @@ export class QueueService {
           const file = upsertFile(
             db,
             { libraryId: library.id, path: c.path, fingerprint: c.fp, lastProbe: null },
-            now,
+            observedAt,
           );
           fileId = file.id;
         }
