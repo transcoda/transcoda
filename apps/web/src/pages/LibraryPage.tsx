@@ -11,9 +11,10 @@ import { useAsync } from '../hooks/useAsync.ts';
 import { usePageTitle } from '../lib/pageTitle.ts';
 import { type Crumb, Crumbs, seasonLabel } from '../libraries/Crumbs.tsx';
 import { LibraryFileTable } from '../libraries/LibraryFileTable.tsx';
-import { SeasonGrid, TitleGrid } from '../libraries/TitleGrid.tsx';
+import { SeasonGrid, TitleGrid, titleKey } from '../libraries/TitleGrid.tsx';
 import {
   useLibraryFiles,
+  useLibraryRefetch,
   useLibrarySeasons,
   useLibraryTitles,
 } from '../libraries/useLibraryListing.ts';
@@ -73,7 +74,11 @@ function TitlesBody({ id, search }: { id: string; search: string }) {
       <Loading label="Loading titles…" />
     );
   }
-  const items = [...more.earlier, ...(page?.items ?? [])];
+  // Offset paging over a list that changes underneath: a card already shown that moved onto
+  // the next page is not shown twice.
+  const seen = new Set(more.earlier.map(titleKey));
+  const items = [...more.earlier, ...(page?.items ?? []).filter((t) => !seen.has(titleKey(t)))];
+  const nextOffset = more.offset + TITLES_PAGE;
   return (
     <section aria-label="Titles">
       {items.length === 0 ? (
@@ -87,14 +92,12 @@ function TitlesBody({ id, search }: { id: string; search: string }) {
         ) : (
           <Loading label="Loading titles…" />
         )
-      ) : items.length < total ? (
+      ) : nextOffset < total ? (
         <div className="library-more">
           <button
             type="button"
             className="btn btn-secondary"
-            onClick={() =>
-              setMore({ offset: more.offset + TITLES_PAGE, earlier: items, prev: page })
-            }
+            onClick={() => setMore({ offset: nextOffset, earlier: items, prev: page })}
           >
             Show more
           </button>
@@ -104,8 +107,16 @@ function TitlesBody({ id, search }: { id: string; search: string }) {
   );
 }
 
-function SeasonsBody({ id, show }: { id: string; show: string }) {
-  const seasons = useLibrarySeasons(id, show);
+function SeasonsBody({
+  id,
+  show,
+  seasons,
+}: {
+  id: string;
+  show: string;
+  /** The show page's one seasons request (its breadcrumbs read the title from it too). */
+  seasons: ReturnType<typeof useLibrarySeasons>;
+}) {
   if (!seasons.data) {
     return seasons.error ? (
       <LoadError what="the seasons" error={seasons.error} onRetry={seasons.reload} />
@@ -203,29 +214,15 @@ function Breadcrumbs({
   return <Crumbs crumbs={crumbs} />;
 }
 
-/** The breadcrumbs of a show or season page: the show's title comes from its seasons request. */
-function ShowBreadcrumbs({
-  library,
-  show,
-  season,
-}: {
-  library: Library;
-  show: string;
-  season: string | undefined;
-}) {
-  const seasons = useLibrarySeasons(library.id, show);
-  return (
-    <Breadcrumbs library={library} show={show} showTitle={seasons.data?.title} season={season} />
-  );
-}
-
 export function LibraryPage() {
   const params = useParams<{ id: string; show?: string; season?: string }>();
   const { id, show, season } = params;
   const library = useAsync(() => api.libraries.get({ id }), [id]);
+  // Its file count is the header's count, and what tells an empty library from an empty search.
+  useLibraryRefetch(id, library.reload);
   const workflows = useAsync(() => api.workflows.list(), []);
-  // The unfiltered total: the header's count, and what tells an empty library from an empty search.
-  const total = useLibraryFiles(id, { sort: 'title', desc: false, offset: 0, limit: 1 });
+  // A show's page asks for its seasons once: the breadcrumbs take the title, the cards the rest.
+  const seasons = useLibrarySeasons(id, show);
   const scan = useScanNow({
     clock: library.data?.clock ?? null,
     workflows: workflows.data?.workflows ?? [],
@@ -265,7 +262,7 @@ export function LibraryPage() {
     );
   }
   const lib = library.data;
-  const count = total.data?.total;
+  const count = lib.fileCount;
   const empty = count === 0;
 
   function choose(next: LibraryView) {
@@ -280,7 +277,7 @@ export function LibraryPage() {
   ) : season !== undefined || view === 'table' || (show !== undefined && search !== '') ? (
     <FilesBody id={id} show={show} season={season} search={search} />
   ) : show !== undefined ? (
-    <SeasonsBody id={id} show={show} />
+    <SeasonsBody id={id} show={show} seasons={seasons} />
   ) : (
     <TitlesBody key={`${id}\n${search}`} id={id} search={search} />
   );
@@ -291,16 +288,14 @@ export function LibraryPage() {
         {show === undefined ? (
           <Breadcrumbs library={lib} show={undefined} showTitle={undefined} season={undefined} />
         ) : (
-          <ShowBreadcrumbs library={lib} show={show} season={season} />
+          <Breadcrumbs library={lib} show={show} showTitle={seasons.data?.title} season={season} />
         )}
         <div className="page-head page-head-row">
           <div className="page-head">
             <h1>{lib.name}</h1>
             <p>
               <span className="mono">{lib.path}</span>
-              {count === undefined ? null : (
-                <span className="library-count">{fileCount(count)}</span>
-              )}
+              <span className="library-count">{fileCount(count)}</span>
             </p>
           </div>
           <div className="page-actions">
@@ -331,6 +326,7 @@ export function LibraryPage() {
             placeholder="Search this library"
             aria-label="Search this library"
             autoComplete="off"
+            maxLength={200}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />

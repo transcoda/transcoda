@@ -11,7 +11,9 @@ import {
 } from './jobs.ts';
 import { insertLibrary } from './libraries.ts';
 import {
+  countListedFiles,
   escapeLike,
+  findFileProbe,
   findLibraryFile,
   LIBRARY_FILES_MAX,
   latestJobPerFileSql,
@@ -20,6 +22,7 @@ import {
   listSeasons,
   listTitles,
   parseShowKey,
+  showExists,
   showKey,
 } from './library-files.ts';
 import { insertRestore } from './restores.ts';
@@ -495,6 +498,24 @@ describe('listLibraryFiles', () => {
     expect(findLibraryFile(db, 'l1', 'nope')).toBeNull();
     expect(findLibraryFile(db, 'l2', 'm')).toMatchObject({ id: 'm', libraryId: 'l2' });
   });
+
+  it('countListedFiles counts exactly what the unfiltered list lists', () => {
+    file('a', '/media/tv/a.mkv', 1000);
+    job('ja1', 'a', { state: 'failed', queuedAt: 1 });
+    job('ja2', 'a', { state: 'done', queuedAt: 2 });
+    file('b', '/media/tv/b.mkv', 1000);
+    job('jb', 'b', { state: 'skipped', queuedAt: 1 });
+    file('gone', '/media/tv/gone.mkv', 1000);
+    job('jg', 'gone', { state: 'done', queuedAt: 1 });
+    db.prepare('UPDATE files SET gone_at = ? WHERE id = ?').run(at(5).toISOString(), 'gone');
+    file('nojob', '/media/tv/nojob.mkv', 1000);
+    file('m', '/media/movies/m.mkv', 1000);
+    job('jm', 'm', { state: 'done', queuedAt: 1 });
+    expect(countListedFiles(db, 'l1')).toBe(2);
+    expect(countListedFiles(db, 'l1')).toBe(listLibraryFiles(db, q()).total);
+    expect(countListedFiles(db, 'l2')).toBe(listLibraryFiles(db, q({ libraryId: 'l2' })).total);
+    expect(countListedFiles(db, 'nope')).toBe(0);
+  });
 });
 
 it('escapeLike escapes the backslash, % and _', () => {
@@ -808,5 +829,45 @@ describe('titles and seasons', () => {
     });
     expect(listSeasons(db, 'l1', { title: SHOW, year: 1999 })).toEqual([]);
     expect(listSeasons(db, 'l2', HILL)).toEqual([]);
+  });
+
+  it('case-variant titles of the same year never tie: pages hold each card once, in a fixed order', () => {
+    // Inserted lower case first, so an unordered tie would tend to put it first.
+    file('lo', '/media/tv/lo.mkv', 1000);
+    job('j-lo', 'lo', { state: 'done', queuedAt: 1, media: { ...ep(1, 1), title: 'superman' } });
+    file('up', '/media/tv/up.mkv', 1000);
+    job('j-up', 'up', { state: 'done', queuedAt: 1, media: { ...ep(1, 1), title: 'Superman' } });
+    file('caps', '/media/tv/caps.mkv', 1000);
+    job('j-caps', 'caps', {
+      state: 'done',
+      queuedAt: 1,
+      media: { ...ep(1, 1), title: 'SUPERMAN' },
+    });
+    expect(titles()).toEqual(['SUPERMAN', 'Superman', 'superman']);
+    const paged = [0, 1, 2].map((offset) => titles({ offset, limit: 1 })[0]);
+    expect(paged).toEqual(['SUPERMAN', 'Superman', 'superman']);
+  });
+
+  it('showExists finds a show with a present episode only', () => {
+    seedHillbillies();
+    expect(showExists(db, 'l1', HILL)).toBe(true);
+    expect(showExists(db, 'l1', { title: SHOW, year: 1999 })).toBe(false);
+    expect(showExists(db, 'l1', { title: SHOW.toUpperCase(), year: 1962 })).toBe(false);
+    expect(showExists(db, 'l2', HILL)).toBe(false);
+    db.prepare("UPDATE files SET gone_at = ? WHERE id IN ('e1','e2','e3')").run(
+      at(5).toISOString(),
+    );
+    expect(showExists(db, 'l1', HILL)).toBe(false);
+  });
+});
+
+describe('findFileProbe', () => {
+  it('reads the stored probe; a corrupt one reads as none', () => {
+    file('p1', '/media/tv/p1.mkv', 1000);
+    db.prepare('UPDATE files SET last_probe = ? WHERE id = ?').run('{"sizeBytes":1000}', 'p1');
+    expect(findFileProbe(db, 'p1')).toEqual({ sizeBytes: 1000 });
+    db.prepare('UPDATE files SET last_probe = ? WHERE id = ?').run('{"sizeBytes":', 'p1');
+    expect(findFileProbe(db, 'p1')).toBeNull();
+    expect(findFileProbe(db, 'unknown')).toBeNull();
   });
 });
