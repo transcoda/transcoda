@@ -596,6 +596,51 @@ describe('LibraryPage', () => {
     expect(screen.queryByRole('button', { name: 'Show more' })).toBeNull();
   });
 
+  it('a live refresh after Show more reloads every page shown; Show more alone asks for the next page only', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+    let rev = 1;
+    const movie = (n: number) => ({
+      type: 'movie' as const,
+      fileId: `f${n}`,
+      poster: null,
+      latest: {
+        ...fx.kept,
+        media: { ...fx.kept.media, title: `Film ${n} rev ${rev}`, kind: 'movie' as const },
+      },
+    });
+    const items = (from: number, n: number) => Array.from({ length: n }, (_, i) => movie(from + i));
+    mocks.libraries.titles.mockImplementation(async (q: { offset: number }) => ({
+      items: q.offset === 0 ? items(0, 60) : q.offset === 60 ? items(60, 60) : items(120, 30),
+      total: 150,
+    }));
+    await renderPage();
+    await push(queueSnapshot);
+    await screen.findByRole('link', { name: /^Film 59 rev 1/ });
+    await act(() => vi.advanceTimersByTimeAsync(REFETCH_COALESCE_MS * 2));
+
+    mocks.libraries.titles.mockClear();
+    fireEvent.click(screen.getByRole('button', { name: 'Show more' }));
+    expect(await screen.findByRole('link', { name: /^Film 119 rev 1/ })).toBeTruthy();
+    expect(mocks.libraries.titles).toHaveBeenCalledTimes(1);
+    expect(mocks.libraries.titles).toHaveBeenCalledWith(expect.objectContaining({ offset: 60 }));
+    await act(() => vi.advanceTimersByTimeAsync(REFETCH_COALESCE_MS * 2));
+
+    mocks.libraries.titles.mockClear();
+    rev = 2;
+    await push({ ...jobChanged('j1'), state: 'done' } as EngineEvent);
+    await act(() => vi.advanceTimersByTimeAsync(REFETCH_COALESCE_MS * 2));
+    expect(await screen.findByRole('link', { name: /^Film 0 rev 2/ })).toBeTruthy();
+    expect(screen.getByRole('link', { name: /^Film 119 rev 2/ })).toBeTruthy();
+    expect(screen.queryByRole('link', { name: /rev 1/ })).toBeNull();
+    const offsets = mocks.libraries.titles.mock.calls.map(
+      ([q]) => (q as { offset: number }).offset,
+    );
+    expect(offsets.sort((x, y) => x - y)).toEqual([0, 60]);
+    const grid = screen.getByRole('list', { name: 'Titles' });
+    expect(within(grid).getAllByRole('listitem')).toHaveLength(120);
+    expect(screen.getByRole('button', { name: 'Show more' })).toBeTruthy();
+  });
+
   it('the search box takes at most 200 characters, the server’s limit', async () => {
     await renderPage();
     const box = screen.getByRole('searchbox', { name: 'Search this library' });
