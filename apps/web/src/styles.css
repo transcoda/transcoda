@@ -7548,10 +7548,17 @@ a.nav-item.is-active .nav-count {
   cursor: pointer;
 }
 
+.lib-radio span,
+.lib-check span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 .lib-radio input,
 .lib-check input {
   width: 20px;
   height: 20px;
+  flex: none;
   margin: 0;
   accent-color: var(--accent-text);
 }
@@ -10918,10 +10925,14 @@ button.job-step-more:hover {
   align-items: center;
   gap: 12px;
   padding: 8px 12px;
-  margin-bottom: 12px;
+  margin-top: 12px;
   border: 1px solid var(--line);
   border-radius: var(--r-lg);
   background: var(--raised);
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  padding-bottom: max(8px, env(safe-area-inset-bottom));
 }
 .selection-count {
   font-weight: 600;

@@ -481,6 +481,26 @@ describe('LibraryPage selection and running', () => {
     ).toBe(false);
   });
 
+  it('switching to Posters clears the selection', async () => {
+    await selectBoth();
+    expect(screen.getByText('2 selected')).toBeTruthy();
+    fireEvent.click(screen.getByRole('radio', { name: 'Posters' }));
+    expect(screen.queryByRole('region', { name: 'Selection' })).toBeNull();
+    fireEvent.click(screen.getByRole('radio', { name: 'Table' }));
+    expect(
+      (await screen.findByRole('checkbox', {
+        name: 'Select Sherlock Jr..mkv',
+      })) as HTMLInputElement,
+    ).toHaveProperty('checked', false);
+  });
+
+  it('the selection bar comes after the files so it can stick to the bottom', async () => {
+    await selectBoth();
+    const bar = screen.getByRole('region', { name: 'Selection' });
+    const table = screen.getByRole('table', { name: 'Files' });
+    expect(table.compareDocumentPosition(bar) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it('the selection survives a sort', async () => {
     await selectBoth();
     fireEvent.click(screen.getByRole('button', { name: 'Size' }));

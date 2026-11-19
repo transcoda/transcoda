@@ -20,6 +20,8 @@ export function useSelection(resetKey: string): Selection {
     key: resetKey,
     ids: NONE,
   });
+  // Another key discards the ids for good, so coming back to an earlier key starts empty.
+  if (state.key !== resetKey) setState({ key: resetKey, ids: NONE });
   const selected = state.key === resetKey ? state.ids : NONE;
 
   const change = useCallback(

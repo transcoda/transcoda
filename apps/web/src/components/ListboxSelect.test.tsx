@@ -18,6 +18,20 @@ function setup(value = '') {
 }
 
 describe('ListboxSelect', () => {
+  it('Escape closes only the list, not a dialog around it', () => {
+    const outer = vi.fn();
+    render(
+      // biome-ignore lint/a11y/noStaticElementInteractions: stands in for the dialog's key handler.
+      <div onKeyDown={outer}>
+        <ListboxSelect label="Library" value="" options={OPTIONS} onChange={vi.fn()} />
+      </div>,
+    );
+    fireEvent.click(screen.getByRole('button', { name: /^Library / }));
+    fireEvent.keyDown(screen.getByRole('listbox'), { key: 'Escape' });
+    expect(screen.queryByRole('listbox')).toBeNull();
+    expect(outer).not.toHaveBeenCalled();
+  });
+
   it('opens a listbox with the current option selected and focused', () => {
     const { button } = setup('a');
     expect(button.getAttribute('aria-haspopup')).toBe('listbox');

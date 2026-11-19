@@ -286,6 +286,8 @@ export function LibraryPage() {
   function choose(next: LibraryView) {
     setView(next);
     writeLibraryView(next);
+    // The selection is of table rows; the poster view has no checkboxes to show it.
+    if (next === 'posters') selection.clear();
   }
 
   // A season is a list of episodes, so it is a table in either view. On a show's page a search
@@ -399,20 +401,20 @@ export function LibraryPage() {
         ) : null}
       </div>
 
+      {body}
       {!phone && selection.selected.size > 0 ? (
         <SelectionBar
           count={selection.selected.size}
-          onRun={() =>
+          onRun={(opener) =>
             setRun({
               selection: { kind: 'files', fileIds: [...selection.selected] },
               label: filesLabel,
-              opener: document.activeElement instanceof HTMLElement ? document.activeElement : null,
+              opener,
             })
           }
           onClear={selection.clear}
         />
       ) : null}
-      {body}
       {scan.dialogs}
       {run ? (
         <RunFilesDialog

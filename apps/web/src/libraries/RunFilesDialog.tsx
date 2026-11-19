@@ -288,7 +288,7 @@ export function RunFilesDialog({
           {handled > 0 && chosen && (
             <label className="lib-check">
               <input type="checkbox" checked={force} onChange={(e) => setForce(e.target.checked)} />
-              <span>{`Also run the ${handled} files ${chosen.name} v${version} already handled`}</span>
+              <span>{`Also run the ${files(handled)} ${chosen.name} v${version} already handled`}</span>
             </label>
           )}
           {failed && (

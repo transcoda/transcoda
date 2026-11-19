@@ -130,6 +130,16 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe('RunFilesDialog', () => {
+  it('says 1 file, not 1 files, for a single handled file', async () => {
+    mocks.preview.mockResolvedValue(answer({ willRun: 2, alreadyHandled: 1 }));
+    mount();
+    expect(
+      await screen.findByRole('checkbox', {
+        name: 'Also run the 1 file Shows Cleanup v2 already handled',
+      }),
+    ).toBeTruthy();
+  });
+
   it('lists only workflows that can run, defaulting to the library feeder', async () => {
     mount(library({ feeds: { workflowId: 'w3', name: 'Episode Tidy', version: 5 } }));
     expect(await screen.findByRole('dialog', { name: 'Run a workflow on 3 files' })).toBeTruthy();

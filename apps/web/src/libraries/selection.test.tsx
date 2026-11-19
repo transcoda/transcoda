@@ -181,4 +181,14 @@ describe('useSelection', () => {
     rerender({ k: 'y' });
     expect(result.current.selected.size).toBe(0);
   });
+
+  it('does not bring a selection back when the key returns', () => {
+    const { result, rerender } = renderHook(({ k }) => useSelection(k), {
+      initialProps: { k: 'a' },
+    });
+    act(() => result.current.toggle('f1'));
+    rerender({ k: 'b' });
+    rerender({ k: 'a' });
+    expect(result.current.selected.size).toBe(0);
+  });
 });
