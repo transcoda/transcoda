@@ -155,12 +155,14 @@ export function isRecycleOrTemp(path: string, library: LibraryRow): boolean {
  * Media files under `dir` (recursive), sorted: allowlisted extensions only, recycle folders and
  * tmp files skipped. Symlinked directories are not followed (no loops, no escapes); a symlinked
  * file is listed as found, and the caller checks where it leads. An unreadable subfolder is left
- * out; an unreadable `dir` throws.
+ * out (and added to `unlisted` when given, so the caller knows that part is not covered); an
+ * unreadable `dir` throws.
  */
 export async function listMediaFiles(
   dir: string,
   library: LibraryRow,
   fs: FsOps = nodeFsOps,
+  unlisted?: string[],
 ): Promise<string[]> {
   const out: string[] = [];
   const walk = async (d: string, top: boolean): Promise<void> => {
@@ -169,7 +171,10 @@ export async function listMediaFiles(
       entries = await fs.readdir(d);
     } catch (err) {
       const code = errorCode(err);
-      if (!top && code !== undefined && (DENIED.has(code) || MISSING.has(code))) return;
+      if (!top && code !== undefined && (DENIED.has(code) || MISSING.has(code))) {
+        unlisted?.push(d);
+        return;
+      }
       throw err;
     }
     for (const e of entries) {

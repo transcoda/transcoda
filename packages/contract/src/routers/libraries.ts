@@ -10,6 +10,16 @@ import {
   LibrarySchema,
   LibraryUpdateInputSchema,
 } from '../schemas/libraries.ts';
+import {
+  LibraryFileDetailSchema,
+  LibraryFileInputSchema,
+  LibraryFilesInputSchema,
+  LibraryFilesOutputSchema,
+  LibrarySeasonsInputSchema,
+  LibrarySeasonsOutputSchema,
+  LibraryTitlesInputSchema,
+  LibraryTitlesOutputSchema,
+} from '../schemas/library-files.ts';
 
 const tags = ['libraries'];
 
@@ -57,4 +67,44 @@ export const libraries = {
     .errors({ ...mutationErrors, ...pickErrors('NOT_FOUND', 'LIBRARY_BUSY') })
     .input(LibraryIdInputSchema)
     .output(OkOutputSchema),
+  titles: oc
+    .route({
+      method: 'GET',
+      path: '/libraries/{id}/titles',
+      tags,
+      summary: 'List the shows and movies of a library',
+    })
+    .errors({ ...authedErrors, ...pickErrors('NOT_FOUND') })
+    .input(LibraryTitlesInputSchema)
+    .output(LibraryTitlesOutputSchema),
+  seasons: oc
+    .route({
+      method: 'GET',
+      path: '/libraries/{id}/seasons',
+      tags,
+      summary: 'List the seasons of a show',
+    })
+    .errors({ ...authedErrors, ...pickErrors('NOT_FOUND') })
+    .input(LibrarySeasonsInputSchema)
+    .output(LibrarySeasonsOutputSchema),
+  files: oc
+    .route({
+      method: 'GET',
+      path: '/libraries/{id}/files',
+      tags,
+      summary: 'List the files of a library, each with its latest job',
+    })
+    .errors({ ...authedErrors, ...pickErrors('NOT_FOUND') })
+    .input(LibraryFilesInputSchema)
+    .output(LibraryFilesOutputSchema),
+  file: oc
+    .route({
+      method: 'GET',
+      path: '/libraries/{id}/files/{fileId}',
+      tags,
+      summary: 'Get one file with all its jobs',
+    })
+    .errors({ ...authedErrors, ...pickErrors('NOT_FOUND') })
+    .input(LibraryFileInputSchema)
+    .output(LibraryFileDetailSchema),
 };

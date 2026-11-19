@@ -39,6 +39,7 @@ export * from './schemas/events.ts';
 export * from './schemas/fs.ts';
 export * from './schemas/jobs.ts';
 export * from './schemas/libraries.ts';
+export * from './schemas/library-files.ts';
 export * from './schemas/licences.ts';
 export * from './schemas/nodes.ts';
 export * from './schemas/plugins.ts';

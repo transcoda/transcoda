@@ -68,6 +68,10 @@ export function createRouter() {
       update: libraries.update,
       dismissNotices: libraries.dismissNotices,
       delete: libraries.remove,
+      titles: libraries.titles,
+      seasons: libraries.seasons,
+      files: libraries.files,
+      file: libraries.file,
     },
     jobs: {
       queue: jobs.queue,
