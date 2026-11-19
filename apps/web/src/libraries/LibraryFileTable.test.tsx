@@ -169,6 +169,16 @@ describe('LibraryFileTable', () => {
     expect(screen.queryByRole('button', { name: 'Next' })).toBeNull();
   });
 
+  it('past the first page Previous stays when the list shrank to one page', () => {
+    // A live refresh took the list from 201 files to 100 while the second page was shown.
+    table({ files: [], total: 100, offset: 100 });
+    const previous = screen.getByRole('button', { name: 'Previous' }) as HTMLButtonElement;
+    expect(previous.disabled).toBe(false);
+    fireEvent.click(previous);
+    expect(onPage).toHaveBeenLastCalledWith(0);
+    expect((screen.getByRole('button', { name: 'Next' }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
   it('on a phone it renders cards, not a table', () => {
     stubPhone(true);
     table();

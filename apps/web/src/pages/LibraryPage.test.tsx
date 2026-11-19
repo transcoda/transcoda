@@ -44,6 +44,27 @@ const SHOW_KEY = 'WyJUaGUgQmV2ZXJseSBIaWxsYmlsbGllcyIsMTk2Ml0';
 const CLOCK = { now: '2026-10-16T03:00:00.000Z', timeZone: 'America/New_York' };
 const TITLES = { items: [], total: 0 };
 const files = (total: number): LibraryFilesOutput => ({ files: [], total });
+/** The page of a `total`-file listing that a files request asks for, each file titled by its index. */
+function filesPage(q: { offset: number; limit: number }, total: number): LibraryFilesOutput {
+  const n = Math.max(0, Math.min(q.limit, total - q.offset));
+  return {
+    files: Array.from({ length: n }, (_, i) => {
+      const k = q.offset + i;
+      return {
+        id: `f${k}`,
+        path: `/media/classic-tv/File ${k}.mkv`,
+        fileName: `File ${k}.mkv`,
+        sizeBytes: 1000,
+        originalBytes: null,
+        mtime: at,
+        gone: false,
+        poster: null,
+        latest: { ...fx.kept, media: { ...fx.kept.media, title: `File ${k}` } },
+      };
+    }),
+    total,
+  };
+}
 
 let fake: ReturnType<typeof fakeEventSource>;
 const realMatchMedia = window.matchMedia;
@@ -337,6 +358,33 @@ describe('LibraryPage', () => {
       ),
     );
   });
+  it('a refresh that shrinks the list below the shown page moves to its last page', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+    let total = 250;
+    mocks.libraries.files.mockImplementation(async (q: { offset: number; limit: number }) =>
+      filesPage(q, total),
+    );
+    await renderPage();
+    await push(queueSnapshot);
+    fireEvent.click(screen.getByRole('radio', { name: 'Table' }));
+    await screen.findByText('1–100 of 250');
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+    await screen.findByText('101–200 of 250');
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+    await screen.findByText('201–250 of 250');
+    await act(() => vi.advanceTimersByTimeAsync(REFETCH_COALESCE_MS * 2));
+
+    total = 150;
+    await push({ ...jobChanged('j1'), state: 'done' } as EngineEvent);
+    await act(() => vi.advanceTimersByTimeAsync(REFETCH_COALESCE_MS * 2));
+    await waitFor(() =>
+      expect(mocks.libraries.files).toHaveBeenLastCalledWith(
+        expect.objectContaining({ offset: 100 }),
+      ),
+    );
+    expect(await screen.findByText('101–150 of 150')).toBeTruthy();
+  });
+
   it('a show route in Posters view asks for the show seasons and shows the season cards', async () => {
     mocks.libraries.seasons.mockResolvedValue({
       title: 'The Beverly Hillbillies',

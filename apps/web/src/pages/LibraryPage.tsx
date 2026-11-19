@@ -173,6 +173,11 @@ function FilesBody({
     }
     return <Loading label="Loading files…" />;
   }
+  // A refresh shrank the list below this page: go to its last page (the first, when it is empty).
+  if (offset > 0 && offset >= files.data.total) {
+    const lastPage = Math.max(0, Math.ceil(files.data.total / FILES_PAGE) - 1) * FILES_PAGE;
+    setPaged({ scope, offset: lastPage });
+  }
   return (
     <LibraryFileTable
       libraryId={id}

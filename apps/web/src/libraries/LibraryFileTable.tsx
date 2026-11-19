@@ -89,7 +89,8 @@ function Pager({
   return (
     <nav className="library-pager" aria-label="Pages">
       <span className="library-pager-range">{`${num(offset + 1)}–${num(last)} of ${num(total)}`}</span>
-      {total <= limit ? null : (
+      {/* Past the first page Previous stays, even when a refresh left everything on one page. */}
+      {total <= limit && offset === 0 ? null : (
         <>
           <button
             type="button"
