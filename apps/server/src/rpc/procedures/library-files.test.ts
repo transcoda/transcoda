@@ -94,9 +94,12 @@ function job(
     probe?: unknown;
   },
 ): void {
-  const f = t.db.prepare('SELECT path, library_id FROM files WHERE id = ?').get(fileId) as {
+  const f = t.db
+    .prepare('SELECT path, library_id, fingerprint FROM files WHERE id = ?')
+    .get(fileId) as {
     path: string;
     library_id: string;
+    fingerprint: string;
   };
   insertJob(
     t.db,
@@ -120,7 +123,8 @@ function job(
   if (o.result) {
     insertJobResult(t.db, {
       jobId: id,
-      fingerprint: `k-${id}`,
+      // As a real job records it: the input it probed, which it also stored on the file.
+      fingerprint: f.fingerprint,
       workflowId: 'w1',
       workflowVersion: 1,
       outcome: o.state,

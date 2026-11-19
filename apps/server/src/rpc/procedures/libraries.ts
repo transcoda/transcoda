@@ -29,7 +29,6 @@ import {
   type ShowRef,
   showExists,
 } from '../../db/repos/library-files.ts';
-import { findActiveRestore } from '../../db/repos/restores.ts';
 import { findFeeder, type LibraryNamer, listInactiveNamers } from '../../db/repos/workflows.ts';
 import { jobProbeOf } from '../../engine/probe.ts';
 import { closedLibraries, runHoursHold } from '../../engine/run-hours.ts';
@@ -263,13 +262,10 @@ export const file = os.libraries.file
       offset: input.jobsOffset,
       limit: input.jobsLimit,
     });
-    // Replaced = the same rule as the list: the latest job replaced the file and no restore is in effect.
+    // Replaced = the list's rule: the latest job replaced the file, no restore is in effect and
+    // the file has not been seen since as something else.
     const result = findJobResult(db, row.latest.id);
-    const replaced =
-      result !== null &&
-      result.replacedTo !== null &&
-      result.afterBytes !== null &&
-      findActiveRestore(db, row.latest.id) === null;
+    const replaced = row.replaced;
     // Stored as a JobProbe; the first builds stored the whole ProbeResult (with `raw`).
     const output = result?.outputProbe as JobProbe | ProbeResult | null | undefined;
     const own = findJobProbe(db, row.latest.id) as ProbeResult | null;
