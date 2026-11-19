@@ -436,6 +436,53 @@ describe('LibraryFilePage', () => {
     expect(screen.queryByRole('button', { name: 'Show older jobs' })).toBeNull();
   });
 
+  it('a job arriving between older pages leaves none missing and none doubled', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+    try {
+      // 101 jobs, newest first, served by offset like the server does.
+      let all = Array.from({ length: 101 }, (_, i) => job({ id: `a${i + 1}`, media: EPISODE }));
+      mocks.libraries.file.mockImplementation(
+        ({ jobsOffset, jobsLimit }: { jobsOffset: number; jobsLimit: number }) =>
+          Promise.resolve(
+            detail({
+              jobs: all.slice(jobsOffset, jobsOffset + jobsLimit),
+              jobsTotal: all.length,
+            }),
+          ),
+      );
+      await renderPage();
+      const table = () => screen.getByRole('table', { name: 'Jobs on this file' });
+      const hrefs = () =>
+        within(table())
+          .getAllByRole('link')
+          .map((a) => a.getAttribute('href'));
+      fireEvent.click(await screen.findByRole('button', { name: 'Show older jobs' }));
+      await waitFor(() => expect(hrefs()).toHaveLength(100));
+
+      // A job arrives; the refreshed head shifts everything down by one.
+      all = [job({ id: 'new', media: EPISODE }), ...all];
+      await waitFor(() => expect(fake.streams.length).toBeGreaterThan(0));
+      await act(async () => fake.last().push(queueSnapshot));
+      await act(async () => fake.last().push(jobChanged('new')));
+      await act(() => vi.advanceTimersByTimeAsync(REFETCH_COALESCE_MS * 2));
+      await waitFor(() => expect(hrefs()[0]).toBe('/jobs/new'));
+
+      // Read on until the button goes away.
+      for (let i = 0; i < 3; i++) {
+        const more = screen.queryByRole('button', { name: 'Show older jobs' });
+        if (!more) break;
+        const before = hrefs().length;
+        fireEvent.click(more);
+        await waitFor(() => expect(hrefs().length).toBeGreaterThan(before));
+      }
+      const links = hrefs();
+      expect(links).toEqual(all.map((j) => `/jobs/${j.id}`));
+      expect(screen.queryByRole('button', { name: 'Show older jobs' })).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('a gone file opens with No longer on disk', async () => {
     mocks.libraries.file.mockResolvedValue(
       detail({ file: { ...detail().file, gone: true }, now: null }),
