@@ -13,6 +13,7 @@ import { api, safe } from '../api/client.ts';
 import { describeError } from '../api/errors.ts';
 import { Dialog } from '../components/Dialog.tsx';
 import { Disclosure } from '../components/Disclosure.tsx';
+import { Fact } from '../components/Fact.tsx';
 import { Icon } from '../components/Icon.tsx';
 import { Loading } from '../components/Loading.tsx';
 import { NotFound } from '../components/NotFound.tsx';
@@ -125,16 +126,6 @@ function useSubgraphs(job: JobDetail | undefined): Subgraphs {
     visit(job.graph, []);
   }, [job, graphs]);
   return state;
-}
-
-/** One label/value pair in the header's facts. */
-function Fact({ term, children }: { term: string; children: ReactNode }) {
-  return (
-    <div className="job-fact">
-      <dt>{term}</dt>
-      <dd>{children}</dd>
-    </div>
-  );
 }
 
 /** A queued job's line: whether it waits for a lane or for the paused queue. */

@@ -3,7 +3,12 @@ import { act, cleanup, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { hostGuardInterceptor } from './api/host-guard.ts';
 
-const mocks = vi.hoisted(() => ({ me: vi.fn(), health: vi.fn(), subscribe: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  me: vi.fn(),
+  health: vi.fn(),
+  subscribe: vi.fn(),
+  filePageMounts: { count: 0 },
+}));
 vi.mock('./api/client.ts', () => ({
   api: {
     auth: { me: mocks.me },
@@ -26,6 +31,16 @@ vi.mock('./api/client.ts', () => ({
 vi.mock('./pages/WorkflowsPage.tsx', () => ({ WorkflowsPage: () => <p>workflows page</p> }));
 vi.mock('./pages/NewWorkflowPage.tsx', () => ({ NewWorkflowPage: () => <p>new workflow page</p> }));
 vi.mock('./pages/EditorPage.tsx', () => ({ EditorPage: () => <p>editor page</p> }));
+vi.mock('./pages/LibraryFilePage.tsx', async () => {
+  const { useState } = await import('react');
+  return {
+    // Each mount takes the next number, so a page that was kept across files shows the old one.
+    LibraryFilePage: () => {
+      const [mount] = useState(() => ++mocks.filePageMounts.count);
+      return <p>{`file page mount ${mount}`}</p>;
+    },
+  };
+});
 vi.mock('./pages/LibrariesPage.tsx', () => ({ LibrariesPage: () => <p>libraries page</p> }));
 vi.mock('./pages/settings/TokensSection.tsx', () => ({
   TokensSection: () => <p>tokens section</p>,
@@ -180,6 +195,25 @@ describe('App', () => {
       act(() => navigate('/'));
       expect(await screen.findByText('workflows page')).toBeTruthy();
       expect(document.querySelector('.shell')).toBe(shell);
+    } finally {
+      window.history.pushState(null, '', '/');
+    }
+  });
+
+  it('another file remounts the library file page instead of keeping the last file on screen', async () => {
+    mocks.me.mockResolvedValue({
+      setupRequired: false,
+      user: { id: 'u1', username: 'admin' },
+      csrfToken: 't',
+      appearance,
+    });
+    mocks.filePageMounts.count = 0;
+    window.history.pushState(null, '', '/libraries/l1/files/f1');
+    try {
+      renderApp();
+      expect(await screen.findByText('file page mount 1')).toBeTruthy();
+      act(() => navigate('/libraries/l1/files/f2'));
+      expect(await screen.findByText('file page mount 2')).toBeTruthy();
     } finally {
       window.history.pushState(null, '', '/');
     }

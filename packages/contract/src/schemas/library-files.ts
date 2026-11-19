@@ -119,6 +119,13 @@ export const LibraryFileInputSchema = z.object({
 });
 export const LibraryFileDetailSchema = z.object({
   file: LibraryFileSchema,
+  /**
+   * The show page this file's episode belongs to, as the titles list keys it; null unless the
+   * file's stored media says episode (a movie, or no job has media).
+   */
+  showKey: z.string().nullable(),
+  /** The file's season in the season routes' form; null exactly when `showKey` is. */
+  season: z.union([z.number().int(), z.literal('none')]).nullable(),
   /** The file as it is now. */
   now: JobProbeSchema.nullable(),
   /** The original, when the latest job replaced the file (restore not in effect). */

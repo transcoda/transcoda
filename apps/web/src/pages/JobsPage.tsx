@@ -383,7 +383,8 @@ function JobRow({
   withActions,
 }: {
   job: Job;
-  controls: Controls;
+  /** Null: a read-only row without Pause / Cancel. */
+  controls: Controls | null;
   queuePaused: boolean;
   /** An encode that stands still (paused queue, or waiting for a lane); its icon stays still. */
   frozen: boolean;
@@ -421,7 +422,7 @@ function JobRow({
       </td>
       {withActions ? (
         <td>
-          {isActive(job) ? (
+          {controls && isActive(job) ? (
             <div className="job-actions">
               <JobActions job={job} controls={controls} queuePaused={queuePaused} />
             </div>
@@ -438,16 +439,19 @@ function JobTable({
   controls,
   queuePaused,
   queueStatus,
+  label = 'Job list',
 }: {
   jobs: Job[];
-  controls: Controls;
+  /** Null: no Actions column and no Pause / Cancel (the history of one file). */
+  controls: Controls | null;
   queuePaused: boolean;
   queueStatus: Parameters<typeof encodeStopped>[0];
+  label?: string;
 }) {
-  const withActions = jobs.some(isActive);
+  const withActions = controls !== null && jobs.some(isActive);
   return (
     <div className="job-list">
-      <table className={withActions ? 'job-table has-actions' : 'job-table'} aria-label="Job list">
+      <table className={withActions ? 'job-table has-actions' : 'job-table'} aria-label={label}>
         <colgroup>
           <col />
           {/* Library and Workflow give way first when the table is narrow (styles.css). */}
@@ -493,6 +497,80 @@ function JobTable({
         </tbody>
       </table>
     </div>
+  );
+}
+
+/** A phone card of the Jobs page's own markup, without Pause / Cancel (one file's history). */
+function HistoryCard({
+  job,
+  queuePaused,
+  frozen,
+}: {
+  job: Job;
+  queuePaused: boolean;
+  frozen: boolean;
+}) {
+  if (!isActive(job)) {
+    return (
+      <Link href={`/jobs/${job.id}`} className="phone-finished">
+        <span className={`phone-finished-icon is-${verdictOf(job)}`}>
+          <Icon name={VERDICT_ICON[verdictOf(job)]} size={16} strokeWidth={2.6} />
+        </span>
+        <span className="phone-finished-text">
+          <b>{jobTitle(job)}</b>
+          <span className={`job-detail-text is-${verdictOf(job)}`}>{phoneLine(job)}</span>
+        </span>
+      </Link>
+    );
+  }
+  const running = job.state !== 'queued';
+  const percent = running && job.state === 'encoding' ? percentOf(job) : null;
+  return (
+    <div className="phone-card row-link">
+      <div className="phone-card-head">
+        <TitleLink job={job} className="job-name row-link-main" />
+        {percent !== null ? <span className="mono">{percent}%</span> : null}
+      </div>
+      <TitleSub media={job.media} />
+      {percent !== null ? <JobProgress job={job} percent={percent} /> : null}
+      {job.paused || job.dryRun ? <JobStateChip job={job} frozen={frozen} /> : null}
+      <span className="phone-card-line">
+        {running ? phoneRunningLine(job) : detailLine(job, { queuePaused })}
+      </span>
+    </div>
+  );
+}
+
+/**
+ * The jobs of one file, without Pause / Cancel: the Jobs page's table on a desktop, its phone
+ * cards (same markup and classes) on a phone, newest first.
+ */
+export function JobHistoryTable({ jobs, label }: { jobs: Job[]; label: string }) {
+  const queue = useQueue();
+  const phone = usePhone();
+  const queuePaused = queue.status?.paused ?? false;
+  if (phone) {
+    return (
+      <section className="phone-section" aria-label={label}>
+        {jobs.map((job) => (
+          <HistoryCard
+            key={job.id}
+            job={job}
+            queuePaused={queuePaused}
+            frozen={encodeStopped(queue.status, job)}
+          />
+        ))}
+      </section>
+    );
+  }
+  return (
+    <JobTable
+      jobs={jobs}
+      controls={null}
+      queuePaused={queuePaused}
+      queueStatus={queue.status}
+      label={label}
+    />
   );
 }
 

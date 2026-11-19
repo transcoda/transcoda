@@ -34,6 +34,10 @@ export interface LibraryFileRow {
   media: StoredJobMedia;
   /** The job whose media (and poster) the row shows: the latest job if it has media, else the newest job that has some; null: none has. */
   mediaJobId: string | null;
+  /** The key of the show the titles list groups this file under; null unless the stored media says episode. */
+  showKey: string | null;
+  /** The season route's form (a number, or `none`); null exactly when `showKey` is. */
+  season: SeasonRef | null;
   /** A file is listed only once it has a job, so there always is one. */
   latest: JobListRow;
 }
@@ -182,6 +186,10 @@ interface DbListed {
   replaced: number | null;
   before_bytes: number | null;
   now_size: number;
+  kind: string | null;
+  title: string;
+  year: number | null;
+  season: number | null;
 }
 
 interface Filters {
@@ -258,6 +266,8 @@ function toRows(db: Database, rows: DbListed[]): LibraryFileRow[] {
         goneAt: r.gone_at,
         media: stored ?? parseFileName(r.path, rootOf(r.library_id)),
         mediaJobId: stored ? r.media_id : null,
+        showKey: r.kind === 'episode' ? showKey({ title: r.title, year: r.year }) : null,
+        season: r.kind === 'episode' ? (r.season ?? 'none') : null,
         latest,
       },
     ];

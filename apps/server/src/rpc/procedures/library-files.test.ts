@@ -315,6 +315,31 @@ describe('library browser read routes', () => {
     expect((await get('/libraries/l1/files/f1?jobsLimit=201')).status).toBe(400);
   });
 
+  it('an episode file returns the show key its show has in the titles list, and its season', async () => {
+    const titles = await get('/libraries/l1/titles');
+    const card = titles.body.items.find((i: { type: string }) => i.type === 'show');
+    const { body } = await get('/libraries/l1/files/f2');
+    expect(body.showKey).toBe(card.key);
+    expect(body.showKey).toBe(showKey({ title: SHOW, year: 1962 }));
+    expect(body.season).toBe(1);
+  });
+
+  it('a movie file has no show key and no season', async () => {
+    const { body } = await get('/libraries/l1/files/f3');
+    expect(body.showKey).toBeNull();
+    expect(body.season).toBeNull();
+  });
+
+  it('a file whose latest job has no media still gets its show key from an older job', async () => {
+    file('f4', '/media/tv/S02E01.mkv', 700);
+    job('j4a', 'f4', { state: 'failed', queuedAt: 6, media: media({ season: null, episode: 1 }) });
+    job('j4b', 'f4', { state: 'done', queuedAt: 7 });
+    const { body } = await get('/libraries/l1/files/f4');
+    expect(body.file.latest.id).toBe('j4b');
+    expect(body.showKey).toBe(showKey({ title: SHOW, year: 1962 }));
+    expect(body.season).toBe('none');
+  });
+
   it('a file the latest job did not replace shows its own probe as now and no before', async () => {
     const { body } = await get('/libraries/l1/files/f2');
     expect(body.now).toMatchObject({ sizeBytes: 800, streams: [{ codec: 'h264' }] });

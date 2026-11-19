@@ -10,6 +10,7 @@ import { HostNotAllowedPage } from './pages/HostNotAllowedPage.tsx';
 import { JobPage } from './pages/JobPage.tsx';
 import { JobsPage } from './pages/JobsPage.tsx';
 import { LibrariesPage } from './pages/LibrariesPage.tsx';
+import { LibraryFilePage } from './pages/LibraryFilePage.tsx';
 import { LibraryPage } from './pages/LibraryPage.tsx';
 import { LoginPage } from './pages/LoginPage.tsx';
 import { NewWorkflowPage } from './pages/NewWorkflowPage.tsx';
@@ -90,6 +91,16 @@ export function App() {
               <LibrariesPage />
             </Shell>
           </RequireAuth>
+        </Route>
+        <Route path="/libraries/:id/files/:fileId">
+          {(params) => (
+            <RequireAuth>
+              <Shell>
+                {/* Another file remounts the page, so the last file's data never shows under the new URL. */}
+                <LibraryFilePage key={`${params.id}\n${params.fileId}`} />
+              </Shell>
+            </RequireAuth>
+          )}
         </Route>
         <Route path="/libraries/:id/shows/:show/seasons/:season">
           <RequireAuth>

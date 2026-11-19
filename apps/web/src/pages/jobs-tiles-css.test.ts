@@ -131,7 +131,7 @@ describe('Jobs on a narrow window', () => {
     expect(overview).toBeGreaterThan(at('\n.history-cards {'));
     expect(overview).toBeGreaterThan(at('\n.stat-row > .stat-tiles {'));
     expect(at('@container jobs-overview (max-width: 559px)')).toBeGreaterThan(overview);
-    const list = at('@container job-list (max-width: 993px)');
+    const list = at('@container job-list (max-width: 1009px)');
     expect(list).toBeGreaterThan(at('\n.job-col-result {'));
     expect(list).toBeGreaterThan(at('\n.job-table td.job-when {'));
   });
@@ -175,5 +175,13 @@ describe('Jobs stat tiles (#54)', () => {
       /color:\s*var\(--accent-text\)/,
     );
     expect(css).not.toMatch(/\.stat-tile\.has-accent-value\s*\{[^}]*background/);
+  });
+});
+
+describe('Jobs table When column', () => {
+  it('is 100px wide, room for "28 min ago" after its padding, and the table minimums follow', () => {
+    expect(rule('.job-col-when')).toMatch(/width:\s*100px/);
+    expect(rule('.job-table')).toMatch(/min-width:\s*1010px/);
+    expect(rule('.job-table.has-actions')).toMatch(/min-width:\s*1160px/);
   });
 });

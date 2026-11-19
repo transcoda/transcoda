@@ -284,6 +284,8 @@ export const file = os.libraries.file
     const fileProbe = current ? jobProbeOf(current) : null;
     return {
       file: toFile(row, job),
+      showKey: row.showKey,
+      season: row.season,
       // A replace from before output probes were kept has none: what the file is now is unknown,
       // and the file's stored probe is the original's.
       now: replaced ? outputProbe : fileProbe,
