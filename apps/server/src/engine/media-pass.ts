@@ -113,17 +113,28 @@ export class MediaPass {
       const todo = all.slice(start, start + batch);
       let next = 0;
       let wrote = 0;
+      let failed = false;
       const worker = async (): Promise<void> => {
-        while (next < todo.length && !this.stopped) {
+        while (next < todo.length && !this.stopped && !failed) {
           const j = todo[next++];
           if (j === undefined) return;
-          // resolve never throws; a file whose sidecars fail gets its file-name media.
-          const media = await resolver.resolve(j.path, j.libraryRoot);
-          if (setJobMedia(db, j.jobId, media)) wrote++;
+          try {
+            // resolve never throws; a file whose sidecars fail gets its file-name media.
+            const media = await resolver.resolve(j.path, j.libraryRoot);
+            if (setJobMedia(db, j.jobId, media)) wrote++;
+          } catch (err) {
+            failed = true; // the other workers start no new file
+            throw err;
+          }
         }
       };
-      await Promise.all(Array.from({ length: Math.min(MEDIA_CONCURRENCY, todo.length) }, worker));
+      // Every worker settles before the pass ends, so none outlives `running` (idle, stop, kick).
+      const settled = await Promise.allSettled(
+        Array.from({ length: Math.min(MEDIA_CONCURRENCY, todo.length) }, worker),
+      );
       filled += wrote;
+      const failure = settled.find((s) => s.status === 'rejected');
+      if (failure !== undefined) throw failure.reason;
     }
     if (filled > 0) log.info({ msg: 'media pass: filled job(s)', filled });
     return { filled };

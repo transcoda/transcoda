@@ -1252,6 +1252,8 @@ export function upsertFile(
  * that merely shares the name's prefix) that `paths` lacks get `gone_at` (the first time is kept);
  * rows `paths` lists are present again. `paths` must be in the form `upsertFile` stores (real
  * paths). Files under a folder of `unlisted` are left alone: that part of the listing failed.
+ * With `startedAt` (when the listing began), a row written since (`updated_at`, e.g. queued by
+ * another request meanwhile) is not marked gone: the older listing could not have seen it.
  */
 export function markFolderListing(
   db: Database,
@@ -1260,6 +1262,7 @@ export function markFolderListing(
     folder: string;
     paths: readonly string[];
     unlisted?: readonly string[];
+    startedAt?: Date;
   },
   now: Date,
 ): { gone: number; back: number } {
@@ -1268,6 +1271,7 @@ export function markFolderListing(
   const unlisted = JSON.stringify(
     (input.unlisted ?? []).map((f) => (f.endsWith('/') ? f : `${f}/`)),
   );
+  const startedAt = input.startedAt?.toISOString() ?? null;
   return db.transaction(() => {
     const gone = db
       .prepare(
@@ -1275,9 +1279,19 @@ export function markFolderListing(
          WHERE library_id = ? AND gone_at IS NULL AND substr(path, 1, length(?)) = ?
            AND path NOT IN (SELECT value FROM json_each(?))
            AND NOT EXISTS (SELECT 1 FROM json_each(?) u
-                           WHERE substr(files.path, 1, length(u.value)) = u.value)`,
+                           WHERE substr(files.path, 1, length(u.value)) = u.value)
+           AND (? IS NULL OR updated_at < ?)`,
       )
-      .run(now.toISOString(), input.libraryId, prefix, prefix, listed, unlisted).changes;
+      .run(
+        now.toISOString(),
+        input.libraryId,
+        prefix,
+        prefix,
+        listed,
+        unlisted,
+        startedAt,
+        startedAt,
+      ).changes;
     const back = db
       .prepare(
         `UPDATE files SET gone_at = NULL

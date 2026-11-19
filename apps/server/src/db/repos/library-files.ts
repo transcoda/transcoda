@@ -18,10 +18,15 @@ export interface LibraryFileRow {
   libraryId: string;
   path: string;
   fileName: string;
-  /** What is there now: the latest job's afterBytes when it replaced the file (restore not in effect), else files.size_bytes. */
+  /**
+   * What is there now: the latest job's afterBytes when it replaced the file (restore not in
+   * effect) and the file has not been seen since with another fingerprint, else files.size_bytes.
+   */
   sizeBytes: number;
-  /** The original's size when the latest job replaced the file (restore not in effect); else null. */
+  /** The original's size when sizeBytes is the latest job's afterBytes; else null. */
   originalBytes: number | null;
+  /** sizeBytes is the latest job's afterBytes: its replace is what is at the path now. */
+  replaced: boolean;
   /** ISO, from files.mtime_ms. */
   mtime: string;
   goneAt: string | null;
@@ -144,7 +149,11 @@ const LISTED_SQL = `base AS (
     COALESCE(lj.finished_at, lj.queued_at) AS last_run, r.before_bytes, r.after_bytes,
     -- A corrupt media cell reads as none rather than failing the whole list.
     CASE WHEN json_valid(lt.media) THEN lt.media END AS media_json,
-    (r.replaced_to IS NOT NULL AND r.after_bytes IS NOT NULL AND NOT EXISTS
+    -- The job's output is still what is there: the file was last seen as the job's input (the
+    -- job's own probe) or as its output; a later sighting with another fingerprint (an external
+    -- replace) means files.size_bytes is newer than the job's result.
+    (r.replaced_to IS NOT NULL AND r.after_bytes IS NOT NULL
+      AND f.fingerprint IN (r.fingerprint, r.output_fingerprint) AND NOT EXISTS
       (SELECT 1 FROM restores x WHERE x.job_id = lt.latest_id AND x.undone_at IS NULL)) AS replaced,
     ${FILE_NAME_SQL} AS file_name
   FROM latest lt
@@ -252,6 +261,7 @@ function toRows(db: Database, rows: DbListed[]): LibraryFileRow[] {
         fileName: basename(r.path),
         sizeBytes: r.now_size,
         originalBytes: r.replaced ? r.before_bytes : null,
+        replaced: r.replaced === 1,
         mtime: new Date(r.mtime_ms).toISOString(),
         goneAt: r.gone_at,
         media: stored ?? parseFileName(r.path, rootOf(r.library_id)),
@@ -573,25 +583,18 @@ export function listSeasons(db: Database, libraryId: string, show: ShowRef): Sea
 }
 
 /**
- * Whether any job of a present file of the library carries episode media of `show`: a cheap,
- * indexed check (files by library, jobs by file) that stops at the first hit. A show the listing
- * groups always passes it (its media comes from some job of the file); it answers "is this show
- * key unknown here" without the latest-job window scan.
+ * Whether a present file of the library is an episode of `show` by the media the listing shows
+ * (its latest job's, else the newest job's that has some): the files list's `show` filter with
+ * nothing else applied. A show only older jobs named (since renamed) is unknown, as for seasons.
  */
 export function showExists(db: Database, libraryId: string, show: ShowRef): boolean {
+  const latest = latestJobPerFileSql({ libraryId });
+  const filter = filterSql({ includeGone: false, show });
   return (
     db
-      .prepare(
-        `SELECT EXISTS (
-           SELECT 1 FROM files f JOIN jobs j ON j.file_id = f.id
-           WHERE f.library_id = @libraryId AND f.gone_at IS NULL AND json_valid(j.media)
-             AND json_extract(j.media, '$.kind') = 'episode'
-             AND json_extract(j.media, '$.title') = @title
-             AND json_extract(j.media, '$.year') IS @year
-         )`,
-      )
+      .prepare(`${latest.sql}, ${LISTED_SQL} SELECT EXISTS (SELECT 1 FROM listed ${filter.where})`)
       .pluck()
-      .get({ libraryId, title: show.title, year: show.year }) === 1
+      .get({ ...latest.params, ...filter.params }) === 1
   );
 }
 

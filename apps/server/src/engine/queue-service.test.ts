@@ -772,6 +772,44 @@ describe('QueueService folder listings and files.gone_at', () => {
     expect(goneAt(join(root, 'Links', 'alias.mkv'))).toBeUndefined();
   });
 
+  it('a file queued while a folder listing resolves its names is not marked gone by it', async () => {
+    const season = join(root, 'Show', 'Season 1');
+    const e1 = await settled(join(season, 'e1.mkv'));
+    let release: () => void = () => {};
+    const gate = new Promise<void>((r) => {
+      release = r;
+    });
+    const resolving = vi.fn();
+    const fs: FsOps = {
+      ...nodeFsOps,
+      realpath: async (p) => {
+        if (p === e1) {
+          resolving();
+          await gate;
+        }
+        return nodeFsOps.realpath(p);
+      },
+    };
+    const slow = new QueueService({
+      db,
+      workflows,
+      events,
+      now: () => new Date(),
+      fs,
+      onQueued: () => {},
+    });
+    const listing = slow.queue(input(season));
+    await vi.waitFor(() => expect(resolving).toHaveBeenCalled());
+    // Arrives after the listing read the folder, before it marks: another request queues it.
+    const e2 = await settled(join(season, 'e2.mkv'));
+    await queued(e2);
+    expect(goneAt(e2)).toBeNull();
+    release();
+    expect((await listing).kind).toBe('queued');
+    expect(goneAt(e2)).toBeNull();
+    expect(goneAt(e1)).toBeNull();
+  });
+
   it('files under a sub-folder whose listing failed are not marked gone', async () => {
     const season = join(root, 'Show', 'Season 1');
     const e1 = await settled(join(season, 'e1.mkv'));
