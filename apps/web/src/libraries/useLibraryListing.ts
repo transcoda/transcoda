@@ -5,21 +5,37 @@ import type {
   LibrarySeasonsOutput,
   LibraryTitlesOutput,
 } from '@transcoda/contract';
+import { isFinalState } from '@transcoda/shared';
 import { useMemo } from 'react';
 import { api } from '../api/client.ts';
 import { useAsync } from '../hooks/useAsync.ts';
 import { useRefetchOn } from '../hooks/useRefetchOn.ts';
-import { stateChangeTracker } from '../jobs/useJobsList.ts';
 
 type AsyncState<T> = ReturnType<typeof useAsync<T>>;
+type JobChanged = Extract<EngineEvent, { type: 'job.changed' }>;
 
 /**
- * A job of this library changed state (progress ticks of the same state are not news for a
+ * True when a job's state or paused flag differs from the last one seen (or the job is new): a row
+ * shows both, while progress ticks are not news for a listing. Final jobs are forgotten.
+ */
+function rowChangeTracker(): (e: JobChanged) => boolean {
+  const last = new Map<string, string>();
+  return (e) => {
+    const now = `${e.state}|${e.paused}`;
+    const changed = last.get(e.jobId) !== now;
+    if (isFinalState(e.state)) last.delete(e.jobId);
+    else last.set(e.jobId, now);
+    return changed;
+  };
+}
+
+/**
+ * A job of this library changed state or was paused or resumed (progress ticks are not news for a
  * listing), or any run changed (a run's files appear and go as it plans). Stateful: make one per
  * listing and keep it.
  */
 export function libraryEvent(libraryId: string): (e: EngineEvent) => boolean {
-  const changed = stateChangeTracker();
+  const changed = rowChangeTracker();
   return (e) =>
     (e.type === 'job.changed' && e.libraryId === libraryId && changed(e)) ||
     e.type === 'run.changed';

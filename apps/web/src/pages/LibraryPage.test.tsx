@@ -234,6 +234,29 @@ describe('LibraryPage', () => {
     expect(mocks.libraries.get).toHaveBeenCalledTimes(gets + 1);
   });
 
+  it('pausing or resuming a job refetches; progress while paused does not', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+    await renderPage();
+    await push(queueSnapshot);
+    await waitFor(() => expect(mocks.libraries.titles.mock.calls.length).toBeGreaterThan(1));
+    await push(jobChanged('j1'));
+    await act(() => vi.advanceTimersByTimeAsync(REFETCH_COALESCE_MS * 2));
+    const titles = mocks.libraries.titles.mock.calls.length;
+
+    // Same state, now paused: the row's status changes.
+    await push({ ...jobChanged('j1'), paused: true } as EngineEvent);
+    await act(() => vi.advanceTimersByTimeAsync(REFETCH_COALESCE_MS * 2));
+    await waitFor(() => expect(mocks.libraries.titles).toHaveBeenCalledTimes(titles + 1));
+
+    await push({ ...jobChanged('j1'), paused: true, progress: { percent: 40 } } as EngineEvent);
+    await act(() => vi.advanceTimersByTimeAsync(REFETCH_COALESCE_MS * 2));
+    expect(mocks.libraries.titles).toHaveBeenCalledTimes(titles + 1);
+
+    await push(jobChanged('j1'));
+    await act(() => vi.advanceTimersByTimeAsync(REFETCH_COALESCE_MS * 2));
+    await waitFor(() => expect(mocks.libraries.titles).toHaveBeenCalledTimes(titles + 2));
+  });
+
   it('the header count follows the library: it reloads on a state change', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ['setTimeout', 'clearTimeout', 'Date'] });
     await renderPage();
