@@ -630,6 +630,23 @@ export function showExists(db: Database, libraryId: string, show: ShowRef): bool
 }
 
 /**
+ * A show selection of a library (a `show` key, and a `season` as the contract's season parameter
+ * gives it: digits or `none`): null when the key does not parse or names no show with a present
+ * episode here ({@link showExists}). `libraries.files` and the run-on-a-selection routes share it.
+ */
+export function resolveShowSelection(
+  db: Database,
+  libraryId: string,
+  key: string,
+  season?: string,
+): { show: ShowRef; season?: SeasonRef } | null {
+  const show = parseShowKey(key);
+  if (!show || !showExists(db, libraryId, show)) return null;
+  if (season === undefined) return { show };
+  return { show, season: season === 'none' ? 'none' : Number(season) };
+}
+
+/**
  * The probe stored with the file (what it is now); null when it was never probed, the file is
  * unknown or the stored probe does not parse.
  */

@@ -79,7 +79,8 @@ export interface QueueInput {
 
 export type QueueResult =
   | { kind: 'queued'; run: RunRow; jobs: JobRow[] }
-  | { kind: 'path-rejected'; reason: string }
+  /** `path`: the path refused, when it is not the one asked for (a selection's offending file). */
+  | { kind: 'path-rejected'; reason: string; path?: string }
   | { kind: 'workflow-missing' }
   | { kind: 'version-missing' }
   | { kind: 'workflow-invalid'; issues: Issue[] }
@@ -462,18 +463,25 @@ export class QueueService {
 
   /**
    * The library and paths of a selection, or why it is refused: an unknown or deleted library (or
-   * one whose root cannot be resolved) is `not found`, as is an empty selection; a path that is
+   * one whose root cannot be resolved) is `not found`, as is an empty selection; more than
+   * QUEUE_FILES_MAX paths is `too many files` (with the library's root as `path`); a path that is
    * not absolute or lies outside the root (as written, by the root's stored or real path, or once
-   * resolved) is `outside library root`. Each path is checked again, file by file, by `candidate`.
+   * resolved) is `outside library root`, with that path. Each path is checked again, file by file,
+   * by `candidate`.
    */
   private async selection(
     libraryId: string,
     paths: readonly string[],
-  ): Promise<Selection | { kind: 'path-rejected'; reason: string }> {
-    const rejected = (reason: string) => ({ kind: 'path-rejected' as const, reason });
-    if (paths.length > QUEUE_FILES_MAX) return rejected('too many files');
+  ): Promise<Selection | { kind: 'path-rejected'; reason: string; path?: string }> {
+    const rejected = (reason: string, path?: string) => ({
+      kind: 'path-rejected' as const,
+      reason,
+      ...(path !== undefined && { path }),
+    });
     const row = findLibrary(this.db, libraryId);
-    if (!row || row.deletedAt !== null || paths.length === 0) return rejected('not found');
+    if (!row || row.deletedAt !== null) return rejected('not found');
+    if (paths.length > QUEUE_FILES_MAX) return rejected('too many files', row.path);
+    if (paths.length === 0) return rejected('not found');
     const lexicalRoot = trimSlash(resolve(row.path));
     const realRoot = await realpathOrNull(this.fs, lexicalRoot);
     if (realRoot === null) return rejected('not found');
@@ -484,12 +492,12 @@ export class QueueService {
 
     const out: string[] = [];
     for (const p of paths) {
-      if (!isAbsolute(p)) return rejected('outside library root');
+      if (!isAbsolute(p)) return rejected('outside library root', p);
       const abs = resolve(p);
       if (!isWithin(abs, lexicalRoot) && !isWithin(abs, realRoot)) {
         // Written outside the root: accepted only when it resolves into it (an alias of the root).
         const real = await realpathOrNull(this.fs, abs);
-        if (real === null || !isWithin(real, realRoot)) return rejected('outside library root');
+        if (real === null || !isWithin(real, realRoot)) return rejected('outside library root', p);
       }
       out.push(abs);
     }

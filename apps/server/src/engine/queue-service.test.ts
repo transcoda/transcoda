@@ -1507,10 +1507,15 @@ describe('QueueService.queueFiles', () => {
 
   it('a path outside the library is refused; a vanished file is skipped', async () => {
     const stray = await settled(join(outside, 'The General (1926).mkv'));
-    for (const paths of [[a, stray], ['/etc/passwd'], ['Show/a.mkv']]) {
-      expect(await svc.queueFiles(filesInput({ paths }))).toEqual({
+    for (const [paths, offending] of [
+      [[a, stray], stray],
+      [['/etc/passwd'], '/etc/passwd'],
+      [['Show/a.mkv'], 'Show/a.mkv'],
+    ] as const) {
+      expect(await svc.queueFiles(filesInput({ paths: [...paths] }))).toEqual({
         kind: 'path-rejected',
         reason: 'outside library root',
+        path: offending,
       });
     }
     expect(rowCounts()).toEqual({ jobs: 0, runs: 0, files: 0 });
@@ -1577,6 +1582,7 @@ describe('QueueService.queueFiles', () => {
     expect(await svc.queueFiles(filesInput({ libraryId: 'l2', paths: [a] }))).toEqual({
       kind: 'path-rejected',
       reason: 'outside library root',
+      path: a,
     });
   });
 
@@ -1593,10 +1599,16 @@ describe('QueueService.queueFiles', () => {
     expect(await svc.queueFiles(filesInput({ paths: many }))).toEqual({
       kind: 'path-rejected',
       reason: 'too many files',
+      path: lib.path,
     });
     expect(await svc.previewFiles(previewInput({ paths: many }))).toEqual({
       kind: 'path-rejected',
       reason: 'too many files',
+      path: lib.path,
+    });
+    expect(await svc.queueFiles(filesInput({ libraryId: 'nope', paths: many }))).toEqual({
+      kind: 'path-rejected',
+      reason: 'not found',
     });
     expect(await svc.queueFiles(filesInput({ workflowId: 'nope' }))).toEqual({
       kind: 'workflow-missing',

@@ -1097,6 +1097,19 @@ describe('jobs.queueFiles input', () => {
     }
   });
 
+  it('a season needs a show: with fileIds, paths or alone it is refused', () => {
+    for (const schema of [JobsQueueFilesInputSchema, JobsQueueFilesPreviewInputSchema]) {
+      for (const sel of [{ fileIds: ['f'] }, { paths: ['/a'] }]) {
+        const r = schema.safeParse({ ...base, ...sel, season: '1' });
+        expect(r.success).toBe(false);
+        expect(r.success ? null : r.error.issues.map((i) => [i.path, i.message])).toEqual([
+          [['season'], 'season needs show'],
+        ]);
+      }
+      expect(schema.safeParse({ ...base, show: 'k', season: 'none' }).success).toBe(true);
+    }
+  });
+
   it('refuses 5001 ids or paths, an empty list and an out-of-range priority or start', () => {
     const ids = (n: number) => Array.from({ length: n }, (_, i) => `f${i}`);
     expect(

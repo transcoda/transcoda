@@ -64,8 +64,9 @@ type Mode = 'real' | 'dry';
 /**
  * "Run a workflow on <label>": pick a workflow, real or dry run, see how many files would run
  * (files already handled are skipped unless the box is ticked), then run now or add to the
- * queue (held to the library's run hours). A real run answered as a dry run (nothing active any
- * more) is refused with a toast and the dialog stays.
+ * queue (held to the library's run hours). A real run the preview answers as a dry run (nothing
+ * active any more) cannot be sent: the dialog says to activate a version. If the version goes
+ * between the preview and the send, the answer is refused with a toast and the dialog stays.
  */
 export function RunFilesDialog({
   open,
@@ -152,9 +153,13 @@ export function RunFilesDialog({
   const handled = preview?.alreadyHandled ?? 0;
   const count = preview === null ? 0 : preview.willRun + (force ? handled : 0);
   const busy = checking || sending;
-  const canRun = !busy && count > 0 && chosen !== null;
+  // A real request the server would turn into a dry run (the workflow has no active version).
+  const inactive = preview !== null && preview.dryRun !== dryRun;
+  const canRun = !busy && !inactive && count > 0 && chosen !== null;
+  // The version the files were checked against, as the server answered it.
   const version =
-    chosen === null ? 0 : dryRun ? chosen.currentVersion : (chosen.active?.version ?? 0);
+    preview?.workflowVersion ??
+    (chosen === null ? 0 : dryRun ? chosen.currentVersion : (chosen.active?.version ?? 0));
   const held = preview?.heldByAnotherRun ?? 0;
   const notFound = preview?.notFound ?? 0;
   const skipped = preview?.skipped ?? 0;
@@ -285,6 +290,11 @@ export function RunFilesDialog({
             {notFound > 0 && <p>{`${files(notFound)} can't be found and will be skipped`}</p>}
             {skipped > 0 && <p>{`${files(skipped)} will be skipped`}</p>}
           </div>
+          {inactive && (
+            <p className="alert alert-warning" role="alert">
+              {ACTIVATE_TO_RUN}
+            </p>
+          )}
           {handled > 0 && chosen && (
             <label className="lib-check">
               <input type="checkbox" checked={force} onChange={(e) => setForce(e.target.checked)} />

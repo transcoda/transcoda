@@ -313,6 +313,40 @@ describe('RunFilesDialog', () => {
     expect(screen.getByRole('dialog', { name: 'Run a workflow on 3 files' })).toBeTruthy();
   });
 
+  it('a real run the preview answers as a dry run is not offered: both buttons off, activate first', async () => {
+    mocks.preview.mockResolvedValue(answer({ dryRun: true, workflowVersion: 3 }));
+    mount();
+    expect(await screen.findByText(ACTIVATE_TO_RUN)).toBeTruthy();
+    expect(screen.getByRole('alert').textContent).toBe(ACTIVATE_TO_RUN);
+    const now = screen.getByRole('button', { name: 'Run 3 files now' }) as HTMLButtonElement;
+    const queue = screen.getByRole('button', { name: 'Add 3 files to queue' }) as HTMLButtonElement;
+    expect(now.disabled).toBe(true);
+    expect(queue.disabled).toBe(true);
+    fireEvent.click(now);
+    fireEvent.click(queue);
+    expect(mocks.queueFiles).not.toHaveBeenCalled();
+    // A dry run asked for and answered as one is fine.
+    fireEvent.click(screen.getByRole('radio', { name: /Dry run/ }));
+    await waitFor(() =>
+      expect(
+        (screen.getByRole('button', { name: 'Run 3 files now' }) as HTMLButtonElement).disabled,
+      ).toBe(false),
+    );
+    expect(screen.queryByText(ACTIVATE_TO_RUN)).toBeNull();
+  });
+
+  it('names the version the server checked in the already handled box', async () => {
+    // The list still says v2 is active; the server checked the files against v4.
+    mocks.preview.mockResolvedValue(answer({ workflowVersion: 4 }));
+    mount();
+    expect(
+      await screen.findByRole('checkbox', {
+        name: 'Also run the 9 files Shows Cleanup v4 already handled',
+      }),
+    ).toBeTruthy();
+    expect(screen.queryByText(/Shows Cleanup v2 already handled/)).toBeNull();
+  });
+
   it('no button is enabled while nothing would run', async () => {
     mocks.preview.mockResolvedValue(answer({ willRun: 0, alreadyHandled: 0 }));
     mount();

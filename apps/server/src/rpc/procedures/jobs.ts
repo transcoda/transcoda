@@ -4,12 +4,8 @@ import { ACTIVE_JOB_STATES } from '@transcoda/shared';
 import { hasScope } from '../../auth/tokens.ts';
 import type { Database } from '../../db/open.ts';
 import { findJob, type JobListRow, jobsInStates } from '../../db/repos/jobs.ts';
-import {
-  filePathsOf,
-  listSeasons,
-  parseShowKey,
-  type SeasonRef,
-} from '../../db/repos/library-files.ts';
+import { findLibrary } from '../../db/repos/libraries.ts';
+import { filePathsOf, resolveShowSelection } from '../../db/repos/library-files.ts';
 import type { QueueResult } from '../../engine/queue-service.ts';
 import type { RunHoursHold } from '../../engine/run-hours.ts';
 import type { AuthContext } from '../context.ts';
@@ -130,9 +126,10 @@ export const queue = os.jobs.queue
   });
 
 /**
- * The paths of a file selection. Ids and a show take only this library's files; a show key that
- * does not parse, or names no show with files here, is NOT_FOUND (as `libraries.files` treats it).
- * Nothing left is PATH_REJECTED 'not found'. `notFound` counts ids that are no file of the library.
+ * The library root and paths of a file selection. An unknown or deleted library is NOT_FOUND (as
+ * on `libraries.*`). Ids and a show take only this library's files; a show key that does not
+ * parse, or names no show with files here, is NOT_FOUND (as `libraries.files` treats it), and so
+ * is a selection with nothing left. `notFound` counts ids that are no file of the library.
  */
 function selectedPaths(
   context: { deps: { db: Database } },
@@ -144,31 +141,42 @@ function selectedPaths(
     season?: string | undefined;
   },
   errors: QueueErrors,
-): { paths: string[]; notFound: number } {
+): { root: string; paths: string[]; notFound: number } {
   const { db } = context.deps;
-  if (input.paths !== undefined) return { paths: input.paths, notFound: 0 };
+  const library = findLibrary(db, input.libraryId);
+  if (!library || library.deletedAt !== null) throw errors.NOT_FOUND();
+  const root = library.path;
+  if (input.paths !== undefined) return { root, paths: input.paths, notFound: 0 };
+  let picked: { paths: string[]; notFound: number };
   if (input.fileIds !== undefined) {
-    const picked = filePathsOf(db, input.libraryId, { fileIds: input.fileIds });
-    if (picked.paths.length === 0)
-      throw errors.PATH_REJECTED({ data: { path: input.libraryId, reason: 'not found' } });
-    return picked;
+    picked = filePathsOf(db, input.libraryId, { fileIds: input.fileIds });
+  } else {
+    const sel =
+      input.show === undefined
+        ? null
+        : resolveShowSelection(db, input.libraryId, input.show, input.season);
+    if (sel === null) throw errors.NOT_FOUND();
+    picked = filePathsOf(db, input.libraryId, sel);
   }
-  const show = input.show === undefined ? null : parseShowKey(input.show);
-  // A key that names no show with files here is as unknown as one that does not parse.
-  if (!show || listSeasons(db, input.libraryId, show).length === 0) throw errors.NOT_FOUND();
-  const season: SeasonRef | undefined =
-    input.season === undefined
-      ? undefined
-      : input.season === 'none'
-        ? 'none'
-        : Number(input.season);
-  const picked = filePathsOf(db, input.libraryId, {
-    show,
-    ...(season !== undefined && { season }),
-  });
-  if (picked.paths.length === 0)
-    throw errors.PATH_REJECTED({ data: { path: input.libraryId, reason: 'not found' } });
-  return picked;
+  if (picked.paths.length === 0) throw errors.NOT_FOUND();
+  return { root, ...picked };
+}
+
+/**
+ * Why the engine refused a selection, in the routes' words: the library or every file gone by
+ * now is NOT_FOUND; a path outside the root or too many files is PATH_REJECTED with a real path
+ * (the offending one, else the library root), never the library id.
+ */
+function throwSelectionRefused(
+  result: Exclude<QueueResult, { kind: 'queued' }>,
+  root: string,
+  errors: QueueErrors,
+): never {
+  if (result.kind === 'path-rejected') {
+    if (result.reason === 'not found') throw errors.NOT_FOUND();
+    throw errors.PATH_REJECTED({ data: { path: result.path ?? root, reason: result.reason } });
+  }
+  return throwNotQueued(result, root, errors);
 }
 
 export const queueFiles = os.jobs.queueFiles
@@ -176,7 +184,7 @@ export const queueFiles = os.jobs.queueFiles
   .handler(async ({ context, input, errors }) => {
     const { auth } = context;
     requireCreateUnlessDry(auth, input.dryRun, errors);
-    const { paths } = selectedPaths(context, input, errors);
+    const { root, paths } = selectedPaths(context, input, errors);
     const result = await context.deps.engine.queue.queueFiles({
       libraryId: input.libraryId,
       paths,
@@ -187,7 +195,7 @@ export const queueFiles = os.jobs.queueFiles
       start: input.start,
       createdBy: auth.user.id,
     });
-    if (result.kind !== 'queued') return throwNotQueued(result, input.libraryId, errors);
+    if (result.kind !== 'queued') return throwSelectionRefused(result, root, errors);
     return queuedOutput(result);
   });
 
@@ -195,14 +203,14 @@ export const queueFilesPreview = os.jobs.queueFilesPreview
   .use(requireAnyScope('jobs:create', 'plan'))
   .handler(async ({ context, input, errors }) => {
     requireCreateUnlessDry(context.auth, input.dryRun, errors);
-    const { paths, notFound } = selectedPaths(context, input, errors);
+    const { root, paths, notFound } = selectedPaths(context, input, errors);
     const result = await context.deps.engine.queue.previewFiles({
       libraryId: input.libraryId,
       paths,
       workflowId: input.workflowId,
       dryRun: input.dryRun,
     });
-    if (result.kind !== 'preview') return throwNotQueued(result, input.libraryId, errors);
+    if (result.kind !== 'preview') return throwSelectionRefused(result, root, errors);
     const { kind: _kind, ...counts } = result;
     return { ...counts, notFound };
   });

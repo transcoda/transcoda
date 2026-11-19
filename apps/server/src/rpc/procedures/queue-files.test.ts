@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import type { Capabilities } from '@transcoda/contract';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { Exec } from '../../capabilities/ffmpeg.ts';
+import { softDeleteLibrary } from '../../db/repos/libraries.ts';
 import { filePathsOf, showKey } from '../../db/repos/library-files.ts';
 import { tempDir } from '../../engine/fixtures.ts';
 import { type FsOps, nodeFsOps } from '../../engine/fs-ops.ts';
@@ -226,14 +227,15 @@ describe('jobs.queueFiles', () => {
       workflowId: wf,
     });
     expect(out.status).toBe(400);
+    // The path refused is the offending one, not the library id.
     expect(await json(out)).toMatchObject({
       code: 'PATH_REJECTED',
-      data: { reason: 'outside library root' },
+      data: { reason: 'outside library root', path: join(root2, 'Elsewhere.mkv') },
     });
     expect(count('jobs')).toBe(before);
   });
 
-  it('fileIds of another library are not queued', async () => {
+  it('fileIds of another library are not queued: nothing left is 404', async () => {
     const jobs = count('jobs');
     const runs = count('runs');
     const res = await post('/jobs/queue-files', {
@@ -241,8 +243,8 @@ describe('jobs.queueFiles', () => {
       fileIds: [ids[`${lib2}:Elsewhere.mkv`]],
       workflowId: wf,
     });
-    expect(res.status).toBe(400);
-    expect(await json(res)).toMatchObject({ code: 'PATH_REJECTED', data: { reason: 'not found' } });
+    expect(res.status).toBe(404);
+    expect(await json(res)).toMatchObject({ code: 'NOT_FOUND' });
     expect(count('jobs')).toBe(jobs);
     expect(count('runs')).toBe(runs);
   });
@@ -254,7 +256,8 @@ describe('jobs.queueFiles', () => {
       fileIds: ['nope'],
       workflowId: wf,
     });
-    expect(unknown.status).toBe(400);
+    expect(unknown.status).toBe(404);
+    expect(await json(unknown)).toMatchObject({ code: 'NOT_FOUND' });
     expect(count('jobs')).toBe(jobs);
     const mixed = await post('/jobs/queue-files', {
       libraryId: lib,
@@ -277,7 +280,7 @@ describe('jobs.queueFiles', () => {
     expect(pathsOfNewestRun()).toEqual(['S01E01.mkv', 'S01E02.mkv', 'S02E01.mkv']);
   });
 
-  it('a season with no listed file is a rejected path and queues nothing', async () => {
+  it('a season with no listed file is 404 and queues nothing', async () => {
     const jobs = count('jobs');
     const res = await post('/jobs/queue-files', {
       libraryId: lib,
@@ -285,8 +288,8 @@ describe('jobs.queueFiles', () => {
       season: '7',
       workflowId: wf,
     });
-    expect(res.status).toBe(400);
-    expect(await json(res)).toMatchObject({ code: 'PATH_REJECTED', data: { reason: 'not found' } });
+    expect(res.status).toBe(404);
+    expect(await json(res)).toMatchObject({ code: 'NOT_FOUND' });
     expect(count('jobs')).toBe(jobs);
   });
 
@@ -318,7 +321,7 @@ describe('jobs.queueFiles', () => {
     expect(count('jobs')).toBe(jobs);
   });
 
-  it('an unknown workflow is 404 and an unknown library is a rejected path; nothing is queued', async () => {
+  it('an unknown workflow, an unknown library and a deleted library are 404; nothing is queued', async () => {
     const jobs = count('jobs');
     const noWf = await post('/jobs/queue-files', {
       libraryId: lib,
@@ -326,12 +329,24 @@ describe('jobs.queueFiles', () => {
       workflowId: 'nope',
     });
     expect(noWf.status).toBe(404);
-    const noLib = await post('/jobs/queue-files', {
-      libraryId: 'nope',
-      paths: [join(root, 'Movie.mkv')],
-      workflowId: wf,
-    });
-    expect(noLib.status).toBe(400);
+    for (const path of ['/jobs/queue-files', '/jobs/queue-files/preview']) {
+      const noLib = await post(path, {
+        libraryId: 'nope',
+        paths: [join(root, 'Movie.mkv')],
+        workflowId: wf,
+      });
+      expect([path, noLib.status]).toEqual([path, 404]);
+      expect(await json(noLib)).toMatchObject({ code: 'NOT_FOUND' });
+    }
+    softDeleteLibrary(t.db, lib2, new Date());
+    for (const sel of [
+      { fileIds: [ids[`${lib2}:Elsewhere.mkv`]] },
+      { paths: [join(root2, 'Elsewhere.mkv')] },
+    ]) {
+      const gone = await post('/jobs/queue-files', { libraryId: lib2, ...sel, workflowId: wf });
+      expect(gone.status).toBe(404);
+      expect(await json(gone)).toMatchObject({ code: 'NOT_FOUND' });
+    }
     expect(count('jobs')).toBe(jobs);
   });
 
@@ -346,6 +361,20 @@ describe('jobs.queueFiles', () => {
     expect(both.status).toBe(400);
     const none = await post('/jobs/queue-files', { libraryId: lib, workflowId: wf });
     expect(none.status).toBe(400);
+    expect(count('jobs')).toBe(jobs);
+  });
+
+  it('a season without a show is refused', async () => {
+    const jobs = count('jobs');
+    for (const path of ['/jobs/queue-files', '/jobs/queue-files/preview']) {
+      const res = await post(path, {
+        libraryId: lib,
+        fileIds: [ids[`${lib}:S01E01.mkv`]],
+        season: '1',
+        workflowId: wf,
+      });
+      expect([path, res.status]).toEqual([path, 400]);
+    }
     expect(count('jobs')).toBe(jobs);
   });
 
@@ -425,7 +454,7 @@ describe('jobs.queueFilesPreview', () => {
     expect(count('runs')).toBe(runs);
   });
 
-  it('a show selection counts its files; nothing found is a rejected path', async () => {
+  it('a show selection counts its files; nothing found is 404', async () => {
     const jobs = count('jobs');
     const show = await post('/jobs/queue-files/preview', {
       libraryId: lib,
@@ -439,11 +468,8 @@ describe('jobs.queueFilesPreview', () => {
       fileIds: ['nope'],
       workflowId: wf,
     });
-    expect(none.status).toBe(400);
-    expect(await json(none)).toMatchObject({
-      code: 'PATH_REJECTED',
-      data: { reason: 'not found' },
-    });
+    expect(none.status).toBe(404);
+    expect(await json(none)).toMatchObject({ code: 'NOT_FOUND' });
     const badKey = await post('/jobs/queue-files/preview', {
       libraryId: lib,
       show: '%%%',
