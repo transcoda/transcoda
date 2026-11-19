@@ -1747,7 +1747,8 @@ a.nav-item.is-active:focus-visible,
   inset: 0;
 }
 .row-link a:not(.row-link-main),
-.row-link button {
+.row-link button,
+.row-link input[type="checkbox"] {
   position: relative;
   z-index: 1;
 }
@@ -10907,6 +10908,27 @@ button.job-step-more:hover {
 /* The library's file table: the Jobs table's columns, plus a Size column and a pager. */
 .library-col-size {
   width: 96px;
+}
+.library-col-check {
+  width: 44px;
+  text-align: center;
+}
+.selection-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  margin-bottom: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--raised);
+}
+.selection-count {
+  font-weight: 600;
+  margin-right: auto;
+}
+.file-head-actions {
+  margin-top: 12px;
 }
 .library-table td.library-col-size {
   white-space: nowrap;

@@ -72,6 +72,7 @@ export function RunFilesDialog({
   library,
   selection,
   label,
+  returnFocusTo,
   onClose,
 }: {
   open: boolean;
@@ -79,6 +80,8 @@ export function RunFilesDialog({
   selection: RunSelection;
   /** "12 files", "this season". */
   label: string;
+  /** The button that opened the dialog; focus goes back to it on close. */
+  returnFocusTo?: HTMLElement | null;
   onClose(): void;
 }): JSX.Element {
   const toast = useToast();
@@ -198,6 +201,7 @@ export function RunFilesDialog({
     <Dialog
       open={open}
       title={`Run a workflow on ${label}`}
+      returnFocusTo={returnFocusTo ?? null}
       onClose={onClose}
       footer={
         <>
