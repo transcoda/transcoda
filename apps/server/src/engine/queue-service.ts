@@ -317,12 +317,14 @@ export class QueueService {
     let paths: string[];
     const unlisted: string[] = [];
     if (st.isDirectory()) {
+      // Rows written after this (another request queueing meanwhile) are newer than the listing.
+      const listedFrom = this.deps.now();
       try {
         paths = await listMediaFiles(realPath, library, this.fs, unlisted);
       } catch (err) {
         return { kind: 'path-rejected', reason: this.statFailure(err) };
       }
-      await this.recordListing(library.id, realPath, paths, unlisted);
+      await this.recordListing(library.id, realPath, paths, unlisted, listedFrom);
     } else {
       paths = [realPath];
     }
@@ -1015,13 +1017,15 @@ export class QueueService {
    * Tells the file rows what a folder listing found (`files.gone_at`). The listing's names are
    * resolved to real paths first, the form the rows are stored in, so a symlinked file is not
    * taken for a missing one. When a name cannot be resolved for a reason other than the file being
-   * gone, nothing is marked: a late hide is better than a false one.
+   * gone, nothing is marked: a late hide is better than a false one. A row written since
+   * `startedAt` (when the listing began) is left alone: the listing could not have seen it.
    */
   private async recordListing(
     libraryId: string,
     folder: string,
     listed: readonly string[],
     unlisted: readonly string[],
+    startedAt: Date,
   ): Promise<void> {
     const real: string[] = [];
     for (let i = 0; i < listed.length; i += 64) {
@@ -1040,7 +1044,11 @@ export class QueueService {
       if (batch === undefined) return;
       for (const p of batch) if (p !== null) real.push(p);
     }
-    markFolderListing(this.db, { libraryId, folder, paths: real, unlisted }, this.deps.now());
+    markFolderListing(
+      this.db,
+      { libraryId, folder, paths: real, unlisted, startedAt },
+      this.deps.now(),
+    );
   }
 
   private statFailure(err: unknown): 'not found' | 'unreadable' | 'path too long' {

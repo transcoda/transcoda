@@ -88,9 +88,12 @@ function job(
     result?: Partial<JobResultRow>;
   },
 ): void {
-  const f = db.prepare('SELECT path, library_id FROM files WHERE id = ?').get(fileId) as {
+  const f = db
+    .prepare('SELECT path, library_id, fingerprint FROM files WHERE id = ?')
+    .get(fileId) as {
     path: string;
     library_id: string;
+    fingerprint: string;
   };
   insertJob(
     db,
@@ -113,7 +116,8 @@ function job(
   if (o.result) {
     insertJobResult(db, {
       jobId: id,
-      fingerprint: 'k1',
+      // As a real job records it: the input it probed, which it also stored on the file.
+      fingerprint: f.fingerprint,
       workflowId: 'w1',
       workflowVersion: 1,
       outcome: o.state,
@@ -319,7 +323,11 @@ describe('now values', () => {
 
   it('a replaced file keeps its row and path', () => {
     file('f1', '/media/tv/a.mkv', 1000);
-    job('j1', 'f1', { state: 'done', queuedAt: 1, result: replaced });
+    job('j1', 'f1', {
+      state: 'done',
+      queuedAt: 1,
+      result: { ...replaced, outputFingerprint: '1:7:600:9' },
+    });
     // A later Scan now finds the replaced file (new fingerprint) on the same path.
     upsertFile(
       db,
@@ -336,6 +344,46 @@ describe('now values', () => {
       ['/media/tv/a.mkv', 'done'],
     ]);
     expect(only()).toMatchObject({ id: 'f1', sizeBytes: 600, originalBytes: 1000 });
+  });
+
+  it('a file replaced again from outside after the job shows its current size', () => {
+    file('f1', '/media/tv/a.mkv', 1000);
+    // An outside replace before the job: the job probes (and records) the new file.
+    upsertFile(
+      db,
+      {
+        libraryId: 'l1',
+        path: '/media/tv/a.mkv',
+        fingerprint: { sizeBytes: 1500, mtimeMs: 2, ino: 2, dev: 1, nlink: 1 },
+        lastProbe: null,
+      },
+      at(1),
+    );
+    job('j1', 'f1', {
+      state: 'done',
+      queuedAt: 1,
+      result: {
+        beforeBytes: 1500,
+        afterBytes: 600,
+        replacedTo: 'recycle',
+        outputFingerprint: '1:3:600:3',
+      },
+    });
+    expect(only()).toMatchObject({ sizeBytes: 600, originalBytes: 1500 });
+    // Replaced from outside again; a queued dry run records the new size, but the real job stays
+    // the latest one.
+    upsertFile(
+      db,
+      {
+        libraryId: 'l1',
+        path: '/media/tv/a.mkv',
+        fingerprint: { sizeBytes: 2000, mtimeMs: 4, ino: 4, dev: 1, nlink: 1 },
+        lastProbe: null,
+      },
+      at(4),
+    );
+    job('j2', 'f1', { state: 'queued', dryRun: true, queuedAt: 4 });
+    expect(only()).toMatchObject({ sizeBytes: 2000, originalBytes: null, latest: { id: 'j1' } });
   });
 });
 
@@ -858,6 +906,15 @@ describe('titles and seasons', () => {
       at(5).toISOString(),
     );
     expect(showExists(db, 'l1', HILL)).toBe(false);
+  });
+
+  it('showExists goes by the media the listing shows, not an older job’s', () => {
+    file('e1', '/media/tv/e1.mkv', 1000);
+    job('j-old', 'e1', { state: 'done', queuedAt: 1, media: { ...ep(1, 1), title: 'Old' } });
+    job('j-new', 'e1', { state: 'done', queuedAt: 2, media: { ...ep(1, 1), title: 'New' } });
+    expect(showExists(db, 'l1', { title: 'New', year: 1962 })).toBe(true);
+    expect(showExists(db, 'l1', { title: 'Old', year: 1962 })).toBe(false);
+    expect(listSeasons(db, 'l1', { title: 'Old', year: 1962 })).toEqual([]);
   });
 });
 
