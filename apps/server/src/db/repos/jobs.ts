@@ -1214,8 +1214,9 @@ export function findJobProbe(db: Database, jobId: string): JsonValue | null {
 
 /**
  * Inserts the file or, when the path is known, refreshes its identity (keeping its id). A null
- * `lastProbe` keeps the stored probe (a re-queue does not wipe it); a probe replaces it. A file
- * seen again is present, so `gone_at` is cleared.
+ * `lastProbe` keeps the stored probe while the fingerprint is unchanged (a re-queue does not wipe
+ * it) and clears it when the file changed (the probe was of the previous file); a probe replaces
+ * it. A file seen again is present, so `gone_at` is cleared.
  */
 export function upsertFile(
   db: Database,
@@ -1229,7 +1230,8 @@ export function upsertFile(
      ON CONFLICT(path) DO UPDATE SET library_id = excluded.library_id,
        size_bytes = excluded.size_bytes, mtime_ms = excluded.mtime_ms, ino = excluded.ino,
        dev = excluded.dev, fingerprint = excluded.fingerprint,
-       last_probe = COALESCE(excluded.last_probe, files.last_probe),
+       last_probe = COALESCE(excluded.last_probe,
+         CASE WHEN files.fingerprint = excluded.fingerprint THEN files.last_probe END),
        gone_at = NULL, updated_at = excluded.updated_at`,
   ).run(
     crypto.randomUUID(),

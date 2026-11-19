@@ -810,6 +810,69 @@ describe('QueueService folder listings and files.gone_at', () => {
     expect(goneAt(e1)).toBeNull();
   });
 
+  it('a queue request paused across a listing’s start still counts as seen after it', async () => {
+    const season = join(root, 'Show', 'Season 1');
+    const e1 = await settled(join(season, 'e1.mkv'));
+    const e2 = await settled(join(season, 'e2.mkv'));
+    await queued(season);
+    cancelQueued();
+    // The request for e2 samples its time, then waits on its media lookup.
+    let resume: () => void = () => {};
+    const resumed = new Promise<void>((r) => {
+      resume = r;
+    });
+    const looking = vi.fn();
+    const paused = new QueueService({
+      db,
+      workflows,
+      events,
+      now: () => new Date(),
+      mediaResolver: () => ({
+        resolve: async (p) => {
+          looking();
+          await resumed;
+          return parseFileName(p, root);
+        },
+      }),
+      onQueued: () => {},
+    });
+    const request = paused.queue(input(e2));
+    await vi.waitFor(() => expect(looking).toHaveBeenCalled());
+    await new Promise((r) => setTimeout(r, 5));
+    // A listing starts later and briefly misses e2; it waits before marking.
+    let mark: () => void = () => {};
+    const marking = new Promise<void>((r) => {
+      mark = r;
+    });
+    const resolving = vi.fn();
+    const lister = new QueueService({
+      db,
+      workflows,
+      events,
+      now: () => new Date(),
+      fs: {
+        ...nodeFsOps,
+        readdir: async (p) => (await nodeFsOps.readdir(p)).filter((d) => d.name !== 'e2.mkv'),
+        realpath: async (p) => {
+          if (p === e1) {
+            resolving();
+            await marking;
+          }
+          return nodeFsOps.realpath(p);
+        },
+      },
+      onQueued: () => {},
+    });
+    const listing = lister.queue(input(season, { force: true }));
+    await vi.waitFor(() => expect(resolving).toHaveBeenCalled());
+    // The request writes e2's row before the listing marks.
+    resume();
+    expect((await request).kind).toBe('queued');
+    mark();
+    expect((await listing).kind).toBe('queued');
+    expect(goneAt(e2)).toBeNull();
+  });
+
   it('files under a sub-folder whose listing failed are not marked gone', async () => {
     const season = join(root, 'Show', 'Season 1');
     const e1 = await settled(join(season, 'e1.mkv'));
