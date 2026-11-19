@@ -27,6 +27,7 @@ import {
   type PosterRef as RepoPosterRef,
   type SeasonRef,
   type ShowRef,
+  showExists,
 } from '../../db/repos/library-files.ts';
 import { findActiveRestore } from '../../db/repos/restores.ts';
 import { findFeeder, type LibraryNamer, listInactiveNamers } from '../../db/repos/workflows.ts';
@@ -222,8 +223,7 @@ export const files = os.libraries.files
     let show: ShowRef | undefined;
     if (input.show !== undefined) {
       const parsed = parseShowKey(input.show);
-      // A key naming a show with no episodes here is as unknown as one that does not parse.
-      if (!parsed || listSeasons(db, input.id, parsed).length === 0) throw errors.NOT_FOUND();
+      if (!parsed) throw errors.NOT_FOUND();
       show = parsed;
     }
     const season: SeasonRef | undefined =
@@ -243,6 +243,11 @@ export const files = os.libraries.files
       offset: input.offset,
       limit: input.limit,
     });
+    // A key naming a show with no episodes here is as unknown as one that does not parse; checked
+    // only when nothing matched, so a listed page costs no second query.
+    if (show !== undefined && total === 0 && !showExists(db, input.id, show)) {
+      throw errors.NOT_FOUND();
+    }
     return { files: rows.map((r) => toFile(r, job)), total };
   });
 
@@ -273,7 +278,9 @@ export const file = os.libraries.file
     const fileProbe = current ? jobProbeOf(current) : null;
     return {
       file: toFile(row, job),
-      now: replaced ? (outputProbe ?? fileProbe) : fileProbe,
+      // A replace from before output probes were kept has none: what the file is now is unknown,
+      // and the file's stored probe is the original's.
+      now: replaced ? outputProbe : fileProbe,
       before: replaced && own ? jobProbeOf(own) : null,
       jobs: history.jobs.map(job),
       jobsTotal: history.total,

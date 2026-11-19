@@ -88,12 +88,12 @@ latest AS (
 
 /**
  * Latest jobs (as {@link latestJobPerFileSql} defines them) of live libraries' present files whose
- * own `media` is NULL, oldest first. The job's own cell counts, not the coalesced one: an older
- * job's media does not give the latest job its title.
+ * own `media` is NULL, oldest first (all of them when `limit` is left out). The job's own cell
+ * counts, not the coalesced one: an older job's media does not give the latest job its title.
  */
 export function latestJobsWithoutMedia(
   db: Database,
-  limit: number,
+  limit?: number,
 ): Array<{ jobId: string; path: string; libraryRoot: string }> {
   const latest = latestJobPerFileSql({});
   const rows = db
@@ -108,7 +108,7 @@ WHERE lt.latest_media IS NULL AND f.gone_at IS NULL
 ORDER BY j.queued_at, j.rowid
 LIMIT @limit`,
     )
-    .all({ ...latest.params, limit }) as Array<{
+    .all({ ...latest.params, limit: limit ?? -1 }) as Array<{
     job_id: string;
     path: string;
     library_root: string;
@@ -477,7 +477,7 @@ export function listTitles(
       FROM tagged WHERE kind IS NOT 'episode' ${search}
     )
     SELECT *, COUNT(*) OVER () AS total FROM items
-    ORDER BY title COLLATE NOCASE, year, type, file_id LIMIT @limit OFFSET @offset`;
+    ORDER BY title COLLATE NOCASE, title, year, type, file_id LIMIT @limit OFFSET @offset`;
   type Item = DbGroup & {
     type: 'show' | 'movie';
     file_id: string | null;
@@ -547,10 +547,41 @@ export function listSeasons(db: Database, libraryId: string, show: ShowRef): Sea
   }));
 }
 
-/** The probe stored with the file (what it is now); null when it was never probed or the file is unknown. */
+/**
+ * Whether any job of a present file of the library carries episode media of `show`: a cheap,
+ * indexed check (files by library, jobs by file) that stops at the first hit. A show the listing
+ * groups always passes it (its media comes from some job of the file); it answers "is this show
+ * key unknown here" without the latest-job window scan.
+ */
+export function showExists(db: Database, libraryId: string, show: ShowRef): boolean {
+  return (
+    db
+      .prepare(
+        `SELECT EXISTS (
+           SELECT 1 FROM files f JOIN jobs j ON j.file_id = f.id
+           WHERE f.library_id = @libraryId AND f.gone_at IS NULL AND json_valid(j.media)
+             AND json_extract(j.media, '$.kind') = 'episode'
+             AND json_extract(j.media, '$.title') = @title
+             AND json_extract(j.media, '$.year') IS @year
+         )`,
+      )
+      .pluck()
+      .get({ libraryId, title: show.title, year: show.year }) === 1
+  );
+}
+
+/**
+ * The probe stored with the file (what it is now); null when it was never probed, the file is
+ * unknown or the stored probe does not parse.
+ */
 export function findFileProbe(db: Database, fileId: string): JsonValue | null {
   const r = db.prepare('SELECT last_probe FROM files WHERE id = ?').get(fileId) as
     | { last_probe: string | null }
     | undefined;
-  return r?.last_probe ? (JSON.parse(r.last_probe) as JsonValue) : null;
+  if (!r?.last_probe) return null;
+  try {
+    return JSON.parse(r.last_probe) as JsonValue;
+  } catch {
+    return null;
+  }
 }

@@ -332,6 +332,23 @@ describe('library browser read routes', () => {
     expect(body.before).toBeNull();
   });
 
+  it('a replaced file with no output probe (an older replace) has no now, not the original’s probe', async () => {
+    t.db.prepare('UPDATE job_results SET output_probe = NULL WHERE job_id = ?').run('j1b');
+    const { status, body } = await get('/libraries/l1/files/f1');
+    expect(status).toBe(200);
+    expect(body.now).toBeNull();
+    expect(body.before).toMatchObject({ sizeBytes: 1000, streams: [{ codec: 'h264' }] });
+    expect(body.file).toMatchObject({ sizeBytes: 600, originalBytes: 1000 });
+  });
+
+  it('a corrupt stored file probe reads as no probe, not a server error', async () => {
+    t.db.prepare('UPDATE files SET last_probe = ? WHERE id = ?').run('{"streams":[', 'f2');
+    const { status, body } = await get('/libraries/l1/files/f2');
+    expect(status).toBe(200);
+    expect(body.now).toBeNull();
+    expect(body.file).toMatchObject({ id: 'f2' });
+  });
+
   it('NOT_FOUND for an unknown library, a deleted library, another library’s file and an unknown show key', async () => {
     const key = showKey({ title: SHOW, year: 1962 });
     const missing = [

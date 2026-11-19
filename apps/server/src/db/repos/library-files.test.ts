@@ -12,6 +12,7 @@ import {
 import { insertLibrary } from './libraries.ts';
 import {
   escapeLike,
+  findFileProbe,
   findLibraryFile,
   LIBRARY_FILES_MAX,
   latestJobPerFileSql,
@@ -20,6 +21,7 @@ import {
   listSeasons,
   listTitles,
   parseShowKey,
+  showExists,
   showKey,
 } from './library-files.ts';
 import { insertRestore } from './restores.ts';
@@ -782,5 +784,45 @@ describe('titles and seasons', () => {
     });
     expect(listSeasons(db, 'l1', { title: SHOW, year: 1999 })).toEqual([]);
     expect(listSeasons(db, 'l2', HILL)).toEqual([]);
+  });
+
+  it('case-variant titles of the same year never tie: pages hold each card once, in a fixed order', () => {
+    // Inserted lower case first, so an unordered tie would tend to put it first.
+    file('lo', '/media/tv/lo.mkv', 1000);
+    job('j-lo', 'lo', { state: 'done', queuedAt: 1, media: { ...ep(1, 1), title: 'superman' } });
+    file('up', '/media/tv/up.mkv', 1000);
+    job('j-up', 'up', { state: 'done', queuedAt: 1, media: { ...ep(1, 1), title: 'Superman' } });
+    file('caps', '/media/tv/caps.mkv', 1000);
+    job('j-caps', 'caps', {
+      state: 'done',
+      queuedAt: 1,
+      media: { ...ep(1, 1), title: 'SUPERMAN' },
+    });
+    expect(titles()).toEqual(['SUPERMAN', 'Superman', 'superman']);
+    const paged = [0, 1, 2].map((offset) => titles({ offset, limit: 1 })[0]);
+    expect(paged).toEqual(['SUPERMAN', 'Superman', 'superman']);
+  });
+
+  it('showExists finds a show with a present episode only', () => {
+    seedHillbillies();
+    expect(showExists(db, 'l1', HILL)).toBe(true);
+    expect(showExists(db, 'l1', { title: SHOW, year: 1999 })).toBe(false);
+    expect(showExists(db, 'l1', { title: SHOW.toUpperCase(), year: 1962 })).toBe(false);
+    expect(showExists(db, 'l2', HILL)).toBe(false);
+    db.prepare("UPDATE files SET gone_at = ? WHERE id IN ('e1','e2','e3')").run(
+      at(5).toISOString(),
+    );
+    expect(showExists(db, 'l1', HILL)).toBe(false);
+  });
+});
+
+describe('findFileProbe', () => {
+  it('reads the stored probe; a corrupt one reads as none', () => {
+    file('p1', '/media/tv/p1.mkv', 1000);
+    db.prepare('UPDATE files SET last_probe = ? WHERE id = ?').run('{"sizeBytes":1000}', 'p1');
+    expect(findFileProbe(db, 'p1')).toEqual({ sizeBytes: 1000 });
+    db.prepare('UPDATE files SET last_probe = ? WHERE id = ?').run('{"sizeBytes":', 'p1');
+    expect(findFileProbe(db, 'p1')).toBeNull();
+    expect(findFileProbe(db, 'unknown')).toBeNull();
   });
 });

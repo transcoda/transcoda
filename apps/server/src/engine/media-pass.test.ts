@@ -106,7 +106,25 @@ const fake = (fn: (p: string) => Promise<StoredJobMedia> = async (p) => media(p)
   resolve: vi.fn(fn),
 });
 const pass = (resolver: MediaResolver = fake(), fs: FsOps = nodeFsOps, batch?: number) =>
-  new MediaPass({ db, fs, log, resolver: () => resolver, ...(batch ? { batch } : {}) });
+  new MediaPass({
+    db,
+    fs,
+    log,
+    resolver: () => resolver,
+    kickDelayMs: 0,
+    ...(batch ? { batch } : {}),
+  });
+
+/** Counts the to-do listing queries (`latestJobsWithoutMedia`) prepared on `db`. */
+function countListings(): () => number {
+  const prepare = db.prepare.bind(db);
+  let n = 0;
+  vi.spyOn(db, 'prepare').mockImplementation(((sql: string) => {
+    if (sql.includes('lt.latest_media IS NULL')) n++;
+    return prepare(sql);
+  }) as typeof db.prepare);
+  return () => n;
+}
 
 beforeEach(() => {
   logs = [];
@@ -192,6 +210,59 @@ describe('MediaPass', () => {
     expect(latestJobsWithoutMedia(db, 10)).toEqual([]);
   });
 
+  it('one pass reads the to-do list with one query, however many batches it takes', async () => {
+    for (let i = 0; i < 5; i++) {
+      file(`f${i}`, 'l1', `/media/tv/${i}.mkv`);
+      job(`j${i}`, `f${i}`, i);
+    }
+    const listings = countListings();
+    const resolver = fake();
+    expect(await pass(resolver, nodeFsOps, 2).run()).toEqual({ filled: 5 });
+    expect(listings()).toBe(1);
+    expect(resolver.resolve).toHaveBeenCalledTimes(5);
+  });
+
+  it('a burst of kicks runs one pass after the delay', async () => {
+    vi.useFakeTimers();
+    try {
+      file('f1', 'l1', '/media/tv/a.mkv');
+      job('j1', 'f1', 1);
+      const resolver = fake();
+      const mp = new MediaPass({ db, fs: nodeFsOps, log, resolver: () => resolver });
+      const run = vi.spyOn(mp, 'run');
+      for (let i = 0; i < 10; i++) {
+        mp.kick();
+        await vi.advanceTimersByTimeAsync(50);
+      }
+      expect(run).not.toHaveBeenCalled();
+      await vi.advanceTimersByTimeAsync(1000);
+      await mp.idle();
+      expect(run).toHaveBeenCalledTimes(1);
+      expect(resolver.resolve).toHaveBeenCalledTimes(1);
+      expect(mediaOf('j1')).not.toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('stop() cancels a pass that is due but not started', async () => {
+    file('f1', 'l1', '/media/tv/a.mkv');
+    job('j1', 'f1', 1);
+    const resolver = fake();
+    const mp = new MediaPass({
+      db,
+      fs: nodeFsOps,
+      log,
+      resolver: () => resolver,
+      kickDelayMs: 60_000,
+    });
+    mp.kick();
+    mp.stop();
+    await mp.idle();
+    expect(resolver.resolve).not.toHaveBeenCalled();
+    expect(mediaOf('j1')).toBeNull();
+  });
+
   it('stores file-name media for a file whose sidecars cannot be read, so it is not retried', async () => {
     const root = await realpath(await tempDir('media-pass-'));
     await mkdir(join(root, 'Show'), { recursive: true });
@@ -267,9 +338,9 @@ describe('MediaPass', () => {
       return result;
     });
     mp.kick();
+    await vi.waitFor(() => expect(resolver.resolve).toHaveBeenCalledTimes(1));
     mp.kick();
     mp.kick(); // several kicks during one pass still queue only one more pass
-    await vi.waitFor(() => expect(resolver.resolve).toHaveBeenCalledTimes(1));
     expect(run).toHaveBeenCalledTimes(1);
     release();
     await mp.idle();
@@ -326,6 +397,7 @@ describe('MediaPass', () => {
       db,
       fs: nodeFsOps,
       log,
+      kickDelayMs: 0,
       resolver: () => {
         throw new Error('no resolver');
       },
