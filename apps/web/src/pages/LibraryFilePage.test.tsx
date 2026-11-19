@@ -148,7 +148,71 @@ const fact = (term: string) => {
   return dt.parentElement as HTMLElement;
 };
 
+function stubPhone() {
+  window.matchMedia = (query: string) =>
+    ({
+      matches: query === '(max-width: 639px)',
+      media: query,
+      onchange: null,
+      addEventListener() {},
+      removeEventListener() {},
+      addListener() {},
+      removeListener() {},
+      dispatchEvent: () => false,
+    }) as MediaQueryList;
+}
+
 describe('LibraryFilePage', () => {
+  it('on a phone the jobs are cards linking to their job pages, not a table', async () => {
+    stubPhone();
+    await renderPage();
+    expect(screen.queryByRole('table')).toBeNull();
+    const cards = screen.getByRole('region', { name: 'Jobs on this file' });
+    expect(
+      within(cards)
+        .getAllByRole('link')
+        .map((a) => a.getAttribute('href')),
+    ).toEqual(['/jobs/j3', '/jobs/j2', '/jobs/j1']);
+  });
+
+  it('a movie shows its year once', async () => {
+    const movie = job({
+      id: 'j9',
+      libraryName: 'Classic TV',
+      media: {
+        ...EPISODE,
+        kind: 'movie',
+        title: 'Night of the Living Dead',
+        year: 1968,
+        season: null,
+        episode: null,
+        episodeTitle: null,
+      },
+    });
+    mocks.libraries.file.mockResolvedValue(
+      detail({
+        file: { ...detail().file, latest: movie, poster: { id: 'j9', media: movie.media } },
+        showKey: null,
+        season: null,
+        jobs: [movie],
+        jobsTotal: 1,
+      }),
+    );
+    const { container } = await renderPage();
+    const head = container.querySelector('.job-head') as HTMLElement;
+    expect(within(head).getAllByText('1968')).toHaveLength(1);
+  });
+
+  it('a gone file wears a badge with an icon and the words', async () => {
+    mocks.libraries.file.mockResolvedValue(
+      detail({ file: { ...detail().file, gone: true }, now: null }),
+    );
+    const { container } = await renderPage();
+    const chip = container.querySelector('.chip') as HTMLElement;
+    expect(chip.textContent).toBe('No longer on disk');
+    expect(chip.querySelector('svg')).toBeTruthy();
+  });
+
   it('shows poster, title, path, size and the probe facts', async () => {
     const { container } = await renderPage();
     expect(screen.getByRole('heading', { level: 1, name: 'The Beverly Hillbillies' })).toBeTruthy();

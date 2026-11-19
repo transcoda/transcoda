@@ -11011,3 +11011,10 @@ button.job-step-more:hover {
   margin: 0;
   font-size: var(--fs-h3, 16px);
 }
+
+/* Without an Actions column the When column is the last one: it keeps the header's right padding
+   (the row rule above would otherwise leave it flush against the border). */
+.job-table:not(.has-actions) th.job-when,
+.job-table:not(.has-actions) .row-link td.job-when {
+  padding-right: 16px;
+}

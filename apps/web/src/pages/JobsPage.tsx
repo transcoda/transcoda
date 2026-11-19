@@ -500,14 +500,74 @@ function JobTable({
   );
 }
 
-/** The jobs table without Pause / Cancel: a file's history, where nothing is acted on. */
+/** A phone card of the Jobs page's own markup, without Pause / Cancel (one file's history). */
+function HistoryCard({
+  job,
+  queuePaused,
+  frozen,
+}: {
+  job: Job;
+  queuePaused: boolean;
+  frozen: boolean;
+}) {
+  if (!isActive(job)) {
+    return (
+      <Link href={`/jobs/${job.id}`} className="phone-finished">
+        <span className={`phone-finished-icon is-${verdictOf(job)}`}>
+          <Icon name={VERDICT_ICON[verdictOf(job)]} size={16} strokeWidth={2.6} />
+        </span>
+        <span className="phone-finished-text">
+          <b>{jobTitle(job)}</b>
+          <span className={`job-detail-text is-${verdictOf(job)}`}>{phoneLine(job)}</span>
+        </span>
+      </Link>
+    );
+  }
+  const running = job.state !== 'queued';
+  const percent = running && job.state === 'encoding' ? percentOf(job) : null;
+  return (
+    <div className="phone-card row-link">
+      <div className="phone-card-head">
+        <TitleLink job={job} className="job-name row-link-main" />
+        {percent !== null ? <span className="mono">{percent}%</span> : null}
+      </div>
+      <TitleSub media={job.media} />
+      {percent !== null ? <JobProgress job={job} percent={percent} /> : null}
+      {job.paused || job.dryRun ? <JobStateChip job={job} frozen={frozen} /> : null}
+      <span className="phone-card-line">
+        {running ? phoneRunningLine(job) : detailLine(job, { queuePaused })}
+      </span>
+    </div>
+  );
+}
+
+/**
+ * The jobs of one file, without Pause / Cancel: the Jobs page's table on a desktop, its phone
+ * cards (same markup and classes) on a phone, newest first.
+ */
 export function JobHistoryTable({ jobs, label }: { jobs: Job[]; label: string }) {
   const queue = useQueue();
+  const phone = usePhone();
+  const queuePaused = queue.status?.paused ?? false;
+  if (phone) {
+    return (
+      <section className="phone-section" aria-label={label}>
+        {jobs.map((job) => (
+          <HistoryCard
+            key={job.id}
+            job={job}
+            queuePaused={queuePaused}
+            frozen={encodeStopped(queue.status, job)}
+          />
+        ))}
+      </section>
+    );
+  }
   return (
     <JobTable
       jobs={jobs}
       controls={null}
-      queuePaused={queue.status?.paused ?? false}
+      queuePaused={queuePaused}
       queueStatus={queue.status}
       label={label}
     />

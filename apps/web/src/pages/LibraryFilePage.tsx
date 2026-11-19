@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useParams } from 'wouter';
 import { api } from '../api/client.ts';
 import { describeError } from '../api/errors.ts';
+import { StatusChip } from '../components/Chips.tsx';
 import { Disclosure } from '../components/Disclosure.tsx';
 import { Fact } from '../components/Fact.tsx';
 import { Icon } from '../components/Icon.tsx';
@@ -181,7 +182,9 @@ export function LibraryFilePage() {
           <div className="job-head-main">
             {file.gone ? (
               <div className="job-head-chips">
-                <span className="badge">No longer on disk</span>
+                <StatusChip tone="warning" icon="alert">
+                  No longer on disk
+                </StatusChip>
               </div>
             ) : null}
             <div className="job-title-line">
@@ -190,7 +193,7 @@ export function LibraryFilePage() {
                 <span className="job-year">{media.year}</span>
               )}
             </div>
-            {media ? <TitleSub media={media} /> : null}
+            {media?.kind === 'episode' ? <TitleSub media={media} /> : null}
             <div className="job-path-row">
               <span className="job-path">{file.path}</span>
             </div>
