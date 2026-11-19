@@ -79,15 +79,20 @@ export function useLibrarySeasons(
   return state;
 }
 
-/** One page of files, sorted and filtered by the server. */
+/**
+ * One page of files, sorted and filtered by the server. `data` is only ever the answer for this
+ * exact query: while another page, sort or search loads it is undefined (no rows of the last page
+ * under the new page's range), and a refresh of the same query keeps it.
+ */
 export function useLibraryFiles(
   id: string,
   q: Omit<LibraryFilesInput, 'id'>,
 ): AsyncState<LibraryFilesOutput> {
+  const key = JSON.stringify([id, q.show, q.season, q.search, q.sort, q.desc, q.offset, q.limit]);
   const state = useAsync(
-    () => api.libraries.files({ id, ...q }),
-    [id, q.show, q.season, q.search, q.sort, q.desc, q.offset, q.limit],
+    async () => ({ key, out: await api.libraries.files({ id, ...q }) }),
+    [key],
   );
   useLibraryRefetch(id, state.reload);
-  return state;
+  return { ...state, data: state.data?.key === key ? state.data.out : undefined };
 }

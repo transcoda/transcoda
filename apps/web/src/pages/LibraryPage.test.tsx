@@ -408,6 +408,52 @@ describe('LibraryPage', () => {
     expect(await screen.findByText('101–150 of 150')).toBeTruthy();
   });
 
+  it('the next page shows no rows of the last one while it loads, and no pager to skip it', async () => {
+    let release: (() => void) | undefined;
+    mocks.libraries.files.mockImplementation(async (q: { offset: number; limit: number }) => {
+      if (q.offset > 0) await new Promise<void>((r) => (release = r));
+      return filesPage(q, 250);
+    });
+    await renderPage();
+    fireEvent.click(screen.getByRole('radio', { name: 'Table' }));
+    await screen.findByText('1–100 of 250');
+    expect(screen.getByRole('link', { name: /^File 0\b/ })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+    expect(await screen.findByText('Loading files…')).toBeTruthy();
+    expect(screen.queryByRole('link', { name: /^File 0\b/ })).toBeNull();
+    expect(screen.queryByText('101–200 of 250')).toBeNull();
+    // No pager while the page loads: a second Next cannot skip the page being asked for.
+    expect(screen.queryByRole('button', { name: 'Next' })).toBeNull();
+    await waitFor(() => expect(release).toBeDefined());
+    await act(async () => release?.());
+    expect(await screen.findByText('101–200 of 250')).toBeTruthy();
+    expect(screen.getByRole('link', { name: /^File 100\b/ })).toBeTruthy();
+    expect(mocks.libraries.files).toHaveBeenLastCalledWith(
+      expect.objectContaining({ offset: 100 }),
+    );
+  });
+
+  it('a live refresh of the same page keeps its rows while it reloads', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+    let hold = false;
+    let release: (() => void) | undefined;
+    mocks.libraries.files.mockImplementation(async (q: { offset: number; limit: number }) => {
+      if (hold) await new Promise<void>((r) => (release = r));
+      return filesPage(q, 250);
+    });
+    await renderPage();
+    await push(queueSnapshot);
+    fireEvent.click(screen.getByRole('radio', { name: 'Table' }));
+    await screen.findByText('1–100 of 250');
+    await act(() => vi.advanceTimersByTimeAsync(REFETCH_COALESCE_MS * 2));
+    hold = true;
+    await push({ ...jobChanged('j1'), state: 'done' } as EngineEvent);
+    await waitFor(() => expect(release).toBeDefined());
+    expect(screen.getByRole('link', { name: /^File 0\b/ })).toBeTruthy();
+    expect(screen.queryByText('Loading files…')).toBeNull();
+    await act(async () => release?.());
+  });
+
   it('a show route in Posters view asks for the show seasons and shows the season cards', async () => {
     mocks.libraries.seasons.mockResolvedValue({
       title: 'The Beverly Hillbillies',
