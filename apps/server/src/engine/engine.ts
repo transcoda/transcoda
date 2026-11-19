@@ -57,6 +57,7 @@ import { EngineEvents } from './events.ts';
 import { fingerprintKey } from './fingerprint.ts';
 import type { FsOps } from './fs-ops.ts';
 import { readCondensedTail } from './log-condense.ts';
+import { MediaPass } from './media-pass.ts';
 import { logPathFor, Pipeline } from './pipeline.ts';
 import { PosterStore, type Thumbnail } from './poster-store.ts';
 import { type JobProbe, jobProbeOf } from './probe.ts';
@@ -135,6 +136,8 @@ export class EngineService {
   readonly pipeline: Pipeline;
   readonly scheduler: Scheduler;
   readonly queue: QueueService;
+  /** Fills `media` on each file's latest job in the background. */
+  readonly mediaPass: MediaPass;
   /** Queues the files that appear in fed libraries; started by bootstrap once the engine runs. */
   readonly catchUp: LibraryCatchUp;
   /** The replaces waiting for free space now (C4; the deep health's `queue` check). */
@@ -203,6 +206,7 @@ export class EngineService {
       encodeSlots: slots,
       timeZone: this.timeZone,
     });
+    this.mediaPass = new MediaPass({ db: deps.db, fs: deps.fs, log: deps.log });
     this.queue = new QueueService({
       db: deps.db,
       workflows: deps.workflows,
@@ -211,7 +215,10 @@ export class EngineService {
       fs: deps.fs,
       log: deps.log,
       ...(deps.settleMinutes !== undefined ? { settleMinutes: deps.settleMinutes } : {}),
-      onQueued: () => this.scheduler.tick(),
+      onQueued: () => {
+        this.scheduler.tick();
+        this.mediaPass.kick();
+      },
       onLibrariesChanged: () => this.catchUp.syncWatchers(),
     });
     this.catchUp = new LibraryCatchUp({
@@ -258,6 +265,7 @@ export class EngineService {
       await this.finishCleaning(job, j);
     }
     this.scheduler.start();
+    this.mediaPass.kick();
     return sweep;
   }
 
@@ -265,6 +273,7 @@ export class EngineService {
   async stop(): Promise<void> {
     this.catchUp.stop();
     await this.scheduler.stop();
+    await this.mediaPass.idle();
   }
 
   /** Deletes expired and stray test outputs (hourly and at start); never rejects. */

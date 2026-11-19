@@ -86,6 +86,45 @@ latest AS (
   return { sql, params };
 }
 
+/**
+ * Latest jobs (as {@link latestJobPerFileSql} defines them) of live libraries' present files whose
+ * own `media` is NULL, oldest first. The job's own cell counts, not the coalesced one: an older
+ * job's media does not give the latest job its title.
+ */
+export function latestJobsWithoutMedia(
+  db: Database,
+  limit: number,
+): Array<{ jobId: string; path: string; libraryRoot: string }> {
+  const latest = latestJobPerFileSql({});
+  const rows = db
+    .prepare(
+      `${latest.sql}
+SELECT lt.latest_id AS job_id, f.path AS path, l.path AS library_root
+FROM latest lt
+JOIN files f ON f.id = lt.file_id
+JOIN libraries l ON l.id = f.library_id AND l.deleted_at IS NULL
+JOIN jobs j ON j.id = lt.latest_id
+WHERE lt.latest_media IS NULL AND f.gone_at IS NULL
+ORDER BY j.queued_at, j.rowid
+LIMIT @limit`,
+    )
+    .all({ ...latest.params, limit }) as Array<{
+    job_id: string;
+    path: string;
+    library_root: string;
+  }>;
+  return rows.map((r) => ({ jobId: r.job_id, path: r.path, libraryRoot: r.library_root }));
+}
+
+/** Writes `media` only where the job's cell is still NULL; false when it already had some. */
+export function setJobMedia(db: Database, jobId: string, media: StoredJobMedia): boolean {
+  return (
+    db
+      .prepare('UPDATE jobs SET media = ? WHERE id = ? AND media IS NULL')
+      .run(JSON.stringify(media), jobId).changes > 0
+  );
+}
+
 /** Escapes `\`, `%` and `_` for a `LIKE … ESCAPE '\'`. */
 export function escapeLike(s: string): string {
   return s.replace(/[\\%_]/g, (c) => `\\${c}`);
