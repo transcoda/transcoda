@@ -225,7 +225,8 @@ describe('LibraryPage', () => {
     renderAt('/libraries/l1/shows/WyJUaGUgQmV2ZXJseSBIaWxsYmlsbGllcyIsMTk2Ml0/seasons/2', page());
     const crumbs = await screen.findByRole('navigation', { name: 'Breadcrumb' });
     await waitFor(() => expect(within(crumbs).getByText('Season 2')).toBeTruthy());
-    const show = within(crumbs).getByRole('link', { name: 'The Beverly Hillbillies' });
+    // The show title arrives with the seasons response, after the route's Season 2 crumb.
+    const show = await within(crumbs).findByRole('link', { name: 'The Beverly Hillbillies' });
     expect(show.getAttribute('href')).toBe(
       '/libraries/l1/shows/WyJUaGUgQmV2ZXJseSBIaWxsYmlsbGllcyIsMTk2Ml0',
     );
