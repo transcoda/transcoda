@@ -107,6 +107,8 @@ describe('LibraryPage', () => {
     );
     expect(within(crumbs).getByText('Classic TV')).toBeTruthy();
     expect(mocks.libraries.files).toHaveBeenCalledWith(expect.objectContaining({ id: 'l1' }));
+    // No show in the route: no seasons request.
+    expect(mocks.libraries.seasons).not.toHaveBeenCalled();
   });
 
   it('Scan now asks first, then queues the scan and opens the run', async () => {

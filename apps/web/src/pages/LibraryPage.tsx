@@ -123,6 +123,22 @@ function Breadcrumbs({
   );
 }
 
+/** The breadcrumbs of a show or season page: the show's title comes from its seasons request. */
+function ShowBreadcrumbs({
+  library,
+  show,
+  season,
+}: {
+  library: Library;
+  show: string;
+  season: string | undefined;
+}) {
+  const seasons = useLibrarySeasons(library.id, show);
+  return (
+    <Breadcrumbs library={library} show={show} showTitle={seasons.data?.title} season={season} />
+  );
+}
+
 export function LibraryPage() {
   const params = useParams<{ id: string; show?: string; season?: string }>();
   const { id, show, season } = params;
@@ -130,7 +146,6 @@ export function LibraryPage() {
   const workflows = useAsync(() => api.workflows.list(), []);
   // The unfiltered total: the header's count, and what tells an empty library from an empty search.
   const total = useLibraryFiles(id, { sort: 'title', desc: false, offset: 0, limit: 1 });
-  const seasons = useLibrarySeasons(id, show ?? '');
   const scan = useScanNow({
     clock: null,
     workflows: workflows.data?.workflows ?? [],
@@ -192,7 +207,11 @@ export function LibraryPage() {
   return (
     <div className="page library-page">
       <header className="library-head">
-        <Breadcrumbs library={lib} show={show} showTitle={seasons.data?.title} season={season} />
+        {show === undefined ? (
+          <Breadcrumbs library={lib} show={undefined} showTitle={undefined} season={undefined} />
+        ) : (
+          <ShowBreadcrumbs library={lib} show={show} season={season} />
+        )}
         <div className="page-head page-head-row">
           <div className="page-head">
             <h1>{lib.name}</h1>
