@@ -1,4 +1,4 @@
-import type { FileSort, Library } from '@transcoda/contract';
+import type { FileSort, Library, LibraryTitle, LibraryTitlesOutput } from '@transcoda/contract';
 import { useEffect, useId, useState } from 'react';
 import { Link, useParams } from 'wouter';
 import { api } from '../api/client.ts';
@@ -10,6 +10,7 @@ import { SegmentedSwitch } from '../components/SegmentedSwitch.tsx';
 import { useAsync } from '../hooks/useAsync.ts';
 import { usePageTitle } from '../lib/pageTitle.ts';
 import { LibraryFileTable } from '../libraries/LibraryFileTable.tsx';
+import { SeasonGrid, TitleGrid } from '../libraries/TitleGrid.tsx';
 import {
   useLibraryFiles,
   useLibrarySeasons,
@@ -20,7 +21,7 @@ import { type LibraryView, readLibraryView, writeLibraryView } from '../librarie
 
 /** How long the search box waits after the last keystroke before asking the server. */
 const SEARCH_DEBOUNCE_MS = 250;
-/** Titles per page (Task 9's "Show more" adds this much each time). */
+/** Titles per page; "Show more" adds this much each time. */
 const TITLES_PAGE = 60;
 const FILES_PAGE = 100;
 
@@ -43,15 +44,81 @@ function useDebounced<T>(value: T, ms: number): T {
 
 const seasonLabel = (season: string) => (season === 'none' ? 'No season' : `Season ${season}`);
 
-// The three bodies below are shells: the poster grid, the season grid and the file table fill them.
-
-function TitlesBody({ id, search }: { id: string; search: string }) {
-  useLibraryTitles(id, { search, limit: TITLES_PAGE, offset: 0 });
-  return <section aria-label="Titles" />;
+function LoadError({ what, onRetry, error }: { what: string; onRetry(): void; error: unknown }) {
+  return (
+    <div className="alert alert-danger" role="alert">
+      <Icon name="cross" strokeWidth={2.4} round />
+      <span>{`Could not load ${what}: ${describeError(error).message}`}</span>
+      <button type="button" className="btn btn-ghost btn-sm" onClick={onRetry}>
+        Try again
+      </button>
+    </div>
+  );
 }
 
-function SeasonsBody() {
-  return <section aria-label="Seasons" />;
+/** Shows and movies, a page at a time: "Show more" appends the next page below. */
+function TitlesBody({ id, search }: { id: string; search: string }) {
+  const [more, setMore] = useState<{
+    offset: number;
+    earlier: LibraryTitle[];
+    /** The page before this one: `useAsync` keeps it until the new page arrives. */
+    prev: LibraryTitlesOutput | null;
+  }>({ offset: 0, earlier: [], prev: null });
+  const titles = useLibraryTitles(id, { search, limit: TITLES_PAGE, offset: more.offset });
+  const page = titles.data && titles.data !== more.prev ? titles.data : undefined;
+  const total = page?.total ?? more.prev?.total;
+  if (total === undefined) {
+    return titles.error ? (
+      <LoadError what="the titles" error={titles.error} onRetry={titles.reload} />
+    ) : (
+      <Loading label="Loading titles…" />
+    );
+  }
+  const items = [...more.earlier, ...(page?.items ?? [])];
+  return (
+    <section aria-label="Titles">
+      {items.length === 0 ? (
+        <p className="library-empty">Nothing matches.</p>
+      ) : (
+        <TitleGrid libraryId={id} items={items} />
+      )}
+      {page === undefined ? (
+        titles.error ? (
+          <LoadError what="more titles" error={titles.error} onRetry={titles.reload} />
+        ) : (
+          <Loading label="Loading titles…" />
+        )
+      ) : items.length < total ? (
+        <div className="library-more">
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() =>
+              setMore({ offset: more.offset + TITLES_PAGE, earlier: items, prev: page })
+            }
+          >
+            Show more
+          </button>
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+function SeasonsBody({ id, show }: { id: string; show: string }) {
+  const seasons = useLibrarySeasons(id, show);
+  if (!seasons.data) {
+    return seasons.error ? (
+      <LoadError what="the seasons" error={seasons.error} onRetry={seasons.reload} />
+    ) : (
+      <Loading label="Loading seasons…" />
+    );
+  }
+  return (
+    <section aria-label="Seasons">
+      <SeasonGrid libraryId={id} showKey={show} seasons={seasons.data.seasons} />
+    </section>
+  );
 }
 
 function FilesBody({
@@ -222,15 +289,16 @@ export function LibraryPage() {
     writeLibraryView(next);
   }
 
-  // A season is a list of episodes, so it is a table in either view.
+  // A season is a list of episodes, so it is a table in either view. On a show's page a search
+  // replaces the season cards with the show's matching episodes.
   const body = empty ? (
     <p className="library-empty">Scan now to list its files.</p>
-  ) : season !== undefined || view === 'table' ? (
+  ) : season !== undefined || view === 'table' || (show !== undefined && search !== '') ? (
     <FilesBody id={id} show={show} season={season} search={search} />
   ) : show !== undefined ? (
-    <SeasonsBody />
+    <SeasonsBody id={id} show={show} />
   ) : (
-    <TitlesBody id={id} search={search} />
+    <TitlesBody key={`${id}\n${search}`} id={id} search={search} />
   );
 
   return (

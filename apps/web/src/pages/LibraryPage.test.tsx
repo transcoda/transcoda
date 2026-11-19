@@ -298,4 +298,98 @@ describe('LibraryPage', () => {
       ),
     );
   });
+  it('a show route in Posters view asks for the show seasons and shows the season cards', async () => {
+    mocks.libraries.seasons.mockResolvedValue({
+      title: 'The Beverly Hillbillies',
+      year: 1962,
+      seasons: [
+        {
+          season: 1,
+          episodes: 3,
+          poster: null,
+          outcomes: { replaced: 1, kept: 0, failed: 0, other: 0 },
+          savedBytes: 400,
+        },
+      ],
+    });
+    renderAt(`/libraries/l1/shows/${SHOW_KEY}`, page());
+    const crumbs = await screen.findByRole('navigation', { name: 'Breadcrumb' });
+    await waitFor(() => expect(within(crumbs).getByText('The Beverly Hillbillies')).toBeTruthy());
+    expect(within(crumbs).getByRole('link', { name: 'Libraries' })).toBeTruthy();
+    expect(mocks.libraries.seasons).toHaveBeenCalledWith({ id: 'l1', show: SHOW_KEY });
+    const card = await screen.findByRole('link', { name: /Season 1/ });
+    expect(card.getAttribute('href')).toBe(`/libraries/l1/shows/${SHOW_KEY}/seasons/1`);
+  });
+
+  it('a non-empty search on a show route lists the matching episodes, an empty one the seasons', async () => {
+    mocks.libraries.seasons.mockResolvedValue({
+      title: 'The Beverly Hillbillies',
+      year: 1962,
+      seasons: [
+        {
+          season: 1,
+          episodes: 3,
+          poster: null,
+          outcomes: { replaced: 0, kept: 0, failed: 0, other: 0 },
+          savedBytes: 0,
+        },
+      ],
+    });
+    renderAt(`/libraries/l1/shows/${SHOW_KEY}`, page());
+    await screen.findByRole('link', { name: /Season 1/ });
+    const box = screen.getByRole('searchbox', { name: 'Search this library' });
+    fireEvent.change(box, { target: { value: 'oil' } });
+    await waitFor(() =>
+      expect(mocks.libraries.files).toHaveBeenLastCalledWith(
+        expect.objectContaining({ id: 'l1', show: SHOW_KEY, search: 'oil' }),
+      ),
+    );
+    expect(mocks.libraries.files.mock.lastCall?.[0]).not.toHaveProperty('season');
+    expect(await screen.findByRole('table', { name: 'Files' })).toBeTruthy();
+    expect(screen.queryByRole('link', { name: /Season 1/ })).toBeNull();
+    fireEvent.change(box, { target: { value: '' } });
+    expect(await screen.findByRole('link', { name: /Season 1/ })).toBeTruthy();
+    expect(screen.queryByRole('table', { name: 'Files' })).toBeNull();
+  });
+
+  it('the season page lists its episodes and applies the search', async () => {
+    renderAt(`/libraries/l1/shows/${SHOW_KEY}/seasons/1`, page());
+    await screen.findByRole('table', { name: 'Files' });
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Search this library' }), {
+      target: { value: 'oil' },
+    });
+    await waitFor(() =>
+      expect(mocks.libraries.files).toHaveBeenLastCalledWith(
+        expect.objectContaining({ show: SHOW_KEY, season: '1', search: 'oil' }),
+      ),
+    );
+  });
+
+  it('Show more appends the next 60 titles while fewer than the total are shown', async () => {
+    const movie = (n: number) => ({
+      type: 'movie' as const,
+      fileId: `f${n}`,
+      poster: null,
+      latest: {
+        ...fx.kept,
+        media: { ...fx.kept.media, title: `Film ${n}`, kind: 'movie' as const },
+      },
+    });
+    const items = (from: number, n: number) => Array.from({ length: n }, (_, i) => movie(from + i));
+    mocks.libraries.titles.mockImplementation(async (q: { offset: number }) => ({
+      items: q.offset === 0 ? items(0, 60) : items(60, 40),
+      total: 100,
+    }));
+    await renderPage();
+    await screen.findByRole('link', { name: /Film 59/ });
+    fireEvent.click(screen.getByRole('button', { name: 'Show more' }));
+    await waitFor(() =>
+      expect(mocks.libraries.titles).toHaveBeenLastCalledWith(
+        expect.objectContaining({ offset: 60, limit: 60 }),
+      ),
+    );
+    expect(await screen.findByRole('link', { name: /Film 99/ })).toBeTruthy();
+    expect(screen.getByRole('link', { name: /^Film 0 / })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Show more' })).toBeNull();
+  });
 });
