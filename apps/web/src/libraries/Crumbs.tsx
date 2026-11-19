@@ -14,7 +14,9 @@ export function Crumbs({ crumbs }: { crumbs: Crumb[] }) {
   return (
     <nav aria-label="Breadcrumb" className="job-crumbs">
       {crumbs.map((c, i) => (
-        <span key={c.label} className="library-crumb">
+        // A label can repeat (a library named "Libraries"); the route cannot. The page you are on has
+        // no route and is always last.
+        <span key={c.href ?? 'current'} className="library-crumb">
           {i > 0 ? <span aria-hidden="true">›</span> : null}
           {c.href ? (
             <Link href={c.href} className="job-crumb-link">

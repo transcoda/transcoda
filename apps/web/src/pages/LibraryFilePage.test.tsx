@@ -307,6 +307,28 @@ describe('LibraryFilePage', () => {
     ).toEqual(['Libraries', 'Classic TV']);
   });
 
+  it('breadcrumbs whose labels repeat each keep their own entry', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const same = job({ id: 'j9', libraryName: 'Libraries', media: EPISODE });
+    mocks.libraries.file.mockResolvedValue(
+      detail({
+        file: { ...detail().file, latest: same },
+        showKey: null,
+        season: null,
+        jobs: [same],
+        jobsTotal: 1,
+      }),
+    );
+    await renderPage();
+    const crumbs = screen.getByRole('navigation', { name: 'Breadcrumb' });
+    expect(
+      within(crumbs)
+        .getAllByRole('link')
+        .map((a) => a.getAttribute('href')),
+    ).toEqual(['/libraries', '/libraries/l1']);
+    expect(error).not.toHaveBeenCalled();
+  });
+
   it('takes title and page title from the stored media the poster comes from, not the latest job', async () => {
     // The latest job has no media of its own: its row carries the file name's guess.
     const bare = job({
