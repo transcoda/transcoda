@@ -10,7 +10,6 @@ import { Icon } from '../components/Icon.tsx';
 import { Loading } from '../components/Loading.tsx';
 import { NotFound } from '../components/NotFound.tsx';
 import { useAsync } from '../hooks/useAsync.ts';
-import { useRefetchOn } from '../hooks/useRefetchOn.ts';
 import { TitleSub } from '../jobs/JobCells.tsx';
 import { jobTitle } from '../jobs/mediaText.ts';
 import { Poster } from '../jobs/Poster.tsx';
@@ -19,7 +18,7 @@ import { usePageTitle } from '../lib/pageTitle.ts';
 import { fmtFull } from '../lib/time.ts';
 import { type Crumb, Crumbs, seasonLabel } from '../libraries/Crumbs.tsx';
 import { type ProbeFacts, probeFacts } from '../libraries/probeFacts.ts';
-import { libraryEvent } from '../libraries/useLibraryListing.ts';
+import { useLibraryRefetch } from '../libraries/useLibraryListing.ts';
 import { JobHistoryTable } from './JobsPage.tsx';
 
 /** Jobs per request; "Show older jobs" asks for the page after the ones on screen. */
@@ -134,7 +133,7 @@ export function LibraryFilePage() {
     () => api.libraries.file({ id, fileId, jobsOffset: 0, jobsLimit: JOBS_PAGE }),
     [id, fileId],
   );
-  useRefetchOn(libraryEvent(id), detail.reload);
+  useLibraryRefetch(id, detail.reload);
   const data = detail.data;
   // Title and poster come from the same stored media (the latest job's, else the newest job's that
   // has some); the file name stands in when no job has any.
@@ -205,7 +204,11 @@ export function LibraryFilePage() {
                 ) : null}
               </Fact>
               <Fact term="Changed">{fmtFull(file.mtime)}</Fact>
-              {now ? <TrackFacts facts={probeFacts(now)} /> : null}
+              {now ? (
+                <TrackFacts facts={probeFacts(now)} />
+              ) : file.gone ? null : (
+                <Fact term="Tracks">Not probed yet</Fact>
+              )}
             </dl>
             {before ? (
               <Disclosure title="Before" className="file-before">

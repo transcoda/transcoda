@@ -1,6 +1,6 @@
 import { ORPCError } from '@orpc/client';
-import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
-import type { LibraryFileDetail } from '@transcoda/contract';
+import { act, cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
+import type { EngineEvent, LibraryFileDetail } from '@transcoda/contract';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Route } from 'wouter';
 
@@ -15,7 +15,8 @@ vi.mock('../api/client.ts', async () => {
 });
 
 import { EventsProvider } from '../hooks/useEvents.ts';
-import { fakeEventSource } from '../test/fakeEventStream.ts';
+import { REFETCH_COALESCE_MS } from '../hooks/useRefetchOn.ts';
+import { fakeEventSource, jobChanged, queueSnapshot } from '../test/fakeEventStream.ts';
 import { fx, job } from '../test/fixtures/jobs.ts';
 import { renderAt } from '../test/render.tsx';
 import { LibraryFilePage } from './LibraryFilePage.tsx';
@@ -201,6 +202,38 @@ describe('LibraryFilePage', () => {
     const { container } = await renderPage();
     const head = container.querySelector('.job-head') as HTMLElement;
     expect(within(head).getAllByText('1968')).toHaveLength(1);
+  });
+
+  it('a file with no probe of what it is now says so instead of showing tracks', async () => {
+    mocks.libraries.file.mockResolvedValue(detail({ now: null }));
+    await renderPage();
+    expect(within(fact('Tracks')).getByText('Not probed yet')).toBeTruthy();
+    expect(screen.queryByText('Container', { selector: 'dt' })).toBeNull();
+    expect(screen.queryByText('Video', { selector: 'dt' })).toBeNull();
+    expect(within(fact('Size')).getByText('700 MB')).toBeTruthy();
+  });
+
+  it('refetches on a state change of a job of the library, not on a progress tick', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+    try {
+      await renderPage();
+      await waitFor(() => expect(fake.streams.length).toBeGreaterThan(0));
+      const push = (e: EngineEvent) => act(async () => fake.last().push(e));
+      await push(queueSnapshot);
+      await push(jobChanged('j9'));
+      await act(() => vi.advanceTimersByTimeAsync(REFETCH_COALESCE_MS * 2));
+      const calls = mocks.libraries.file.mock.calls.length;
+      for (const percent of [10, 20]) {
+        await push({ ...jobChanged('j9'), progress: { percent } } as EngineEvent);
+        await act(() => vi.advanceTimersByTimeAsync(REFETCH_COALESCE_MS * 2));
+      }
+      expect(mocks.libraries.file).toHaveBeenCalledTimes(calls);
+      await push({ ...jobChanged('j9'), state: 'done' } as EngineEvent);
+      await act(() => vi.advanceTimersByTimeAsync(REFETCH_COALESCE_MS * 2));
+      await waitFor(() => expect(mocks.libraries.file).toHaveBeenCalledTimes(calls + 1));
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('a gone file wears a badge with an icon and the words', async () => {
