@@ -372,6 +372,28 @@ describe('LibraryFilePage', () => {
     ).toEqual(['Libraries', 'Classic TV']);
   });
 
+  it('breadcrumbs whose labels repeat each keep their own entry', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const same = job({ id: 'j9', libraryName: 'Libraries', media: EPISODE });
+    mocks.libraries.file.mockResolvedValue(
+      detail({
+        file: { ...detail().file, latest: same },
+        showKey: null,
+        season: null,
+        jobs: [same],
+        jobsTotal: 1,
+      }),
+    );
+    await renderPage();
+    const crumbs = screen.getByRole('navigation', { name: 'Breadcrumb' });
+    expect(
+      within(crumbs)
+        .getAllByRole('link')
+        .map((a) => a.getAttribute('href')),
+    ).toEqual(['/libraries', '/libraries/l1']);
+    expect(error).not.toHaveBeenCalled();
+  });
+
   it('takes title and page title from the stored media the poster comes from, not the latest job', async () => {
     // The latest job has no media of its own: its row carries the file name's guess.
     const bare = job({
@@ -477,6 +499,53 @@ describe('LibraryFilePage', () => {
         ?.getAttribute('href'),
     ).toBe('/jobs/old1');
     expect(screen.queryByRole('button', { name: 'Show older jobs' })).toBeNull();
+  });
+
+  it('a job arriving between older pages leaves none missing and none doubled', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+    try {
+      // 101 jobs, newest first, served by offset like the server does.
+      let all = Array.from({ length: 101 }, (_, i) => job({ id: `a${i + 1}`, media: EPISODE }));
+      mocks.libraries.file.mockImplementation(
+        ({ jobsOffset, jobsLimit }: { jobsOffset: number; jobsLimit: number }) =>
+          Promise.resolve(
+            detail({
+              jobs: all.slice(jobsOffset, jobsOffset + jobsLimit),
+              jobsTotal: all.length,
+            }),
+          ),
+      );
+      await renderPage();
+      const table = () => screen.getByRole('table', { name: 'Jobs on this file' });
+      const hrefs = () =>
+        within(table())
+          .getAllByRole('link')
+          .map((a) => a.getAttribute('href'));
+      fireEvent.click(await screen.findByRole('button', { name: 'Show older jobs' }));
+      await waitFor(() => expect(hrefs()).toHaveLength(100));
+
+      // A job arrives; the refreshed head shifts everything down by one.
+      all = [job({ id: 'new', media: EPISODE }), ...all];
+      await waitFor(() => expect(fake.streams.length).toBeGreaterThan(0));
+      await act(async () => fake.last().push(queueSnapshot));
+      await act(async () => fake.last().push(jobChanged('new')));
+      await act(() => vi.advanceTimersByTimeAsync(REFETCH_COALESCE_MS * 2));
+      await waitFor(() => expect(hrefs()[0]).toBe('/jobs/new'));
+
+      // Read on until the button goes away.
+      for (let i = 0; i < 3; i++) {
+        const more = screen.queryByRole('button', { name: 'Show older jobs' });
+        if (!more) break;
+        const before = hrefs().length;
+        fireEvent.click(more);
+        await waitFor(() => expect(hrefs().length).toBeGreaterThan(before));
+      }
+      const links = hrefs();
+      expect(links).toEqual(all.map((j) => `/jobs/${j.id}`));
+      expect(screen.queryByRole('button', { name: 'Show older jobs' })).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('a gone file opens with No longer on disk', async () => {

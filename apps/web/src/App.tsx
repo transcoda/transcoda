@@ -93,11 +93,14 @@ export function App() {
           </RequireAuth>
         </Route>
         <Route path="/libraries/:id/files/:fileId">
-          <RequireAuth>
-            <Shell>
-              <LibraryFilePage />
-            </Shell>
-          </RequireAuth>
+          {(params) => (
+            <RequireAuth>
+              <Shell>
+                {/* Another file remounts the page, so the last file's data never shows under the new URL. */}
+                <LibraryFilePage key={`${params.id}\n${params.fileId}`} />
+              </Shell>
+            </RequireAuth>
+          )}
         </Route>
         <Route path="/libraries/:id/shows/:show/seasons/:season">
           <RequireAuth>

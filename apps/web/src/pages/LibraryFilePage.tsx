@@ -1,5 +1,5 @@
 import type { Job, LibraryFileDetail } from '@transcoda/contract';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'wouter';
 import { api } from '../api/client.ts';
 import { describeError } from '../api/errors.ts';
@@ -74,12 +74,26 @@ function FileJobs({ id, fileId, head }: { id: string; fileId: string; head: Libr
   const [older, setOlder] = useState<{ jobs: Job[]; offset: number }>({ jobs: [], offset: 0 });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<unknown>(null);
-  // A job that arrived since an older page was read shifts the pages; show each job once.
+  // The older pages were read against the head as it was. When the refreshed head holds other jobs
+  // (one arrived or went away), they no longer line up with it: a job at the boundary would go
+  // missing and the next page would repeat one. Drop them; "Show older jobs" reads them again.
+  const headIds = head.jobs.map((j) => j.id).join('\n');
+  const [pagedAgainst, setPagedAgainst] = useState(headIds);
+  const headNow = useRef(headIds);
+  useEffect(() => {
+    headNow.current = headIds;
+  }, [headIds]);
+  if (pagedAgainst !== headIds) {
+    setPagedAgainst(headIds);
+    setOlder({ jobs: [], offset: 0 });
+  }
+  // Show each job once, whatever the pages hold.
   const seen = new Set(head.jobs.map((j) => j.id));
   const jobs = [...head.jobs, ...older.jobs.filter((j) => !seen.has(j.id))];
 
   async function showOlder() {
     const offset = older.offset + JOBS_PAGE;
+    const against = headIds;
     setLoading(true);
     setError(null);
     try {
@@ -89,7 +103,10 @@ function FileJobs({ id, fileId, head }: { id: string; fileId: string; head: Libr
         jobsOffset: offset,
         jobsLimit: JOBS_PAGE,
       });
-      setOlder((o) => ({ jobs: [...o.jobs, ...page.jobs], offset }));
+      // The head changed while this page was on its way: it was cut from the old list.
+      if (headNow.current === against) {
+        setOlder((o) => ({ jobs: [...o.jobs, ...page.jobs], offset }));
+      }
     } catch (e) {
       setError(e);
     } finally {
