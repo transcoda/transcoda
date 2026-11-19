@@ -7,7 +7,7 @@ import { Route } from 'wouter';
 const mocks = vi.hoisted(() => ({
   libraries: { get: vi.fn(), titles: vi.fn(), seasons: vi.fn(), files: vi.fn() },
   workflows: { list: vi.fn(), get: vi.fn() },
-  jobs: { queue: vi.fn() },
+  jobs: { queue: vi.fn(), queueFilesPreview: vi.fn(), queueFiles: vi.fn() },
   events: { subscribe: vi.fn() },
   queue: { status: vi.fn() },
 }));
@@ -83,6 +83,15 @@ beforeEach(() => {
   mocks.workflows.get.mockReset().mockResolvedValue({ activeIssues: [] });
   mocks.queue.status.mockReset().mockResolvedValue({ paused: false, lanes: {}, encodeSlots: 1 });
   mocks.jobs.queue.mockReset().mockResolvedValue({ runId: 'r9' });
+  mocks.jobs.queueFilesPreview.mockReset().mockResolvedValue({
+    willRun: 2,
+    alreadyHandled: 0,
+    heldByAnotherRun: 0,
+    notFound: 0,
+    skipped: 0,
+    workflowVersion: 2,
+    dryRun: false,
+  });
 });
 afterEach(() => {
   cleanup();
@@ -692,4 +701,161 @@ describe('LibraryPage', () => {
     const box = screen.getByRole('searchbox', { name: 'Search this library' });
     expect(box.getAttribute('maxlength')).toBe('200');
   });
+});
+
+describe('LibraryPage selection and running', () => {
+  const episode = (id: string, title: string) => ({
+    id,
+    path: `/media/classic-tv/${title}.mkv`,
+    fileName: `${title}.mkv`,
+    sizeBytes: 1000,
+    originalBytes: null,
+    mtime: at,
+    gone: false,
+    poster: null,
+    latest: { ...fx.kept, media: { ...fx.kept.media, title } },
+  });
+  const RUNNABLE = {
+    id: 'w1',
+    name: 'TV cleanup',
+    kind: 'workflow',
+    active: { version: 2, runnable: true, activatedAt: at, activatedBy: 'u1' },
+    currentVersion: 3,
+  };
+
+  beforeEach(() => {
+    mocks.workflows.list.mockResolvedValue({ workflows: [RUNNABLE] });
+    mocks.libraries.files.mockImplementation(async (q: { limit: number }) => ({
+      files:
+        q.limit === 1
+          ? []
+          : [episode('f1', 'Night of the Living Dead'), episode('f2', 'Sherlock Jr.')],
+      total: 2,
+    }));
+  });
+  const stubPhone = () => {
+    window.matchMedia = (query: string) =>
+      ({
+        matches: query === '(max-width: 639px)',
+        media: query,
+        onchange: null,
+        addEventListener() {},
+        removeEventListener() {},
+        addListener() {},
+        removeListener() {},
+        dispatchEvent: () => false,
+      }) as MediaQueryList;
+  };
+
+  async function selectBoth() {
+    localStorage.setItem(LIBRARY_VIEW_KEY, 'table');
+    await renderPage();
+    fireEvent.click(
+      await screen.findByRole('checkbox', { name: 'Select Night of the Living Dead.mkv' }),
+    );
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Select Sherlock Jr..mkv' }));
+  }
+
+  it('a new search clears the selection', async () => {
+    await selectBoth();
+    expect(screen.getByText('2 selected')).toBeTruthy();
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Search this library' }), {
+      target: { value: 'night' },
+    });
+    await waitFor(() => expect(screen.queryByRole('region', { name: 'Selection' })).toBeNull());
+    // The searched list's rows come with its answer: none of the last list's rows show meanwhile.
+    expect(
+      (await screen.findByRole('checkbox', {
+        name: 'Select Sherlock Jr..mkv',
+      })) as HTMLInputElement,
+    ).toHaveProperty('checked', false);
+  });
+
+  it('switching to Posters clears the selection', async () => {
+    await selectBoth();
+    expect(screen.getByText('2 selected')).toBeTruthy();
+    fireEvent.click(screen.getByRole('radio', { name: 'Posters' }));
+    expect(screen.queryByRole('region', { name: 'Selection' })).toBeNull();
+    fireEvent.click(screen.getByRole('radio', { name: 'Table' }));
+    expect(
+      (await screen.findByRole('checkbox', {
+        name: 'Select Sherlock Jr..mkv',
+      })) as HTMLInputElement,
+    ).toHaveProperty('checked', false);
+  });
+
+  it('the selection bar comes after the files so it can stick to the bottom', async () => {
+    await selectBoth();
+    const bar = screen.getByRole('region', { name: 'Selection' });
+    const table = screen.getByRole('table', { name: 'Files' });
+    expect(table.compareDocumentPosition(bar) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('the selection survives a sort', async () => {
+    await selectBoth();
+    fireEvent.click(screen.getByRole('button', { name: 'Size' }));
+    await waitFor(() =>
+      expect(mocks.libraries.files).toHaveBeenLastCalledWith(
+        expect.objectContaining({ sort: 'size' }),
+      ),
+    );
+    expect(screen.getByText('2 selected')).toBeTruthy();
+  });
+
+  it('Run a workflow… opens the dialog for the selected files and focus returns to the button', async () => {
+    await selectBoth();
+    const open = screen.getByRole('button', { name: 'Run a workflow…' });
+    open.focus();
+    fireEvent.click(open);
+    expect(await screen.findByRole('dialog', { name: 'Run a workflow on 2 files' })).toBeTruthy();
+    await waitFor(() =>
+      expect(mocks.jobs.queueFilesPreview).toHaveBeenCalledWith(
+        expect.objectContaining({ libraryId: 'l1', fileIds: ['f1', 'f2'] }),
+      ),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(document.activeElement).toBe(open);
+  });
+
+  it('the season page offers Run a workflow on this season with the show and season', async () => {
+    await renderPageAt(`/libraries/l1/shows/${SHOW_KEY}/seasons/1`);
+    fireEvent.click(screen.getByRole('button', { name: 'Run a workflow on this season' }));
+    expect(
+      await screen.findByRole('dialog', { name: 'Run a workflow on this season' }),
+    ).toBeTruthy();
+    await waitFor(() =>
+      expect(mocks.jobs.queueFilesPreview).toHaveBeenCalledWith(
+        expect.objectContaining({ show: SHOW_KEY, season: '1' }),
+      ),
+    );
+  });
+
+  it('the show page offers Run a workflow on this show with the show only', async () => {
+    await renderPageAt(`/libraries/l1/shows/${SHOW_KEY}`);
+    fireEvent.click(screen.getByRole('button', { name: 'Run a workflow on this show' }));
+    expect(await screen.findByRole('dialog', { name: 'Run a workflow on this show' })).toBeTruthy();
+    await waitFor(() => expect(mocks.jobs.queueFilesPreview).toHaveBeenCalled());
+    const sent = mocks.jobs.queueFilesPreview.mock.calls.at(-1)?.[0];
+    expect(sent.show).toBe(SHOW_KEY);
+    expect('season' in sent).toBe(false);
+  });
+
+  it('the library page has no run button for a whole library', async () => {
+    await renderPage();
+    expect(screen.queryByRole('button', { name: /Run a workflow on/ })).toBeNull();
+  });
+
+  it('on a phone the show and season pages have no Run a workflow button and no checkboxes', async () => {
+    stubPhone();
+    await renderPageAt(`/libraries/l1/shows/${SHOW_KEY}/seasons/1`);
+    expect(screen.queryByRole('button', { name: /Run a workflow on/ })).toBeNull();
+    expect(screen.queryAllByRole('checkbox')).toHaveLength(0);
+  });
+
+  async function renderPageAt(path: string) {
+    renderAt(path, page());
+    await screen.findByRole('heading', { level: 1, name: 'Classic TV' });
+    await screen.findByRole('table', { name: 'Files' }).catch(() => null);
+  }
 });

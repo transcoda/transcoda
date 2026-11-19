@@ -26,9 +26,7 @@ import {
   listTitles,
   parseShowKey,
   type PosterRef as RepoPosterRef,
-  type SeasonRef,
-  type ShowRef,
-  showExists,
+  resolveShowSelection,
 } from '../../db/repos/library-files.ts';
 import { findFeeder, type LibraryNamer, listInactiveNamers } from '../../db/repos/workflows.ts';
 import { jobProbeOf } from '../../engine/probe.ts';
@@ -229,34 +227,23 @@ export const files = os.libraries.files
   .handler(({ context, input, errors }) => {
     const { db } = context.deps;
     if (!liveLibrary(db, input.id)) throw errors.NOT_FOUND();
-    let show: ShowRef | undefined;
-    if (input.show !== undefined) {
-      const parsed = parseShowKey(input.show);
-      if (!parsed) throw errors.NOT_FOUND();
-      show = parsed;
-    }
-    const season: SeasonRef | undefined =
-      input.season === undefined
-        ? undefined
-        : input.season === 'none'
-          ? 'none'
-          : Number(input.season);
+    // A key naming a show with no episodes here is as unknown as one that does not parse.
+    const sel =
+      input.show === undefined
+        ? null
+        : resolveShowSelection(db, input.id, input.show, input.season);
+    if (input.show !== undefined && sel === null) throw errors.NOT_FOUND();
     const job = jobMapper(context.deps);
     const { rows, total } = listLibraryFiles(db, {
       libraryId: input.id,
-      ...(show !== undefined && { show }),
-      ...(season !== undefined && { season }),
+      ...(sel !== null && { show: sel.show }),
+      ...(sel?.season !== undefined && { season: sel.season }),
       ...(input.search !== undefined && { search: input.search }),
       sort: input.sort,
       desc: input.desc,
       offset: input.offset,
       limit: input.limit,
     });
-    // A key naming a show with no episodes here is as unknown as one that does not parse; checked
-    // only when nothing matched, so a listed page costs no second query.
-    if (show !== undefined && total === 0 && !showExists(db, input.id, show)) {
-      throw errors.NOT_FOUND();
-    }
     return { files: rows.map((r) => toFile(r, job)), total };
   });
 

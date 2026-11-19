@@ -9,8 +9,11 @@ import { NotFound } from '../components/NotFound.tsx';
 import { SegmentedSwitch } from '../components/SegmentedSwitch.tsx';
 import { useAsync } from '../hooks/useAsync.ts';
 import { usePageTitle } from '../lib/pageTitle.ts';
+import { usePhone } from '../lib/usePhone.ts';
 import { type Crumb, Crumbs, seasonLabel } from '../libraries/Crumbs.tsx';
 import { LibraryFileTable } from '../libraries/LibraryFileTable.tsx';
+import { RunFilesDialog, type RunSelection } from '../libraries/RunFilesDialog.tsx';
+import { SelectionBar } from '../libraries/SelectionBar.tsx';
 import { SeasonGrid, TitleGrid } from '../libraries/TitleGrid.tsx';
 import {
   useLibraryFiles,
@@ -19,6 +22,7 @@ import {
   useLibraryTitlePages,
 } from '../libraries/useLibraryListing.ts';
 import { useScanNow } from '../libraries/useScanNow.tsx';
+import { type Selection, useSelection } from '../libraries/useSelection.ts';
 import { type LibraryView, readLibraryView, writeLibraryView } from '../libraries/viewPref.ts';
 
 /** How long the search box waits after the last keystroke before asking the server. */
@@ -121,11 +125,13 @@ function FilesBody({
   show,
   season,
   search,
+  selection,
 }: {
   id: string;
   show: string | undefined;
   season: string | undefined;
   search: string;
+  selection: Selection | undefined;
 }) {
   const [sort, setSort] = useState<FileSort>('title');
   const [desc, setDesc] = useState(false);
@@ -177,6 +183,7 @@ function FilesBody({
       offset={offset}
       limit={FILES_PAGE}
       onPage={(next) => setPaged({ scope, offset: next })}
+      {...(selection ? { selection } : {})}
     />
   );
 }
@@ -226,6 +233,14 @@ export function LibraryPage() {
   const [query, setQuery] = useState('');
   const search = useDebounced(query.trim(), SEARCH_DEBOUNCE_MS);
   const searchId = useId();
+  const phone = usePhone();
+  // Files ticked in the table start again with another library, show, season or search.
+  const selection = useSelection(JSON.stringify([id, show, season, search]));
+  const [run, setRun] = useState<{
+    selection: RunSelection;
+    label: string;
+    opener: HTMLElement | null;
+  } | null>(null);
   usePageTitle(library.data?.name ?? 'Library');
 
   if (!library.data) {
@@ -259,6 +274,8 @@ export function LibraryPage() {
   function choose(next: LibraryView) {
     setView(next);
     writeLibraryView(next);
+    // The selection is of table rows; the poster view has no checkboxes to show it.
+    if (next === 'posters') selection.clear();
   }
 
   // A season is a list of episodes, so it is a table in either view. On a show's page a search
@@ -266,12 +283,35 @@ export function LibraryPage() {
   const body = empty ? (
     <p className="library-empty">Scan now to list its files.</p>
   ) : season !== undefined || view === 'table' || (show !== undefined && search !== '') ? (
-    <FilesBody id={id} show={show} season={season} search={search} />
+    <FilesBody
+      id={id}
+      show={show}
+      season={season}
+      search={search}
+      selection={phone ? undefined : selection}
+    />
   ) : show !== undefined ? (
     <SeasonsBody id={id} show={show} seasons={seasons} />
   ) : (
     <TitlesBody key={`${id}\n${search}`} id={id} search={search} />
   );
+
+  // Phones run from the file page only.
+  const runTarget: { selection: RunSelection; label: string; text: string } | null =
+    phone || show === undefined
+      ? null
+      : season === undefined
+        ? {
+            selection: { kind: 'show', show },
+            label: 'this show',
+            text: 'Run a workflow on this show',
+          }
+        : {
+            selection: { kind: 'show', show, season },
+            label: 'this season',
+            text: 'Run a workflow on this season',
+          };
+  const filesLabel = `${selection.selected.size} ${selection.selected.size === 1 ? 'file' : 'files'}`;
 
   return (
     <div className="page library-page">
@@ -290,6 +330,21 @@ export function LibraryPage() {
             </p>
           </div>
           <div className="page-actions">
+            {runTarget ? (
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={(e) =>
+                  setRun({
+                    selection: runTarget.selection,
+                    label: runTarget.label,
+                    opener: e.currentTarget,
+                  })
+                }
+              >
+                {runTarget.text}
+              </button>
+            ) : null}
             <button
               type="button"
               className="btn btn-secondary"
@@ -334,7 +389,30 @@ export function LibraryPage() {
       </div>
 
       {body}
+      {!phone && selection.selected.size > 0 ? (
+        <SelectionBar
+          count={selection.selected.size}
+          onRun={(opener) =>
+            setRun({
+              selection: { kind: 'files', fileIds: [...selection.selected] },
+              label: filesLabel,
+              opener,
+            })
+          }
+          onClear={selection.clear}
+        />
+      ) : null}
       {scan.dialogs}
+      {run ? (
+        <RunFilesDialog
+          open
+          library={lib}
+          selection={run.selection}
+          label={run.label}
+          returnFocusTo={run.opener}
+          onClose={() => setRun(null)}
+        />
+      ) : null}
     </div>
   );
 }

@@ -5,7 +5,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Route } from 'wouter';
 
 const mocks = vi.hoisted(() => ({
-  libraries: { file: vi.fn() },
+  libraries: { file: vi.fn(), get: vi.fn() },
+  workflows: { list: vi.fn() },
+  jobs: { queueFilesPreview: vi.fn(), queueFiles: vi.fn() },
   events: { subscribe: vi.fn() },
   queue: { status: vi.fn() },
 }));
@@ -123,6 +125,41 @@ beforeEach(() => {
   fake = fakeEventSource();
   mocks.events.subscribe.mockReset().mockImplementation(fake.subscribe);
   mocks.libraries.file.mockReset().mockResolvedValue(detail());
+  mocks.libraries.get.mockReset().mockResolvedValue({
+    id: 'l1',
+    name: 'Classic TV',
+    path: '/media/classic-tv',
+    recycleFolder: null,
+    processHardlinked: false,
+    verifyFullDecode: false,
+    runHours: null,
+    watchFolder: true,
+    feeds: null,
+    namedByInactive: [],
+    createdAt: at,
+    updatedAt: at,
+    clock: { now: at, timeZone: 'UTC' },
+  });
+  mocks.workflows.list.mockReset().mockResolvedValue({
+    workflows: [
+      {
+        id: 'w1',
+        name: 'TV cleanup',
+        kind: 'workflow',
+        active: { version: 2, runnable: true, activatedAt: at, activatedBy: 'u1' },
+        currentVersion: 3,
+      },
+    ],
+  });
+  mocks.jobs.queueFilesPreview.mockReset().mockResolvedValue({
+    willRun: 1,
+    alreadyHandled: 0,
+    heldByAnotherRun: 0,
+    notFound: 0,
+    skipped: 0,
+    workflowVersion: 2,
+    dryRun: false,
+  });
   mocks.queue.status.mockReset().mockResolvedValue({ paused: false, lanes: {}, encodeSlots: 1 });
 });
 afterEach(() => {
@@ -164,6 +201,62 @@ function stubPhone() {
 }
 
 describe('LibraryFilePage', () => {
+  it('the file page runs one file', async () => {
+    await renderPage();
+    const open = await screen.findByRole('button', { name: 'Run a workflow' });
+    await waitFor(() => expect((open as HTMLButtonElement).disabled).toBe(false));
+    fireEvent.click(open);
+    expect(await screen.findByRole('dialog', { name: 'Run a workflow on 1 file' })).toBeTruthy();
+    await waitFor(() =>
+      expect(mocks.jobs.queueFilesPreview).toHaveBeenCalledWith(
+        expect.objectContaining({ libraryId: 'l1', fileIds: ['f1'] }),
+      ),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(document.activeElement).toBe(open);
+  });
+
+  it('a phone still has Run a workflow', async () => {
+    stubPhone();
+    await renderPage();
+    expect(await screen.findByRole('button', { name: 'Run a workflow' })).toBeTruthy();
+  });
+
+  it('a library that fails to load says so, keeps Run a workflow disabled, and retries', async () => {
+    mocks.libraries.get
+      .mockRejectedValueOnce(new ORPCError('INTERNAL_SERVER_ERROR', { message: 'db is down' }))
+      .mockResolvedValueOnce({
+        id: 'l1',
+        name: 'Classic TV',
+        path: '/media/classic-tv',
+        recycleFolder: null,
+        processHardlinked: false,
+        verifyFullDecode: false,
+        runHours: null,
+        watchFolder: true,
+        feeds: null,
+        namedByInactive: [],
+        createdAt: at,
+        updatedAt: at,
+        clock: { now: at, timeZone: 'UTC' },
+      });
+    await renderPage();
+    const alert = await screen.findByText(/Could not load the library/);
+    expect(alert.textContent).toContain('db is down');
+    const open = screen.getByRole('button', { name: 'Run a workflow' }) as HTMLButtonElement;
+    expect(open.disabled).toBe(true);
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    await waitFor(() => expect(open.disabled).toBe(false));
+    expect(screen.queryByText(/Could not load the library/)).toBeNull();
+  });
+
+  it('a file no longer on disk has no Run a workflow', async () => {
+    mocks.libraries.file.mockResolvedValue(detail({ file: { ...detail().file, gone: true } }));
+    await renderPage();
+    expect(screen.queryByRole('button', { name: 'Run a workflow' })).toBeNull();
+  });
+
   it('on a phone the jobs are cards linking to their job pages, not a table', async () => {
     stubPhone();
     await renderPage();

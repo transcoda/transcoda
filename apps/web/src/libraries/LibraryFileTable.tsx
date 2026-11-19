@@ -1,4 +1,5 @@
 import type { FileSort, LibraryFile } from '@transcoda/contract';
+import { useEffect, useRef } from 'react';
 import { Link } from 'wouter';
 import { ResultCell, TitleSub } from '../jobs/JobCells.tsx';
 import { JobStateChip } from '../jobs/JobStateChip.tsx';
@@ -9,6 +10,7 @@ import { useQueue } from '../jobs/useQueue.ts';
 import { fmtBytes } from '../lib/bytes.ts';
 import { fmtFull, fmtStamp, jobLastTime } from '../lib/time.ts';
 import { usePhone } from '../lib/usePhone.ts';
+import type { Selection } from './useSelection.ts';
 
 const num = (n: number) => n.toLocaleString('en-US');
 
@@ -125,6 +127,7 @@ export function LibraryFileTable({
   offset,
   limit,
   onPage,
+  selection,
 }: {
   libraryId: string;
   files: LibraryFile[];
@@ -135,9 +138,18 @@ export function LibraryFileTable({
   offset: number;
   limit: number;
   onPage(offset: number): void;
+  /** Row checkboxes and a header checkbox for this page; none on a phone. */
+  selection?: Selection;
 }) {
   const phone = usePhone();
   const queuePaused = useQueue().status?.paused ?? false;
+  const pageIds = files.map((f) => f.id);
+  const picked = selection ? pageIds.filter((id) => selection.selected.has(id)).length : 0;
+  const allPicked = pageIds.length > 0 && picked === pageIds.length;
+  const headBox = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (headBox.current) headBox.current.indeterminate = picked > 0 && !allPicked;
+  }, [picked, allPicked]);
   const pager = (
     <Pager total={total} count={files.length} offset={offset} limit={limit} onPage={onPage} />
   );
@@ -169,6 +181,7 @@ export function LibraryFileTable({
       <div className="job-list">
         <table className="job-table library-table" aria-label="Files">
           <colgroup>
+            {selection ? <col className="library-col-check" /> : null}
             <col />
             <col className="library-col-size" />
             <col className="job-col-status" />
@@ -177,6 +190,18 @@ export function LibraryFileTable({
           </colgroup>
           <thead>
             <tr>
+              {selection ? (
+                <th scope="col" className="library-col-check">
+                  <input
+                    ref={headBox}
+                    type="checkbox"
+                    aria-label="Select this page"
+                    checked={allPicked}
+                    disabled={pageIds.length === 0}
+                    onChange={(e) => selection.setPage(pageIds, e.target.checked)}
+                  />
+                </th>
+              ) : null}
               <SortHeader label="Title" sort="title" active={sort} desc={desc} onSort={onSort} />
               <SortHeader label="Size" sort="size" active={sort} desc={desc} onSort={onSort} />
               <SortHeader label="Status" sort="result" active={sort} desc={desc} onSort={onSort} />
@@ -196,6 +221,16 @@ export function LibraryFileTable({
               const when = jobLastTime(file.latest);
               return (
                 <tr key={file.id} className="row-link">
+                  {selection ? (
+                    <td className="library-col-check">
+                      <input
+                        type="checkbox"
+                        aria-label={`Select ${file.fileName}`}
+                        checked={selection.selected.has(file.id)}
+                        onChange={() => selection.toggle(file.id)}
+                      />
+                    </td>
+                  ) : null}
                   <td>
                     <div className="job-title">
                       <Poster job={file.poster ?? file.latest} size="row" />

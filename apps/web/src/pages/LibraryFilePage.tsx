@@ -18,6 +18,7 @@ import { usePageTitle } from '../lib/pageTitle.ts';
 import { fmtFull } from '../lib/time.ts';
 import { type Crumb, Crumbs, seasonLabel } from '../libraries/Crumbs.tsx';
 import { type ProbeFacts, probeFacts } from '../libraries/probeFacts.ts';
+import { RunFilesDialog } from '../libraries/RunFilesDialog.tsx';
 import { useLibraryRefetch } from '../libraries/useLibraryListing.ts';
 import { JobHistoryTable } from './JobsPage.tsx';
 
@@ -151,6 +152,10 @@ export function LibraryFilePage() {
     [id, fileId],
   );
   useLibraryRefetch(id, detail.reload);
+  // The run dialog needs the library's run hours, feeder and recycle folder.
+  const library = useAsync(() => api.libraries.get({ id }), [id]);
+  const [running, setRunning] = useState<HTMLElement | null>(null);
+  const [runOpen, setRunOpen] = useState(false);
   const data = detail.data;
   // Title and poster come from the same stored media (the latest job's, else the newest job's that
   // has some); the file name stands in when no job has any.
@@ -227,6 +232,30 @@ export function LibraryFilePage() {
                 <Fact term="Tracks">Not probed yet</Fact>
               )}
             </dl>
+            {file.gone ? null : (
+              <div className="file-head-actions">
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  disabled={!library.data}
+                  onClick={(e) => {
+                    setRunning(e.currentTarget);
+                    setRunOpen(true);
+                  }}
+                >
+                  Run a workflow
+                </button>
+              </div>
+            )}
+            {file.gone || !library.error || library.data ? null : (
+              <div className="alert alert-danger" role="alert">
+                <Icon name="cross" strokeWidth={2.4} round />
+                <span>{`Could not load the library: ${describeError(library.error).message}`}</span>
+                <button type="button" className="btn btn-ghost btn-sm" onClick={library.reload}>
+                  Try again
+                </button>
+              </div>
+            )}
             {before ? (
               <Disclosure title="Before" className="file-before">
                 <dl className="job-facts">
@@ -238,6 +267,16 @@ export function LibraryFilePage() {
           </div>
         </div>
       </header>
+      {runOpen && library.data ? (
+        <RunFilesDialog
+          open
+          library={library.data}
+          selection={{ kind: 'files', fileIds: [file.id] }}
+          label="1 file"
+          returnFocusTo={running}
+          onClose={() => setRunOpen(false)}
+        />
+      ) : null}
       <FileJobs key={`${id}\n${fileId}`} id={id} fileId={fileId} head={data} />
     </div>
   );

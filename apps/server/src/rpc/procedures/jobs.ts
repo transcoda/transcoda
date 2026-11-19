@@ -1,8 +1,14 @@
-import type { Job, JobDetail } from '@transcoda/contract';
+import type { Job, JobDetail, JobsQueueOutput } from '@transcoda/contract';
+import type { Issue } from '@transcoda/shared';
 import { ACTIVE_JOB_STATES } from '@transcoda/shared';
 import { hasScope } from '../../auth/tokens.ts';
+import type { Database } from '../../db/open.ts';
 import { findJob, type JobListRow, jobsInStates } from '../../db/repos/jobs.ts';
+import { findLibrary } from '../../db/repos/libraries.ts';
+import { filePathsOf, resolveShowSelection } from '../../db/repos/library-files.ts';
+import type { QueueResult } from '../../engine/queue-service.ts';
 import type { RunHoursHold } from '../../engine/run-hours.ts';
+import type { AuthContext } from '../context.ts';
 import { os, requireAnyScope, requireHumanSessionWith, requireScope } from '../middleware.ts';
 import { redactGraph } from '../redact.ts';
 
@@ -46,13 +52,63 @@ export function toJob(r: JobListRow & { heldByRunHours: RunHoursHold | null }): 
   };
 }
 
+/** What a queue route's `errors` offers; the file-selection routes have no NO_FEEDING_WORKFLOW. */
+interface QueueErrors {
+  FORBIDDEN(o: { message: string }): Error;
+  PATH_REJECTED(o: { data: { path: string; reason: string } }): Error;
+  NOT_FOUND(o?: { message: string }): Error;
+  WORKFLOW_INVALID(o: { data: { issues: Issue[] } }): Error;
+  NO_FEEDING_WORKFLOW?: () => Error;
+}
+
+/**
+ * The scope rule of every queue route (they all pass `requireAnyScope('jobs:create', 'plan')`
+ * first): a token needs `jobs:create` unless the request is a dry run, which `plan` may also make.
+ */
+function requireCreateUnlessDry(auth: AuthContext, dryRun: boolean, errors: QueueErrors): void {
+  if (auth.kind === 'token' && !dryRun && !hasScope(auth.scopes, 'jobs:create')) {
+    throw errors.FORBIDDEN({ message: 'A plan token can only queue dry runs' });
+  }
+}
+
+/** Throws the API error for a queue result that queued nothing; `path` is what PATH_REJECTED names. */
+function throwNotQueued(
+  result: Exclude<QueueResult, { kind: 'queued' }>,
+  path: string,
+  errors: QueueErrors,
+): never {
+  switch (result.kind) {
+    case 'path-rejected':
+      throw errors.PATH_REJECTED({ data: { path, reason: result.reason } });
+    case 'workflow-missing':
+      throw errors.NOT_FOUND({ message: 'Workflow not found' });
+    case 'version-missing':
+      throw errors.NOT_FOUND({ message: 'Workflow version not found' });
+    case 'workflow-invalid':
+      throw errors.WORKFLOW_INVALID({ data: { issues: result.issues } });
+    case 'no-feeding-workflow':
+      if (errors.NO_FEEDING_WORKFLOW) throw errors.NO_FEEDING_WORKFLOW();
+      throw new Error('a request with a workflow id found no feeding workflow');
+  }
+}
+
+/** The answer to a queued run, as `jobs.queue` and `jobs.queueFiles` give it. */
+function queuedOutput(result: Extract<QueueResult, { kind: 'queued' }>): JobsQueueOutput {
+  return {
+    runId: result.run.id,
+    jobIds: result.jobs.map((j) => j.id),
+    dryRun: result.run.dryRun,
+    note: result.run.note,
+    workflowVersion: result.run.workflowVersion,
+    testEncode: result.run.testEncode,
+  };
+}
+
 export const queue = os.jobs.queue
   .use(requireAnyScope('jobs:create', 'plan'))
   .handler(async ({ context, input, errors }) => {
     const { auth } = context;
-    if (auth.kind === 'token' && !input.dryRun && !hasScope(auth.scopes, 'jobs:create')) {
-      throw errors.FORBIDDEN({ message: 'A plan token can only queue dry runs' });
-    }
+    requireCreateUnlessDry(auth, input.dryRun, errors);
     const result = await context.deps.engine.queue.queue({
       path: input.path,
       ...(input.workflowId !== undefined ? { workflowId: input.workflowId } : {}),
@@ -65,27 +121,98 @@ export const queue = os.jobs.queue
       testEncode: input.dryRun ? (input.testEncode ?? 'if-single-file') : false,
       createdBy: auth.user.id,
     });
-    switch (result.kind) {
-      case 'queued':
-        return {
-          runId: result.run.id,
-          jobIds: result.jobs.map((j) => j.id),
-          dryRun: result.run.dryRun,
-          note: result.run.note,
-          workflowVersion: result.run.workflowVersion,
-          testEncode: result.run.testEncode,
-        };
-      case 'path-rejected':
-        throw errors.PATH_REJECTED({ data: { path: input.path, reason: result.reason } });
-      case 'workflow-missing':
-        throw errors.NOT_FOUND({ message: 'Workflow not found' });
-      case 'version-missing':
-        throw errors.NOT_FOUND({ message: 'Workflow version not found' });
-      case 'workflow-invalid':
-        throw errors.WORKFLOW_INVALID({ data: { issues: result.issues } });
-      case 'no-feeding-workflow':
-        throw errors.NO_FEEDING_WORKFLOW();
-    }
+    if (result.kind !== 'queued') return throwNotQueued(result, input.path, errors);
+    return queuedOutput(result);
+  });
+
+/**
+ * The library root and paths of a file selection. An unknown or deleted library is NOT_FOUND (as
+ * on `libraries.*`). Ids and a show take only this library's files; a show key that does not
+ * parse, or names no show with files here, is NOT_FOUND (as `libraries.files` treats it), and so
+ * is a selection with nothing left. `notFound` counts ids that are no file of the library.
+ */
+function selectedPaths(
+  context: { deps: { db: Database } },
+  input: {
+    libraryId: string;
+    fileIds?: string[] | undefined;
+    paths?: string[] | undefined;
+    show?: string | undefined;
+    season?: string | undefined;
+  },
+  errors: QueueErrors,
+): { root: string; paths: string[]; notFound: number } {
+  const { db } = context.deps;
+  const library = findLibrary(db, input.libraryId);
+  if (!library || library.deletedAt !== null) throw errors.NOT_FOUND();
+  const root = library.path;
+  if (input.paths !== undefined) return { root, paths: input.paths, notFound: 0 };
+  let picked: { paths: string[]; notFound: number };
+  if (input.fileIds !== undefined) {
+    picked = filePathsOf(db, input.libraryId, { fileIds: input.fileIds });
+  } else {
+    const sel =
+      input.show === undefined
+        ? null
+        : resolveShowSelection(db, input.libraryId, input.show, input.season);
+    if (sel === null) throw errors.NOT_FOUND();
+    picked = filePathsOf(db, input.libraryId, sel);
+  }
+  if (picked.paths.length === 0) throw errors.NOT_FOUND();
+  return { root, ...picked };
+}
+
+/**
+ * Why the engine refused a selection, in the routes' words: the library or every file gone by
+ * now is NOT_FOUND; a path outside the root or too many files is PATH_REJECTED with a real path
+ * (the offending one, else the library root), never the library id.
+ */
+function throwSelectionRefused(
+  result: Exclude<QueueResult, { kind: 'queued' }>,
+  root: string,
+  errors: QueueErrors,
+): never {
+  if (result.kind === 'path-rejected') {
+    if (result.reason === 'not found') throw errors.NOT_FOUND();
+    throw errors.PATH_REJECTED({ data: { path: result.path ?? root, reason: result.reason } });
+  }
+  return throwNotQueued(result, root, errors);
+}
+
+export const queueFiles = os.jobs.queueFiles
+  .use(requireAnyScope('jobs:create', 'plan'))
+  .handler(async ({ context, input, errors }) => {
+    const { auth } = context;
+    requireCreateUnlessDry(auth, input.dryRun, errors);
+    const { root, paths } = selectedPaths(context, input, errors);
+    const result = await context.deps.engine.queue.queueFiles({
+      libraryId: input.libraryId,
+      paths,
+      workflowId: input.workflowId,
+      dryRun: input.dryRun,
+      force: input.force,
+      priority: input.priority,
+      start: input.start,
+      createdBy: auth.user.id,
+    });
+    if (result.kind !== 'queued') return throwSelectionRefused(result, root, errors);
+    return queuedOutput(result);
+  });
+
+export const queueFilesPreview = os.jobs.queueFilesPreview
+  .use(requireAnyScope('jobs:create', 'plan'))
+  .handler(async ({ context, input, errors }) => {
+    requireCreateUnlessDry(context.auth, input.dryRun, errors);
+    const { root, paths, notFound } = selectedPaths(context, input, errors);
+    const result = await context.deps.engine.queue.previewFiles({
+      libraryId: input.libraryId,
+      paths,
+      workflowId: input.workflowId,
+      dryRun: input.dryRun,
+    });
+    if (result.kind !== 'preview') return throwSelectionRefused(result, root, errors);
+    const { kind: _kind, ...counts } = result;
+    return { ...counts, notFound };
   });
 
 export const list = os.jobs.list.use(requireScope('read')).handler(({ context, input }) => {

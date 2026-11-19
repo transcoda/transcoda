@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { JOBS_LIST_MAX, JobMediaSchema, JobProbeSchema, JobSchema } from './jobs.ts';
+import { SeasonParamSchema } from './libraries.ts';
 
 /** The most shows and movies one titles page returns. */
 export const LIBRARY_TITLES_MAX = 120;
@@ -18,9 +19,6 @@ export const OutcomeCountsSchema = z.object({
   other: z.number().int(),
 });
 export type OutcomeCounts = z.infer<typeof OutcomeCountsSchema>;
-
-/** A season number, or `none` for episodes without one. */
-export const SeasonParamSchema = z.string().regex(/^(\d+|none)$/);
 
 export const FileSortSchema = z.enum(['title', 'size', 'lastRun', 'result']);
 export type FileSort = z.infer<typeof FileSortSchema>;
