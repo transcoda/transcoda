@@ -147,7 +147,7 @@ export function LibraryPage() {
   // The unfiltered total: the header's count, and what tells an empty library from an empty search.
   const total = useLibraryFiles(id, { sort: 'title', desc: false, offset: 0, limit: 1 });
   const scan = useScanNow({
-    clock: null,
+    clock: library.data?.clock ?? null,
     workflows: workflows.data?.workflows ?? [],
     onFeederGone: () => {
       library.reload();

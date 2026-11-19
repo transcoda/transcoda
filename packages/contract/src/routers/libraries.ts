@@ -6,6 +6,7 @@ import {
   LibraryBrowseInputSchema,
   LibraryBrowseOutputSchema,
   LibraryCreateInputSchema,
+  LibraryGetOutputSchema,
   LibraryIdInputSchema,
   LibrarySchema,
   LibraryUpdateInputSchema,
@@ -32,7 +33,7 @@ export const libraries = {
     .route({ method: 'GET', path: '/libraries/{id}', tags, summary: 'Get a library' })
     .errors({ ...authedErrors, ...pickErrors('NOT_FOUND') })
     .input(LibraryIdInputSchema)
-    .output(LibrarySchema),
+    .output(LibraryGetOutputSchema),
   browse: oc
     .route({
       method: 'GET',

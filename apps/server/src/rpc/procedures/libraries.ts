@@ -59,13 +59,18 @@ function defined<T extends object>(o: T): { [K in keyof T]?: Exclude<T[K], undef
   };
 }
 
+/** The server's clock for a read: run hours are in its time zone. */
+function serverClock(deps: { now(): Date; engine: { timeZone: string } }) {
+  return { now: deps.now().toISOString(), timeZone: deps.engine.timeZone };
+}
+
 export const list = os.libraries.list.use(requireScope('read')).handler(({ context }) => {
   const { db } = context.deps;
   const namers = listInactiveNamers(db);
   return {
     libraries: listLibraries(db).map((l) => toLibrary(db, l, namers)),
     notices: listMigrationNotices(db),
-    clock: { now: context.deps.now().toISOString(), timeZone: context.deps.engine.timeZone },
+    clock: serverClock(context.deps),
   };
 });
 
@@ -82,7 +87,7 @@ export const get = os.libraries.get
   .handler(({ context, input, errors }) => {
     const library = findLibrary(context.deps.db, input.id);
     if (!library || library.deletedAt !== null) throw errors.NOT_FOUND();
-    return toLibrary(context.deps.db, library);
+    return { ...toLibrary(context.deps.db, library), clock: serverClock(context.deps) };
   });
 
 export const browse = os.libraries.browse

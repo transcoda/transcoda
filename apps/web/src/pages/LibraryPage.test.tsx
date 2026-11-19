@@ -39,6 +39,7 @@ const LIBRARY: Library = {
 };
 /** The key the server gives a show: base64url of [title, year]. */
 const SHOW_KEY = 'WyJUaGUgQmV2ZXJseSBIaWxsYmlsbGllcyIsMTk2Ml0';
+const CLOCK = { now: '2026-10-16T03:00:00.000Z', timeZone: 'America/New_York' };
 const TITLES = { items: [], total: 0 };
 const files = (total: number): LibraryFilesOutput => ({ files: [], total });
 
@@ -49,7 +50,7 @@ beforeEach(() => {
   localStorage.clear();
   fake = fakeEventSource();
   mocks.events.subscribe.mockReset().mockImplementation(fake.subscribe);
-  mocks.libraries.get.mockReset().mockResolvedValue(LIBRARY);
+  mocks.libraries.get.mockReset().mockResolvedValue({ ...LIBRARY, clock: CLOCK });
   mocks.libraries.titles.mockReset().mockResolvedValue(TITLES);
   mocks.libraries.seasons
     .mockReset()
@@ -182,6 +183,23 @@ describe('LibraryPage', () => {
     await push({ ...jobChanged('j2'), libraryId: 'l2' } as EngineEvent);
     await act(() => vi.advanceTimersByTimeAsync(REFETCH_COALESCE_MS * 2));
     expect(mocks.libraries.titles).toHaveBeenCalledTimes(settled + 1);
+  });
+
+  it("Scan now words the run hours in the server's time zone, not the browser's", async () => {
+    // The tests run in Asia/Kolkata. 03:00 UTC is 08:30 there (closed) and 23:00 in New York (open).
+    vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ['Date'] });
+    vi.setSystemTime(new Date(CLOCK.now));
+    const night = [22, 23, 0, 1, 2, 3, 4, 5];
+    mocks.libraries.get.mockResolvedValue({
+      ...LIBRARY,
+      runHours: { enabled: true, perDay: false, every: night, days: Array(7).fill(night) },
+      clock: CLOCK,
+    });
+    await renderPage();
+    fireEvent.click(screen.getByRole('button', { name: 'Scan now' }));
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByText(/Its run hours are open now/)).toBeTruthy();
+    expect(within(dialog).queryByText(/Its run hours are closed now/)).toBeNull();
   });
 
   it('says to scan when the library has no files', async () => {
