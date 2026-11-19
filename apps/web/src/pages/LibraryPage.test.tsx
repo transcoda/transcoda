@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   workflows: { list: vi.fn(), get: vi.fn() },
   jobs: { queue: vi.fn() },
   events: { subscribe: vi.fn() },
+  queue: { status: vi.fn() },
 }));
 vi.mock('../api/client.ts', async () => {
   const orpc = await import('@orpc/client');
@@ -19,6 +20,7 @@ import { EventsProvider } from '../hooks/useEvents.ts';
 import { REFETCH_COALESCE_MS } from '../hooks/useRefetchOn.ts';
 import { LIBRARY_VIEW_KEY } from '../libraries/viewPref.ts';
 import { fakeEventSource, jobChanged, queueSnapshot } from '../test/fakeEventStream.ts';
+import { fx } from '../test/fixtures/jobs.ts';
 import { renderAt } from '../test/render.tsx';
 import { LibraryPage } from './LibraryPage.tsx';
 
@@ -58,6 +60,7 @@ beforeEach(() => {
   mocks.libraries.files.mockReset().mockResolvedValue(files(4214));
   mocks.workflows.list.mockReset().mockResolvedValue({ workflows: [] });
   mocks.workflows.get.mockReset().mockResolvedValue({ activeIssues: [] });
+  mocks.queue.status.mockReset().mockResolvedValue({ paused: false, lanes: {}, encodeSlots: 1 });
   mocks.jobs.queue.mockReset().mockResolvedValue({ runId: 'r9' });
 });
 afterEach(() => {
@@ -234,6 +237,64 @@ describe('LibraryPage', () => {
     await waitFor(() =>
       expect(mocks.libraries.files).toHaveBeenCalledWith(
         expect.objectContaining({ id: 'l1', show: SHOW_KEY, season: '2' }),
+      ),
+    );
+  });
+
+  it('table view sends sort and offset to libraries.files', async () => {
+    const file = {
+      id: 'f1',
+      path: '/media/classic-tv/Night of the Living Dead.mkv',
+      fileName: 'Night of the Living Dead.mkv',
+      sizeBytes: 1000,
+      originalBytes: null,
+      mtime: at,
+      gone: false,
+      poster: null,
+      latest: { ...fx.kept, media: { ...fx.kept.media, title: 'Night of the Living Dead' } },
+    };
+    mocks.libraries.files.mockImplementation(async (q: { limit: number; offset: number }) => ({
+      files: q.limit === 1 ? [] : [file],
+      total: 250,
+    }));
+    await renderPage();
+    fireEvent.click(screen.getByRole('radio', { name: 'Table' }));
+    await screen.findByText('Night of the Living Dead');
+    expect(mocks.libraries.files).toHaveBeenLastCalledWith(
+      expect.objectContaining({ id: 'l1', sort: 'title', desc: false, offset: 0, limit: 100 }),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Size' }));
+    await waitFor(() =>
+      expect(mocks.libraries.files).toHaveBeenLastCalledWith(
+        expect.objectContaining({ sort: 'size', desc: false, offset: 0 }),
+      ),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+    await waitFor(() =>
+      expect(mocks.libraries.files).toHaveBeenLastCalledWith(
+        expect.objectContaining({ sort: 'size', offset: 100 }),
+      ),
+    );
+    // A new sort starts again at the first page.
+    fireEvent.click(screen.getByRole('button', { name: 'Size' }));
+    await waitFor(() =>
+      expect(mocks.libraries.files).toHaveBeenLastCalledWith(
+        expect.objectContaining({ sort: 'size', desc: true, offset: 0 }),
+      ),
+    );
+    // So does a search, and the search stays applied.
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+    await waitFor(() =>
+      expect(mocks.libraries.files).toHaveBeenLastCalledWith(
+        expect.objectContaining({ offset: 100 }),
+      ),
+    );
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Search this library' }), {
+      target: { value: 'night' },
+    });
+    await waitFor(() =>
+      expect(mocks.libraries.files).toHaveBeenLastCalledWith(
+        expect.objectContaining({ search: 'night', sort: 'size', desc: true, offset: 0 }),
       ),
     );
   });

@@ -10899,3 +10899,33 @@ button.job-step-more:hover {
   color: inherit;
   text-decoration: none;
 }
+
+/* The library's file table: the Jobs table's columns, plus a Size column and a pager. */
+.library-col-size {
+  width: 96px;
+}
+.library-table td.library-col-size {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.library-sort {
+  all: unset;
+  cursor: pointer;
+  text-transform: inherit;
+}
+.library-sort:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.library-pager {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 0;
+}
+.library-pager-range {
+  margin-right: 8px;
+  font-size: var(--fs-small);
+  color: var(--muted);
+}

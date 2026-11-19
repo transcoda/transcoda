@@ -1,4 +1,4 @@
-import type { Library } from '@transcoda/contract';
+import type { FileSort, Library } from '@transcoda/contract';
 import { useEffect, useId, useState } from 'react';
 import { Link, useParams } from 'wouter';
 import { api } from '../api/client.ts';
@@ -9,6 +9,7 @@ import { NotFound } from '../components/NotFound.tsx';
 import { SegmentedSwitch } from '../components/SegmentedSwitch.tsx';
 import { useAsync } from '../hooks/useAsync.ts';
 import { usePageTitle } from '../lib/pageTitle.ts';
+import { LibraryFileTable } from '../libraries/LibraryFileTable.tsx';
 import {
   useLibraryFiles,
   useLibrarySeasons,
@@ -64,23 +65,51 @@ function FilesBody({
   season: string | undefined;
   search: string;
 }) {
-  useLibraryFiles(id, {
+  const [sort, setSort] = useState<FileSort>('title');
+  const [desc, setDesc] = useState(false);
+  // The offset belongs to the list it was chosen on: another search, show, season or sort starts
+  // again at the first page.
+  const scope = JSON.stringify([id, show, season, search, sort, desc]);
+  const [paged, setPaged] = useState({ scope, offset: 0 });
+  const offset = paged.scope === scope ? paged.offset : 0;
+  const files = useLibraryFiles(id, {
     ...(show !== undefined ? { show } : {}),
     ...(season !== undefined ? { season } : {}),
     ...(search ? { search } : {}),
-    sort: 'title',
-    desc: false,
-    offset: 0,
+    sort,
+    desc,
+    offset,
     limit: FILES_PAGE,
   });
+  if (!files.data) {
+    if (files.error) {
+      return (
+        <div className="alert alert-danger" role="alert">
+          <Icon name="cross" strokeWidth={2.4} round />
+          <span>{`Could not load the files: ${describeError(files.error).message}`}</span>
+          <button type="button" className="btn btn-ghost btn-sm" onClick={files.reload}>
+            Try again
+          </button>
+        </div>
+      );
+    }
+    return <Loading label="Loading files…" />;
+  }
   return (
-    <table aria-label="Files">
-      <thead>
-        <tr>
-          <th scope="col">File</th>
-        </tr>
-      </thead>
-    </table>
+    <LibraryFileTable
+      libraryId={id}
+      files={files.data.files}
+      total={files.data.total}
+      sort={sort}
+      desc={desc}
+      onSort={(next, nextDesc) => {
+        setSort(next);
+        setDesc(nextDesc);
+      }}
+      offset={offset}
+      limit={FILES_PAGE}
+      onPage={(next) => setPaged({ scope, offset: next })}
+    />
   );
 }
 
