@@ -308,6 +308,21 @@ export function listLibraryFiles(
   return { rows: toRows(db, page), total };
 }
 
+/**
+ * How many files {@link listLibraryFiles} lists for the library with no filter (present files
+ * that have a job), by index: no latest-job scan.
+ */
+export function countListedFiles(db: Database, libraryId: string): number {
+  return db
+    .prepare(
+      `SELECT COUNT(*) FROM files f
+       WHERE f.library_id = ? AND f.gone_at IS NULL
+         AND EXISTS (SELECT 1 FROM jobs j WHERE j.file_id = f.id)`,
+    )
+    .pluck()
+    .get(libraryId) as number;
+}
+
 /** Gone files too (history still opens); null for an unknown id, another library's file or a file with no job. */
 export function findLibraryFile(
   db: Database,

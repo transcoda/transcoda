@@ -4,7 +4,13 @@ import type { Job } from '@transcoda/contract';
 import { useState } from 'react';
 import { Icon } from '../components/Icon';
 
-export function Poster({ job, size }: { job: Pick<Job, 'id' | 'media'>; size: 'row' | 'page' }) {
+export function Poster({
+  job,
+  size,
+}: {
+  job: Pick<Job, 'id' | 'media'>;
+  size: 'row' | 'page' | 'card';
+}) {
   const [failedId, setFailedId] = useState<string | null>(null);
   const failed = failedId === job.id;
   const cls = `poster poster-${size}`;
@@ -22,7 +28,7 @@ export function Poster({ job, size }: { job: Pick<Job, 'id' | 'media'>; size: 'r
   }
   return (
     <span className={`${cls} poster-empty`} aria-hidden="true">
-      <Icon name="film" size={size === 'page' ? 32 : 16} />
+      <Icon name="film" size={size === 'row' ? 16 : 32} />
     </span>
   );
 }

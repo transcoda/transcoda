@@ -3,13 +3,14 @@
 // details (addresses, keys, blocklist, adding one) collapsed at the end.
 
 import type { PluginSummary } from '@transcoda/contract';
-import { type KeyboardEvent, useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { useSearch } from 'wouter';
 import { api, safe } from '../api/client.ts';
 import { describeError } from '../api/errors.ts';
 import { SectionHeading } from '../components/Headings.tsx';
 import { Icon } from '../components/Icon.tsx';
 import { Loading } from '../components/Loading.tsx';
+import { SegmentedSwitch } from '../components/SegmentedSwitch.tsx';
 import { useToast } from '../components/Toast.tsx';
 import { useCatalog } from '../hooks/useCatalog.ts';
 import { usePageTitle } from '../lib/pageTitle.ts';
@@ -117,13 +118,6 @@ function entryOf(
   return null;
 }
 
-const ARROW_STEP: Readonly<Record<string, number>> = {
-  ArrowRight: 1,
-  ArrowDown: 1,
-  ArrowLeft: -1,
-  ArrowUp: -1,
-};
-
 /** All / Installed / Updates: one tab stop, arrow keys move the choice. A tab with nothing in it is
  * left out (unless it is the one shown). */
 function ShowSwitch({
@@ -142,40 +136,14 @@ function ShowSwitch({
       { id: 'updates', label: 'Updates', count: counts.updates },
     ] satisfies Array<{ id: Show; label: string; count: number | null }>
   ).filter((o) => o.count !== 0 || o.id === value);
-  function onKeyDown(e: KeyboardEvent<HTMLButtonElement>, index: number) {
-    const step = ARROW_STEP[e.key];
-    if (step === undefined) return;
-    e.preventDefault();
-    const next = (index + step + options.length) % options.length;
-    const option = options[next];
-    if (!option) return;
-    onChange(option.id);
-    const group = e.currentTarget.parentElement;
-    group?.querySelectorAll<HTMLButtonElement>('[role="radio"]')[next]?.focus();
-  }
   return (
-    <div role="radiogroup" aria-label="Show" className="plugins-show">
-      {options.map((o, i) => (
-        // biome-ignore lint/a11y/useSemanticElements: a segmented control of buttons with a roving tab stop and arrow keys.
-        <button
-          key={o.id}
-          type="button"
-          role="radio"
-          aria-checked={o.id === value}
-          tabIndex={o.id === value ? 0 : -1}
-          onClick={() => onChange(o.id)}
-          onKeyDown={(e) => onKeyDown(e, i)}
-        >
-          {o.label}
-          {o.count === null ? null : (
-            <>
-              {' '}
-              <span className="plugins-show-count">{o.count}</span>
-            </>
-          )}
-        </button>
-      ))}
-    </div>
+    <SegmentedSwitch
+      label="Show"
+      className="plugins-show"
+      value={value}
+      options={options}
+      onChange={onChange}
+    />
   );
 }
 
