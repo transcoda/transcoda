@@ -277,6 +277,8 @@ export const JobsQueueOutputSchema = z.object({
 });
 
 export const JOBS_LIST_MAX = 200;
+/** The most files one "run on a selection" request may name (the server checks it too). */
+export const QUEUE_FILES_MAX = 5000;
 export const JobsListInputSchema = z.object({
   runId: z.string().optional(),
   libraryId: z.string().optional(),
