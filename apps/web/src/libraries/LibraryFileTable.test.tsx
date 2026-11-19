@@ -147,12 +147,26 @@ describe('LibraryFileTable', () => {
   });
 
   it('Previous is off on the first page and Next on the last', () => {
-    table({ total: 2 });
-    expect(screen.getByText('1–2 of 2')).toBeTruthy();
+    table({ total: 250, offset: 0 });
     expect((screen.getByRole('button', { name: 'Previous' }) as HTMLButtonElement).disabled).toBe(
       true,
     );
+    expect((screen.getByRole('button', { name: 'Next' }) as HTMLButtonElement).disabled).toBe(
+      false,
+    );
+    cleanup();
+    table({ total: 250, offset: 200 });
+    expect((screen.getByRole('button', { name: 'Previous' }) as HTMLButtonElement).disabled).toBe(
+      false,
+    );
     expect((screen.getByRole('button', { name: 'Next' }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it('the pager keeps its range but has no buttons when everything fits on one page', () => {
+    table({ total: 2 });
+    expect(screen.getByText('1–2 of 2')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Previous' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Next' })).toBeNull();
   });
 
   it('on a phone it renders cards, not a table', () => {

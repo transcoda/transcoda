@@ -24,4 +24,21 @@ describe('Library poster grid', () => {
     expect(t).toMatch(/-webkit-line-clamp:\s*2/);
     expect(t).toMatch(/overflow-wrap:\s*anywhere/);
   });
+  it('the placeholder stays a centered flex box inside a card', () => {
+    // No card rule may override .poster-empty's display; it is what centers the film icon.
+    expect(css).not.toMatch(/\.library-card\s+\.poster-card\s*\{[^}]*display:/);
+    const empty = rule('.poster-empty');
+    expect(empty).toMatch(/display:\s*flex/);
+    expect(empty).toMatch(/align-items:\s*center/);
+    expect(empty).toMatch(/justify-content:\s*center/);
+  });
+  it('focus rings use the app focus ring, not the accent outline', () => {
+    for (const sel of ['.library-card:focus-visible', '.library-sort:focus-visible']) {
+      expect(rule(sel)).toMatch(/box-shadow:\s*var\(--focus-ring\)/);
+      expect(rule(sel)).not.toMatch(/var\(--accent\)/);
+    }
+  });
+  it('a disabled ghost button (the pager) is dimmed like a disabled secondary one', () => {
+    expect(rule('.btn-ghost:disabled')).toMatch(/color:\s*var\(--faint\)/);
+  });
 });

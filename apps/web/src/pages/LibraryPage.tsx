@@ -351,13 +351,15 @@ export function LibraryPage() {
             onChange={(e) => setQuery(e.target.value)}
           />
         </div>
-        <SegmentedSwitch
-          label="View"
-          className="plugins-show"
-          value={view}
-          options={VIEW_OPTIONS}
-          onChange={choose}
-        />
+        {season === undefined ? (
+          <SegmentedSwitch
+            label="View"
+            className="plugins-show"
+            value={view}
+            options={VIEW_OPTIONS}
+            onChange={choose}
+          />
+        ) : null}
       </div>
 
       {body}

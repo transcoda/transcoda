@@ -352,6 +352,18 @@ describe('LibraryPage', () => {
     expect(screen.queryByRole('table', { name: 'Files' })).toBeNull();
   });
 
+  it('the season page has no view switch; the library and show pages do', async () => {
+    renderAt(`/libraries/l1/shows/${SHOW_KEY}/seasons/1`, page());
+    await screen.findByRole('table', { name: 'Files' });
+    expect(screen.queryByRole('radiogroup', { name: 'View' })).toBeNull();
+    cleanup();
+    renderAt(`/libraries/l1/shows/${SHOW_KEY}`, page());
+    expect(await screen.findByRole('radiogroup', { name: 'View' })).toBeTruthy();
+    cleanup();
+    renderAt('/libraries/l1', page());
+    expect(await screen.findByRole('radiogroup', { name: 'View' })).toBeTruthy();
+  });
+
   it('the season page lists its episodes and applies the search', async () => {
     renderAt(`/libraries/l1/shows/${SHOW_KEY}/seasons/1`, page());
     await screen.findByRole('table', { name: 'Files' });

@@ -89,22 +89,26 @@ function Pager({
   return (
     <nav className="library-pager" aria-label="Pages">
       <span className="library-pager-range">{`${num(offset + 1)}–${num(last)} of ${num(total)}`}</span>
-      <button
-        type="button"
-        className="btn btn-ghost btn-sm"
-        disabled={offset === 0}
-        onClick={() => onPage(Math.max(0, offset - limit))}
-      >
-        Previous
-      </button>
-      <button
-        type="button"
-        className="btn btn-ghost btn-sm"
-        disabled={offset + limit >= total}
-        onClick={() => onPage(offset + limit)}
-      >
-        Next
-      </button>
+      {total <= limit ? null : (
+        <>
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            disabled={offset === 0}
+            onClick={() => onPage(Math.max(0, offset - limit))}
+          >
+            Previous
+          </button>
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            disabled={offset + limit >= total}
+            onClick={() => onPage(offset + limit)}
+          >
+            Next
+          </button>
+        </>
+      )}
     </nav>
   );
 }
