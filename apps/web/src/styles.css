@@ -6442,13 +6442,13 @@ a.nav-item.is-active .nav-count {
 /* The minimum width is the fixed columns plus 240px for the Title. */
 .job-table {
   width: 100%;
-  min-width: 994px;
+  min-width: 1010px;
   table-layout: fixed;
   border-collapse: collapse;
   font-size: 14px;
 }
 .job-table.has-actions {
-  min-width: 1144px;
+  min-width: 1160px;
 }
 /* Title takes the rest. */
 .job-col-library {
@@ -6465,7 +6465,7 @@ a.nav-item.is-active .nav-count {
   width: 210px;
 }
 .job-col-when {
-  width: 84px;
+  width: 100px;
 }
 .job-col-actions {
   width: 150px;
@@ -6509,9 +6509,9 @@ a.nav-item.is-active .nav-count {
 /* No room for every column: Library and Workflow give way (both are on the job's page, and the
    library filter stays). The Title keeps its 240px. These come after the column widths and the
    When rules, so they win on order as well as weight. */
-@container job-list (max-width: 993px) {
+@container job-list (max-width: 1009px) {
   .job-table:not(.has-actions) {
-    min-width: 714px;
+    min-width: 730px;
   }
   .job-table:not(.has-actions) .job-optional {
     display: none;
@@ -6520,7 +6520,7 @@ a.nav-item.is-active .nav-count {
 /* With running jobs the Actions column needs room too: When also gives way (the job's page has
    it) and Result is narrower, so the whole row, Pause and Cancel included, fits at 1024px beside
    the full sidebar. The Title keeps 200px. */
-@container job-list (max-width: 1143px) {
+@container job-list (max-width: 1159px) {
   .job-table.has-actions {
     min-width: 710px;
   }
@@ -11010,11 +11010,4 @@ button.job-step-more:hover {
 .file-jobs-title {
   margin: 0;
   font-size: var(--fs-h3, 16px);
-}
-
-/* Without an Actions column the When column is the last one: it keeps the header's right padding
-   (the row rule above would otherwise leave it flush against the border). */
-.job-table:not(.has-actions) th.job-when,
-.job-table:not(.has-actions) .row-link td.job-when {
-  padding-right: 16px;
 }
