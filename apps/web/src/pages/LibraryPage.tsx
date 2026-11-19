@@ -1,6 +1,6 @@
 import type { FileSort, Library, LibraryTitle, LibraryTitlesOutput } from '@transcoda/contract';
 import { useEffect, useId, useState } from 'react';
-import { Link, useParams } from 'wouter';
+import { useParams } from 'wouter';
 import { api } from '../api/client.ts';
 import { describeError } from '../api/errors.ts';
 import { Icon } from '../components/Icon.tsx';
@@ -9,6 +9,7 @@ import { NotFound } from '../components/NotFound.tsx';
 import { SegmentedSwitch } from '../components/SegmentedSwitch.tsx';
 import { useAsync } from '../hooks/useAsync.ts';
 import { usePageTitle } from '../lib/pageTitle.ts';
+import { type Crumb, Crumbs, seasonLabel } from '../libraries/Crumbs.tsx';
 import { LibraryFileTable } from '../libraries/LibraryFileTable.tsx';
 import { SeasonGrid, TitleGrid } from '../libraries/TitleGrid.tsx';
 import {
@@ -41,8 +42,6 @@ function useDebounced<T>(value: T, ms: number): T {
   }, [value, ms]);
   return settled;
 }
-
-const seasonLabel = (season: string) => (season === 'none' ? 'No season' : `Season ${season}`);
 
 function LoadError({ what, onRetry, error }: { what: string; onRetry(): void; error: unknown }) {
   return (
@@ -194,29 +193,14 @@ function Breadcrumbs({
 }) {
   const base = `/libraries/${encodeURIComponent(library.id)}`;
   const showHref = show === undefined ? null : `${base}/shows/${encodeURIComponent(show)}`;
-  const crumbs: Array<{ label: string; href: string | null }> = [
+  const crumbs: Crumb[] = [
     { label: 'Libraries', href: '/libraries' },
     { label: library.name, href: show === undefined ? null : base },
   ];
   if (showHref)
     crumbs.push({ label: showTitle ?? 'Show', href: season === undefined ? null : showHref });
   if (season !== undefined) crumbs.push({ label: seasonLabel(season), href: null });
-  return (
-    <nav aria-label="Breadcrumb" className="job-crumbs">
-      {crumbs.map((c, i) => (
-        <span key={c.label} className="library-crumb">
-          {i > 0 ? <span aria-hidden="true">›</span> : null}
-          {c.href ? (
-            <Link href={c.href} className="job-crumb-link">
-              {c.label}
-            </Link>
-          ) : (
-            <span aria-current="page">{c.label}</span>
-          )}
-        </span>
-      ))}
-    </nav>
-  );
+  return <Crumbs crumbs={crumbs} />;
 }
 
 /** The breadcrumbs of a show or season page: the show's title comes from its seasons request. */

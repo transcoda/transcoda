@@ -1,0 +1,218 @@
+import type { Job, LibraryFileDetail } from '@transcoda/contract';
+import { useState } from 'react';
+import { useParams } from 'wouter';
+import { api } from '../api/client.ts';
+import { describeError } from '../api/errors.ts';
+import { Disclosure } from '../components/Disclosure.tsx';
+import { Fact } from '../components/Fact.tsx';
+import { Icon } from '../components/Icon.tsx';
+import { Loading } from '../components/Loading.tsx';
+import { NotFound } from '../components/NotFound.tsx';
+import { useAsync } from '../hooks/useAsync.ts';
+import { useRefetchOn } from '../hooks/useRefetchOn.ts';
+import { TitleSub } from '../jobs/JobCells.tsx';
+import { jobTitle } from '../jobs/mediaText.ts';
+import { Poster } from '../jobs/Poster.tsx';
+import { fmtBytes } from '../lib/bytes.ts';
+import { usePageTitle } from '../lib/pageTitle.ts';
+import { fmtFull } from '../lib/time.ts';
+import { type Crumb, Crumbs, seasonLabel, showKeyOf } from '../libraries/Crumbs.tsx';
+import { type ProbeFacts, probeFacts } from '../libraries/probeFacts.ts';
+import { libraryEvent } from '../libraries/useLibraryListing.ts';
+import { JobHistoryTable } from './JobsPage.tsx';
+
+/** Jobs per request; "Show older jobs" asks for the page after the ones on screen. */
+const JOBS_PAGE = 50;
+
+type File = LibraryFileDetail['file'];
+
+/** `Libraries › <Library> › <Show> › Season N`; a movie has the library only. */
+function fileCrumbs(libraryId: string, file: File): Crumb[] {
+  const base = `/libraries/${encodeURIComponent(libraryId)}`;
+  const { media, libraryName } = file.latest;
+  const crumbs: Crumb[] = [
+    { label: 'Libraries', href: '/libraries' },
+    { label: libraryName, href: base },
+  ];
+  if (media.kind === 'episode') {
+    // The file output carries the show's title and year, which is all the server's show key is.
+    const show = `${base}/shows/${encodeURIComponent(showKeyOf(media.title, media.year))}`;
+    const season = media.season === null ? 'none' : String(media.season);
+    crumbs.push({ label: media.title, href: show });
+    crumbs.push({ label: seasonLabel(season), href: `${show}/seasons/${season}` });
+  }
+  return crumbs;
+}
+
+function TrackFacts({ facts }: { facts: ProbeFacts }) {
+  const list = (items: string[]) =>
+    items.length === 0 ? (
+      'None'
+    ) : (
+      <ul className="file-tracks">
+        {items.map((t, i) => (
+          // biome-ignore lint/suspicious/noArrayIndexKey: tracks are listed in file order and never reordered.
+          <li key={`${i}:${t}`}>{t}</li>
+        ))}
+      </ul>
+    );
+  return (
+    <>
+      <Fact term="Container">{facts.container}</Fact>
+      <Fact term="Length">{facts.length}</Fact>
+      <Fact term="Video">{facts.video ?? 'None'}</Fact>
+      <Fact term="Audio">{list(facts.audio)}</Fact>
+      <Fact term="Subtitles">{list(facts.subtitles)}</Fact>
+    </>
+  );
+}
+
+/** The jobs on this file: the newest page comes with the file; older pages are asked for. */
+function FileJobs({ id, fileId, head }: { id: string; fileId: string; head: LibraryFileDetail }) {
+  const [older, setOlder] = useState<{ jobs: Job[]; offset: number }>({ jobs: [], offset: 0 });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<unknown>(null);
+  // A job that arrived since an older page was read shifts the pages; show each job once.
+  const seen = new Set(head.jobs.map((j) => j.id));
+  const jobs = [...head.jobs, ...older.jobs.filter((j) => !seen.has(j.id))];
+
+  async function showOlder() {
+    const offset = older.offset + JOBS_PAGE;
+    setLoading(true);
+    setError(null);
+    try {
+      const page = await api.libraries.file({
+        id,
+        fileId,
+        jobsOffset: offset,
+        jobsLimit: JOBS_PAGE,
+      });
+      setOlder((o) => ({ jobs: [...o.jobs, ...page.jobs], offset }));
+    } catch (e) {
+      setError(e);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <section aria-label="Jobs" className="file-jobs">
+      <h2 className="file-jobs-title">Jobs</h2>
+      {jobs.length === 0 ? (
+        <p className="library-empty">No job has run on this file yet.</p>
+      ) : (
+        <JobHistoryTable jobs={jobs} label="Jobs on this file" />
+      )}
+      {error ? (
+        <div className="alert alert-danger" role="alert">
+          <Icon name="cross" strokeWidth={2.4} round />
+          <span>{`Could not load older jobs: ${describeError(error).message}`}</span>
+        </div>
+      ) : null}
+      {jobs.length < head.jobsTotal ? (
+        <div className="library-more">
+          <button
+            type="button"
+            className="btn btn-secondary"
+            disabled={loading}
+            onClick={() => void showOlder()}
+          >
+            Show older jobs
+          </button>
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+/** `/libraries/:id/files/:fileId`: what one file is now, what it was, and every job that ran on it. */
+export function LibraryFilePage() {
+  const { id = '', fileId = '' } = useParams<{ id: string; fileId: string }>();
+  const detail = useAsync(
+    () => api.libraries.file({ id, fileId, jobsOffset: 0, jobsLimit: JOBS_PAGE }),
+    [id, fileId],
+  );
+  useRefetchOn(libraryEvent(id), detail.reload);
+  const data = detail.data;
+  usePageTitle(data ? jobTitle(data.file.latest) : 'File');
+
+  if (!data) {
+    if (detail.error) {
+      const failure = describeError(detail.error);
+      if (failure.code === 'NOT_FOUND') {
+        return (
+          <NotFound
+            what="file"
+            backHref={`/libraries/${encodeURIComponent(id)}`}
+            backLabel="Back to library"
+          />
+        );
+      }
+      return (
+        <div className="page">
+          <div className="alert alert-danger" role="alert">
+            <Icon name="cross" strokeWidth={2.4} round />
+            <span>{`Could not load the file: ${failure.message}`}</span>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={detail.reload}>
+              Try again
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return (
+      <div className="page">
+        <Loading />
+      </div>
+    );
+  }
+
+  const { file, now, before } = data;
+  const { media } = file.latest;
+  return (
+    <div className="page job-page">
+      <header className="job-head">
+        <Crumbs crumbs={fileCrumbs(id, file)} />
+        <div className="job-head-body">
+          <Poster job={file.poster ?? file.latest} size="page" />
+          <div className="job-head-main">
+            {file.gone ? (
+              <div className="job-head-chips">
+                <span className="badge">No longer on disk</span>
+              </div>
+            ) : null}
+            <div className="job-title-line">
+              <h1>{media.title}</h1>
+              {media.kind === 'movie' && media.year !== null && (
+                <span className="job-year">{media.year}</span>
+              )}
+            </div>
+            <TitleSub media={media} />
+            <div className="job-path-row">
+              <span className="job-path">{file.path}</span>
+            </div>
+            <dl className="job-facts">
+              <Fact term="Size">
+                {fmtBytes(file.sizeBytes)}
+                {file.originalBytes !== null ? (
+                  <span className="file-was">{`was ${fmtBytes(file.originalBytes)}`}</span>
+                ) : null}
+              </Fact>
+              <Fact term="Changed">{fmtFull(file.mtime)}</Fact>
+              {now ? <TrackFacts facts={probeFacts(now)} /> : null}
+            </dl>
+            {before ? (
+              <Disclosure title="Before" className="file-before">
+                <dl className="job-facts">
+                  <Fact term="Size">{fmtBytes(before.sizeBytes)}</Fact>
+                  <TrackFacts facts={probeFacts(before)} />
+                </dl>
+              </Disclosure>
+            ) : null}
+          </div>
+        </div>
+      </header>
+      <FileJobs key={`${id}\n${fileId}`} id={id} fileId={fileId} head={data} />
+    </div>
+  );
+}

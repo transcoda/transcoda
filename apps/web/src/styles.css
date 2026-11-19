@@ -10985,3 +10985,29 @@ button.job-step-more:hover {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+/* A file's page: the facts, what the file was before, and the jobs that ran on it. */
+.file-was {
+  margin-left: var(--sp-2);
+  color: var(--faint);
+}
+.file-tracks {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.file-before {
+  max-width: 720px;
+}
+.file-before .disclosure-body {
+  padding: var(--sp-2) 0 0 var(--sp-6);
+}
+.file-jobs {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+.file-jobs-title {
+  margin: 0;
+  font-size: var(--fs-h3, 16px);
+}

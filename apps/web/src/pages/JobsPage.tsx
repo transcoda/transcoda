@@ -383,7 +383,8 @@ function JobRow({
   withActions,
 }: {
   job: Job;
-  controls: Controls;
+  /** Null: a read-only row without Pause / Cancel. */
+  controls: Controls | null;
   queuePaused: boolean;
   /** An encode that stands still (paused queue, or waiting for a lane); its icon stays still. */
   frozen: boolean;
@@ -421,7 +422,7 @@ function JobRow({
       </td>
       {withActions ? (
         <td>
-          {isActive(job) ? (
+          {controls && isActive(job) ? (
             <div className="job-actions">
               <JobActions job={job} controls={controls} queuePaused={queuePaused} />
             </div>
@@ -438,16 +439,19 @@ function JobTable({
   controls,
   queuePaused,
   queueStatus,
+  label = 'Job list',
 }: {
   jobs: Job[];
-  controls: Controls;
+  /** Null: no Actions column and no Pause / Cancel (the history of one file). */
+  controls: Controls | null;
   queuePaused: boolean;
   queueStatus: Parameters<typeof encodeStopped>[0];
+  label?: string;
 }) {
-  const withActions = jobs.some(isActive);
+  const withActions = controls !== null && jobs.some(isActive);
   return (
     <div className="job-list">
-      <table className={withActions ? 'job-table has-actions' : 'job-table'} aria-label="Job list">
+      <table className={withActions ? 'job-table has-actions' : 'job-table'} aria-label={label}>
         <colgroup>
           <col />
           {/* Library and Workflow give way first when the table is narrow (styles.css). */}
@@ -493,6 +497,20 @@ function JobTable({
         </tbody>
       </table>
     </div>
+  );
+}
+
+/** The jobs table without Pause / Cancel: a file's history, where nothing is acted on. */
+export function JobHistoryTable({ jobs, label }: { jobs: Job[]; label: string }) {
+  const queue = useQueue();
+  return (
+    <JobTable
+      jobs={jobs}
+      controls={null}
+      queuePaused={queue.status?.paused ?? false}
+      queueStatus={queue.status}
+      label={label}
+    />
   );
 }
 

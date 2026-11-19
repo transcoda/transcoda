@@ -1,0 +1,305 @@
+import { ORPCError } from '@orpc/client';
+import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
+import type { LibraryFileDetail } from '@transcoda/contract';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { Route } from 'wouter';
+
+const mocks = vi.hoisted(() => ({
+  libraries: { file: vi.fn() },
+  events: { subscribe: vi.fn() },
+  queue: { status: vi.fn() },
+}));
+vi.mock('../api/client.ts', async () => {
+  const orpc = await import('@orpc/client');
+  return { api: mocks, isDefinedError: orpc.isDefinedError, safe: orpc.safe };
+});
+
+import { EventsProvider } from '../hooks/useEvents.ts';
+import { fakeEventSource } from '../test/fakeEventStream.ts';
+import { fx, job } from '../test/fixtures/jobs.ts';
+import { renderAt } from '../test/render.tsx';
+import { LibraryFilePage } from './LibraryFilePage.tsx';
+
+const at = '2026-10-16T18:00:00.000Z';
+/** The key the server gives a show: base64url of [title, year]. */
+const SHOW_KEY = 'WyJUaGUgQmV2ZXJseSBIaWxsYmlsbGllcyIsbnVsbF0';
+
+const EPISODE = {
+  ...fx.replaced.media,
+  kind: 'episode' as const,
+  title: 'The Beverly Hillbillies',
+  year: null,
+  season: 1,
+  episode: 2,
+  episodeTitle: 'Jed Buys Stock',
+};
+
+const probeOf = (container: string, seconds: number, codec: string, sizeBytes: number) => ({
+  container,
+  durationSeconds: seconds,
+  sizeBytes,
+  bitrateKbps: null,
+  streams: [
+    {
+      index: 0,
+      type: 'video' as const,
+      codec,
+      language: null,
+      title: null,
+      default: true,
+      forced: false,
+      attachedPic: false,
+      dispositions: [],
+      width: 1920,
+      height: 1080,
+      profile: null,
+      level: null,
+      pixelFormat: null,
+      bitDepth: null,
+      hdr: null,
+      channels: null,
+      sampleRate: null,
+      bitrateKbps: null,
+      frameRate: null,
+      tagBitrateKbps: null,
+    },
+    {
+      index: 1,
+      type: 'audio' as const,
+      codec: 'aac',
+      language: 'eng',
+      title: null,
+      default: true,
+      forced: false,
+      attachedPic: false,
+      dispositions: [],
+      width: null,
+      height: null,
+      profile: null,
+      level: null,
+      pixelFormat: null,
+      bitDepth: null,
+      hdr: null,
+      channels: 6,
+      sampleRate: null,
+      bitrateKbps: null,
+      frameRate: null,
+      tagBitrateKbps: null,
+    },
+  ],
+});
+
+const latest = job({ id: 'j3', media: EPISODE, libraryId: 'l1', libraryName: 'Classic TV' });
+const detail = (over: Partial<LibraryFileDetail> = {}): LibraryFileDetail => ({
+  file: {
+    id: 'f1',
+    path: '/media/classic-tv/The Beverly Hillbillies S01E02.mkv',
+    fileName: 'The Beverly Hillbillies S01E02.mkv',
+    sizeBytes: 700_000_000,
+    originalBytes: null,
+    mtime: at,
+    gone: false,
+    poster: null,
+    latest,
+  },
+  now: probeOf('mkv', 5520, 'hevc', 700_000_000),
+  before: null,
+  jobs: [
+    latest,
+    job({ id: 'j2', media: EPISODE, state: 'failed', finishedAt: '2026-10-15T18:00:00.000Z' }),
+    job({ id: 'j1', media: EPISODE, state: 'done', finishedAt: '2026-10-14T18:00:00.000Z' }),
+  ],
+  jobsTotal: 3,
+  ...over,
+});
+
+let fake: ReturnType<typeof fakeEventSource>;
+const realMatchMedia = window.matchMedia;
+
+beforeEach(() => {
+  fake = fakeEventSource();
+  mocks.events.subscribe.mockReset().mockImplementation(fake.subscribe);
+  mocks.libraries.file.mockReset().mockResolvedValue(detail());
+  mocks.queue.status.mockReset().mockResolvedValue({ paused: false, lanes: {}, encodeSlots: 1 });
+});
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+  window.matchMedia = realMatchMedia;
+});
+
+async function renderPage() {
+  const view = renderAt(
+    '/libraries/l1/files/f1',
+    <EventsProvider>
+      <Route path="/libraries/:id/files/:fileId">
+        <LibraryFilePage />
+      </Route>
+    </EventsProvider>,
+  );
+  await screen.findByRole('heading', { level: 1 });
+  return view;
+}
+
+const fact = (term: string) => {
+  const dt = screen.getAllByText(term, { selector: 'dt' })[0] as HTMLElement;
+  return dt.parentElement as HTMLElement;
+};
+
+describe('LibraryFilePage', () => {
+  it('shows poster, title, path, size and the probe facts', async () => {
+    const { container } = await renderPage();
+    expect(screen.getByRole('heading', { level: 1, name: 'The Beverly Hillbillies' })).toBeTruthy();
+    const head = container.querySelector('.job-head') as HTMLElement;
+    expect(within(head).getByText('S01E02', { selector: 'b' })).toBeTruthy();
+    expect(within(head).getByText(/Jed Buys Stock/)).toBeTruthy();
+    expect(screen.getByText('/media/classic-tv/The Beverly Hillbillies S01E02.mkv')).toBeTruthy();
+    expect(container.querySelector('.poster-page')).toBeTruthy();
+    expect(within(fact('Size')).getByText('700 MB')).toBeTruthy();
+    expect(within(fact('Container')).getByText('mkv')).toBeTruthy();
+    expect(within(fact('Length')).getByText('1 h 32 min')).toBeTruthy();
+    expect(within(fact('Video')).getByText('HEVC 1920×1080')).toBeTruthy();
+    expect(within(fact('Audio')).getByText('English · AAC 5.1 (default)')).toBeTruthy();
+    expect(screen.getByText('Changed', { selector: 'dt' })).toBeTruthy();
+    const crumbs = screen.getByRole('navigation', { name: 'Breadcrumb' });
+    expect(within(crumbs).getByRole('link', { name: 'Libraries' }).getAttribute('href')).toBe(
+      '/libraries',
+    );
+    expect(within(crumbs).getByRole('link', { name: 'Classic TV' }).getAttribute('href')).toBe(
+      '/libraries/l1',
+    );
+    expect(
+      within(crumbs).getByRole('link', { name: 'The Beverly Hillbillies' }).getAttribute('href'),
+    ).toBe(`/libraries/l1/shows/${SHOW_KEY}`);
+    expect(within(crumbs).getByRole('link', { name: 'Season 1' }).getAttribute('href')).toBe(
+      `/libraries/l1/shows/${SHOW_KEY}/seasons/1`,
+    );
+  });
+
+  it('a movie has only the library in its breadcrumbs', async () => {
+    const movie = job({
+      id: 'j9',
+      libraryName: 'Classic TV',
+      media: {
+        ...EPISODE,
+        kind: 'movie',
+        title: 'Night of the Living Dead',
+        year: 1968,
+        season: null,
+        episode: null,
+        episodeTitle: null,
+      },
+    });
+    mocks.libraries.file.mockResolvedValue(
+      detail({ file: { ...detail().file, latest: movie }, jobs: [movie], jobsTotal: 1 }),
+    );
+    await renderPage();
+    const crumbs = screen.getByRole('navigation', { name: 'Breadcrumb' });
+    expect(
+      within(crumbs)
+        .getAllByRole('link')
+        .map((a) => a.textContent),
+    ).toEqual(['Libraries', 'Classic TV']);
+  });
+
+  it('a replaced file shows its size now and what it was', async () => {
+    mocks.libraries.file.mockResolvedValue(
+      detail({
+        file: { ...detail().file, originalBytes: 1_000_000_000 },
+        before: probeOf('mp4', 5500, 'h264', 1_000_000_000),
+      }),
+    );
+    await renderPage();
+    expect(within(fact('Size')).getByText('700 MB')).toBeTruthy();
+    expect(screen.getByText('was 1.00 GB')).toBeTruthy();
+  });
+
+  it('shows a Before disclosure with the original facts when the file was replaced', async () => {
+    mocks.libraries.file.mockResolvedValue(
+      detail({
+        file: { ...detail().file, originalBytes: 1_000_000_000 },
+        before: probeOf('mp4', 5500, 'h264', 1_000_000_000),
+      }),
+    );
+    await renderPage();
+    const toggle = screen.getByRole('button', { name: /Before/ });
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    fireEvent.click(toggle);
+    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+    expect(screen.getByText('H.264 1920×1080')).toBeTruthy();
+    expect(screen.getByText('mp4')).toBeTruthy();
+    expect(screen.getByText('1 h 31 min')).toBeTruthy();
+  });
+
+  it('without before, no Before disclosure is shown', async () => {
+    await renderPage();
+    expect(screen.queryByRole('button', { name: /Before/ })).toBeNull();
+    expect(screen.queryByText(/^was /)).toBeNull();
+  });
+
+  it('lists every job newest first, each linking to its job page', async () => {
+    await renderPage();
+    const table = screen.getByRole('table', { name: 'Jobs on this file' });
+    const hrefs = within(table)
+      .getAllByRole('link')
+      .map((a) => a.getAttribute('href'));
+    expect(hrefs).toEqual(['/jobs/j3', '/jobs/j2', '/jobs/j1']);
+    expect(mocks.libraries.file).toHaveBeenCalledWith({
+      id: 'l1',
+      fileId: 'f1',
+      jobsOffset: 0,
+      jobsLimit: 50,
+    });
+    expect(screen.queryByRole('button', { name: 'Show older jobs' })).toBeNull();
+  });
+
+  it('Show older jobs asks for the next page', async () => {
+    const page1 = Array.from({ length: 50 }, (_, i) => job({ id: `n${i}`, media: EPISODE }));
+    const page2 = [job({ id: 'old1', media: EPISODE })];
+    mocks.libraries.file.mockImplementation(({ jobsOffset }: { jobsOffset: number }) =>
+      Promise.resolve(detail({ jobs: jobsOffset === 0 ? page1 : page2, jobsTotal: 51 })),
+    );
+    await renderPage();
+    fireEvent.click(await screen.findByRole('button', { name: 'Show older jobs' }));
+    await waitFor(() =>
+      expect(mocks.libraries.file).toHaveBeenLastCalledWith({
+        id: 'l1',
+        fileId: 'f1',
+        jobsOffset: 50,
+        jobsLimit: 50,
+      }),
+    );
+    await waitFor(() => {
+      const table = screen.getByRole('table', { name: 'Jobs on this file' });
+      expect(within(table).getAllByRole('link')).toHaveLength(51);
+    });
+    expect(
+      within(screen.getByRole('table', { name: 'Jobs on this file' }))
+        .getAllByRole('link')
+        .at(-1)
+        ?.getAttribute('href'),
+    ).toBe('/jobs/old1');
+    expect(screen.queryByRole('button', { name: 'Show older jobs' })).toBeNull();
+  });
+
+  it('a gone file opens with No longer on disk', async () => {
+    mocks.libraries.file.mockResolvedValue(
+      detail({ file: { ...detail().file, gone: true }, now: null }),
+    );
+    await renderPage();
+    expect(screen.getByText('No longer on disk')).toBeTruthy();
+  });
+
+  it('an unknown file shows NotFound', async () => {
+    mocks.libraries.file.mockRejectedValue(new ORPCError('NOT_FOUND', { message: 'no such file' }));
+    renderAt(
+      '/libraries/l1/files/nope',
+      <EventsProvider>
+        <Route path="/libraries/:id/files/:fileId">
+          <LibraryFilePage />
+        </Route>
+      </EventsProvider>,
+    );
+    expect(await screen.findByText('File not found')).toBeTruthy();
+  });
+});

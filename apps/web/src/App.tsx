@@ -10,6 +10,7 @@ import { HostNotAllowedPage } from './pages/HostNotAllowedPage.tsx';
 import { JobPage } from './pages/JobPage.tsx';
 import { JobsPage } from './pages/JobsPage.tsx';
 import { LibrariesPage } from './pages/LibrariesPage.tsx';
+import { LibraryFilePage } from './pages/LibraryFilePage.tsx';
 import { LibraryPage } from './pages/LibraryPage.tsx';
 import { LoginPage } from './pages/LoginPage.tsx';
 import { NewWorkflowPage } from './pages/NewWorkflowPage.tsx';
@@ -88,6 +89,13 @@ export function App() {
           <RequireAuth>
             <Shell>
               <LibrariesPage />
+            </Shell>
+          </RequireAuth>
+        </Route>
+        <Route path="/libraries/:id/files/:fileId">
+          <RequireAuth>
+            <Shell>
+              <LibraryFilePage />
             </Shell>
           </RequireAuth>
         </Route>
