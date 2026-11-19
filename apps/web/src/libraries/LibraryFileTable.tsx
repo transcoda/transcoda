@@ -157,6 +157,7 @@ export function LibraryFileTable({
             </div>
           ))}
         </section>
+        {files.length === 0 ? <p className="library-empty">No files match.</p> : null}
         {pager}
       </div>
     );

@@ -11,6 +11,7 @@ import {
 } from './jobs.ts';
 import { insertLibrary } from './libraries.ts';
 import {
+  countListedFiles,
   escapeLike,
   findFileProbe,
   findLibraryFile,
@@ -470,6 +471,24 @@ describe('listLibraryFiles', () => {
     expect(findLibraryFile(db, 'l1', 'm')).toBeNull();
     expect(findLibraryFile(db, 'l1', 'nope')).toBeNull();
     expect(findLibraryFile(db, 'l2', 'm')).toMatchObject({ id: 'm', libraryId: 'l2' });
+  });
+
+  it('countListedFiles counts exactly what the unfiltered list lists', () => {
+    file('a', '/media/tv/a.mkv', 1000);
+    job('ja1', 'a', { state: 'failed', queuedAt: 1 });
+    job('ja2', 'a', { state: 'done', queuedAt: 2 });
+    file('b', '/media/tv/b.mkv', 1000);
+    job('jb', 'b', { state: 'skipped', queuedAt: 1 });
+    file('gone', '/media/tv/gone.mkv', 1000);
+    job('jg', 'gone', { state: 'done', queuedAt: 1 });
+    db.prepare('UPDATE files SET gone_at = ? WHERE id = ?').run(at(5).toISOString(), 'gone');
+    file('nojob', '/media/tv/nojob.mkv', 1000);
+    file('m', '/media/movies/m.mkv', 1000);
+    job('jm', 'm', { state: 'done', queuedAt: 1 });
+    expect(countListedFiles(db, 'l1')).toBe(2);
+    expect(countListedFiles(db, 'l1')).toBe(listLibraryFiles(db, q()).total);
+    expect(countListedFiles(db, 'l2')).toBe(listLibraryFiles(db, q({ libraryId: 'l2' })).total);
+    expect(countListedFiles(db, 'nope')).toBe(0);
   });
 });
 

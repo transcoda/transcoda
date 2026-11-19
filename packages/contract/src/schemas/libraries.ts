@@ -61,8 +61,14 @@ export const LibrariesListOutputSchema = z.object({
   /** The server's clock when the list was read: run hours are in its time zone. */
   clock: ServerClockSchema,
 });
-/** One library, with the server's clock when it was read (the same `clock` the list carries). */
-export const LibraryGetOutputSchema = LibrarySchema.extend({ clock: ServerClockSchema });
+/**
+ * One library, with the server's clock when it was read (the same `clock` the list carries) and
+ * how many files its library page lists (present files that have a job).
+ */
+export const LibraryGetOutputSchema = LibrarySchema.extend({
+  clock: ServerClockSchema,
+  fileCount: z.number().int().nonnegative(),
+});
 /** The issue message for a `defaultWorkflowId` sent to create or update (a 400). */
 export const REMOVED_DEFAULT_WORKFLOW =
   "defaultWorkflowId was removed: a workflow's Library input chooses its library";

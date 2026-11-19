@@ -16,6 +16,7 @@ import {
   listMigrationNotices,
 } from '../../db/repos/libraries.ts';
 import {
+  countListedFiles,
   findFileProbe,
   findLibraryFile,
   type LibraryFileRow,
@@ -88,7 +89,11 @@ export const get = os.libraries.get
   .handler(({ context, input, errors }) => {
     const library = findLibrary(context.deps.db, input.id);
     if (!library || library.deletedAt !== null) throw errors.NOT_FOUND();
-    return { ...toLibrary(context.deps.db, library), clock: serverClock(context.deps) };
+    return {
+      ...toLibrary(context.deps.db, library),
+      clock: serverClock(context.deps),
+      fileCount: countListedFiles(context.deps.db, library.id),
+    };
   });
 
 export const browse = os.libraries.browse

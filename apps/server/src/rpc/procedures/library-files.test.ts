@@ -226,6 +226,15 @@ async function get(path: string, headers: Record<string, string> = asSession(s, 
 }
 
 describe('library browser read routes', () => {
+  it('GET /libraries/:id carries the listed file count', async () => {
+    file('nojob', '/media/tv/nojob.mkv', 100);
+    const { status, body } = await get('/libraries/l1');
+    expect(status).toBe(200);
+    expect(body.fileCount).toBe(3);
+    expect(body.fileCount).toBe((await get('/libraries/l1/files')).body.total);
+    expect((await get('/libraries/l2')).body.fileCount).toBe(1);
+  });
+
   it('GET /libraries/:id/titles returns shows and movies, posters without posterPath', async () => {
     const { status, body } = await get('/libraries/l1/titles');
     expect(status).toBe(200);
