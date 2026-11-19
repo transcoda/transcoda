@@ -6,6 +6,9 @@ export const PathStringSchema = z
   .string()
   .refine((p) => !p.includes('\0'), { message: 'A path must not contain NUL' });
 
+/** A season number, or `none` for episodes without one. */
+export const SeasonParamSchema = z.string().regex(/^(\d+|none)$/);
+
 /** A library named by id and name (error data, read fields). */
 export const LibraryRefSchema = z.object({ id: z.string(), name: z.string() });
 /** A workflow version that takes (or would take) files from a library. */

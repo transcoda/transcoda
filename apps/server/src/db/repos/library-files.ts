@@ -308,6 +308,40 @@ export function listLibraryFiles(
   return { rows: toRows(db, page), total };
 }
 
+/**
+ * The paths a "run on a selection" request names, only from this library. `fileIds`: the ids that
+ * are this library's files (repeats once); every other id (unknown, another library's) is counted
+ * in `notFound`. A show (and optionally one season): its listed files, exactly the set
+ * {@link listLibraryFiles} lists for the same filter (not gone, with a job).
+ */
+export function filePathsOf(
+  db: Database,
+  libraryId: string,
+  sel: { fileIds: string[] } | { show: ShowRef; season?: SeasonRef },
+): { paths: string[]; notFound: number } {
+  if ('fileIds' in sel) {
+    const unique = [...new Set(sel.fileIds)];
+    const find = db.prepare('SELECT path FROM files WHERE id = ? AND library_id = ?').pluck();
+    const paths: string[] = [];
+    for (const id of unique) {
+      const path = find.get(id, libraryId) as string | undefined;
+      if (path !== undefined) paths.push(path);
+    }
+    return { paths, notFound: unique.length - paths.length };
+  }
+  const latest = latestJobPerFileSql({ libraryId });
+  const filter = filterSql({
+    includeGone: false,
+    show: sel.show,
+    ...(sel.season !== undefined && { season: sel.season }),
+  });
+  const paths = db
+    .prepare(`${latest.sql}, ${LISTED_SQL} SELECT path FROM listed ${filter.where} ORDER BY path`)
+    .pluck()
+    .all({ ...latest.params, ...filter.params }) as string[];
+  return { paths, notFound: 0 };
+}
+
 /** Gone files too (history still opens); null for an unknown id, another library's file or a file with no job. */
 export function findLibraryFile(
   db: Database,
