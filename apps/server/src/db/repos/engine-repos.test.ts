@@ -661,13 +661,25 @@ describe('jobs', () => {
       at(1),
     );
     expect(g).toMatchObject({ id: f.id, sizeBytes: 50, lastProbe: { ok: true } });
-    // A re-queue writes no probe: the stored one stays.
+    // A re-queue of the same file writes no probe: the stored one stays.
     const h = upsertFile(
       db,
-      { libraryId: 'l1', path: '/media/tv/a.mkv', fingerprint: fp, lastProbe: null },
+      {
+        libraryId: 'l1',
+        path: '/media/tv/a.mkv',
+        fingerprint: { ...fp, sizeBytes: 50 },
+        lastProbe: null,
+      },
       at(2),
     );
-    expect(h).toMatchObject({ id: f.id, sizeBytes: 100, lastProbe: { ok: true } });
+    expect(h).toMatchObject({ id: f.id, sizeBytes: 50, lastProbe: { ok: true } });
+    // A changed file queued without a probe: the stored probe was of the previous file.
+    const k = upsertFile(
+      db,
+      { libraryId: 'l1', path: '/media/tv/a.mkv', fingerprint: fp, lastProbe: null },
+      at(3),
+    );
+    expect(k).toMatchObject({ id: f.id, sizeBytes: 100, lastProbe: null });
   });
 
   it('recycled rows insert, list and delete', () => {
