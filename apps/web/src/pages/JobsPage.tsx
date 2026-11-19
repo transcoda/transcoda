@@ -3,7 +3,7 @@
 // row (title, lanes line, queue actions), today's tiles, four half-height history cards, then the
 // list: the list stays above the fold.
 import { CANCELLABLE_JOB_STATES, isFinalState, type JobState } from '@transcoda/shared';
-import { type ReactNode, useState } from 'react';
+import { useState } from 'react';
 import { Link } from 'wouter';
 import { api, isDefinedError, safe } from '../api/client.ts';
 import { describeError } from '../api/errors.ts';
@@ -17,7 +17,7 @@ import { StatTile } from '../components/StatTile.tsx';
 import { useToast } from '../components/Toast.tsx';
 import { useAsync } from '../hooks/useAsync.ts';
 import { useRefetchOn } from '../hooks/useRefetchOn.ts';
-import { DetailText, ResultCell, TitleSub, WorkflowText } from '../jobs/JobCells.tsx';
+import { ResultCell, TitleSub, WorkflowText } from '../jobs/JobCells.tsx';
 import { JobProgress } from '../jobs/JobProgress.tsx';
 import { JobStateChip, VERDICT_ICON } from '../jobs/JobStateChip.tsx';
 import {
@@ -31,7 +31,7 @@ import {
   verdictOf,
   versionText,
 } from '../jobs/jobText.ts';
-import { jobTitle, mediaSub, resultLines } from '../jobs/mediaText.ts';
+import { jobTitle } from '../jobs/mediaText.ts';
 import { Poster } from '../jobs/Poster.tsx';
 import { QueueLanes, QueuePausedNote, QueueToggle } from '../jobs/QueueBar.tsx';
 import {
