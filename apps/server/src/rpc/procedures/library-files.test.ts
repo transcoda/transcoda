@@ -379,6 +379,25 @@ describe('library browser read routes', () => {
     expect(body.file).toMatchObject({ sizeBytes: 600, originalBytes: 1000 });
   });
 
+  it('a file replaced from outside and queued before its probe has no now, not the old probe', async () => {
+    const before = await get('/libraries/l1/files/f2');
+    expect(before.body.now).toMatchObject({ sizeBytes: 800 });
+    upsertFile(
+      t.db,
+      {
+        libraryId: 'l1',
+        path: '/media/tv/S01E02.mkv',
+        fingerprint: { sizeBytes: 2000, mtimeMs: 9, ino: 9, dev: 1, nlink: 1 },
+        lastProbe: null,
+      },
+      at(10),
+    );
+    const { status, body } = await get('/libraries/l1/files/f2');
+    expect(status).toBe(200);
+    expect(body.file).toMatchObject({ sizeBytes: 2000, originalBytes: null });
+    expect(body.now).toBeNull();
+  });
+
   it('a corrupt stored file probe reads as no probe, not a server error', async () => {
     t.db.prepare('UPDATE files SET last_probe = ? WHERE id = ?').run('{"streams":[', 'f2');
     const { status, body } = await get('/libraries/l1/files/f2');
