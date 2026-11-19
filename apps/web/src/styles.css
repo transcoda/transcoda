@@ -6411,6 +6411,11 @@ a.nav-item.is-active .nav-count {
     height: 96px;
   }
 }
+.poster-card {
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  border-radius: 8px;
+}
 .poster-empty {
   display: flex;
   align-items: center;

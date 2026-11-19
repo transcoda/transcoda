@@ -39,6 +39,10 @@ describe('Poster', () => {
     const row = render(<Poster job={withPoster(false)} size="row" />);
     expect(row.container.querySelector('.poster')?.classList.contains('poster-row')).toBe(true);
   });
+  it('has a full-width card size', () => {
+    const { container } = render(<Poster job={withPoster(false)} size="card" />);
+    expect(container.querySelector('.poster')?.classList.contains('poster-card')).toBe(true);
+  });
   it('tries the image again for another job', () => {
     const { container, rerender } = render(<Poster job={withPoster(true)} size="row" />);
     fireEvent.error(container.querySelector('img') as HTMLImageElement);
