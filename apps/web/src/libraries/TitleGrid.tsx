@@ -69,6 +69,10 @@ function Card({
 
 const base = (libraryId: string) => `/libraries/${encodeURIComponent(libraryId)}`;
 
+/** A title card's identity: the show key or the movie's file id. */
+export const titleKey = (t: LibraryTitle): string =>
+  t.type === 'show' ? `s:${t.key}` : `m:${t.fileId}`;
+
 /** The library's shows and movies. */
 export function TitleGrid({ libraryId, items }: { libraryId: string; items: LibraryTitle[] }) {
   return (
@@ -76,7 +80,7 @@ export function TitleGrid({ libraryId, items }: { libraryId: string; items: Libr
       {items.map((t) =>
         t.type === 'show' ? (
           <Card
-            key={`s:${t.key}`}
+            key={titleKey(t)}
             href={`${base(libraryId)}/shows/${encodeURIComponent(t.key)}`}
             poster={t.poster}
             title={t.title}
@@ -89,7 +93,7 @@ export function TitleGrid({ libraryId, items }: { libraryId: string; items: Libr
           />
         ) : (
           <Card
-            key={`m:${t.fileId}`}
+            key={titleKey(t)}
             href={`${base(libraryId)}/files/${encodeURIComponent(t.fileId)}`}
             poster={t.poster}
             title={t.latest.media.title}

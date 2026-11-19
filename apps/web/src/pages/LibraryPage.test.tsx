@@ -52,12 +52,12 @@ beforeEach(() => {
   localStorage.clear();
   fake = fakeEventSource();
   mocks.events.subscribe.mockReset().mockImplementation(fake.subscribe);
-  mocks.libraries.get.mockReset().mockResolvedValue({ ...LIBRARY, clock: CLOCK });
+  mocks.libraries.get.mockReset().mockResolvedValue({ ...LIBRARY, clock: CLOCK, fileCount: 4214 });
   mocks.libraries.titles.mockReset().mockResolvedValue(TITLES);
   mocks.libraries.seasons
     .mockReset()
     .mockResolvedValue({ title: 'The Beverly Hillbillies', year: 1962, seasons: [] });
-  mocks.libraries.files.mockReset().mockResolvedValue(files(4214));
+  mocks.libraries.files.mockReset().mockResolvedValue(files(7));
   mocks.workflows.list.mockReset().mockResolvedValue({ workflows: [] });
   mocks.workflows.get.mockReset().mockResolvedValue({ activeIssues: [] });
   mocks.queue.status.mockReset().mockResolvedValue({ paused: false, lanes: {}, encodeSlots: 1 });
@@ -119,7 +119,8 @@ describe('LibraryPage', () => {
       '/libraries',
     );
     expect(within(crumbs).getByText('Classic TV')).toBeTruthy();
-    expect(mocks.libraries.files).toHaveBeenCalledWith(expect.objectContaining({ id: 'l1' }));
+    // The count is the library's fileCount: the posters view asks for no file listing at all.
+    expect(mocks.libraries.files).not.toHaveBeenCalled();
     // No show in the route: no seasons request.
     expect(mocks.libraries.seasons).not.toHaveBeenCalled();
   });
@@ -197,6 +198,42 @@ describe('LibraryPage', () => {
     expect(mocks.libraries.titles).toHaveBeenCalledTimes(settled + 1);
   });
 
+  it('a progress-only job.changed does not refetch; a state change does', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+    await renderPage();
+    await push(queueSnapshot);
+    await waitFor(() => expect(mocks.libraries.titles.mock.calls.length).toBeGreaterThan(1));
+    await push(jobChanged('j1'));
+    await act(() => vi.advanceTimersByTimeAsync(REFETCH_COALESCE_MS * 2));
+    const titles = mocks.libraries.titles.mock.calls.length;
+    const gets = mocks.libraries.get.mock.calls.length;
+
+    // The same job, same state, only its progress moves: one tick a second while it encodes.
+    for (const percent of [10, 20, 30]) {
+      await push({ ...jobChanged('j1'), progress: { percent } } as EngineEvent);
+      await act(() => vi.advanceTimersByTimeAsync(REFETCH_COALESCE_MS * 2));
+    }
+    expect(mocks.libraries.titles).toHaveBeenCalledTimes(titles);
+    expect(mocks.libraries.get).toHaveBeenCalledTimes(gets);
+
+    await push({ ...jobChanged('j1'), state: 'done' } as EngineEvent);
+    await act(() => vi.advanceTimersByTimeAsync(REFETCH_COALESCE_MS * 2));
+    await waitFor(() => expect(mocks.libraries.titles).toHaveBeenCalledTimes(titles + 1));
+    expect(mocks.libraries.get).toHaveBeenCalledTimes(gets + 1);
+  });
+
+  it('the header count follows the library: it reloads on a state change', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+    await renderPage();
+    expect(await screen.findByText('4,214 files')).toBeTruthy();
+    await push(queueSnapshot);
+    await act(() => vi.advanceTimersByTimeAsync(REFETCH_COALESCE_MS * 2));
+    mocks.libraries.get.mockResolvedValue({ ...LIBRARY, clock: CLOCK, fileCount: 4215 });
+    await push({ ...jobChanged('j9'), state: 'queued' } as EngineEvent);
+    await act(() => vi.advanceTimersByTimeAsync(REFETCH_COALESCE_MS * 2));
+    expect(await screen.findByText('4,215 files')).toBeTruthy();
+  });
+
   it("Scan now words the run hours in the server's time zone, not the browser's", async () => {
     // The tests run in Asia/Kolkata. 03:00 UTC is 08:30 there (closed) and 23:00 in New York (open).
     vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ['Date'] });
@@ -206,6 +243,7 @@ describe('LibraryPage', () => {
       ...LIBRARY,
       runHours: { enabled: true, perDay: false, every: night, days: Array(7).fill(night) },
       clock: CLOCK,
+      fileCount: 4214,
     });
     await renderPage();
     fireEvent.click(screen.getByRole('button', { name: 'Scan now' }));
@@ -215,7 +253,7 @@ describe('LibraryPage', () => {
   });
 
   it('says to scan when the library has no files', async () => {
-    mocks.libraries.files.mockResolvedValue(files(0));
+    mocks.libraries.get.mockResolvedValue({ ...LIBRARY, clock: CLOCK, fileCount: 0 });
     await renderPage();
     expect(await screen.findByText('Scan now to list its files.')).toBeTruthy();
     expect(screen.getByText('0 files')).toBeTruthy();
@@ -234,7 +272,8 @@ describe('LibraryPage', () => {
     renderAt('/libraries/l1/shows/WyJUaGUgQmV2ZXJseSBIaWxsYmlsbGllcyIsMTk2Ml0/seasons/2', page());
     const crumbs = await screen.findByRole('navigation', { name: 'Breadcrumb' });
     await waitFor(() => expect(within(crumbs).getByText('Season 2')).toBeTruthy());
-    const show = within(crumbs).getByRole('link', { name: 'The Beverly Hillbillies' });
+    // The show title arrives with the seasons response, after the route's Season 2 crumb.
+    const show = await within(crumbs).findByRole('link', { name: 'The Beverly Hillbillies' });
     expect(show.getAttribute('href')).toBe(
       '/libraries/l1/shows/WyJUaGUgQmV2ZXJseSBIaWxsYmlsbGllcyIsMTk2Ml0',
     );
@@ -330,6 +369,15 @@ describe('LibraryPage', () => {
     expect(card.getAttribute('href')).toBe(`/libraries/l1/shows/${SHOW_KEY}/seasons/1`);
   });
 
+  it('a show page asks for its seasons once: the breadcrumbs and the cards share the answer', async () => {
+    renderAt(`/libraries/l1/shows/${SHOW_KEY}`, page());
+    const crumbs = await screen.findByRole('navigation', { name: 'Breadcrumb' });
+    await waitFor(() => expect(within(crumbs).getByText('The Beverly Hillbillies')).toBeTruthy());
+    expect(await screen.findByRole('region', { name: 'Seasons' })).toBeTruthy();
+    expect(mocks.libraries.seasons).toHaveBeenCalledTimes(1);
+    expect(mocks.libraries.seasons).toHaveBeenCalledWith({ id: 'l1', show: SHOW_KEY });
+  });
+
   it('a non-empty search on a show route lists the matching episodes, an empty one the seasons', async () => {
     mocks.libraries.seasons.mockResolvedValue({
       title: 'The Beverly Hillbillies',
@@ -412,6 +460,38 @@ describe('LibraryPage', () => {
     expect(await screen.findByRole('link', { name: /Film 99/ })).toBeTruthy();
     expect(screen.getByRole('link', { name: /^Film 0 / })).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Show more' })).toBeNull();
+  });
+
+  it('Show more shows a card that moved onto the next page once', async () => {
+    const movie = (n: number) => ({
+      type: 'movie' as const,
+      fileId: `f${n}`,
+      poster: null,
+      latest: {
+        ...fx.kept,
+        media: { ...fx.kept.media, title: `Film ${n}`, kind: 'movie' as const },
+      },
+    });
+    const items = (from: number, n: number) => Array.from({ length: n }, (_, i) => movie(from + i));
+    // A title was added before Film 59 in between: the second page starts with Film 59 again.
+    mocks.libraries.titles.mockImplementation(async (q: { offset: number }) => ({
+      items: q.offset === 0 ? items(0, 60) : items(59, 41),
+      total: 101,
+    }));
+    await renderPage();
+    await screen.findByRole('link', { name: /Film 59/ });
+    fireEvent.click(screen.getByRole('button', { name: 'Show more' }));
+    expect(await screen.findByRole('link', { name: /Film 99/ })).toBeTruthy();
+    expect(screen.getAllByRole('link', { name: /^Film 59\b/ })).toHaveLength(1);
+    const grid = screen.getByRole('list', { name: 'Titles' });
+    expect(within(grid).getAllByRole('listitem')).toHaveLength(100);
+    expect(screen.queryByRole('button', { name: 'Show more' })).toBeNull();
+  });
+
+  it('the search box takes at most 200 characters, the server’s limit', async () => {
+    await renderPage();
+    const box = screen.getByRole('searchbox', { name: 'Search this library' });
+    expect(box.getAttribute('maxlength')).toBe('200');
   });
 });
 

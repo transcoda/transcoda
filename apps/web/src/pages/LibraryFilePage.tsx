@@ -10,7 +10,6 @@ import { Icon } from '../components/Icon.tsx';
 import { Loading } from '../components/Loading.tsx';
 import { NotFound } from '../components/NotFound.tsx';
 import { useAsync } from '../hooks/useAsync.ts';
-import { useRefetchOn } from '../hooks/useRefetchOn.ts';
 import { TitleSub } from '../jobs/JobCells.tsx';
 import { jobTitle } from '../jobs/mediaText.ts';
 import { Poster } from '../jobs/Poster.tsx';
@@ -20,7 +19,7 @@ import { fmtFull } from '../lib/time.ts';
 import { type Crumb, Crumbs, seasonLabel } from '../libraries/Crumbs.tsx';
 import { type ProbeFacts, probeFacts } from '../libraries/probeFacts.ts';
 import { RunFilesDialog } from '../libraries/RunFilesDialog.tsx';
-import { libraryEvent } from '../libraries/useLibraryListing.ts';
+import { useLibraryRefetch } from '../libraries/useLibraryListing.ts';
 import { JobHistoryTable } from './JobsPage.tsx';
 
 /** Jobs per request; "Show older jobs" asks for the page after the ones on screen. */
@@ -135,7 +134,7 @@ export function LibraryFilePage() {
     () => api.libraries.file({ id, fileId, jobsOffset: 0, jobsLimit: JOBS_PAGE }),
     [id, fileId],
   );
-  useRefetchOn(libraryEvent(id), detail.reload);
+  useLibraryRefetch(id, detail.reload);
   // The run dialog needs the library's run hours, feeder and recycle folder.
   const library = useAsync(() => api.libraries.get({ id }), [id]);
   const [running, setRunning] = useState<HTMLElement | null>(null);
@@ -210,7 +209,11 @@ export function LibraryFilePage() {
                 ) : null}
               </Fact>
               <Fact term="Changed">{fmtFull(file.mtime)}</Fact>
-              {now ? <TrackFacts facts={probeFacts(now)} /> : null}
+              {now ? (
+                <TrackFacts facts={probeFacts(now)} />
+              ) : file.gone ? null : (
+                <Fact term="Tracks">Not probed yet</Fact>
+              )}
             </dl>
             {file.gone ? null : (
               <div className="file-head-actions">

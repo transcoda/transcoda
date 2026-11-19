@@ -182,4 +182,12 @@ describe('LibraryFileTable', () => {
     expect(within(card).queryByRole('checkbox')).toBeNull();
     expect(screen.getByText('1–2 of 2')).toBeTruthy();
   });
+
+  it('on a phone an empty list says no files match', () => {
+    stubPhone(true);
+    table({ files: [], total: 0 });
+    expect(screen.queryByRole('table')).toBeNull();
+    expect(screen.getByText('No files match.')).toBeTruthy();
+    expect(document.querySelector('.phone-card')).toBeNull();
+  });
 });
