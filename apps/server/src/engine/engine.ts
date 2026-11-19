@@ -273,6 +273,7 @@ export class EngineService {
   async stop(): Promise<void> {
     this.catchUp.stop();
     await this.scheduler.stop();
+    this.mediaPass.stop();
     await this.mediaPass.idle();
   }
 

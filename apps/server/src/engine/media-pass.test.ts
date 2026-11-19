@@ -255,20 +255,64 @@ describe('MediaPass', () => {
       return media(p);
     });
     const mp = pass(resolver);
-    const run = vi.spyOn(mp, 'run');
+    const original = mp.run.bind(mp);
+    let calls = 0;
+    const run = vi.spyOn(mp, 'run').mockImplementation(async () => {
+      const result = await original();
+      // A job arriving after the first pass's last query: only the extra pass can fill it.
+      if (++calls === 1) {
+        file('f2', 'l1', '/media/tv/b.mkv');
+        job('j2', 'f2', 2);
+      }
+      return result;
+    });
     mp.kick();
     mp.kick();
     mp.kick(); // several kicks during one pass still queue only one more pass
     await vi.waitFor(() => expect(resolver.resolve).toHaveBeenCalledTimes(1));
     expect(run).toHaveBeenCalledTimes(1);
-    // The second pass finds work: a new job arrives while the first pass runs.
-    file('f2', 'l1', '/media/tv/b.mkv');
-    job('j2', 'f2', 2);
     release();
     await mp.idle();
     expect(run).toHaveBeenCalledTimes(2);
+    const filled = await Promise.all(run.mock.results.map((r) => r.value));
+    expect(filled).toEqual([{ filled: 1 }, { filled: 1 }]);
     expect(mediaOf('j1')).not.toBeNull();
     expect(mediaOf('j2')).not.toBeNull();
+  });
+
+  it('stop() during a pass makes idle() resolve without resolving the remaining files', async () => {
+    for (let i = 0; i < 20; i++) {
+      file(`f${i}`, 'l1', `/media/tv/${i}.mkv`);
+      job(`j${i}`, `f${i}`, i);
+    }
+    let release: () => void = () => {};
+    const gate = new Promise<void>((r) => {
+      release = r;
+    });
+    const resolver = fake(async (p) => {
+      await gate;
+      return media(p);
+    });
+    const mp = pass(resolver);
+    mp.kick();
+    await vi.waitFor(() => expect(resolver.resolve).toHaveBeenCalledTimes(8));
+    mp.stop();
+    release();
+    await mp.idle();
+    expect(resolver.resolve.mock.calls.length).toBeLessThan(20);
+    expect(latestJobsWithoutMedia(db, 100).length).toBeGreaterThan(0);
+  });
+
+  it('kick() after stop() does not start a pass', async () => {
+    file('f1', 'l1', '/media/tv/a.mkv');
+    job('j1', 'f1', 1);
+    const resolver = fake();
+    const mp = pass(resolver);
+    mp.stop();
+    mp.kick();
+    await mp.idle();
+    expect(resolver.resolve).not.toHaveBeenCalled();
+    expect(mediaOf('j1')).toBeNull();
   });
 
   it('idle resolves at once when nothing runs', async () => {

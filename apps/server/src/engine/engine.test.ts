@@ -306,6 +306,7 @@ describe('EngineService', () => {
 
   it('start() fills the media of a job that has none', async () => {
     const { id } = await queued();
+    await t.deps.engine.mediaPass.idle();
     t.db.prepare('UPDATE jobs SET media = NULL WHERE id = ?').run(id);
     await t.deps.engine.start();
     await t.deps.engine.mediaPass.idle();

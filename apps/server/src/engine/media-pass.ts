@@ -14,6 +14,7 @@ const DEFAULT_BATCH = 200;
 export class MediaPass {
   private running: Promise<void> | null = null;
   private pending = false;
+  private stopped = false;
 
   constructor(
     private readonly deps: {
@@ -27,11 +28,21 @@ export class MediaPass {
 
   /** Starts a pass unless one runs; a kick during a pass runs one more pass after it. Never rejects. */
   kick(): void {
+    if (this.stopped) return;
     if (this.running !== null) {
       this.pending = true;
       return;
     }
     this.running = this.loop();
+  }
+
+  /**
+   * Shutdown: later kicks do nothing, no pass is pending, and a running pass starts no new file
+   * (those in flight finish and may write).
+   */
+  stop(): void {
+    this.stopped = true;
+    this.pending = false;
   }
 
   /** Resolves when no pass is running or pending. */
@@ -51,7 +62,7 @@ export class MediaPass {
             error: err instanceof Error ? err.message : String(err),
           });
         }
-      } while (this.pending);
+      } while (this.pending && !this.stopped);
     } finally {
       this.running = null;
     }
@@ -70,7 +81,7 @@ export class MediaPass {
       let next = 0;
       let wrote = 0;
       const worker = async (): Promise<void> => {
-        while (next < todo.length) {
+        while (next < todo.length && !this.stopped) {
           const j = todo[next++];
           if (j === undefined) return;
           // resolve never throws; a file whose sidecars fail gets its file-name media.
@@ -81,7 +92,7 @@ export class MediaPass {
       await Promise.all(Array.from({ length: Math.min(MEDIA_CONCURRENCY, todo.length) }, worker));
       filled += wrote;
       // Nothing written (every job already had media by now): stop rather than spin.
-      if (wrote === 0) break;
+      if (wrote === 0 || this.stopped) break;
     }
     if (filled > 0) log.info({ msg: 'media pass: filled job(s)', filled });
     return { filled };
