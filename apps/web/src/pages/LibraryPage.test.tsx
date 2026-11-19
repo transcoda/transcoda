@@ -763,10 +763,12 @@ describe('LibraryPage selection and running', () => {
       target: { value: 'night' },
     });
     await waitFor(() => expect(screen.queryByRole('region', { name: 'Selection' })).toBeNull());
+    // The searched list's rows come with its answer: none of the last list's rows show meanwhile.
     expect(
-      (screen.getByRole('checkbox', { name: 'Select Sherlock Jr..mkv' }) as HTMLInputElement)
-        .checked,
-    ).toBe(false);
+      (await screen.findByRole('checkbox', {
+        name: 'Select Sherlock Jr..mkv',
+      })) as HTMLInputElement,
+    ).toHaveProperty('checked', false);
   });
 
   it('switching to Posters clears the selection', async () => {
