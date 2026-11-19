@@ -241,6 +241,32 @@ describe('latest job of a file', () => {
     expect(row.mediaJobId).toBeNull();
   });
 
+  it('an episode row carries the key listTitles gives its show; a movie and a file-name file carry none', () => {
+    file('f1', '/media/tv/a.mkv', 1000);
+    job('j1', 'f1', { state: 'done', queuedAt: 1, media: ep(2, 1) });
+    file('f2', '/media/movies/Sherlock Jr. (1924).mkv', 1000);
+    job('j2', 'f2', { state: 'done', queuedAt: 1, media: movie('Sherlock Jr.', 1924) });
+    file('f3', '/media/movies/The General (1926).mkv', 1000);
+    job('j3', 'f3', { state: 'done', queuedAt: 1 });
+    const card = listTitles(db, { libraryId: 'l1', offset: 0, limit: 10 }).items[0];
+    const episode = findLibraryFile(db, 'l1', 'f1');
+    expect(episode?.showKey).toBe(card?.type === 'show' ? card.key : null);
+    expect(episode?.season).toBe(2);
+    for (const id of ['f2', 'f3']) {
+      expect(findLibraryFile(db, 'l2', id)).toMatchObject({ showKey: null, season: null });
+    }
+  });
+
+  it('a latest job without media takes its show key from an older job that has media', () => {
+    file('f1', '/media/tv/a.mkv', 1000);
+    job('j1', 'f1', { state: 'failed', queuedAt: 1, media: ep(null, 1) });
+    job('j2', 'f1', { state: 'done', queuedAt: 2 });
+    expect(findLibraryFile(db, 'l1', 'f1')).toMatchObject({
+      showKey: showKey({ title: SHOW, year: 1962 }),
+      season: 'none',
+    });
+  });
+
   it('a file with no job is not listed', () => {
     file('f1', '/media/tv/a.mkv', 1000);
     file('f2', '/media/tv/b.mkv', 1000);

@@ -278,6 +278,8 @@ export const file = os.libraries.file
     const fileProbe = current ? jobProbeOf(current) : null;
     return {
       file: toFile(row, job),
+      showKey: row.showKey,
+      season: row.season,
       now: replaced ? (outputProbe ?? fileProbe) : fileProbe,
       before: replaced && own ? jobProbeOf(own) : null,
       jobs: history.jobs.map(job),

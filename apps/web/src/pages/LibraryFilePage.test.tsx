@@ -21,8 +21,8 @@ import { renderAt } from '../test/render.tsx';
 import { LibraryFilePage } from './LibraryFilePage.tsx';
 
 const at = '2026-10-16T18:00:00.000Z';
-/** The key the server gives a show: base64url of [title, year]. */
-const SHOW_KEY = 'WyJUaGUgQmV2ZXJseSBIaWxsYmlsbGllcyIsbnVsbF0';
+/** Whatever the server sends: the page links to it as it is. */
+const SHOW_KEY = 'key-from-the-server';
 
 const EPISODE = {
   ...fx.replaced.media,
@@ -99,9 +99,11 @@ const detail = (over: Partial<LibraryFileDetail> = {}): LibraryFileDetail => ({
     originalBytes: null,
     mtime: at,
     gone: false,
-    poster: null,
+    poster: { id: 'j3', media: EPISODE },
     latest,
   },
+  showKey: SHOW_KEY,
+  season: 1,
   now: probeOf('mkv', 5520, 'hevc', 700_000_000),
   before: null,
   jobs: [
@@ -191,7 +193,13 @@ describe('LibraryFilePage', () => {
       },
     });
     mocks.libraries.file.mockResolvedValue(
-      detail({ file: { ...detail().file, latest: movie }, jobs: [movie], jobsTotal: 1 }),
+      detail({
+        file: { ...detail().file, latest: movie, poster: { id: 'j9', media: movie.media } },
+        showKey: null,
+        season: null,
+        jobs: [movie],
+        jobsTotal: 1,
+      }),
     );
     await renderPage();
     const crumbs = screen.getByRole('navigation', { name: 'Breadcrumb' });
@@ -200,6 +208,33 @@ describe('LibraryFilePage', () => {
         .getAllByRole('link')
         .map((a) => a.textContent),
     ).toEqual(['Libraries', 'Classic TV']);
+  });
+
+  it('takes title and page title from the stored media the poster comes from, not the latest job', async () => {
+    // The latest job has no media of its own: its row carries the file name's guess.
+    const bare = job({
+      id: 'j8',
+      libraryName: 'Classic TV',
+      media: { ...EPISODE, title: 'S01E02 guess', episodeTitle: null, source: 'filename' },
+    });
+    mocks.libraries.file.mockResolvedValue(
+      detail({ file: { ...detail().file, latest: bare }, jobs: [bare], jobsTotal: 1 }),
+    );
+    await renderPage();
+    expect(screen.getByRole('heading', { level: 1, name: 'The Beverly Hillbillies' })).toBeTruthy();
+    expect(document.title).toContain('The Beverly Hillbillies S01E02');
+  });
+
+  it('falls back to the file name when no job has stored media', async () => {
+    mocks.libraries.file.mockResolvedValue(
+      detail({ file: { ...detail().file, poster: null }, showKey: null, season: null }),
+    );
+    await renderPage();
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'The Beverly Hillbillies S01E02.mkv' }),
+    ).toBeTruthy();
+    const crumbs = screen.getByRole('navigation', { name: 'Breadcrumb' });
+    expect(within(crumbs).getAllByRole('link')).toHaveLength(2);
   });
 
   it('a replaced file shows its size now and what it was', async () => {

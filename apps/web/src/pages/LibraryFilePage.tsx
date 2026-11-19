@@ -16,7 +16,7 @@ import { Poster } from '../jobs/Poster.tsx';
 import { fmtBytes } from '../lib/bytes.ts';
 import { usePageTitle } from '../lib/pageTitle.ts';
 import { fmtFull } from '../lib/time.ts';
-import { type Crumb, Crumbs, seasonLabel, showKeyOf } from '../libraries/Crumbs.tsx';
+import { type Crumb, Crumbs, seasonLabel } from '../libraries/Crumbs.tsx';
 import { type ProbeFacts, probeFacts } from '../libraries/probeFacts.ts';
 import { libraryEvent } from '../libraries/useLibraryListing.ts';
 import { JobHistoryTable } from './JobsPage.tsx';
@@ -27,19 +27,20 @@ const JOBS_PAGE = 50;
 type File = LibraryFileDetail['file'];
 
 /** `Libraries › <Library> › <Show> › Season N`; a movie has the library only. */
-function fileCrumbs(libraryId: string, file: File): Crumb[] {
+function fileCrumbs(libraryId: string, detail: LibraryFileDetail, showTitle: string): Crumb[] {
   const base = `/libraries/${encodeURIComponent(libraryId)}`;
-  const { media, libraryName } = file.latest;
   const crumbs: Crumb[] = [
     { label: 'Libraries', href: '/libraries' },
-    { label: libraryName, href: base },
+    { label: detail.file.latest.libraryName, href: base },
   ];
-  if (media.kind === 'episode') {
-    // The file output carries the show's title and year, which is all the server's show key is.
-    const show = `${base}/shows/${encodeURIComponent(showKeyOf(media.title, media.year))}`;
-    const season = media.season === null ? 'none' : String(media.season);
-    crumbs.push({ label: media.title, href: show });
-    crumbs.push({ label: seasonLabel(season), href: `${show}/seasons/${season}` });
+  // The server names the show page and season the titles list files this episode under.
+  if (detail.showKey !== null && detail.season !== null) {
+    const show = `${base}/shows/${encodeURIComponent(detail.showKey)}`;
+    crumbs.push({ label: showTitle, href: show });
+    crumbs.push({
+      label: seasonLabel(String(detail.season)),
+      href: `${show}/seasons/${detail.season}`,
+    });
   }
   return crumbs;
 }
@@ -134,7 +135,10 @@ export function LibraryFilePage() {
   );
   useRefetchOn(libraryEvent(id), detail.reload);
   const data = detail.data;
-  usePageTitle(data ? jobTitle(data.file.latest) : 'File');
+  // Title and poster come from the same stored media (the latest job's, else the newest job's that
+  // has some); the file name stands in when no job has any.
+  const media = data?.file.poster?.media;
+  usePageTitle(data ? (media ? jobTitle({ media }) : data.file.fileName) : 'File');
 
   if (!data) {
     if (detail.error) {
@@ -168,11 +172,10 @@ export function LibraryFilePage() {
   }
 
   const { file, now, before } = data;
-  const { media } = file.latest;
   return (
     <div className="page job-page">
       <header className="job-head">
-        <Crumbs crumbs={fileCrumbs(id, file)} />
+        <Crumbs crumbs={fileCrumbs(id, data, media?.title ?? file.fileName)} />
         <div className="job-head-body">
           <Poster job={file.poster ?? file.latest} size="page" />
           <div className="job-head-main">
@@ -182,12 +185,12 @@ export function LibraryFilePage() {
               </div>
             ) : null}
             <div className="job-title-line">
-              <h1>{media.title}</h1>
-              {media.kind === 'movie' && media.year !== null && (
+              <h1>{media?.title ?? file.fileName}</h1>
+              {media?.kind === 'movie' && media.year !== null && (
                 <span className="job-year">{media.year}</span>
               )}
             </div>
-            <TitleSub media={media} />
+            {media ? <TitleSub media={media} /> : null}
             <div className="job-path-row">
               <span className="job-path">{file.path}</span>
             </div>

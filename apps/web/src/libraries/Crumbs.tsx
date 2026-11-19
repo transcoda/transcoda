@@ -9,17 +9,6 @@ export interface Crumb {
 export const seasonLabel = (season: string) =>
   season === 'none' ? 'No season' : `Season ${season}`;
 
-/**
- * The key the server gives a show (`showKey` in the library files repo): base64url of the JSON
- * `[title, year]`. A file carries its show's title and year, so its page can name the show's page.
- */
-export function showKeyOf(title: string, year: number | null): string {
-  let binary = '';
-  for (const byte of new TextEncoder().encode(JSON.stringify([title, year])))
-    binary += String.fromCharCode(byte);
-  return btoa(binary).replaceAll('+', '-').replaceAll('/', '_').replace(/=+$/, '');
-}
-
 /** `Libraries › <Library> › <Show> › Season N`, as the library pages and a file's page draw it. */
 export function Crumbs({ crumbs }: { crumbs: Crumb[] }) {
   return (
