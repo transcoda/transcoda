@@ -377,6 +377,25 @@ describe('library browser read routes', () => {
     }
   });
 
+  it('a show only an older job named is NOT_FOUND for files as for seasons; a current show with no hit is an empty page', async () => {
+    file('f4', '/media/tv/S01E03.mkv', 700);
+    job('j4a', 'f4', { state: 'done', queuedAt: 6, media: media({ title: 'Old', episode: 3 }) });
+    job('j4b', 'f4', { state: 'done', queuedAt: 7, media: media({ episode: 3 }) });
+    const old = showKey({ title: 'Old', year: 1962 });
+    for (const path of [`/libraries/l1/files?show=${old}`, `/libraries/l1/seasons?show=${old}`]) {
+      const res = await get(path);
+      expect([path, res.status, res.body.code]).toEqual([path, 404, 'NOT_FOUND']);
+    }
+    const key = showKey({ title: SHOW, year: 1962 });
+    for (const path of [
+      `/libraries/l1/files?show=${key}&season=9`,
+      `/libraries/l1/files?show=${key}&search=zzz`,
+    ]) {
+      const res = await get(path);
+      expect([path, res.status, res.body]).toEqual([path, 200, { files: [], total: 0 }]);
+    }
+  });
+
   it('a read token can list; a token without read cannot', async () => {
     const read = await createToken(t, s, { name: 'ro', scopes: ['read'] });
     expect(

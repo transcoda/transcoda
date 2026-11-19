@@ -862,6 +862,15 @@ describe('titles and seasons', () => {
     );
     expect(showExists(db, 'l1', HILL)).toBe(false);
   });
+
+  it('showExists goes by the media the listing shows, not an older job’s', () => {
+    file('e1', '/media/tv/e1.mkv', 1000);
+    job('j-old', 'e1', { state: 'done', queuedAt: 1, media: { ...ep(1, 1), title: 'Old' } });
+    job('j-new', 'e1', { state: 'done', queuedAt: 2, media: { ...ep(1, 1), title: 'New' } });
+    expect(showExists(db, 'l1', { title: 'New', year: 1962 })).toBe(true);
+    expect(showExists(db, 'l1', { title: 'Old', year: 1962 })).toBe(false);
+    expect(listSeasons(db, 'l1', { title: 'Old', year: 1962 })).toEqual([]);
+  });
 });
 
 describe('findFileProbe', () => {

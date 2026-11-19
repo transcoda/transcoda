@@ -558,25 +558,18 @@ export function listSeasons(db: Database, libraryId: string, show: ShowRef): Sea
 }
 
 /**
- * Whether any job of a present file of the library carries episode media of `show`: a cheap,
- * indexed check (files by library, jobs by file) that stops at the first hit. A show the listing
- * groups always passes it (its media comes from some job of the file); it answers "is this show
- * key unknown here" without the latest-job window scan.
+ * Whether a present file of the library is an episode of `show` by the media the listing shows
+ * (its latest job's, else the newest job's that has some): the files list's `show` filter with
+ * nothing else applied. A show only older jobs named (since renamed) is unknown, as for seasons.
  */
 export function showExists(db: Database, libraryId: string, show: ShowRef): boolean {
+  const latest = latestJobPerFileSql({ libraryId });
+  const filter = filterSql({ includeGone: false, show });
   return (
     db
-      .prepare(
-        `SELECT EXISTS (
-           SELECT 1 FROM files f JOIN jobs j ON j.file_id = f.id
-           WHERE f.library_id = @libraryId AND f.gone_at IS NULL AND json_valid(j.media)
-             AND json_extract(j.media, '$.kind') = 'episode'
-             AND json_extract(j.media, '$.title') = @title
-             AND json_extract(j.media, '$.year') IS @year
-         )`,
-      )
+      .prepare(`${latest.sql}, ${LISTED_SQL} SELECT EXISTS (SELECT 1 FROM listed ${filter.where})`)
       .pluck()
-      .get({ libraryId, title: show.title, year: show.year }) === 1
+      .get({ ...latest.params, ...filter.params }) === 1
   );
 }
 
