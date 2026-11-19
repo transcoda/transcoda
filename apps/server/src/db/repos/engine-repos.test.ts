@@ -898,6 +898,20 @@ describe('markFolderListing', () => {
     expect(goneAt(B)).toBeNull();
   });
 
+  it('leaves rows written since the listing started alone', () => {
+    // A is seeded at `now`; B is queued (written) after a listing that began at at(5).
+    upsertFile(db, { libraryId: 'l1', path: B, fingerprint: fp, lastProbe: null }, at(6));
+    expect(
+      markFolderListing(
+        db,
+        { libraryId: 'l1', folder: '/media/tv', paths: [C, D], startedAt: at(5) },
+        at(7),
+      ),
+    ).toEqual({ gone: 1, back: 0 });
+    expect(goneAt(A)).toBe(at(7).toISOString());
+    expect(goneAt(B)).toBeNull();
+  });
+
   it("never touches another library's rows", () => {
     insertLibrary(
       db,
