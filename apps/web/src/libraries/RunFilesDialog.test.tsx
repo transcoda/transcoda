@@ -1,6 +1,7 @@
 import { ORPCError } from '@orpc/client';
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import type { Library, WorkflowSummary } from '@transcoda/contract';
+import { useState } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderAt } from '../test/render.tsx';
 
@@ -95,6 +96,24 @@ function mount(lib: Library = library(), selection: RunSelection = SELECTION) {
     <RunFilesDialog open library={lib} selection={selection} label="3 files" onClose={onClose} />,
   );
   return { ...view, onClose };
+}
+
+function OpenOnClick() {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button type="button" onClick={() => setOpen(true)}>
+        show dialog
+      </button>
+      <RunFilesDialog
+        open={open}
+        library={library()}
+        selection={SELECTION}
+        label="3 files"
+        onClose={() => setOpen(false)}
+      />
+    </>
+  );
 }
 
 beforeEach(() => {
@@ -266,7 +285,20 @@ describe('RunFilesDialog', () => {
     });
     const { location } = mount();
     fireEvent.click(await screen.findByRole('button', { name: 'Run 3 files now' }));
+    expect(mocks.list).toHaveBeenCalledTimes(1);
+    // The version was deactivated meanwhile: the next list no longer has it runnable.
+    mocks.list.mockResolvedValue({
+      workflows: [workflow('w1', 'Shows Cleanup', { active: null }), ...WORKFLOWS.slice(1)],
+    });
     expect(await screen.findByText(ACTIVATE_TO_RUN)).toBeTruthy();
+    await waitFor(() => expect(mocks.list).toHaveBeenCalledTimes(2));
+    const button = await screen.findByRole('button', { name: /Workflow/ });
+    await waitFor(() => expect(button.textContent).toContain('Episode Tidy v5'));
+    await waitFor(() =>
+      expect(mocks.preview).toHaveBeenLastCalledWith(
+        expect.objectContaining({ workflowId: 'w3', dryRun: false }),
+      ),
+    );
     expect(location()).toBe('/libraries/shows');
     expect(screen.getByRole('dialog', { name: 'Run a workflow on 3 files' })).toBeTruthy();
   });
@@ -296,7 +328,22 @@ describe('RunFilesDialog', () => {
     expect(
       await screen.findByText('4 files are already queued in another run and will be skipped'),
     ).toBeTruthy();
-    expect(screen.getByText("2 files can't be found and will be skipped")).toBeTruthy();
+    expect(screen.getByText("1 file can't be found and will be skipped")).toBeTruthy();
+    expect(screen.getByText('1 file will be skipped')).toBeTruthy();
+  });
+
+  it('words not found and skipped apart, in the plural too', async () => {
+    mocks.preview.mockResolvedValue(answer({ notFound: 2, skipped: 3 }));
+    mount();
+    expect(await screen.findByText("2 files can't be found and will be skipped")).toBeTruthy();
+    expect(screen.getByText('3 files will be skipped')).toBeTruthy();
+  });
+
+  it('reads the workflows again when it opens', async () => {
+    renderAt('/libraries/shows', <OpenOnClick />);
+    await waitFor(() => expect(mocks.list).toHaveBeenCalledTimes(1));
+    fireEvent.click(screen.getByRole('button', { name: 'show dialog' }));
+    await waitFor(() => expect(mocks.list).toHaveBeenCalledTimes(2));
   });
 
   it('shows a server error as an alert in the dialog', async () => {

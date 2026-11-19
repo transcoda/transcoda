@@ -83,7 +83,7 @@ export function RunFilesDialog({
 }): JSX.Element {
   const toast = useToast();
   const [, navigate] = useLocation();
-  const { workflows } = useWorkflows();
+  const { workflows, reload } = useWorkflows();
   const runnable = (workflows ?? []).filter((w) => w.kind === 'workflow' && runBlocked(w) === null);
   const feederId = library.feeds?.workflowId;
   const [picked, setPicked] = useState<string | null>(null);
@@ -108,14 +108,17 @@ export function RunFilesDialog({
     };
   }, []);
 
-  // A fresh dialog each time it opens.
+  // A fresh dialog each time it opens, with the workflow list read again (it loaded on mount).
+  const mountedOpen = useRef(open);
   useEffect(() => {
     if (!open) return;
+    if (!mountedOpen.current) reload();
+    mountedOpen.current = false;
     setPicked(null);
     setMode('real');
     setForce(false);
     setFailed(null);
-  }, [open]);
+  }, [open, reload]);
 
   const workflowId = chosen?.id ?? null;
   const dryRun = mode === 'dry';
@@ -150,7 +153,8 @@ export function RunFilesDialog({
   const version =
     chosen === null ? 0 : dryRun ? chosen.currentVersion : (chosen.active?.version ?? 0);
   const held = preview?.heldByAnotherRun ?? 0;
-  const missing = (preview?.notFound ?? 0) + (preview?.skipped ?? 0);
+  const notFound = preview?.notFound ?? 0;
+  const skipped = preview?.skipped ?? 0;
 
   async function send(start: 'now' | 'runHours') {
     if (!canRun || chosen === null) return;
@@ -174,7 +178,9 @@ export function RunFilesDialog({
       return;
     }
     if (out.dryRun && !dryRun) {
+      // Nothing is active any more: read the list again so this workflow stops being offered.
       toast.error(ACTIVATE_TO_RUN);
+      reload();
       return;
     }
     onClose();
@@ -272,7 +278,8 @@ export function RunFilesDialog({
             {held > 0 && (
               <p>{`${files(held)} are already queued in another run and will be skipped`}</p>
             )}
-            {missing > 0 && <p>{`${files(missing)} can't be found and will be skipped`}</p>}
+            {notFound > 0 && <p>{`${files(notFound)} can't be found and will be skipped`}</p>}
+            {skipped > 0 && <p>{`${files(skipped)} will be skipped`}</p>}
           </div>
           {handled > 0 && chosen && (
             <label className="lib-check">
