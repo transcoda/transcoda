@@ -184,28 +184,84 @@ Colours that are not tokens are named variables at the top of `styles.css`, with
 
 - A surface has a border or a lightness step, not a shadow. No cards inside cards. Padding at least 12px inside any bordered container (chips excepted).
 
-## Slop audit
+## Audits
 
-- Date: 2026-11-20. Result: 7.5 / 10 (source audit; checks that need a rendered page not run yet).
-- Clean: no indigo or violet accent, no gradient text, no glassmorphism, no bounce easing, no decorative glows or haze, no pulsing dots, no stock or AI imagery, no card-grid boilerplate. The signature move is clear.
-- Open fixes, most important first:
-  1. **Input edges below 3:1.** `.input` uses a 1.5px `--line-strong` border, which is about 1.5:1 in dark and 1.8:1 in light. Give control edges their own token that reaches 3:1, for example #6A6770 in dark and #8A867E in light.
-  2. **Type floor and scale drift.** About 60 `font-size` declarations are at 10 or 11px, and about two thirds of all sizes are raw px instead of `--fs-*`. Raise 10px to at least 11px, and caps labels to `--fs-mono`. Add tokens for 11, 14 and 16 to 18px, and map the odd sizes (22, 26, 30, 34, 40, 64) onto the scale.
-  3. **Bold on selected.** About 11 selected or active rules change `font-weight`, for example segmented controls, listbox options, filter chips, settings nav and the versions row. This shifts the layout. Mark selection with fill, colour or an icon instead.
-  4. **Tabular figures.** Only a couple of rules set `tabular-nums`. Apply it to numeric cells in the job, library, step, plan and before/after tables, and right-align those columns.
-  5. **Reduced motion and easing.** `tokens.css` zeroes every animation with `!important`. Replace that with a duration clamp in the handoff, or keep every keyframe behind `prefers-reduced-motion: no-preference`. Add the `--ease-out` token in place of the default `ease`, and add an `:active` press state on buttons.
-  6. Replace the side-tab `inset 3px 0 0` on the current versions row with a fill or a check. Drop the glow (`drop-shadow(0 0 3px)`) on the selected edge.
-  7. Collapse the off-token radii (2, 3, 4, 5, 8, 9, 10, 14px) onto `--r-sm` and `--r-md`.
-  8. Gate hover styles behind `@media (hover: hover)`.
-  9. `.btn-danger-outline` text from 13px to 14px.
-- Not yet checked (needs a rendered page):
-  - layout defects
-  - focus hidden under the sticky bar
-  - nested cards
-  - heading order
-  - measure
-  - an axe pass on icon-only buttons
+### Slop audit (source and rendered)
+
+- Date: 2026-11-20. Result: 7.5 / 10. The source was read, then every page was rendered: desktop 1440px in dark and light, phone 390px in dark, on a local instance with synthetic media.
+- Clean: no indigo or violet accent, no gradient text, no glassmorphism, no bounce easing, no decorative glows or haze, no pulsing dots, no stock or AI imagery, no card-grid boilerplate. The signature move is clear. No console errors, no horizontal scroll at 1440 or 390, no rendered text below AA in either theme. Lighthouse accessibility scores 100 on Jobs and the editor in both themes, but it misses the first and third rendered issues below.
+- The product pages (jobs, job page, run trace) read as most distinctive. The plugin catalog, 404 and settings read as the most generic.
+
+Rendered issues, most important first:
+
+1. **Focus hidden under the top bar.** When tabbing backwards, the focused control can sit under the 69px sticky bar, for example a step row on the job page. Set `scroll-padding-top` on `html` to about 84px (the bar's height plus a gap).
+2. **Canvas opens too far out.** The editor and the run trace open at about 0.41 zoom, where node text is about 5px and the graph fills about half the canvas. Open at a readable zoom (at least 0.6), centred on the trigger.
+3. **Headings and names.**
+   - The editor has no h1.
+   - The job page jumps from h2 to h4 inside the trace.
+   - On phone, canvas nodes in the icon-only view have no accessible name. Label them from the node title.
+   - Three stat tiles show "QUEUED" but are announced as "Show Queued: 0". The accessible name should start with the visible text.
+4. **Input edges below 3:1.** Confirmed when rendered: inputs on setup, the token form and the dry-run dialog barely separate from their background.
+5. **Breadcrumb.** The job and run pages show a dangling "Jobs /". Show the current item after it.
+6. **Nested cards and generic pages.**
+   - Nested bordered boxes on four pages: the empty workflows state, the job page Result card ("Show command and log"), the plugin catalog cards, and the API token form.
+   - The plugin catalog is a stock grid of identical cards.
+   - The 404 is a default-looking warning box. Rebuild it in the empty-state language.
+7. **Jobs page detail.**
+   - The chart cards sit on different baselines.
+   - The Status column wraps "Would replace · -74%" and stacks a "Test encode" chip on every dry-run row.
+   - On phone, the filter chips clip with no scroll cue.
+8. **Small targets.**
+   - Text links of 17 to 21px in job meta, libraries, recycle and job titles.
+   - 18px canvas toggles and plus buttons, and the 24px activate switch.
+   - `.btn-sm` buttons render 36 to 40px. Confirm that their `::before` really gives a 44px hit area.
+9. Smaller points:
+   - The auth h1 has line-height 1.4. Use 1.1 to 1.2 for display type.
+   - The recycle page sets the folder path as the largest text, with the explanation below it at 12px; swap the weight.
+   - A few helper lines run to 130 to 175ch (About backups hint, catalog sources).
+
+Source issues (from reading `styles.css`), most important first:
+
+1. **Input edges below 3:1.** `.input` uses a 1.5px `--line-strong` border, which is about 1.5:1 in dark and 1.8:1 in light. Give control edges their own token that reaches 3:1, for example #6A6770 in dark and #8A867E in light.
+2. **Type floor and scale drift.** About 60 `font-size` declarations are at 10 or 11px, and about two thirds of all sizes are raw px instead of `--fs-*`. Raise 10px to at least 11px, and caps labels to `--fs-mono`. Add tokens for 11, 14 and 16 to 18px, and map the odd sizes (22, 26, 30, 34, 40, 64) onto the scale.
+3. **Bold on selected.** About 11 selected or active rules change `font-weight`, for example segmented controls, listbox options, filter chips, settings nav and the versions row. This shifts the layout. Mark selection with fill, colour or an icon instead.
+4. **Tabular figures.** Only a couple of rules set `tabular-nums`. Apply it to numeric cells in the job, library, step, plan and before/after tables, and right-align those columns.
+5. **Reduced motion and easing.** `tokens.css` zeroes every animation with `!important`. Replace that with a duration clamp in the handoff, or keep every keyframe behind `prefers-reduced-motion: no-preference`. Add the `--ease-out` token in place of the default `ease`, and add an `:active` press state on buttons.
+6. Replace the side-tab `inset 3px 0 0` on the current versions row with a fill or a check. Drop the glow (`drop-shadow(0 0 3px)`) on the selected edge.
+7. Collapse the off-token radii (2, 3, 4, 5, 8, 9, 10, 14px) onto `--r-sm` and `--r-md`.
+8. Gate hover styles behind `@media (hover: hover)`.
+9. `.btn-danger-outline` text from 13px to 14px.
+- Rendered, these source issues looked less serious than the source suggested:
+  - 10 and 11px labels read as deliberate micro-labels on desktop. They are still too small on phone.
+  - The bold-on-selected rules caused no visible shift on the nav or the filter chips.
+  - Mono figures already line up in the stat tiles.
+- Not yet covered:
+  - the activity panel and info tips
+  - a real (non-dry) run
+  - hover and `:active` states
+  - the reduced-motion swap
+  - a full keyboard pass on every page
+
+### Refactoring UI diagnostic
+
+- Date: 2026-11-20. Score: 5 / 10 (4 of 8 checks pass; the score is round(passes / 8 x 10)).
+
+| Check | Result | Evidence and fix |
+|---|---|---|
+| Hierarchy reads when blurred | Fail | In a blurred grayscale render, the lime active nav item is as heavy as the page's primary button (Libraries: nav item and "New library"; job page: nav item and "Activate it on these files"). The nine Jobs stat tiles are equal blocks with no lead. Make the active nav item a quieter fill or a lime marker on a neutral row, so the primary action is the only lime block. Let one Jobs figure lead. |
+| Works in grayscale | Pass | Kinds, verdicts and states all carry an icon and a word; nothing depends on hue. |
+| Enough white space | Pass | Pages are generous with space; the editor palette is dense but legible. Empty pages (404, a library with one poster) leave dead space. |
+| Labels quieter than values | Pass | Table headers and field labels are 11px faint mono caps; values are body text. The recycle page is the exception (path louder than its explanation). |
+| Spacing on a scale | Fail | About half of the padding, margin and gap values in `styles.css` are off the 4px grid. The most common are 10px (93), 6px (90), 14px (57), 2px (46), 18px (26) and 22px (9). The `--sp-*` tokens are used 211 times. Move these onto `--sp-*`, and add `--sp-5` (20px) if 20 earns a token. |
+| Text width constrained | Fail | Prose stays within about 65ch, but helper lines run to 130 to 175ch (About backups hint, recycle folder line, catalog sources). Cap help text at about 70ch. Paths can stay long. |
+| Contrast sufficient | Fail | All text passes AA, but input edges are about 1.5:1 in dark (see the slop audit). |
+| Shadows match elevation | Pass | One elevation, used only for floating layers (menus, tips, panels, sheets). Everything else is flat with borders and lightness steps, as Patchbay intends. |
+
+To reach 10/10:
+- fix the four failing rows: the nav-versus-primary weight, the spacing tokens, the help-text width, and the input edges
+- then rerun both audits
 
 ## Changelog
 
+- 2026-11-20: added the rendered audit (desktop dark and light, phone dark) and the Refactoring UI diagnostic.
 - 2026-11-20: first version. Documents the existing Patchbay system (no visual changes) and records the first slop and accessibility audit.
