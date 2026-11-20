@@ -14,6 +14,7 @@ import { describeError } from '../api/errors.ts';
 import { Dialog } from '../components/Dialog.tsx';
 import { Disclosure } from '../components/Disclosure.tsx';
 import { Fact } from '../components/Fact.tsx';
+import { FilePath } from '../components/FilePath.tsx';
 import { Icon } from '../components/Icon.tsx';
 import { Loading } from '../components/Loading.tsx';
 import { NotFound } from '../components/NotFound.tsx';
@@ -59,7 +60,6 @@ import { TestEncodeFile } from '../jobs/TestEncodeFile.tsx';
 import { TestOutputPanel } from '../jobs/TestOutputPanel.tsx';
 import { encodeStopped, useQueue } from '../jobs/useQueue.ts';
 import { useNodeParam } from '../jobs/useTryOnFile.ts';
-import { copyText } from '../lib/clipboard.ts';
 import { usePageTitle } from '../lib/pageTitle.ts';
 import { fmtDate } from '../lib/time.ts';
 import { usePhone } from '../lib/usePhone.ts';
@@ -348,11 +348,6 @@ function JobView({ id }: { id: string }) {
       : null;
 
   const sub = mediaSub(job.media);
-  const copyPath = async () => {
-    const result = await copyText(job.filePath);
-    if (result === 'copied') toast.success('Copied');
-    else toast.error("Couldn't copy the path");
-  };
   const showResult = Boolean(job.result) || !active;
   const failed = job.state === 'failed';
   const raw = (
@@ -466,17 +461,7 @@ function JobView({ id }: { id: string }) {
                 {sub.text}
               </p>
             ) : null}
-            <div className="job-path-row">
-              <span className="job-path">{job.filePath}</span>
-              <button
-                type="button"
-                className="btn btn-sm btn-ghost"
-                onClick={() => void copyPath()}
-              >
-                <Icon name="copy" size={14} />
-                Copy path
-              </button>
-            </div>
+            <FilePath path={job.filePath} />
             <dl className="job-facts">
               <Fact term="Library">
                 <Link href="/libraries" className="link-muted">

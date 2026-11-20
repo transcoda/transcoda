@@ -345,7 +345,10 @@ describe('LibraryFilePage', () => {
     const head = container.querySelector('.job-head') as HTMLElement;
     expect(within(head).getByText('S01E02', { selector: 'b' })).toBeTruthy();
     expect(within(head).getByText(/Jed Buys Stock/)).toBeTruthy();
-    expect(screen.getByText('/media/classic-tv/The Beverly Hillbillies S01E02.mkv')).toBeTruthy();
+    const path = '/media/classic-tv/The Beverly Hillbillies S01E02.mkv';
+    expect(screen.getByText(path)).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Show full path' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Copy path', description: path })).toBeTruthy();
     expect(container.querySelector('.poster-page')).toBeTruthy();
     expect(within(fact('Size')).getByText('700 MB')).toBeTruthy();
     expect(within(fact('Container')).getByText('mkv')).toBeTruthy();

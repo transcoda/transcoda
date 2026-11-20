@@ -8501,6 +8501,88 @@ a.nav-item.is-active .nav-count {
   overflow-wrap: anywhere;
 }
 
+/* FilePath: wide screens show the whole path (.file-path-full) beside Copy path. The short line
+   and Show full path are for phones only (below). */
+.file-path-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+
+.file-path-short,
+.file-path-toggle {
+  display: none;
+}
+
+.file-path-chevron {
+  display: inline-flex;
+  transition: transform 0.15s;
+}
+
+.file-path-toggle[aria-expanded="true"] .file-path-chevron {
+  transform: rotate(90deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .file-path-chevron {
+    transition: none;
+  }
+}
+
+/* Phones: one line, the folder cut from the left ("…(1940)/") and the file name always whole
+   (it wraps only when it alone is wider than the line). Show full path wraps the whole path in.
+   While closed the whole path stays in the accessibility tree, only visually hidden. */
+@media (max-width: 639px) {
+  /* No wrapping: a wrapping column sizes its line to the longest item, not to the page. */
+  .file-path {
+    flex-direction: column;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    gap: var(--sp-1);
+  }
+
+  .file-path:not(.is-open) .file-path-full {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .file-path:not(.is-open) .file-path-short {
+    display: flex;
+    min-width: 0;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .file-path-folder {
+    flex: 0 1 auto;
+    min-width: 2.5em;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    direction: rtl;
+    text-align: left;
+  }
+
+  .file-path-name {
+    flex: 0 0 auto;
+    max-width: calc(100% - 2.5em);
+    color: var(--text);
+    overflow-wrap: anywhere;
+  }
+
+  .file-path-toggle {
+    display: inline-flex;
+  }
+}
+
 .job-facts {
   display: flex;
   flex-wrap: wrap;
