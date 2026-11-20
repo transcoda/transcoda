@@ -472,9 +472,16 @@ describe('createMediaResolver', () => {
       },
     ) as FsOps;
     const r = createMediaResolver({ fs, log });
-    expect(await r.resolve('/lib/Show/Season 01/Show - S01E01.mkv', '/lib')).toEqual(
-      media({ kind: 'episode', title: 'Show', season: 1, episode: 1 }),
-    );
+    // No show poster key: a failed read is unknown, not "none", so a later pass looks again.
+    const { showPosterPath: _none, ...want } = media({
+      kind: 'episode',
+      title: 'Show',
+      season: 1,
+      episode: 1,
+    });
+    const got = await r.resolve('/lib/Show/Season 01/Show - S01E01.mkv', '/lib');
+    expect(got).toEqual(want);
+    expect(got).not.toHaveProperty('showPosterPath');
   });
 
   describe('episode posters: episode, then season, then show', () => {
@@ -603,6 +610,48 @@ describe('createMediaResolver', () => {
       expect(got.showPosterPath).toBeNull();
     });
 
+    it('a show folder that cannot be listed is unreadable, never none, and resolve leaves the key out', async () => {
+      const files: Record<string, Entry> = {
+        [inSeason]: 'video',
+        [`${show}/poster.jpg`]: 'img',
+      };
+      const failing = () =>
+        createMediaResolver({ fs: fakeFs(files, { readdirFails: [show] }).fs, log });
+      expect(await failing().showPoster(inSeason, '/lib')).toEqual({ unreadable: true });
+      const got = await failing().resolve(inSeason, '/lib');
+      expect(got.kind).toBe('episode');
+      expect(got).not.toHaveProperty('showPosterPath');
+      // The library root itself gone: unreadable too.
+      const gone = createMediaResolver({
+        fs: fakeFs({}, { readdirFails: ['/lib', show, season] }).fs,
+        log,
+      });
+      expect(await gone.showPoster(inSeason, '/lib')).toEqual({ unreadable: true });
+      // Readable with no poster: none.
+      const none = createMediaResolver({ fs: fakeFs({ [inSeason]: 'video' }).fs, log });
+      expect(await none.showPoster(inSeason, '/lib')).toEqual({ path: null });
+    });
+
+    it('a poster candidate whose check fails, or a tvshow.nfo that cannot be read, is unreadable', async () => {
+      const { fs } = fakeFs({ [inSeason]: 'video', [`${show}/poster.jpg`]: 'img' });
+      const lstatFails: FsOps = {
+        ...fs,
+        lstat: async () => {
+          throw new Error('EIO');
+        },
+      };
+      expect(
+        await createMediaResolver({ fs: lstatFails, log }).showPoster(inSeason, '/lib'),
+      ).toEqual({ unreadable: true });
+      const nfoFails = fakeFs({
+        [inSeason]: 'video',
+        [`${season}/tvshow.nfo`]: { error: 'EACCES' },
+      });
+      expect(
+        await createMediaResolver({ fs: nfoFails.fs, log }).showPoster(inSeason, '/lib'),
+      ).toEqual({ unreadable: true });
+    });
+
     it('showPoster gives what resolve gives, reading no episode sidecar and each folder once', async () => {
       const files: Record<string, Entry> = {
         [`${show}/tvshow.nfo`]: '<tvshow><title>The Show</title></tvshow>',
@@ -614,9 +663,9 @@ describe('createMediaResolver', () => {
       const { fs, calls } = fakeFs(files);
       const r = createMediaResolver({ fs, log });
       for (const n of [1, 2, 3]) {
-        expect(await r.showPoster(`${season}/The Show - S03E0${n}.mkv`, '/lib')).toBe(
-          `${show}/folder.jpg`,
-        );
+        expect(await r.showPoster(`${season}/The Show - S03E0${n}.mkv`, '/lib')).toEqual({
+          path: `${show}/folder.jpg`,
+        });
       }
       expect(calls.filter((c) => c.op === 'readText').map((c) => basename(c.path))).toEqual([
         'tvshow.nfo',
@@ -636,7 +685,7 @@ describe('createMediaResolver', () => {
       );
       // A movie-like flat folder in the root, or a file in the root itself: none.
       const root = createMediaResolver({ fs: fakeFs({ '/lib/S01E01.mkv': 'video' }).fs, log });
-      expect(await root.showPoster('/lib/S01E01.mkv', '/lib')).toBeNull();
+      expect(await root.showPoster('/lib/S01E01.mkv', '/lib')).toEqual({ path: null });
     });
 
     it('a movie never gets one', async () => {

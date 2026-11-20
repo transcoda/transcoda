@@ -18,10 +18,14 @@ export interface MediaResolver {
   /**
    * The show poster `resolve` gives an episode at `path` (its `showPosterPath`), without reading
    * the episode's own sidecars: only the folders, tvshow.nfo and the poster check, each cached per
-   * folder. Never throws.
+   * folder. `unreadable` when a folder, tvshow.nfo or poster candidate it needed could not be read
+   * (an unmounted share, a permission): the answer is then unknown, never "none". Never throws.
    */
-  showPoster(path: string, libraryRoot: string): Promise<string | null>;
+  showPoster(path: string, libraryRoot: string): Promise<ShowPosterLookup>;
 }
+
+/** A show poster lookup: the poster, `null` for a show folder read in full that has none, or unknown. */
+export type ShowPosterLookup = { path: string | null } | { unreadable: true };
 
 /**
  * A folder's entries: the real names, and lower-cased name → first real name for a
@@ -50,6 +54,11 @@ export function createMediaResolver(deps: { fs: FsOps; log: Logger }): MediaReso
   const listings = new Map<string, Promise<Listing>>();
   const shows = new Map<string, Promise<Nfo | null>>();
   const showPosters = new Map<string, Promise<string | null>>();
+  // Folders whose listing, tvshow.nfo read or a poster candidate's check failed (kept with the
+  // caches, so a cached answer still says it is incomplete).
+  const unlistable = new Set<string>();
+  const nfoUnreadable = new Set<string>();
+  const posterUncheckable = new Set<string>();
 
   const debug = (msg: string, path: string, err: unknown): void => {
     log.debug?.({ msg, file: basename(path), why: why(err) });
@@ -72,6 +81,7 @@ export function createMediaResolver(deps: { fs: FsOps; log: Logger }): MediaReso
           return { names, byLower };
         } catch (err) {
           debug('could not list a folder for media info', dir, err);
+          unlistable.add(dir);
           return null;
         }
       })();
@@ -113,6 +123,7 @@ export function createMediaResolver(deps: { fs: FsOps; log: Logger }): MediaReso
       return readNfo(await fs.readText(p, NFO_MAX_BYTES));
     } catch (err) {
       debug('could not read a .nfo file', p, err);
+      nfoUnreadable.add(dir);
       return null;
     }
   };
@@ -143,6 +154,7 @@ export function createMediaResolver(deps: { fs: FsOps; log: Logger }): MediaReso
             if ((await isOwnRealPath(p, root)) && (await fs.lstat(p)).isFile()) return p;
           } catch (err) {
             debug('could not check a poster image', p, err);
+            posterUncheckable.add(dir);
           }
         }
       }
@@ -168,14 +180,23 @@ export function createMediaResolver(deps: { fs: FsOps; log: Logger }): MediaReso
   const showFolderOf = async (
     path: string,
     root: string,
-  ): Promise<{ show: Nfo | null; showFolder: string | null }> => {
+  ): Promise<{ show: Nfo | null; showFolder: string | null; complete: boolean }> => {
     const dir = dirname(path);
+    // Incomplete when a folder it looked in could not be listed or its tvshow.nfo not read: the
+    // show folder could then be another one.
+    let complete = false;
     const found = await step('could not read tvshow.nfo', path, async () => {
+      let ok = true;
       for (const folder of [dir, dirname(dir)]) {
         if (!isWithin(folder, root)) continue;
         const nfo = await showAt(folder, root);
-        if (nfo !== null) return { nfo, folder };
+        if (unlistable.has(folder) || nfoUnreadable.has(folder)) ok = false;
+        if (nfo !== null) {
+          complete = ok;
+          return { nfo, folder };
+        }
       }
+      complete = ok;
       return null;
     });
     let showFolder: string | null = found?.folder ?? null;
@@ -187,13 +208,36 @@ export function createMediaResolver(deps: { fs: FsOps; log: Logger }): MediaReso
         showFolder = dir;
       }
     }
-    return { show: found?.nfo ?? null, showFolder };
+    return { show: found?.nfo ?? null, showFolder, complete };
   };
 
-  /** The show folder's own poster; null without a show folder or a poster. Never throws. */
-  const showPosterOf = async (path: string, showFolder: string | null, root: string) => {
-    if (showFolder === null) return null;
-    return step('could not find a show poster', path, () => showPosterIn(showFolder, root));
+  /**
+   * The show folder's own poster: null without a show folder or a poster; unreadable when the
+   * show folder (or the folders that placed it) could not be read in full. Never throws.
+   */
+  const showPosterOf = async (
+    path: string,
+    found: { showFolder: string | null; complete: boolean },
+    root: string,
+  ): Promise<ShowPosterLookup> => {
+    const { showFolder } = found;
+    let threw = false;
+    const poster =
+      showFolder === null
+        ? null
+        : await step('could not find a show poster', path, () =>
+            showPosterIn(showFolder, root).catch((err) => {
+              threw = true;
+              throw err;
+            }),
+          );
+    // A poster found is there whatever else failed; "none" needs every read to have worked.
+    if (poster !== null) return { path: poster };
+    const incomplete =
+      threw ||
+      !found.complete ||
+      (showFolder !== null && (unlistable.has(showFolder) || posterUncheckable.has(showFolder)));
+    return incomplete ? { unreadable: true } : { path: null };
   };
 
   /** A step that fails leaves the earlier value. */
@@ -208,8 +252,7 @@ export function createMediaResolver(deps: { fs: FsOps; log: Logger }): MediaReso
 
   return {
     async showPoster(path, libraryRoot) {
-      const { showFolder } = await showFolderOf(path, libraryRoot);
-      return showPosterOf(path, showFolder, libraryRoot);
+      return showPosterOf(path, await showFolderOf(path, libraryRoot), libraryRoot);
     },
 
     async resolve(path, libraryRoot) {
@@ -249,7 +292,8 @@ export function createMediaResolver(deps: { fs: FsOps; log: Logger }): MediaReso
       }
 
       if (media.kind === 'episode') {
-        const { show, showFolder } = await showFolderOf(path, root);
+        const placed = await showFolderOf(path, root);
+        const { show, showFolder } = placed;
         if (show !== null && (show.title !== null || show.year !== null)) {
           media.source = 'sidecar';
           if (show.title !== null) media.title = show.title;
@@ -278,7 +322,9 @@ export function createMediaResolver(deps: { fs: FsOps; log: Logger }): MediaReso
           return showPosterIn(showFolder, root);
         });
         // The show's own poster too, for the show card (cached per folder: no extra lookups).
-        media.showPosterPath = await showPosterOf(path, showFolder, root);
+        // Left out when a read failed, so the media pass looks it up again later.
+        const showPoster = await showPosterOf(path, placed, root);
+        if ('path' in showPoster) media.showPosterPath = showPoster.path;
         return media;
       }
 

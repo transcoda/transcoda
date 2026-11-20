@@ -541,7 +541,7 @@ describe('catch-up media info', () => {
         resolved.push(path);
         return parseFileName(path, libraryRoot);
       },
-      showPoster: async () => null,
+      showPoster: async () => ({ path: null }),
     };
     const service = new QueueService({
       db,

@@ -17,7 +17,7 @@ import { createTestDb } from '../db/test-db.ts';
 import type { Logger } from '../logger.ts';
 import { tempDir } from './fixtures.ts';
 import { type FsOps, nodeFsOps } from './fs-ops.ts';
-import { createMediaResolver, type MediaResolver } from './media-info.ts';
+import { createMediaResolver, type MediaResolver, type ShowPosterLookup } from './media-info.ts';
 import { MediaPass } from './media-pass.ts';
 
 const now = new Date('2026-01-01T00:00:00.000Z');
@@ -109,7 +109,7 @@ const mediaOf = (id: string): StoredJobMedia | null =>
 
 const fake = (fn: (p: string) => Promise<StoredJobMedia> = async (p) => media(p)) => ({
   resolve: vi.fn(fn),
-  showPoster: vi.fn(async () => null),
+  showPoster: vi.fn(async (): Promise<ShowPosterLookup> => ({ path: null })),
 });
 const pass = (resolver: MediaResolver = fake(), fs: FsOps = nodeFsOps, batch?: number) =>
   new MediaPass({
@@ -264,6 +264,65 @@ describe('show posters of episode media resolved before show posters', () => {
     resolver.showPoster.mockClear();
     await pass(resolver).run();
     expect(resolver.showPoster).not.toHaveBeenCalled();
+  });
+
+  it('a show folder that cannot be read keeps the key missing; the next pass with it readable writes the path', async () => {
+    const root = await realpath(await tempDir('media-pass-share-'));
+    const show = join(root, 'The Beverly Hillbillies (1962)');
+    await mkdir(join(show, 'Season 01'), { recursive: true });
+    await writeFile(join(show, 'poster.jpg'), 'img');
+    const path = join(show, 'Season 01', 'S01E01.mkv');
+    await writeFile(path, 'x');
+    library('l2', root);
+    file('e1', 'l2', path);
+    job('j-e1', 'e1', 1, oldEpisode(null));
+    const eio = (p: string) =>
+      Object.assign(new Error(`EIO: i/o error, scandir '${p}'`), { code: 'EIO' });
+    const showDown: FsOps = {
+      ...nodeFsOps,
+      readdir: async (p) => {
+        if (p === show) throw eio(p);
+        return nodeFsOps.readdir(p);
+      },
+    };
+    const make = (fs: FsOps) =>
+      new MediaPass({ db, fs, log, resolver: () => createMediaResolver({ fs, log }) });
+    await make(showDown).run();
+    expect(mediaOf('j-e1')).not.toHaveProperty('showPosterPath');
+    expect(episodesWithoutShowPoster(db).map((j) => j.jobId)).toEqual(['j-e1']);
+    const warns = logs.filter(
+      (l) => typeof l === 'object' && String(l.msg).includes('could not be read'),
+    );
+    expect(warns).toEqual([expect.objectContaining({ jobs: 1, unreachableLibraries: 0 })]);
+
+    await make(nodeFsOps).run();
+    expect(mediaOf('j-e1')?.showPosterPath).toBe(join(show, 'poster.jpg'));
+  });
+
+  it('a library root that cannot be listed skips its episodes this pass, logging once', async () => {
+    const root = await realpath(await tempDir('media-pass-unmounted-'));
+    library('l2', root);
+    for (const n of [1, 2, 3]) {
+      file(`e${n}`, 'l2', join(root, 'Show', 'Season 01', `S01E0${n}.mkv`));
+      job(`j-e${n}`, `e${n}`, n, oldEpisode(null));
+    }
+    const unmounted: FsOps = {
+      ...nodeFsOps,
+      readdir: async (p) => {
+        if (p === root || p.startsWith(`${root}/`)) {
+          throw Object.assign(new Error(`ENOENT: ${p}`), { code: 'ENOENT' });
+        }
+        return nodeFsOps.readdir(p);
+      },
+    };
+    const resolver = fake();
+    await new MediaPass({ db, fs: unmounted, log, resolver: () => resolver }).run();
+    expect(resolver.showPoster).not.toHaveBeenCalled();
+    for (const n of [1, 2, 3]) expect(mediaOf(`j-e${n}`)).not.toHaveProperty('showPosterPath');
+    const warns = logs.filter(
+      (l) => typeof l === 'object' && String(l.msg).includes('could not be read'),
+    );
+    expect(warns).toEqual([expect.objectContaining({ jobs: 0, unreachableLibraries: 1 })]);
   });
 
   it('media the pass fills already carries the show poster, so it is not looked up again', async () => {

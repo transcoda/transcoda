@@ -106,8 +106,9 @@ export class MediaPass {
 
   /**
    * One pass: reads the latest jobs lacking media once, then works through that list a batch at a
-   * time; then the same for episode media that never had its show poster looked up (each episode
-   * once: the key is written, null when the show has none, so later passes skip it). Jobs queued
+   * time; then the same for episode media that never had its show poster looked up (the key is
+   * written once the show folder was read in full, null when it has none, so later passes skip it;
+   * a read error leaves it missing for a later pass, logged once per pass). Jobs queued
    * during the pass are left to the pass their kick runs. `filled`: jobs given media.
    */
   async run(): Promise<{ filled: number }> {
@@ -120,11 +121,43 @@ export class MediaPass {
     );
     if (filled > 0) log.info({ msg: 'media pass: filled job(s)', filled });
     if (this.stopped) return { filled };
-    const showPosters = await this.inBatches(episodesWithoutShowPoster(db), async (j) =>
-      setShowPosterPath(db, j.jobId, await resolver.showPoster(j.path, j.libraryRoot)),
-    );
+    // A library whose root cannot be listed (an unmounted share) is skipped for this pass, and a
+    // show folder that cannot be read leaves the key missing: both are looked up again later.
+    const reachable = new Map<string, Promise<boolean>>();
+    const rootReachable = (root: string): Promise<boolean> => {
+      let r = reachable.get(root);
+      if (r === undefined) {
+        r = fs.readdir(root).then(
+          () => true,
+          () => false,
+        );
+        reachable.set(root, r);
+      }
+      return r;
+    };
+    const unreachable = new Set<string>();
+    let unreadable = 0;
+    const showPosters = await this.inBatches(episodesWithoutShowPoster(db), async (j) => {
+      if (!(await rootReachable(j.libraryRoot))) {
+        unreachable.add(j.libraryRoot);
+        return false;
+      }
+      const found = await resolver.showPoster(j.path, j.libraryRoot);
+      if (!('path' in found)) {
+        unreadable++;
+        return false;
+      }
+      return setShowPosterPath(db, j.jobId, found.path);
+    });
     if (showPosters > 0) {
       log.info({ msg: 'media pass: looked up show posters', jobs: showPosters });
+    }
+    if (unreadable > 0 || unreachable.size > 0) {
+      log.warn({
+        msg: 'media pass: some show folders could not be read; their show posters are looked up on a later pass',
+        jobs: unreadable,
+        unreachableLibraries: unreachable.size,
+      });
     }
     return { filled };
   }
