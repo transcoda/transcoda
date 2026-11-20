@@ -5,7 +5,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Database } from '../db/open.ts';
 import { insertJob, parseMedia, upsertFile } from '../db/repos/jobs.ts';
 import { insertLibrary, softDeleteLibrary } from '../db/repos/libraries.ts';
-import { latestJobsWithoutMedia, setJobMedia } from '../db/repos/library-files.ts';
+import {
+  episodesWithoutShowPoster,
+  latestJobsWithoutMedia,
+  setJobMedia,
+  setShowPosterPath,
+} from '../db/repos/library-files.ts';
 import { insertRun } from '../db/repos/runs.ts';
 import { insertWorkflow } from '../db/repos/workflows.ts';
 import { createTestDb } from '../db/test-db.ts';
@@ -13,7 +18,7 @@ import type { Logger } from '../logger.ts';
 import type { EngineEvent } from './events.ts';
 import { tempDir } from './fixtures.ts';
 import { type FsOps, nodeFsOps } from './fs-ops.ts';
-import { createMediaResolver, type MediaResolver } from './media-info.ts';
+import { createMediaResolver, type MediaResolver, type ShowPosterLookup } from './media-info.ts';
 import { MediaPass } from './media-pass.ts';
 
 const now = new Date('2026-01-01T00:00:00.000Z');
@@ -105,6 +110,7 @@ const mediaOf = (id: string): StoredJobMedia | null =>
 
 const fake = (fn: (p: string) => Promise<StoredJobMedia> = async (p) => media(p)) => ({
   resolve: vi.fn(fn),
+  showPoster: vi.fn(async (): Promise<ShowPosterLookup> => ({ path: null })),
 });
 const pass = (resolver: MediaResolver = fake(), fs: FsOps = nodeFsOps, batch?: number) =>
   new MediaPass({
@@ -177,6 +183,155 @@ describe('setJobMedia', () => {
     expect(mediaOf('none')).toEqual(M2);
     expect(setJobMedia(db, 'none', M)).toBe(false);
     expect(mediaOf('none')).toEqual(M2);
+  });
+});
+
+describe('show posters of episode media resolved before show posters', () => {
+  /** Episode media as 0.6.0 stored it: a season poster and no `showPosterPath` key. */
+  const oldEpisode = (posterPath: string | null): StoredJobMedia => ({
+    kind: 'episode',
+    title: 'The Beverly Hillbillies',
+    year: 1962,
+    season: 1,
+    episode: 1,
+    episodeTitle: null,
+    source: 'filename',
+    posterPath,
+  });
+
+  it('episodesWithoutShowPoster lists the media job of present episode files lacking the key', () => {
+    file('f1', 'l1', '/media/tv/a.mkv');
+    job('a-media', 'f1', 1, oldEpisode(null));
+    job('a-latest', 'f1', 2); // no media: the listing shows the older job's
+    file('f2', 'l1', '/media/tv/b.mkv');
+    job('b', 'f2', 3, { ...oldEpisode(null), showPosterPath: null }); // looked up: none
+    file('f3', 'l1', '/media/tv/c.mkv');
+    job('c', 'f3', 4, M); // a movie
+    file('f4', 'l1', '/media/tv/d.mkv');
+    job('d', 'f4', 5, oldEpisode(null));
+    db.prepare("UPDATE files SET gone_at = '2026-01-02T00:00:00.000Z' WHERE id = 'f4'").run();
+    expect(episodesWithoutShowPoster(db)).toEqual([
+      { jobId: 'a-media', libraryId: 'l1', path: '/media/tv/a.mkv', libraryRoot: '/media/tv' },
+    ]);
+  });
+
+  it('setShowPosterPath only adds the key, keeping the rest, and never overwrites it', () => {
+    file('f1', 'l1', '/media/tv/a.mkv');
+    job('j', 'f1', 1, oldEpisode('/media/tv/season01-poster.jpg'));
+    job('none', 'f1', 2);
+    expect(setShowPosterPath(db, 'j', '/media/tv/poster.jpg')).toBe(true);
+    expect(mediaOf('j')).toEqual({
+      ...oldEpisode('/media/tv/season01-poster.jpg'),
+      showPosterPath: '/media/tv/poster.jpg',
+    });
+    expect(setShowPosterPath(db, 'j', null)).toBe(false);
+    expect(mediaOf('j')?.showPosterPath).toBe('/media/tv/poster.jpg');
+    expect(setShowPosterPath(db, 'none', null)).toBe(false);
+    expect(mediaOf('none')).toBeNull();
+  });
+
+  it('a pass looks each one up once from the folders (a show with none gets null), and the next pass has nothing to do', async () => {
+    const root = await realpath(await tempDir('media-pass-show-'));
+    const withPoster = join(root, 'The Beverly Hillbillies (1962)');
+    const without = join(root, 'Popeye (1933)');
+    for (const dir of [join(withPoster, 'Season 01'), join(without, 'Season 01')]) {
+      await mkdir(dir, { recursive: true });
+    }
+    await writeFile(join(withPoster, 'poster.jpg'), 'img');
+    await writeFile(join(withPoster, 'season01-poster.jpg'), 'img');
+    library('l2', root);
+    const eps = [
+      ['e1', join(withPoster, 'Season 01', 'S01E01.mkv')],
+      ['e2', join(withPoster, 'Season 01', 'S01E02.mkv')],
+      ['p1', join(without, 'Season 01', 'S01E01.mkv')],
+    ] as const;
+    for (const [id, path] of eps) {
+      await writeFile(path, 'x');
+      file(id, 'l2', path);
+      job(`j-${id}`, id, 1, oldEpisode(join(withPoster, 'season01-poster.jpg')));
+    }
+    const real = createMediaResolver({ fs: nodeFsOps, log });
+    const resolver = { resolve: vi.fn(real.resolve), showPoster: vi.fn(real.showPoster) };
+    expect(await pass(resolver).run()).toEqual({ filled: 0 });
+    expect(resolver.resolve).not.toHaveBeenCalled();
+    expect(resolver.showPoster).toHaveBeenCalledTimes(3);
+    expect(mediaOf('j-e1')).toMatchObject({
+      posterPath: join(withPoster, 'season01-poster.jpg'),
+      showPosterPath: join(withPoster, 'poster.jpg'),
+    });
+    expect(mediaOf('j-e2')?.showPosterPath).toBe(join(withPoster, 'poster.jpg'));
+    expect(mediaOf('j-p1')?.showPosterPath).toBeNull();
+    expect(logs).toContainEqual({ msg: 'media pass: looked up show posters', jobs: 3 });
+    resolver.showPoster.mockClear();
+    await pass(resolver).run();
+    expect(resolver.showPoster).not.toHaveBeenCalled();
+  });
+
+  it('a show folder that cannot be read keeps the key missing; the next pass with it readable writes the path', async () => {
+    const root = await realpath(await tempDir('media-pass-share-'));
+    const show = join(root, 'The Beverly Hillbillies (1962)');
+    await mkdir(join(show, 'Season 01'), { recursive: true });
+    await writeFile(join(show, 'poster.jpg'), 'img');
+    const path = join(show, 'Season 01', 'S01E01.mkv');
+    await writeFile(path, 'x');
+    library('l2', root);
+    file('e1', 'l2', path);
+    job('j-e1', 'e1', 1, oldEpisode(null));
+    const eio = (p: string) =>
+      Object.assign(new Error(`EIO: i/o error, scandir '${p}'`), { code: 'EIO' });
+    const showDown: FsOps = {
+      ...nodeFsOps,
+      readdir: async (p) => {
+        if (p === show) throw eio(p);
+        return nodeFsOps.readdir(p);
+      },
+    };
+    const make = (fs: FsOps) =>
+      new MediaPass({ db, fs, log, resolver: () => createMediaResolver({ fs, log }) });
+    await make(showDown).run();
+    expect(mediaOf('j-e1')).not.toHaveProperty('showPosterPath');
+    expect(episodesWithoutShowPoster(db).map((j) => j.jobId)).toEqual(['j-e1']);
+    const warns = logs.filter(
+      (l) => typeof l === 'object' && String(l.msg).includes('could not be read'),
+    );
+    expect(warns).toEqual([expect.objectContaining({ jobs: 1, unreachableLibraries: 0 })]);
+
+    await make(nodeFsOps).run();
+    expect(mediaOf('j-e1')?.showPosterPath).toBe(join(show, 'poster.jpg'));
+  });
+
+  it('a library root that cannot be listed skips its episodes this pass, logging once', async () => {
+    const root = await realpath(await tempDir('media-pass-unmounted-'));
+    library('l2', root);
+    for (const n of [1, 2, 3]) {
+      file(`e${n}`, 'l2', join(root, 'Show', 'Season 01', `S01E0${n}.mkv`));
+      job(`j-e${n}`, `e${n}`, n, oldEpisode(null));
+    }
+    const unmounted: FsOps = {
+      ...nodeFsOps,
+      readdir: async (p) => {
+        if (p === root || p.startsWith(`${root}/`)) {
+          throw Object.assign(new Error(`ENOENT: ${p}`), { code: 'ENOENT' });
+        }
+        return nodeFsOps.readdir(p);
+      },
+    };
+    const resolver = fake();
+    await new MediaPass({ db, fs: unmounted, log, resolver: () => resolver }).run();
+    expect(resolver.showPoster).not.toHaveBeenCalled();
+    for (const n of [1, 2, 3]) expect(mediaOf(`j-e${n}`)).not.toHaveProperty('showPosterPath');
+    const warns = logs.filter(
+      (l) => typeof l === 'object' && String(l.msg).includes('could not be read'),
+    );
+    expect(warns).toEqual([expect.objectContaining({ jobs: 0, unreachableLibraries: 1 })]);
+  });
+
+  it('media the pass fills already carries the show poster, so it is not looked up again', async () => {
+    file('f1', 'l1', '/media/tv/a.mkv');
+    job('j', 'f1', 1);
+    const resolver = fake(async () => ({ ...oldEpisode(null), showPosterPath: null }));
+    expect(await pass(resolver).run()).toEqual({ filled: 1 });
+    expect(resolver.showPoster).not.toHaveBeenCalled();
   });
 });
 
@@ -538,5 +693,46 @@ describe('MediaPass events', () => {
     expect(mediaOf('j0')).not.toBeNull();
     expect(mediaOf('j2')).toBeNull();
     expect(events).toEqual([{ type: 'library.changed', libraryId: 'l1' }]);
+  });
+
+  it('tells the library a show poster was written to, and nothing for a show with none', async () => {
+    const root = await realpath(await tempDir('media-pass-show-event-'));
+    const other = await realpath(await tempDir('media-pass-show-event-'));
+    library('l2', root);
+    library('l3', other);
+    const episode: StoredJobMedia = {
+      kind: 'episode',
+      title: 'The Beverly Hillbillies',
+      year: 1962,
+      season: 1,
+      episode: 1,
+      episodeTitle: null,
+      source: 'filename',
+      posterPath: null,
+    };
+    file('e1', 'l2', join(root, 'a.mkv'));
+    job('j-e1', 'e1', 1, episode);
+    file('e2', 'l3', join(other, 'b.mkv'));
+    job('j-e2', 'e2', 2, episode);
+    const resolver = {
+      resolve: vi.fn(async (p: string) => media(p)),
+      showPoster: vi.fn(
+        async (p: string): Promise<ShowPosterLookup> => ({
+          path: p.endsWith('a.mkv') ? join(root, 'poster.jpg') : null,
+        }),
+      ),
+    };
+    const { mp, events } = watched({ resolver });
+    expect(await mp.run()).toEqual({ filled: 0 });
+    expect(mediaOf('j-e1')?.showPosterPath).toBe(join(root, 'poster.jpg'));
+    expect(mediaOf('j-e2')?.showPosterPath).toBeNull();
+    // Both writes changed a row (null is a stored answer too), so both libraries hear of it.
+    expect(events).toEqual(
+      expect.arrayContaining([
+        { type: 'library.changed', libraryId: 'l2' },
+        { type: 'library.changed', libraryId: 'l3' },
+      ]),
+    );
+    expect(events).toHaveLength(2);
   });
 });

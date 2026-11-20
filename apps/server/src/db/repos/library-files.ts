@@ -58,7 +58,8 @@ export interface LatestJobScope {
  *   both NULL when no job of the file has media.
  *
  * Callers append `, more AS (…)` or a `SELECT` and bind `params` (named, merged with their own).
- * The window reads each file's jobs through `jobs_file_queued`.
+ * The latest job is the stored `files.latest_job_id` (migration 21 keeps it current); only a file
+ * whose latest job has no media looks further, newest first through `jobs_file_queued`.
  */
 export function latestJobPerFileSql(scope: LatestJobScope): {
   sql: string;
@@ -71,26 +72,22 @@ export function latestJobPerFileSql(scope: LatestJobScope): {
     params.latestLibraryId = scope.libraryId;
   }
   if (scope.fileId !== undefined) {
-    where.push('j.file_id = @latestFileId');
+    where.push('f.id = @latestFileId');
     params.latestFileId = scope.fileId;
   }
-  const sql = `WITH ranked AS (
-  SELECT j.id, j.file_id, j.media,
-    ROW_NUMBER() OVER (PARTITION BY j.file_id ORDER BY
-      (j.dry_run = 0 AND j.state NOT IN ('skipped','already_processed','cancelled')) DESC,
-      j.queued_at DESC, j.rowid DESC) AS rn,
-    FIRST_VALUE(j.id) OVER by_media AS m_id,
-    FIRST_VALUE(j.media) OVER by_media AS m_media
-  FROM jobs j JOIN files f ON f.id = j.file_id
+  const sql = `WITH latest_ids AS (
+  SELECT f.id AS file_id, lj.id AS latest_id, lj.media AS latest_media,
+    CASE WHEN lj.media IS NOT NULL THEN lj.id ELSE
+      (SELECT m.id FROM jobs m WHERE m.file_id = f.id AND m.media IS NOT NULL
+       ORDER BY m.queued_at DESC, m.rowid DESC LIMIT 1)
+    END AS media_id
+  FROM files f JOIN jobs lj ON lj.id = f.latest_job_id
   ${where.length > 0 ? `WHERE ${where.join(' AND ')}` : ''}
-  WINDOW by_media AS (PARTITION BY j.file_id ORDER BY
-    (j.media IS NOT NULL) DESC, j.queued_at DESC, j.rowid DESC)
 ),
 latest AS (
-  SELECT file_id, id AS latest_id, media AS latest_media,
-    CASE WHEN media IS NOT NULL THEN id WHEN m_media IS NOT NULL THEN m_id END AS media_id,
-    COALESCE(media, m_media) AS media
-  FROM ranked WHERE rn = 1
+  SELECT li.file_id, li.latest_id, li.latest_media, li.media_id,
+    COALESCE(li.latest_media, mj.media) AS media
+  FROM latest_ids li LEFT JOIN jobs mj ON mj.id = li.media_id
 )`;
   return { sql, params };
 }
@@ -130,6 +127,60 @@ LIMIT @limit`,
     path: r.path,
     libraryRoot: r.library_root,
   }));
+}
+
+/**
+ * The media jobs (as {@link latestJobPerFileSql} defines them: what the listing shows) of live
+ * libraries' present files whose stored media is an episode that has never had its show poster
+ * looked up (no `showPosterPath` key: resolved before show posters), oldest first.
+ */
+export function episodesWithoutShowPoster(
+  db: Database,
+  limit?: number,
+): Array<{ jobId: string; libraryId: string; path: string; libraryRoot: string }> {
+  const latest = latestJobPerFileSql({});
+  const rows = db
+    .prepare(
+      `${latest.sql}
+SELECT lt.media_id AS job_id, f.library_id AS library_id, f.path AS path,
+  l.path AS library_root
+FROM latest lt
+JOIN files f ON f.id = lt.file_id
+JOIN libraries l ON l.id = f.library_id AND l.deleted_at IS NULL
+JOIN jobs j ON j.id = lt.media_id
+WHERE f.gone_at IS NULL AND json_valid(lt.media)
+  AND json_extract(lt.media, '$.kind') = 'episode'
+  AND json_type(lt.media, '$.showPosterPath') IS NULL
+ORDER BY j.queued_at, j.rowid
+LIMIT @limit`,
+    )
+    .all({ ...latest.params, limit: limit ?? -1 }) as Array<{
+    job_id: string;
+    library_id: string;
+    path: string;
+    library_root: string;
+  }>;
+  return rows.map((r) => ({
+    jobId: r.job_id,
+    libraryId: r.library_id,
+    path: r.path,
+    libraryRoot: r.library_root,
+  }));
+}
+
+/**
+ * Adds `showPosterPath` (a path, or null for none) to the job's stored media, only while the key
+ * is still missing; false when the media is gone, not JSON or already has it.
+ */
+export function setShowPosterPath(db: Database, jobId: string, path: string | null): boolean {
+  return (
+    db
+      .prepare(
+        `UPDATE jobs SET media = json_set(media, '$.showPosterPath', ?)
+         WHERE id = ? AND json_valid(media) AND json_type(media, '$.showPosterPath') IS NULL`,
+      )
+      .run(path, jobId).changes > 0
+  );
 }
 
 /** Writes `media` only where the job's cell is still NULL; false when it already had some. */
@@ -413,16 +464,23 @@ export interface OutcomeCounts {
   failed: number;
   other: number;
 }
-/** One file's poster reference: the media job's id (else the latest job's) and its media. */
+/**
+ * One file's poster reference: the media job's id (else the latest job's) and its media. `of:
+ * 'show'`: the image is that media's `showPosterPath` (the show's own poster), not `posterPath`.
+ */
 export interface PosterRef {
   jobId: string;
   media: StoredJobMedia;
+  of?: 'show';
 }
 export interface ShowGroup {
   key: string;
   title: string;
   year: number | null;
-  /** Null when no job of any episode has media. */
+  /**
+   * The show's own poster when an episode's media has one (`of: 'show'`), else the group's first
+   * episode poster as for a season; null when no job of any episode has media.
+   */
   poster: PosterRef | null;
   episodes: number;
   seasons: number;
@@ -476,7 +534,8 @@ const TAGGED_SQL = `tagged AS (
       WHEN latest_state = 'failed' THEN 'failed'
       ELSE 'other'
     END AS outcome,
-    (json_extract(media_json, '$.posterPath') IS NOT NULL) AS has_poster
+    (json_extract(media_json, '$.posterPath') IS NOT NULL) AS has_poster,
+    (json_extract(media_json, '$.showPosterPath') IS NOT NULL) AS has_show_poster
   FROM listed l
   WHERE gone_at IS NULL
 )`;
@@ -494,6 +553,12 @@ const GROUP_AGG_SQL = `COUNT(*) AS episodes,
     MAX(CASE WHEN prn = 1 THEN media END) AS poster_media`;
 
 const POSTER_ORDER = 'has_poster DESC, season IS NULL, season, episode IS NULL, episode, path';
+/** A show card's own poster: the first episode (in season order) whose media names the show's. */
+const SHOW_POSTER_ORDER =
+  'has_show_poster DESC, season IS NULL, season, episode IS NULL, episode, path';
+/** The show-poster columns of a show group (`srn` ranks by {@link SHOW_POSTER_ORDER}). */
+const SHOW_POSTER_AGG_SQL = `MAX(CASE WHEN srn = 1 AND has_show_poster THEN media_id END) AS show_poster_id,
+    MAX(CASE WHEN srn = 1 AND has_show_poster THEN media END) AS show_poster_media`;
 
 interface DbGroup {
   title: string;
@@ -513,6 +578,15 @@ interface DbGroup {
 function posterOf(id: string | null, media: string | null): PosterRef | null {
   const stored = parseMedia(media);
   return id !== null && stored ? { jobId: id, media: stored } : null;
+}
+
+/** The show's own poster when one is named, else the group's episode poster. */
+function showPosterOf(
+  g: DbGroup & { show_poster_id: string | null; show_poster_media: string | null },
+): PosterRef | null {
+  const own = posterOf(g.show_poster_id, g.show_poster_media);
+  if (typeof own?.media.showPosterPath === 'string') return { ...own, of: 'show' };
+  return posterOf(g.poster_id, g.poster_media);
 }
 
 const outcomesOf = (g: DbGroup): OutcomeCounts => ({
@@ -541,15 +615,17 @@ export function listTitles(
   params.offset = Math.max(0, q.offset);
   const sql = `${latest.sql}, ${LISTED_SQL}, ${TAGGED_SQL},
     grouped AS (
-      SELECT *, ROW_NUMBER() OVER (PARTITION BY title, year ORDER BY ${POSTER_ORDER}) AS prn
+      SELECT *, ROW_NUMBER() OVER (PARTITION BY title, year ORDER BY ${POSTER_ORDER}) AS prn,
+        ROW_NUMBER() OVER (PARTITION BY title, year ORDER BY ${SHOW_POSTER_ORDER}) AS srn
       FROM tagged WHERE kind = 'episode' ${search}
     ),
     items AS (
-      SELECT 'show' AS type, title, year, NULL AS file_id, NULL AS latest_id, ${GROUP_AGG_SQL}
+      SELECT 'show' AS type, title, year, NULL AS file_id, NULL AS latest_id, ${GROUP_AGG_SQL},
+        ${SHOW_POSTER_AGG_SQL}
       FROM grouped GROUP BY title, year
       UNION ALL
       SELECT 'movie', title, year, id, latest_id, 1, 0, 0, 0, 0, 0, 0,
-        COALESCE(media_id, latest_id), media
+        COALESCE(media_id, latest_id), media, NULL, NULL
       FROM tagged WHERE kind IS NOT 'episode' ${search}
     )
     SELECT *, COUNT(*) OVER () AS total FROM items
@@ -558,6 +634,8 @@ export function listTitles(
     type: 'show' | 'movie';
     file_id: string | null;
     latest_id: string | null;
+    show_poster_id: string | null;
+    show_poster_media: string | null;
   };
   const page = db.prepare(sql).all(params) as (Item & { total: number })[];
   let total = (page[0] as { total: number } | undefined)?.total ?? 0;
@@ -578,7 +656,6 @@ export function listTitles(
     ).map((j) => [j.id, j]),
   );
   const items = page.flatMap((r): TitleItem[] => {
-    const poster = posterOf(r.poster_id, r.poster_media);
     if (r.type === 'show') {
       return [
         {
@@ -586,7 +663,7 @@ export function listTitles(
           key: showKey({ title: r.title, year: r.year }),
           title: r.title,
           year: r.year,
-          poster,
+          poster: showPosterOf(r),
           episodes: r.episodes,
           seasons: r.seasons,
           outcomes: outcomesOf(r),
@@ -596,7 +673,14 @@ export function listTitles(
     }
     const latestJob = r.latest_id !== null ? latestJobs.get(r.latest_id) : undefined;
     if (r.file_id === null || !latestJob) return [];
-    return [{ type: 'movie', fileId: r.file_id, poster, latest: latestJob }];
+    return [
+      {
+        type: 'movie',
+        fileId: r.file_id,
+        poster: posterOf(r.poster_id, r.poster_media),
+        latest: latestJob,
+      },
+    ];
   });
   return { items, total };
 }

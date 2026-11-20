@@ -217,6 +217,23 @@ describe('latest job of a file', () => {
     expect(only().latest?.id).toBe('second');
   });
 
+  it('follows the stored latest job when a job is cancelled or deleted', () => {
+    file('f1', '/media/tv/a.mkv', 1000);
+    job('done-t1', 'f1', { state: 'done', queuedAt: 1 });
+    job('q-t2', 'f1', { state: 'queued', queuedAt: 2 });
+    job('dry-t3', 'f1', { state: 'dry_run', dryRun: true, queuedAt: 3 });
+    expect(only().latest?.id).toBe('q-t2');
+    db.prepare(
+      "UPDATE jobs SET state = 'cancelled', finished_at = queued_at WHERE id = 'q-t2'",
+    ).run();
+    expect(only().latest?.id).toBe('done-t1');
+    db.prepare("DELETE FROM jobs WHERE id IN ('done-t1', 'q-t2')").run();
+    expect(only().latest?.id).toBe('dry-t3');
+    db.prepare("DELETE FROM jobs WHERE id = 'dry-t3'").run();
+    expect(rows()).toEqual([]);
+    expect(findLibraryFile(db, 'l1', 'f1')).toBeNull();
+  });
+
   it('takes the media from the latest job, else from the newest job that has some', () => {
     file('fa', '/media/tv/a.mkv', 1000);
     job('a-done', 'fa', { state: 'done', queuedAt: 1, media: ep(1, 1, 'A') });
@@ -662,8 +679,9 @@ it('stays fast at 20,000 files', () => {
   expect(found.total).toBe(N / 2);
   expect(found.rows[0]).toMatchObject({ media: { title: SHOW, season: 0 } });
 
-  // The per-file latest-job lookup reads jobs through jobs_file_queued.
-  const listing = seen.find((c) => c.sql.includes('ROW_NUMBER()'));
+  // The latest job is the stored one (by primary key); only the media fallback reads a file's
+  // jobs, through jobs_file_queued. No window over the library's jobs.
+  const listing = seen.find((c) => c.sql.includes('latest_job_id'));
   prepare.mockRestore();
   if (!listing) throw new Error('the listing query was not run');
   const plan = (
@@ -671,7 +689,7 @@ it('stays fast at 20,000 files', () => {
       detail: string;
     }[]
   ).map((r) => r.detail);
-  expect(plan.some((d) => /\bj\b.*jobs_file_queued/.test(d))).toBe(true);
+  expect(plan.some((d) => /\bm\b.*jobs_file_queued/.test(d))).toBe(true);
 }, 60_000);
 
 describe('titles and seasons', () => {
@@ -785,6 +803,50 @@ describe('titles and seasons', () => {
       jobId: 'j-e2',
       media: { posterPath: '/p/2.jpg', episode: 2 },
     });
+  });
+
+  it("a show card takes the show's own poster over an episode's season poster; seasons keep theirs", () => {
+    const withShow = (m: StoredJobMedia, posterPath: string, showPosterPath?: string) => ({
+      ...withPoster(m, posterPath),
+      ...(showPosterPath !== undefined && { showPosterPath }),
+    });
+    // Season 1's episode names only its season poster (an older job, before show posters).
+    file('e1', '/media/tv/e1.mkv', 1000);
+    job('j-e1', 'e1', { state: 'done', queuedAt: 1, media: withShow(ep(1, 1), '/p/s1.jpg') });
+    file('e2', '/media/tv/e2.mkv', 1000);
+    job('j-e2', 'e2', {
+      state: 'done',
+      queuedAt: 1,
+      media: withShow(ep(2, 1), '/p/s2.jpg', '/p/show.jpg'),
+    });
+    expect(showCard().poster).toMatchObject({
+      jobId: 'j-e2',
+      of: 'show',
+      media: { showPosterPath: '/p/show.jpg' },
+    });
+    const seasons = listSeasons(db, 'l1', HILL);
+    expect(seasons.map((g) => [g.poster?.jobId, g.poster?.media.posterPath, g.poster?.of])).toEqual(
+      [
+        ['j-e1', '/p/s1.jpg', undefined],
+        ['j-e2', '/p/s2.jpg', undefined],
+      ],
+    );
+  });
+
+  it('a show card with no show poster named keeps the lowest episode poster', () => {
+    file('e1', '/media/tv/e1.mkv', 1000);
+    job('j-e1', 'e1', { state: 'done', queuedAt: 1, media: withPoster(ep(1, 1), '/p/s1.jpg') });
+    const poster = showCard().poster;
+    expect(poster).toMatchObject({ jobId: 'j-e1', media: { posterPath: '/p/s1.jpg' } });
+    expect(poster).not.toHaveProperty('of');
+    // Looked up and none found (null) is the same as never looked up.
+    file('e2', '/media/tv/e2.mkv', 1000);
+    job('j-e2', 'e2', {
+      state: 'done',
+      queuedAt: 1,
+      media: { ...withPoster(ep(1, 2), '/p/s1.jpg'), showPosterPath: null },
+    });
+    expect(showCard().poster).not.toHaveProperty('of');
   });
 
   it('with no poster anywhere the poster is the lowest file; with no media at all it is null', () => {
