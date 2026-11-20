@@ -223,6 +223,34 @@ describe('LibraryFilePage', () => {
     expect(await screen.findByRole('button', { name: 'Run a workflow' })).toBeTruthy();
   });
 
+  it('a library that fails to load says so, keeps Run a workflow disabled, and retries', async () => {
+    mocks.libraries.get
+      .mockRejectedValueOnce(new ORPCError('INTERNAL_SERVER_ERROR', { message: 'db is down' }))
+      .mockResolvedValueOnce({
+        id: 'l1',
+        name: 'Classic TV',
+        path: '/media/classic-tv',
+        recycleFolder: null,
+        processHardlinked: false,
+        verifyFullDecode: false,
+        runHours: null,
+        watchFolder: true,
+        feeds: null,
+        namedByInactive: [],
+        createdAt: at,
+        updatedAt: at,
+        clock: { now: at, timeZone: 'UTC' },
+      });
+    await renderPage();
+    const alert = await screen.findByText(/Could not load the library/);
+    expect(alert.textContent).toContain('db is down');
+    const open = screen.getByRole('button', { name: 'Run a workflow' }) as HTMLButtonElement;
+    expect(open.disabled).toBe(true);
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    await waitFor(() => expect(open.disabled).toBe(false));
+    expect(screen.queryByText(/Could not load the library/)).toBeNull();
+  });
+
   it('a file no longer on disk has no Run a workflow', async () => {
     mocks.libraries.file.mockResolvedValue(detail({ file: { ...detail().file, gone: true } }));
     await renderPage();

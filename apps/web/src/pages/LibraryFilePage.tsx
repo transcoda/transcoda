@@ -247,6 +247,15 @@ export function LibraryFilePage() {
                 </button>
               </div>
             )}
+            {file.gone || !library.error || library.data ? null : (
+              <div className="alert alert-danger" role="alert">
+                <Icon name="cross" strokeWidth={2.4} round />
+                <span>{`Could not load the library: ${describeError(library.error).message}`}</span>
+                <button type="button" className="btn btn-ghost btn-sm" onClick={library.reload}>
+                  Try again
+                </button>
+              </div>
+            )}
             {before ? (
               <Disclosure title="Before" className="file-before">
                 <dl className="job-facts">
