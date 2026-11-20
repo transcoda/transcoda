@@ -72,3 +72,11 @@ describe('no coloured edge bars (convention 16)', () => {
     expect(css).not.toMatch(/border-left:\s*\d+px solid var\(--outcome\)/);
   });
 });
+
+describe('the library name on the Libraries page reads as a link (not by hover or colour alone)', () => {
+  it('is accent and underlined at rest, with a focus ring', () => {
+    expect(rulesFor('.lib-name-text')).toMatch(/color:\s*var\(--accent-text\)/);
+    expect(rulesFor('.lib-name-text')).toMatch(/text-decoration:\s*underline/);
+    expect(rulesFor('.lib-name-text:focus-visible')).toMatch(/box-shadow:\s*var\(--focus-ring\)/);
+  });
+});

@@ -6,7 +6,7 @@ import type { Database } from '../../db/open.ts';
 import { findJob, type JobListRow, jobsInStates } from '../../db/repos/jobs.ts';
 import { findLibrary } from '../../db/repos/libraries.ts';
 import { filePathsOf, resolveShowSelection } from '../../db/repos/library-files.ts';
-import type { QueueResult } from '../../engine/queue-service.ts';
+import type { LibraryUnreachable, QueueResult } from '../../engine/queue-service.ts';
 import type { RunHoursHold } from '../../engine/run-hours.ts';
 import type { AuthContext } from '../context.ts';
 import { os, requireAnyScope, requireHumanSessionWith, requireScope } from '../middleware.ts';
@@ -164,14 +164,19 @@ function selectedPaths(
 
 /**
  * Why the engine refused a selection, in the routes' words: the library or every file gone by
- * now is NOT_FOUND; a path outside the root or too many files is PATH_REJECTED with a real path
+ * now is NOT_FOUND; a library whose folder can't be reached is LIBRARY_UNREACHABLE; a path outside the root or too many files is PATH_REJECTED with a real path
  * (the offending one, else the library root), never the library id.
  */
 function throwSelectionRefused(
-  result: Exclude<QueueResult, { kind: 'queued' }>,
+  result: Exclude<QueueResult, { kind: 'queued' }> | LibraryUnreachable,
   root: string,
-  errors: QueueErrors,
+  errors: QueueErrors & {
+    LIBRARY_UNREACHABLE(o: { data: { path: string } }): Error;
+  },
 ): never {
+  if (result.kind === 'library-unreachable') {
+    throw errors.LIBRARY_UNREACHABLE({ data: { path: result.path } });
+  }
   if (result.kind === 'path-rejected') {
     if (result.reason === 'not found') throw errors.NOT_FOUND();
     throw errors.PATH_REJECTED({ data: { path: result.path ?? root, reason: result.reason } });

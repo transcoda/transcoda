@@ -6,6 +6,7 @@ import { describeError } from '../api/errors.ts';
 import { StatusChip } from '../components/Chips.tsx';
 import { Disclosure } from '../components/Disclosure.tsx';
 import { Fact } from '../components/Fact.tsx';
+import { FilePath } from '../components/FilePath.tsx';
 import { Icon } from '../components/Icon.tsx';
 import { Loading } from '../components/Loading.tsx';
 import { NotFound } from '../components/NotFound.tsx';
@@ -215,9 +216,7 @@ export function LibraryFilePage() {
               )}
             </div>
             {media?.kind === 'episode' ? <TitleSub media={media} /> : null}
-            <div className="job-path-row">
-              <span className="job-path">{file.path}</span>
-            </div>
+            <FilePath path={file.path} />
             <dl className="job-facts">
               <Fact term="Size">
                 {fmtBytes(file.sizeBytes)}

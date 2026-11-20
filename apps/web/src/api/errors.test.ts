@@ -17,6 +17,20 @@ describe('describeError', () => {
     });
   });
 
+  it('names the folder of a LIBRARY_UNREACHABLE', () => {
+    const err = new ORPCError('LIBRARY_UNREACHABLE', {
+      defined: true,
+      status: 412,
+      message: "The library folder can't be reached",
+      data: { path: '/media/tv' },
+    });
+    expect(describeError(err)).toEqual({
+      code: 'LIBRARY_UNREACHABLE',
+      status: 412,
+      message: "The library folder can't be reached: /media/tv",
+    });
+  });
+
   it('maps an undefined 413 to PAYLOAD_TOO_LARGE with the 2 MB message', () => {
     const err = new ORPCError('PAYLOAD_TOO_LARGE', { status: 413, message: 'Payload Too Large' });
     expect(describeError(err)).toEqual({

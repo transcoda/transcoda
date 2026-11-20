@@ -431,6 +431,26 @@ describe('RunFilesDialog', () => {
     expect(alert.textContent).toContain('Path not allowed');
   });
 
+  it('an unreachable library folder says so with its path, and Try again checks again', async () => {
+    mocks.preview.mockRejectedValueOnce(
+      new ORPCError('LIBRARY_UNREACHABLE', {
+        defined: true,
+        status: 412,
+        message: "The library folder can't be reached",
+        data: { path: '/media/shows' },
+      }),
+    );
+    mount();
+    const alert = await screen.findByRole('alert');
+    expect(alert.textContent).toContain("The library folder can't be reached: /media/shows");
+    expect(alert.textContent).not.toContain('Not found');
+    const calls = mocks.preview.mock.calls.length;
+    fireEvent.click(within(alert).getByRole('button', { name: 'Try again' }));
+    await waitFor(() => expect(mocks.preview).toHaveBeenCalledTimes(calls + 1));
+    expect(await screen.findByRole('button', { name: 'Run 3 files now' })).toBeTruthy();
+    await waitFor(() => expect(screen.queryByRole('alert')).toBeNull());
+  });
+
   it('Cancel closes the dialog', async () => {
     const { onClose } = mount();
     fireEvent.click(await screen.findByRole('button', { name: 'Cancel' }));

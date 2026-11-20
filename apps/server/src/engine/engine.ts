@@ -206,7 +206,12 @@ export class EngineService {
       encodeSlots: slots,
       timeZone: this.timeZone,
     });
-    this.mediaPass = new MediaPass({ db: deps.db, fs: deps.fs, log: deps.log });
+    this.mediaPass = new MediaPass({
+      db: deps.db,
+      fs: deps.fs,
+      log: deps.log,
+      events: this.events,
+    });
     this.queue = new QueueService({
       db: deps.db,
       workflows: deps.workflows,

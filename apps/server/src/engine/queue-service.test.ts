@@ -1,4 +1,4 @@
-import { link, mkdir, rm, stat, symlink, utimes, writeFile } from 'node:fs/promises';
+import { link, mkdir, rename, rm, stat, symlink, utimes, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { type Capabilities, QUEUE_FILES_MAX } from '@transcoda/contract';
 import { parseFileName } from '@transcoda/shared';
@@ -1233,6 +1233,78 @@ describe('QueueService.browse', () => {
     expect(await svc.browse(lib.id, 'nope')).toBe('not-found');
     expect(await svc.browse(lib.id, 'b.mkv')).toBe('not-found');
     expect(await svc.browse('nope', '')).toBe('not-found');
+  });
+
+  it('a root that cannot be reached is library-unreachable, not not-found', async () => {
+    await rename(root, `${root}-unmounted`);
+    try {
+      const unreachable = { kind: 'library-unreachable', path: lib.path };
+      expect(await svc.browse(lib.id, '')).toEqual(unreachable);
+      expect(await svc.browse(lib.id, 'Movies')).toEqual(unreachable);
+      expect(await svc.browse('nope', '')).toBe('not-found');
+    } finally {
+      await rename(`${root}-unmounted`, root);
+    }
+  });
+
+  it('a root that goes away after it resolved is library-unreachable; a missing subfolder of a present root stays not-found', async () => {
+    let detach = false;
+    const detaching = new QueueService({
+      db,
+      workflows,
+      events,
+      now: () => new Date(),
+      fs: {
+        ...nodeFsOps,
+        realpath: async (p) => {
+          const real = await nodeFsOps.realpath(p);
+          // Unmounted between the root resolving and the folder being checked.
+          if (detach && p === lib.path) {
+            detach = false;
+            await rename(root, `${root}-unmounted`);
+          }
+          return real;
+        },
+      },
+      onQueued: () => {},
+    });
+    expect(await detaching.browse(lib.id, 'nope')).toBe('not-found');
+    detach = true;
+    try {
+      expect(await detaching.browse(lib.id, 'Movies')).toEqual({
+        kind: 'library-unreachable',
+        path: lib.path,
+      });
+    } finally {
+      await rename(`${root}-unmounted`, root);
+    }
+    expect(await detaching.browse(lib.id, 'Movies')).toEqual({ dirs: [], files: [] });
+  });
+
+  it('a root it may not list is library-unreachable; a subfolder it may not list stays unreadable', async () => {
+    const denied = (p: string) => p === root || p === join(root, 'Movies');
+    const locked = new QueueService({
+      db,
+      workflows,
+      events,
+      now: () => new Date(),
+      fs: {
+        ...nodeFsOps,
+        readdir: async (p) => {
+          if (denied(p)) throw Object.assign(new Error('injected'), { code: 'EACCES' });
+          return nodeFsOps.readdir(p);
+        },
+      },
+      onQueued: () => {},
+    });
+    expect(await locked.browse(lib.id, '')).toEqual({
+      kind: 'library-unreachable',
+      path: lib.path,
+    });
+    expect(await locked.browse(lib.id, 'Movies')).toEqual({
+      kind: 'path-rejected',
+      reason: 'unreadable',
+    });
   });
 });
 

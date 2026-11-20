@@ -229,9 +229,10 @@ describe('LibrariesPage', () => {
   it('a library name links to its library page', async () => {
     renderAt('/libraries', <LibrariesPage />);
     const row = await rowOf('Shows');
-    expect(within(row).getByRole('link', { name: 'Shows' }).getAttribute('href')).toBe(
-      '/libraries/l1',
-    );
+    const name = within(row).getByRole('link', { name: 'Shows' });
+    expect(name.getAttribute('href')).toBe('/libraries/l1');
+    // Styled as a link (.lib-name-text: accent, underlined at rest, a focus ring).
+    expect(name.classList.contains('lib-name-text')).toBe(true);
     expect(within(row).getByRole('button', { name: 'Scan Shows now' })).toBeTruthy();
     expect(within(row).getByRole('button', { name: 'Actions for Shows' })).toBeTruthy();
   });

@@ -1,5 +1,5 @@
 import { existsSync } from 'node:fs';
-import { chmod, mkdir, rm, symlink, writeFile } from 'node:fs/promises';
+import { chmod, mkdir, rename, rm, symlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { Capabilities } from '@transcoda/contract';
 import type { JobState } from '@transcoda/shared';
@@ -370,6 +370,23 @@ describe('libraries', () => {
     }
     expect((await get(`/libraries/${id}/browse?path=nope`)).status).toBe(404);
     expect((await get('/libraries/nope/browse')).status).toBe(404);
+  });
+
+  it('libraries.browse of a library whose folder is gone → 412 LIBRARY_UNREACHABLE; an unknown library stays 404', async () => {
+    const id = await library();
+    await rename(root, `${root}-unmounted`);
+    try {
+      const res = await get(`/libraries/${id}/browse`);
+      expect(res.status).toBe(412);
+      expect(await json(res)).toMatchObject({
+        code: 'LIBRARY_UNREACHABLE',
+        message: "The library folder can't be reached",
+        data: { path: root },
+      });
+      expect((await get('/libraries/nope/browse')).status).toBe(404);
+    } finally {
+      await rename(`${root}-unmounted`, root);
+    }
   });
 
   it('libraries.browse of a folder it cannot read → 400 PATH_REJECTED "unreadable"', async () => {

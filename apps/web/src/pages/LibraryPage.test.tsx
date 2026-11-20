@@ -219,6 +219,23 @@ describe('LibraryPage', () => {
     expect(mocks.libraries.titles).toHaveBeenCalledTimes(settled + 1);
   });
 
+  it('refetches on a library.changed of this library (media filled) and not of another', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+    await renderPage();
+    await push(queueSnapshot);
+    await waitFor(() => expect(mocks.libraries.titles.mock.calls.length).toBeGreaterThan(1));
+    await act(() => vi.advanceTimersByTimeAsync(REFETCH_COALESCE_MS));
+    const settled = mocks.libraries.titles.mock.calls.length;
+
+    await push({ type: 'library.changed', libraryId: 'l1' });
+    await act(() => vi.advanceTimersByTimeAsync(REFETCH_COALESCE_MS));
+    await waitFor(() => expect(mocks.libraries.titles).toHaveBeenCalledTimes(settled + 1));
+
+    await push({ type: 'library.changed', libraryId: 'l2' });
+    await act(() => vi.advanceTimersByTimeAsync(REFETCH_COALESCE_MS * 2));
+    expect(mocks.libraries.titles).toHaveBeenCalledTimes(settled + 1);
+  });
+
   it('a progress-only job.changed does not refetch; a state change does', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ['setTimeout', 'clearTimeout', 'Date'] });
     await renderPage();
