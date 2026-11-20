@@ -67,6 +67,24 @@ describe('TitleGrid', () => {
     expect(container.querySelectorAll('.poster-card.poster-empty')).toHaveLength(2);
     expect(container.querySelector('img')).toBeNull();
   });
+
+  it("a show card with the show's own poster asks for it (?of=show); an episode poster does not", () => {
+    const media = { ...fx.kept.media, poster: true };
+    const { container } = renderAt(
+      '/',
+      <TitleGrid
+        libraryId="l1"
+        items={[
+          { ...SHOW, poster: { id: 'j-show', media, of: 'show' } },
+          { ...SHOW, key: 'other', title: 'Other', poster: { id: 'j-ep', media } },
+        ]}
+      />,
+    );
+    expect([...container.querySelectorAll('img')].map((i) => i.getAttribute('src'))).toEqual([
+      '/api/v1/jobs/j-show/poster?of=show',
+      '/api/v1/jobs/j-ep/poster',
+    ]);
+  });
 });
 
 describe('SeasonGrid', () => {

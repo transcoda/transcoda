@@ -53,7 +53,7 @@ function Card({
   return (
     <li>
       <Link href={href} className="library-card">
-        <Poster job={poster ?? NO_POSTER} size="card" />
+        <Poster job={poster ?? NO_POSTER} size="card" of={poster?.of} />
         <div className="library-card-title">{title}</div>
         {lines.map((line) =>
           line ? (

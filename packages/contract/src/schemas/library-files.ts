@@ -7,8 +7,15 @@ export const LIBRARY_TITLES_MAX = 120;
 /** The most files one files page returns (the server's own cap, repeated like JOBS_LIST_MAX). */
 export const LIBRARY_FILES_MAX = 200;
 
-/** The job whose poster a card shows: `id` is that job's id, so `GET /jobs/{id}/poster` serves it. */
-export const PosterRefSchema = z.object({ id: z.string(), media: JobMediaSchema });
+/**
+ * The job whose poster a card shows: `id` is that job's id, so `GET /jobs/{id}/poster` serves it.
+ * `of: 'show'` (show cards only): the show's own poster, served by `GET /jobs/{id}/poster?of=show`.
+ */
+export const PosterRefSchema = z.object({
+  id: z.string(),
+  media: JobMediaSchema,
+  of: z.literal('show').optional(),
+});
 export type PosterRef = z.infer<typeof PosterRefSchema>;
 
 /** A restored replace counts as `other`. */

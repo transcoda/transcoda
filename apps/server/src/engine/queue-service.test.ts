@@ -844,6 +844,7 @@ describe('QueueService folder listings and files.gone_at', () => {
           await resumed;
           return parseFileName(p, root);
         },
+        showPoster: async () => ({ path: null }),
       }),
       onQueued: () => {},
     });
@@ -1409,6 +1410,7 @@ describe('QueueService media info', () => {
     const file = await settled(join(root, 'Show', 'The General (1926).mkv'));
     const failing = withResolver(() => ({
       resolve: () => Promise.reject(new Error('boom')),
+      showPoster: async () => ({ path: null }),
     }));
     const r = await failing.queue(input(file));
     if (r.kind !== 'queued') throw new Error('expected queued');
@@ -1454,6 +1456,7 @@ describe('QueueService media info', () => {
         running--;
         return parseFileName(path, libraryRoot);
       },
+      showPoster: async () => ({ path: null }),
     }));
     const r = await slow.queue(input(join(root, 'Show')));
     if (r.kind !== 'queued') throw new Error('expected queued');

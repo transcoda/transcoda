@@ -154,10 +154,20 @@ function jobMapper(deps: AppDeps): (row: JobListRow) => ReturnType<typeof toJob>
   return (row) => toJob({ ...row, heldByRunHours: runHoursHold(row, closed, engine.timeZone) });
 }
 
-/** The repo's poster (job id + stored media) as the contract's: `poster` is whether an image exists, never its path. */
+/**
+ * The repo's poster (job id + stored media) as the contract's: `poster` is whether an image
+ * exists (the show's own for `of: 'show'`), never its path.
+ */
 function toPoster(ref: RepoPosterRef | null): PosterRef | null {
   if (!ref) return null;
-  const { posterPath, ...fields } = ref.media;
+  const { posterPath, showPosterPath, ...fields } = ref.media;
+  if (ref.of === 'show') {
+    return {
+      id: ref.jobId,
+      media: { ...fields, poster: typeof showPosterPath === 'string' },
+      of: 'show',
+    };
+  }
   return { id: ref.jobId, media: { ...fields, poster: posterPath !== null } };
 }
 

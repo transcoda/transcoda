@@ -17,7 +17,7 @@ import { redactGraph } from '../redact.ts';
 
 /** The list row as the API shows it (no replace journal, file id, walk path or requeue count). */
 export function toJob(r: JobListRow & { heldByRunHours: RunHoursHold | null }): Job {
-  const { posterPath, ...mediaFields } = r.media;
+  const { posterPath, showPosterPath: _show, ...mediaFields } = r.media;
   return {
     id: r.id,
     runId: r.runId,
