@@ -195,7 +195,9 @@ describe('RunFilesDialog', () => {
     mount();
     expect(await screen.findByText('Real run: v4 (active)')).toBeTruthy();
     expect(
-      screen.getByRole('checkbox', { name: 'Also run the 9 files Shows Cleanup v4 already handled' }),
+      screen.getByRole('checkbox', {
+        name: 'Also run the 9 files Shows Cleanup v4 already handled',
+      }),
     ).toBeTruthy();
     mocks.preview.mockResolvedValue(answer({ workflowVersion: 6, dryRun: true }));
     fireEvent.click(screen.getByRole('radio', { name: /Dry run/ }));

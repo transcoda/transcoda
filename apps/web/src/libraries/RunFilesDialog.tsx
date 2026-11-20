@@ -289,9 +289,7 @@ export function RunFilesDialog({
           </div>
           {chosen && (
             <p className="field-hint">
-              {dryRun
-                ? `Dry run: v${version} (newest)`
-                : `Real run: v${version} (active)`}
+              {dryRun ? `Dry run: v${version} (newest)` : `Real run: v${version} (active)`}
             </p>
           )}
           <div aria-live="polite">
