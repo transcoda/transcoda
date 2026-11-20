@@ -21,6 +21,7 @@ import { DEFAULT_EDITOR_ACTIONS, EditorActionsContext } from '../flow/actions-co
 import { ARIA_LABELS, edgeTypes, nodeTypes } from '../flow/nodeTypes.ts';
 import { toFlow, withViewCollapse } from '../flow/toFlow.ts';
 import type { TcFlowEdge, TcFlowNode, TraceOverlay } from '../flow/types.ts';
+import { ZoomVar } from '../flow/ZoomVar.tsx';
 import { MIN_ZOOM } from '../ui/Canvas.tsx';
 import { TraceActionsContext } from './trace-context.ts';
 import { spreadCards, spreadMembers } from './traceLayout.ts';
@@ -324,6 +325,7 @@ export function TraceCanvas({
                 // No attribution link on the job page (React Flow is MIT licensed).
                 proOptions={{ hideAttribution: true }}
               >
+                <ZoomVar />
                 <Background
                   variant={BackgroundVariant.Dots}
                   gap={22}

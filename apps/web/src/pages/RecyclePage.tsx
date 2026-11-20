@@ -122,7 +122,9 @@ function LibraryFolder({
         </p>
         <p className="head-sub">
           {`Originals are deleted after ${days(library.retentionDays)}, or sooner when the disk is low (`}
-          <Link href="/settings/recycle">Settings</Link>
+          <Link href="/settings/recycle" className="text-target">
+            Settings
+          </Link>
           {').'}
         </p>
         {library.entries.length > 0 ? (

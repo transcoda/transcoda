@@ -2018,6 +2018,18 @@ Approved plan: `docs/plans/2026-10-21-dryrun-depends-on-size.md` (local).
 - Transcoda never writes into a library for this.
 - Follow-up: looking up titles and artwork through the Sonarr, Radarr and Jellyfin plugins.
 
+## 2026-11-20 Design audit fixes
+
+- Focus is never hidden under the sticky top bar: `html` has `scroll-padding-top` of the top bar's height plus 16px. The editor has no top bar and does not scroll the page, so it gets none. The sticky side nav starts below the bar, so it needs none either.
+- The editor has an h1 (the workflow's name, visually hidden): the breadcrumb already shows the name, as the rename button.
+- A note's `# heading` on the canvas is a bold lead-in (`p.markdown-heading`), not an `<h4>`. The canvas is not part of the page outline, and the h4 skipped levels on the job page (h2 to h4) and in the editor (h1 to h4).
+- React Flow's focusable wrapper of each card, group and values card has an `aria-label` (the card's title, the group's name, "Values"), at every zoom level. The icon-only tile shows no words, so the wrapper had no name.
+- The Jobs stat tiles' accessible names start with the visible label ("Queued: 37, show these jobs", not "Show Queued: 37"), as WCAG 2.5.3 asks.
+- The job and run pages' breadcrumbs end in the current item (the job's title, the run's workflow and version) with `aria-current="page"`, using the libraries' `Crumbs` and its `›` separator, instead of a dangling "Jobs /".
+- Target size (WCAG 2.5.8, 24px at least). Small text links outside a sentence (job facts, workflow names, the libraries' Feeds links, the recycle page's Settings link) get `.text-target`: 4px of padding above and below, cancelled by a negative margin, so the text does not move. The library name gets the same 4px. `wf-activate` is a 32px target that still takes 24px of the line. The Jobs table's titles needed nothing: their `::after` already covers the row.
+- The canvas's "+" and group toggle are 44 canvas px, so they fell to 18px on screen at 0.4 zoom. Their size is now `max(44px, 24px / zoom)`. A small `ZoomVar` component writes the zoom to `--tc-zoom` on the React Flow wrapper.
+- `.btn-sm::before` did not reach 44px on a bordered button: an absolute pseudo-element is placed against the padding box, so `inset: -4px 0` gave a ghost or secondary button 42px. It is now a 44px-tall box centred on the button. The editor header's 40px buttons had the same gap and got the same fix.
+
 ## Follow-ups (2026-10-17)
 
 - **mp4 video default normalization.** `normalizeDefaults` treats video like subtitle when the output container is mp4: extra default video flags are cleared and the first kept non-cover video is flagged when none is (note `mp4 cannot have no default video`). The mp4 muxer enables a video track that was told "not default", which verify would report as a stream mismatch. Matroska passes the flag through, so mkv output is unchanged; cover pictures are never touched.

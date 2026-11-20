@@ -118,6 +118,16 @@
   box-sizing: border-box;
 }
 
+/* Keyboard focus and in-page jumps stop below the sticky top bar, not under it (WCAG 2.4.11).
+   The editor has no top bar and does not scroll the page, so it needs none. */
+html {
+  scroll-padding-top: calc(var(--topbar-h) + var(--sp-4));
+}
+
+html:has(.editor) {
+  scroll-padding-top: 0;
+}
+
 html,
 body {
   margin: 0;
@@ -189,11 +199,17 @@ a:hover {
   cursor: pointer;
 }
 
-/* Visually smaller buttons keep a 44px hit area. */
+/* Visually smaller buttons keep a 44px hit area. Sized by height, not by an inset: the
+   pseudo-element is placed against the padding box, so an inset of -4px left a bordered
+   (ghost, secondary) button at 42px. */
 .btn-sm::before {
   content: "";
   position: absolute;
-  inset: -4px 0;
+  top: 50%;
+  right: 0;
+  left: 0;
+  height: var(--target-min);
+  transform: translateY(-50%);
 }
 
 .btn:disabled {
@@ -3562,6 +3578,9 @@ a.btn-secondary:hover {
 }
 
 .wf-activate {
+  /* A 32 px target that still takes 24 px of the line (WCAG 2.5.8, with room to spare). */
+  min-height: 32px;
+  margin-block: -4px;
   cursor: pointer;
 }
 
@@ -4180,16 +4199,19 @@ a.btn-secondary:hover {
   border-radius: 50%;
 }
 
-/* N4: "+" on a free output; 44 px target around a 24 px dot. */
+/* N4: "+" on a free output; a 44 px (or larger, --tc-hit) target centred 30 px right of the card.
+   --tc-hit, on the "+" and the group toggle: 44 canvas px, grown as the canvas zooms out so the
+   target never drops below 24 px on screen (WCAG 2.5.8). ZoomVar writes --tc-zoom. */
 .tc-plus {
+  --tc-hit: max(var(--target-min), calc(24px / var(--tc-zoom, 1)));
   position: absolute;
   top: 50%;
-  right: -52px;
+  right: calc(-30px - var(--tc-hit) / 2);
   display: flex;
   align-items: center;
   justify-content: center;
-  width: var(--target-min);
-  height: var(--target-min);
+  width: var(--tc-hit);
+  height: var(--tc-hit);
   padding: 0;
   border: 0;
   background: transparent;
@@ -4485,15 +4507,17 @@ a.btn-secondary:hover {
   color: var(--muted);
 }
 
-.markdown > :first-child {
-  margin-top: 0;
-}
-
-.markdown h4 {
+/* A note's "# heading" line: a bold lead-in, not a document heading (the canvas is not part of
+   the page outline, and an h4 there skipped levels). */
+.markdown .markdown-heading {
   margin: 10px 0 4px;
   font-size: var(--fs-body);
   font-weight: 700;
   color: var(--text);
+}
+
+.markdown > :first-child {
+  margin-top: 0;
 }
 
 .markdown p,
@@ -4532,16 +4556,18 @@ a.btn-secondary:hover {
   text-transform: uppercase;
 }
 
-/* 44 px target around the drawn 26 px chip; the chip sits at bottom 0, right 8 px. */
+/* 44 px target (or larger, --tc-hit) around the drawn 26 px chip; the chip sits at bottom 0,
+   right 8 px: the target is centred 21 px from the right edge and 13 px from the bottom. */
 .tc-group-toggle {
+  --tc-hit: max(var(--target-min), calc(24px / var(--tc-zoom, 1)));
   position: absolute;
-  right: -1px;
-  bottom: -9px;
+  right: calc(21px - var(--tc-hit) / 2);
+  bottom: calc(13px - var(--tc-hit) / 2);
   display: flex;
   align-items: center;
   justify-content: center;
-  width: var(--target-min);
-  height: var(--target-min);
+  width: var(--tc-hit);
+  height: var(--tc-hit);
   padding: 0;
   border: 0;
   background: transparent;
@@ -4597,7 +4623,7 @@ a.btn-secondary:hover {
 
 .tc-group.is-collapsed .tc-group-toggle {
   top: 50%;
-  right: 4px;
+  right: calc(26px - var(--tc-hit) / 2);
   bottom: auto;
   transform: translateY(-50%);
 }
@@ -5330,10 +5356,15 @@ a.btn-secondary:hover {
   font-weight: 700;
 }
 
+/* 44px hit area around the 40px buttons (see .btn-sm::before). */
 .editor-head .btn::before {
   content: "";
   position: absolute;
-  inset: -2px 0;
+  top: 50%;
+  right: 0;
+  left: 0;
+  height: var(--target-min);
+  transform: translateY(-50%);
 }
 
 .history-group {
@@ -8430,6 +8461,16 @@ a.nav-item.is-active .nav-count {
   text-decoration: none;
 }
 
+/* The page you are on ends the trail: one line, cut with an ellipsis when it is long (the h1 under
+   it has the whole name). */
+.job-crumbs [aria-current="page"] {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted);
+}
+
 .job-head h1 {
   min-width: 0;
   font-size: 32px;
@@ -11000,6 +11041,7 @@ button.job-step-more:hover {
   display: inline-flex;
   align-items: center;
   gap: var(--sp-2);
+  min-width: 0;
 }
 .library-count {
   margin-left: var(--sp-3);
@@ -11021,9 +11063,10 @@ button.job-step-more:hover {
   text-decoration: underline;
   text-decoration-thickness: 1px;
   text-underline-offset: 3px;
-  /* A little room inside the focus ring, without moving the name. */
-  margin: -2px -4px;
-  padding: 2px 4px;
+  /* A little room inside the focus ring, and a 24 px-plus target (WCAG 2.5.8), without moving
+     the name. */
+  margin: -4px;
+  padding: 4px;
   border-radius: var(--r-sm);
   overflow-wrap: anywhere;
 }
@@ -11167,4 +11210,14 @@ button.job-step-more:hover {
 .file-jobs-title {
   margin: 0;
   font-size: var(--fs-h3, 16px);
+}
+
+/* ---------- Target size (WCAG 2.2 2.5.8: 24 x 24 px at least) ---------- */
+
+/* .text-target: a small text link outside a sentence gets 4 px of padding above and below,
+   cancelled by a matching negative margin: the target grows to 24 px or more and the text does not
+   move. The Jobs table's titles need nothing here: their ::after (.row-link-main) covers the row. */
+.text-target {
+  padding-block: 4px;
+  margin-block: -4px;
 }

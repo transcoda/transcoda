@@ -32,6 +32,7 @@ import { TcConnectionLine } from '../flow/TcConnectionLine.tsx';
 import { TcMiniMap } from '../flow/TcMiniMap.tsx';
 import { COLLAPSED_GROUP_SIZE, toFlow } from '../flow/toFlow.ts';
 import type { TcFlowEdge, TcFlowNode } from '../flow/types.ts';
+import { ZoomVar } from '../flow/ZoomVar.tsx';
 import { checkConnection } from '../model/connection.ts';
 import type { EditorState } from '../model/editor-state.ts';
 import { connect, NODE_SIZE, type OpResult, type Position } from '../model/graph-ops.ts';
@@ -406,6 +407,7 @@ export function Canvas({
         // React Flow is MIT; the credit stays on Settings → About → Open-source licences.
         proOptions={PRO_OPTIONS}
       >
+        <ZoomVar />
         {/* Dots of 1.2px radius every 22px (React Flow's `size` is the dot diameter). */}
         <Background
           variant={BackgroundVariant.Dots}

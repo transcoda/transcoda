@@ -720,7 +720,9 @@ export function LibrariesPage() {
                     {l.feeds ? (
                       <td className="lib-cell">
                         <span className="lib-feed">
-                          <Link href={`/workflows/${l.feeds.workflowId}`}>{l.feeds.name}</Link>{' '}
+                          <Link href={`/workflows/${l.feeds.workflowId}`} className="text-target">
+                            {l.feeds.name}
+                          </Link>{' '}
                           <ActivationPill active={feederActive(l.feeds)} />
                         </span>
                       </td>
@@ -745,14 +747,17 @@ export function LibrariesPage() {
                           </button>
                         ) : (
                           // The workflow list has not loaded: the editor has the same Activate.
-                          <Link href={`/workflows/${waiting.workflowId}`}>
+                          <Link href={`/workflows/${waiting.workflowId}`} className="text-target">
                             {`Activate v${waiting.version}…`}
                           </Link>
                         )}
                       </td>
                     ) : (
                       <td className="lib-cell lib-feeds-none">
-                        <span>—</span> <Link href="/">{ADD_INPUT}</Link>
+                        <span>—</span>{' '}
+                        <Link href="/" className="text-target">
+                          {ADD_INPUT}
+                        </Link>
                       </td>
                     )}
                     <td className="lib-cell lib-actions">

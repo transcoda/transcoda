@@ -80,3 +80,45 @@ describe('the library name on the Libraries page reads as a link (not by hover o
     expect(rulesFor('.lib-name-text:focus-visible')).toMatch(/box-shadow:\s*var\(--focus-ring\)/);
   });
 });
+
+describe('accessibility: focus and target size', () => {
+  it('focus and in-page jumps stop below the sticky top bar; the editor has no top bar', () => {
+    expect(rulesFor('html')).toMatch(
+      /scroll-padding-top:\s*calc\(var\(--topbar-h\) \+ var\(--sp-4\)\)/,
+    );
+    expect(rulesFor('html:has(.editor)')).toMatch(/scroll-padding-top:\s*0/);
+  });
+
+  it('a small button keeps a 44 px hit area around its 36 px box, border or not', () => {
+    expect(rulesFor('.btn-sm')).toMatch(/height:\s*36px/);
+    expect(rulesFor('.btn')).toMatch(/position:\s*relative/);
+    const before = rulesFor('.btn-sm::before');
+    expect(before).toMatch(/content:\s*""/);
+    expect(before).toMatch(/position:\s*absolute/);
+    // A height, not an inset: an inset counts from the padding box and loses the border.
+    expect(before).toMatch(/height:\s*var\(--target-min\)/);
+    expect(before).toMatch(/top:\s*50%/);
+    expect(before).toMatch(/transform:\s*translateY\(-50%\)/);
+    expect(before).not.toMatch(/inset:/);
+    expect(rulesFor('.editor-head .btn::before')).toMatch(/height:\s*var\(--target-min\)/);
+  });
+
+  it('small text links grow to 24 px without moving the text', () => {
+    const rule = rulesFor('.text-target');
+    expect(rule).toMatch(/padding-block:\s*4px/);
+    expect(rule).toMatch(/margin-block:\s*-4px/);
+    expect(rulesFor('.wf-activate')).toMatch(/min-height:\s*32px/);
+    expect(rulesFor('.lib-name-text')).toMatch(/padding:\s*4px/);
+  });
+
+  it("the canvas's + and group toggle never drop below 24 px on screen when zoomed out", () => {
+    for (const sel of ['.tc-plus', '.tc-group-toggle']) {
+      const rule = rulesFor(sel);
+      expect(rule).toMatch(
+        /--tc-hit:\s*max\(var\(--target-min\), calc\(24px \/ var\(--tc-zoom, 1\)\)\)/,
+      );
+      expect(rule).toMatch(/width:\s*var\(--tc-hit\)/);
+      expect(rule).toMatch(/height:\s*var\(--tc-hit\)/);
+    }
+  });
+});
