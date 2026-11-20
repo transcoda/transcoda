@@ -132,6 +132,8 @@ interface Around {
   at: number;
   /** A step replaces the original (the size gate's pass leads to it). */
   replaces: boolean;
+  /** The job's problems and warnings on this step's node (its last attempt only). */
+  problems: readonly NodeProblem[];
 }
 
 /**
@@ -723,7 +725,12 @@ function sizeGate(d: Decision, ctx: StepContext, past: boolean, around: Around):
   return `Keeps the result only if it is at least ${min}% smaller`;
 }
 
-function finishStep(d: Decision, ctx: StepContext, past: boolean): string {
+function finishStep(
+  d: Decision,
+  ctx: StepContext,
+  past: boolean,
+  problems: readonly NodeProblem[] = [],
+): string {
   const s = d.settings;
   switch (d.type) {
     case 'core:replace-original': {
@@ -759,11 +766,36 @@ function finishStep(d: Decision, ctx: StepContext, past: boolean): string {
             : 'Copies';
       return `${verb} the result to ${root}`;
     }
-    case 'core:notify-webhook':
-      return `${ctx.dryRun ? 'Would send' : past ? 'Sent' : 'Sends'} a ${str(s.method) ?? 'POST'} request to the webhook`;
+    case 'core:notify-webhook': {
+      const method = str(s.method) ?? 'POST';
+      // A real run whose request failed says so, as its warning does (the engine words it
+      // "notify <url> failed: <why>" or "notify <url> answered <status>").
+      const sent = past && !ctx.dryRun ? notifyOutcome(problems) : null;
+      if (sent?.failed !== undefined) {
+        return `Didn't send the ${method} request to the webhook: ${sent.failed}`;
+      }
+      if (sent?.status !== undefined) {
+        return `Sent a ${method} request to the webhook, but it answered ${sent.status}`;
+      }
+      return `${ctx.dryRun ? 'Would send' : past ? 'Sent' : 'Sends'} a ${method} request to the webhook`;
+    }
     default:
       return reasonSentence(d);
   }
+}
+
+/** What the engine's notify warning on the step says went wrong; null when it sent. */
+function notifyOutcome(
+  problems: readonly NodeProblem[],
+): { failed?: string; status?: string } | null {
+  for (const p of problems) {
+    if (!p.message.startsWith('notify ')) continue;
+    const failed = p.message.indexOf(' failed: ');
+    if (failed >= 0) return { failed: p.message.slice(failed + ' failed: '.length) };
+    const status = /\sanswered (\d+)$/.exec(p.message)?.[1];
+    if (status !== undefined) return { status };
+  }
+  return null;
 }
 
 function step(d: Decision, ctx: StepContext, around: Around): Step {
@@ -829,7 +861,7 @@ function step(d: Decision, ctx: StepContext, around: Around): Step {
     if (onDamagedSide(d, ctx)) {
       // A real run's damaged source ran the Damaged side; otherwise it only would if damaged.
       if (ctx.sourceDamaged && !ctx.dryRun && isFinalState(ctx.state)) {
-        return { ...base, badge: 'finish', quiet: false, sentence: finishStep(d, ctx, true) };
+        return { ...base, badge: 'finish', quiet: false, sentence: finishStep(d, ctx, true, around.problems) };
       }
       const what = finishStep(d, ctx, false);
       const sentence = ctx.sourceDamaged ? what : `If the source is damaged: ${what}`;
@@ -854,7 +886,12 @@ function step(d: Decision, ctx: StepContext, around: Around): Step {
         sentence: sizeGate(d, ctx, measured, around),
       };
     }
-    return { ...base, badge: 'finish', quiet: false, sentence: finishStep(d, ctx, past) };
+    return {
+      ...base,
+      badge: 'finish',
+      quiet: false,
+      sentence: finishStep(d, ctx, past, around.problems),
+    };
   }
   if (d.reason === 'no-op') {
     return { ...base, badge: 'same', quiet: true, sentence: 'Does nothing to the file' };
@@ -912,7 +949,6 @@ export function steps(items: readonly Decision[], ctx: StepContext): Step[] {
   const failed = list.findIndex((d) => d.attempt === lastAttempt && d.reason.startsWith(FAILED));
   const replaces = list.some((d) => d.type === 'core:replace-original' && !d.untaken);
   return list.map((d, at) => {
-    const s = step(d, ctx, { at, failedAt: failed >= 0 ? failed : null, replaces });
     // The job's problems and warnings on this node (they belong to its last attempt).
     const own = (ctx.nodeProblems ?? []).filter(
       (p) =>
@@ -920,6 +956,8 @@ export function steps(items: readonly Decision[], ctx: StepContext): Step[] {
         p.nodeId === d.nodeId &&
         p.workflowPath.join('/') === d.workflowPath.join('/'),
     );
+    const failedAt = failed >= 0 ? failed : null;
+    const s = step(d, ctx, { at, failedAt, replaces, problems: own });
     if (own.length === 0) return s;
     const notes = own.map((p) => ({
       text: `${p.severity === 'problem' ? 'Problem' : 'Warning'}: ${p.message}`,

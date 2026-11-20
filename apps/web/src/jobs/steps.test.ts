@@ -672,6 +672,31 @@ describe('steps: one sentence and a badge per node', () => {
     expect(list.map((s) => s.notes.map((n) => n.text))).toEqual([[], [`Warning: ${message}`]]);
   });
 
+  it('a notify that could not send says it did not send; one the webhook refused says what it answered', () => {
+    const nw = d({
+      key: '1',
+      nodeId: 'nw',
+      title: 'Notify webhook',
+      kind: 'finish',
+      type: 'core:notify-webhook',
+      phase: 'finish',
+      settings: { method: 'POST' },
+    });
+    const said = (message: string | null) =>
+      one(nw, {
+        ...DONE,
+        nodeProblems:
+          message === null ? [] : [{ workflowPath: [], nodeId: 'nw', severity: 'warning', message }],
+      }).sentence;
+    expect(said('notify https://hooks.example/… failed: fetch failed')).toBe(
+      "Didn't send the POST request to the webhook: fetch failed",
+    );
+    expect(said('notify https://hooks.example/… answered 500')).toBe(
+      'Sent a POST request to the webhook, but it answered 500',
+    );
+    expect(said(null)).toBe('Sent a POST request to the webhook');
+  });
+
   it('Encode video after an earlier step converted the video says so', () => {
     const s = one(
       d({
