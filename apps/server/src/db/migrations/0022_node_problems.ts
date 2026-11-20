@@ -5,8 +5,8 @@ import type { Migration } from '../migrate.ts';
  * can badge that node. Purely additive; older results read `[]` (no badge).
  */
 export const nodeProblems: Migration = {
-  version: 21,
-  name: '0021_node_problems',
+  version: 22,
+  name: '0022_node_problems',
   up(db) {
     db.exec("ALTER TABLE job_results ADD COLUMN node_problems_json TEXT NOT NULL DEFAULT '[]';");
   },

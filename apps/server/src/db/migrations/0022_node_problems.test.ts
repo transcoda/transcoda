@@ -9,15 +9,15 @@ import { migrations } from './index.ts';
 
 const T = '2026-01-01T00:00:00.000Z';
 
-describe('migration 0021', () => {
+describe('migration 0022', () => {
   let dir: string;
   let backupDir: string;
   let db: Database;
   beforeEach(() => {
-    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'transcoda-0021-'));
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'transcoda-0022-'));
     backupDir = path.join(dir, 'backups');
     db = openDatabase(path.join(dir, 'app.sqlite'));
-    migrate(db, migrations.slice(0, 20), { backupDir });
+    migrate(db, migrations.slice(0, 21), { backupDir });
     db.prepare(
       `INSERT INTO workflows (id, kind, name, current_version, created_at, updated_at)
        VALUES ('w1', 'workflow', 'Shrink', 1, ?, ?)`,
@@ -45,8 +45,8 @@ describe('migration 0021', () => {
   });
 
   it('adds node_problems_json; an older result reads no node problems (no badge)', () => {
-    expect(migrate(db, migrations.slice(0, 21), { backupDir }).applied).toEqual([
-      '0021_node_problems',
+    expect(migrate(db, migrations.slice(0, 22), { backupDir }).applied).toEqual([
+      '0022_node_problems',
     ]);
     expect(findJobResult(db, 'j1')).toMatchObject({
       warnings: ['notify https://hooks.example/… failed: fetch failed'],
@@ -56,7 +56,7 @@ describe('migration 0021', () => {
   });
 
   it('reads a corrupt cell, or a bad entry in it, as no node problem', () => {
-    migrate(db, migrations.slice(0, 21), { backupDir });
+    migrate(db, migrations.slice(0, 22), { backupDir });
     db.prepare("UPDATE job_results SET node_problems_json = 'nope' WHERE job_id = 'j1'").run();
     expect(findJobResult(db, 'j1')?.nodeProblems).toEqual([]);
     const good = { workflowPath: [], nodeId: 'n1', severity: 'warning', message: 'm' };
