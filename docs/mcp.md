@@ -92,7 +92,7 @@ The same rules as for the API apply: set `TRANSCODA_TRUSTED_PROXIES` for your pr
 | `pause_queue` | `jobs:manage` | Pause the queue: running jobs freeze and nothing new starts. |
 | `resume_queue` | `jobs:manage` | Resume the queue. |
 | `list_jobs` | `read` | List jobs, filtered by state, library or run; 20 per page (max 200), with `nextCursor` for `before`. |
-| `get_job` | `read` | A job's diagnosis: state, reason, the failing node (only when a node recorded the failure; an ffmpeg or verify failure names the Render), the path the file took, per-node decisions, result and plan. |
+| `get_job` | `read` | A job's diagnosis: state, reason, the failing node (only when a node recorded the failure; an ffmpeg or verify failure names the Render, the node the job page lights while ffmpeg runs; a finish step's failure names that step), the path the file took, per-node decisions, result and plan. |
 | `get_job_log` | `read` | The tail of a job's log (`maxBytes` 256 to 65536, default 16384); empty if the job has not started. |
 | `pause_job` | `jobs:manage` | Pause a queued or running job; a running ffmpeg is stopped and its lane freed. |
 | `resume_job` | `jobs:manage` | Resume a paused job. |

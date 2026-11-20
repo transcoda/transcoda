@@ -9,6 +9,7 @@ import {
   type JobState,
   type JsonValue,
   type NodeProblem,
+  RENDER_TYPE,
   SUBWORKFLOW_END_TYPE,
   SUBWORKFLOW_START_TYPE,
   TRACE_CANCELED,
@@ -495,13 +496,9 @@ export function nodeTitle(
 /** The node types that encode, in the order one stands for the encode of a job. */
 const ENCODE_TYPES = ['core:encode-video', 'core:encode-audio', 'core:remux'] as const;
 
-/**
- * The node that stands for a job's encode on its walk: Encode video, else Encode audio, else
- * Remux (the last one of that type the file passed, not bypassed); null when the walk has none.
- * While ffmpeg runs (encoding, verifying, replacing) the engine reports the last *built* node,
- * which is often a Run sub-workflow behind the encode; the page lights this node instead.
- */
-export function encodeNode(
+/** The last node on the walk of the first of `types` it has (not bypassed); null without one. */
+function walkNodeOf(
+  types: readonly string[],
   steps: readonly WalkStep[],
   graph: WorkflowGraph,
   children: ReadonlyMap<string, WorkflowGraph | null | undefined>,
@@ -510,9 +507,45 @@ export function encodeNode(
     const node = graphAt(s.workflowPath, graph, children)?.nodes.find((n) => n.id === s.nodeId);
     return node && !node.bypassed ? [{ s, type: node.type }] : [];
   });
-  for (const type of ENCODE_TYPES) {
+  for (const type of types) {
     const hit = typed.filter((t) => t.type === type).at(-1);
     if (hit) return { workflowPath: [...hit.s.workflowPath], nodeId: hit.s.nodeId };
   }
   return null;
+}
+
+/**
+ * The node that stands for a job's encode on its walk: Encode video, else Encode audio, else
+ * Remux (the last one of that type the file passed, not bypassed); null when the walk has none.
+ */
+export function encodeNode(
+  steps: readonly WalkStep[],
+  graph: WorkflowGraph,
+  children: ReadonlyMap<string, WorkflowGraph | null | undefined>,
+): CurrentNode | null {
+  return walkNodeOf(ENCODE_TYPES, steps, graph, children);
+}
+
+/**
+ * The node lit while a job executes (encoding, verifying, replacing): the node at work, which is
+ * the node the engine traces a failure or cancel on. The engine reports it: the Render while
+ * ffmpeg encodes and verifies, then each finish step (Replace original while replacing). Before a
+ * report arrives (the page opened mid-encode) it is the Render on the walk, or Replace original
+ * while replacing. A walk without a Render (a workflow from before it) has no node at work; the
+ * engine reports its last built node then, and the node that stands for the encode is lit.
+ */
+export function executingNode(
+  state: JobState,
+  steps: readonly WalkStep[],
+  graph: WorkflowGraph,
+  children: ReadonlyMap<string, WorkflowGraph | null | undefined>,
+  reported: CurrentNode | null | undefined,
+): CurrentNode | null {
+  const render = walkNodeOf([RENDER_TYPE], steps, graph, children);
+  if (render === null) return encodeNode(steps, graph, children) ?? reported ?? null;
+  if (reported) return reported;
+  if (state === 'replacing') {
+    return walkNodeOf(['core:replace-original'], steps, graph, children) ?? render;
+  }
+  return render;
 }

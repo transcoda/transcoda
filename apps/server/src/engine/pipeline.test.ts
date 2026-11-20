@@ -3325,14 +3325,14 @@ describe('pipeline: fix round (review)', () => {
     expect(spawner.calls).toEqual([]);
   });
 
-  it('minor: currentNode is the last build node while encoding and verifying, null while replacing', async () => {
+  it('currentNode is the node at work, the one a failure is traced on: Render while encoding and verifying, Replace original while replacing', async () => {
     const id = await queue(file(), encodeAnd(replaceNode()));
     await runOnce(id);
     const at = (state: JobState) =>
       published.find((e) => e.type === 'job.changed' && e.jobId === id && e.state === state);
-    expect(at('encoding')).toMatchObject({ currentNode: { workflowPath: [], nodeId: 'ev' } });
-    expect(at('verifying')).toMatchObject({ currentNode: { nodeId: 'ev' } });
-    expect(at('replacing')).toMatchObject({ currentNode: null });
+    expect(at('encoding')).toMatchObject({ currentNode: { workflowPath: [], nodeId: 'render-1' } });
+    expect(at('verifying')).toMatchObject({ currentNode: { nodeId: 'render-1' } });
+    expect(at('replacing')).toMatchObject({ currentNode: { workflowPath: [], nodeId: 'ro' } });
   });
 
   it('verify progress: each check is published while verifying, filling by checks done', async () => {

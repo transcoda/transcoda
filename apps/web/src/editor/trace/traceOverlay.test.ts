@@ -1,5 +1,5 @@
 import type { WalkStep } from '@transcoda/contract';
-import type { WorkflowGraph } from '@transcoda/shared';
+import { RENDER_TYPE, type WorkflowGraph } from '@transcoda/shared';
 import { describe, expect, it } from 'vitest';
 import { catalogFixture } from '../../test/fixtures/catalog.ts';
 import {
@@ -17,6 +17,7 @@ import {
   currentNodeOf,
   decisions,
   encodeNode,
+  executingNode,
   runTitle,
   type TraceSource,
 } from './traceOverlay.ts';
@@ -311,6 +312,56 @@ describe('encodeNode', () => {
     const ev = graph.nodes.find((n) => n.id === 'ev');
     if (ev) ev.bypassed = true;
     expect(encodeNode(ELSE_PATH, graph, children)).toBeNull();
+  });
+});
+
+describe('executingNode (the node lit while the job executes is the one a failure lands on)', () => {
+  const children = new Map([['run-b', traceSub()]]);
+  // The else walk with a Render after the encode, as the engine traces a failure on it.
+  const withRender = (): WorkflowGraph => {
+    const g = traceMain();
+    return {
+      ...g,
+      nodes: [
+        ...g.nodes,
+        {
+          id: 'render-1',
+          type: RENDER_TYPE,
+          typeVersion: 1,
+          settings: {},
+          position: { x: 0, y: 0 },
+        },
+      ],
+    };
+  };
+  const at = ELSE_PATH.findIndex((s) => s.nodeId === 'ro-b');
+  const path: WalkStep[] = [
+    ...ELSE_PATH.slice(0, at),
+    { workflowPath: [], nodeId: 'render-1', port: 'done' },
+    ...ELSE_PATH.slice(at),
+  ];
+
+  it('is the Render while encoding and verifying, not Encode video', () => {
+    for (const state of ['encoding', 'verifying'] as const) {
+      expect(executingNode(state, path, withRender(), children, undefined)).toEqual({
+        workflowPath: [],
+        nodeId: 'render-1',
+      });
+    }
+  });
+
+  it("follows the engine's report (each finish step), else Replace original while replacing", () => {
+    const ro = { workflowPath: [], nodeId: 'ro-b' };
+    expect(executingNode('verifying', path, withRender(), children, ro)).toEqual(ro);
+    expect(executingNode('replacing', path, withRender(), children, null)).toEqual(ro);
+  });
+
+  it('lights the encode node on a walk without a Render (a workflow from before it)', () => {
+    const built = { workflowPath: ['run-b'], nodeId: 'rt' };
+    expect(executingNode('encoding', ELSE_PATH, traceMain(), children, built)).toEqual({
+      workflowPath: [],
+      nodeId: 'ev',
+    });
   });
 });
 

@@ -1093,9 +1093,10 @@ export class Pipeline implements JobExecutor {
     // Each attempt has its own log, truncated at the start (a requeue reuses the attempt's).
     await fs.truncate(p.logPath);
     this.stopIfAborted(ctl);
-    ctl.setCurrentNode(p.lastBuildNode);
-    // Copying sidecars, extracting covers, encoding and verifying are the Render's work.
+    // Copying sidecars, extracting covers, encoding and verifying are the Render's work: it is the
+    // node reported as current (the page lights it) and the one a failure or cancel is traced on.
     p.runningNode = p.renderNodeId === null ? null : { nodeId: p.renderNodeId, workflowPath: [] };
+    ctl.setCurrentNode(p.runningNode ?? p.lastBuildNode);
     job = this.update(job, ctl, { state: 'encoding', progress: null });
 
     // Sidecars are copied (open handle checked, no symlink, size capped) before anything reads them.
@@ -1239,6 +1240,8 @@ export class Pipeline implements JobExecutor {
       }
       const at = actionNode(action);
       p.runningNode = at;
+      // Each finish step is current while it works, as the node its failure is traced on.
+      if (at !== null && !ctl.signal.aborted) ctl.setCurrentNode(at);
       /** A problem after the write, told on this step's node too. */
       const problem = (text: string): void => {
         problems.push(text);
@@ -1756,7 +1759,6 @@ export class Pipeline implements JobExecutor {
       const folder = check.library.recycleFolder ?? defaultRecycleFolder(root);
       recycleFolder = isAbsolute(folder) ? folder : resolve(root, folder);
     }
-    ctl.setCurrentNode(null);
     job = this.update(job, ctl, { state: 'replacing', progress: null });
     const result = await replaceOriginalFile(
       {

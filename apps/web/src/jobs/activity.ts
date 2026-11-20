@@ -5,7 +5,7 @@ import type { TraceEntry, WorkflowGraph } from '@transcoda/shared';
 import {
   type CurrentNode,
   currentNodeOf,
-  encodeNode,
+  executingNode,
   nodeTitle,
   runTitle,
 } from '../editor/trace/traceOverlay.ts';
@@ -95,12 +95,12 @@ export interface StepSource {
 const NO_CHILDREN: ReadonlyMap<string, WorkflowGraph> = new Map();
 const NO_NAMES: ReadonlyMap<string, string> = new Map();
 
-/** While ffmpeg runs the engine reports the last built node; the encode node stands for the step. */
+/** While ffmpeg runs or a finish step writes, the node at work stands for the step (as on the job page). */
 const FFMPEG_STATES: ReadonlyArray<Job['state']> = ['encoding', 'verifying', 'replacing'];
 
 /**
  * A running job's step line for the popover: the node title when known (encoding/verifying/replacing →
- * the encode node via `encodeNode`, else `nodeTitle` of the current node; a node inside a sub-workflow →
+ * the node at work via `executingNode`, else `nodeTitle` of the current node; a node inside a sub-workflow →
  * the top-level Run node's title), else the phase words of `detailLine` ("Planned · waiting for the encoder").
  */
 export function stepLine(
@@ -113,7 +113,9 @@ export function stepLine(
   const graph = detail?.graph;
   if (!detail || !graph || isWaitingForLane(job)) return phaseWords;
   const ref =
-    (FFMPEG_STATES.includes(job.state) ? encodeNode(detail.path, graph, NO_CHILDREN) : null) ??
+    (FFMPEG_STATES.includes(job.state)
+      ? executingNode(job.state, detail.path, graph, NO_CHILDREN, current)
+      : null) ??
     currentNodeOf({
       trace: detail.trace,
       steps: detail.path,

@@ -24,7 +24,7 @@ import {
   type CurrentNode,
   currentNodeOf,
   decisions,
-  encodeNode,
+  executingNode,
   nodeTitle,
   pathKey,
   runTitle,
@@ -138,7 +138,7 @@ function QueuedDetail({ job }: { job: JobDetail }) {
   );
 }
 
-/** While ffmpeg runs, the node that stands for the encode is lit (see `encodeNode`). */
+/** While ffmpeg runs or a finish step writes, the node at work is lit (see `executingNode`). */
 const ENCODE_STATES: readonly JobState[] = ['encoding', 'verifying', 'replacing'];
 
 /**
@@ -232,14 +232,13 @@ function JobView({ id }: { id: string }) {
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  // While ffmpeg runs the engine reports the last built node (often a Run node behind the
-  // encode); the node that encodes is lit instead.
+  // While ffmpeg runs the Render is at work, then each finish step: the node a failure or cancel
+  // is traced on is the one lit.
   const lit = useMemo(() => {
     // Planned and waiting for a lane: no node is current, the job is between build and encode.
     if (job && isWaitingForLane(job)) return null;
     if (job?.graph && ENCODE_STATES.includes(job.state)) {
-      const encoding = encodeNode(job.path, job.graph, subgraphs);
-      if (encoding) return encoding;
+      return executingNode(job.state, job.path, job.graph, subgraphs, currentNode);
     }
     return currentNode;
   }, [job, subgraphs, currentNode]);
