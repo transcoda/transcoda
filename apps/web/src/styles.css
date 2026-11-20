@@ -8301,6 +8301,13 @@ a.nav-item.is-active .nav-count {
   color: var(--danger-text);
 }
 
+/* Canceled while it ran: a dashed neutral ring (the job's canceled chip is neutral too); the
+   word "canceled" is in its row and its name. */
+.tc-node.is-cancelled {
+  outline: 2px dashed var(--line-strong);
+  outline-offset: 2px;
+}
+
 /* The job's problems and warnings on the node, one line each under its reason, in the amber the
    job's result lists them in. */
 .tc-node-row.tc-trace-problems {

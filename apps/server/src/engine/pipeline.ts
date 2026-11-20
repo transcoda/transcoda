@@ -31,6 +31,7 @@ import {
   RENDER_DONE_PORT,
   RENDER_TYPE,
   sameLanguage,
+  TRACE_CANCELED,
   type TraceEntry,
   type WorkflowGraph,
 } from '@transcoda/shared';
@@ -245,6 +246,11 @@ interface Prepared {
   extraInputFiles: Map<number, string>;
   /** The last action node of the build: the job's node while it encodes and verifies. */
   lastBuildNode: CurrentNode | null;
+  /**
+   * The node whose work is under way in execute: the Render while the job encodes and verifies,
+   * then each finish step in turn; null between them. A failure or cancel is told on it.
+   */
+  runningNode: ActionNode | null;
   args: string[];
   command: string;
   /** The encode slot execute got (null: the quick lane, or before execute). */
@@ -923,6 +929,7 @@ export class Pipeline implements JobExecutor {
       coverFiles,
       extraInputFiles,
       lastBuildNode,
+      runningNode: null,
       args,
       command,
       slot: null,
@@ -1065,6 +1072,7 @@ export class Pipeline implements JobExecutor {
     if (f.retry && row.attempt === 1 && !hasReplaceJournal(this.deps.db, job.id)) {
       return { requeue: { reason: f.reason, attempt: 2 } };
     }
+    this.traceStopped(row, ctl, p, `failed: ${f.reason}`);
     this.finish(
       row,
       ctl,
@@ -1086,6 +1094,8 @@ export class Pipeline implements JobExecutor {
     await fs.truncate(p.logPath);
     this.stopIfAborted(ctl);
     ctl.setCurrentNode(p.lastBuildNode);
+    // Copying sidecars, extracting covers, encoding and verifying are the Render's work.
+    p.runningNode = p.renderNodeId === null ? null : { nodeId: p.renderNodeId, workflowPath: [] };
     job = this.update(job, ctl, { state: 'encoding', progress: null });
 
     // Sidecars are copied (open handle checked, no symlink, size capped) before anything reads them.
@@ -1168,6 +1178,7 @@ export class Pipeline implements JobExecutor {
     p.warnings.push(...verified.warnings);
     if (verified.ok) {
       p.outputProbe = verified.probe;
+      p.runningNode = null;
       if (p.renderNodeId !== null) {
         this.traceFinish(job, ctl, {
           nodeId: p.renderNodeId,
@@ -1227,6 +1238,7 @@ export class Pipeline implements JobExecutor {
         break;
       }
       const at = actionNode(action);
+      p.runningNode = at;
       /** A problem after the write, told on this step's node too. */
       const problem = (text: string): void => {
         problems.push(text);
@@ -1308,6 +1320,7 @@ export class Pipeline implements JobExecutor {
         problem(failure.reason);
       }
     }
+    p.runningNode = null;
     if (p.written === null) {
       // Unreachable: a path without replace or move-copy ends before the finish actions.
       return this.keepOriginal(job, ctl, p, NEVER_WRITES, [], afterBytes);
@@ -1983,6 +1996,18 @@ export class Pipeline implements JobExecutor {
     this.noteNode(job, at, 'warning', text);
   }
 
+  /**
+   * The job ended (failed, canceled) while `p.runningNode` was at work: its trace says so with
+   * `reason` (`failed: …`, `canceled: …`), so that node reads failed or canceled instead of done,
+   * and the steps after it did not run.
+   */
+  private traceStopped(job: JobRow, ctl: JobControl, p: Prepared, reason: string): void {
+    const at = p.runningNode;
+    if (at === null) return;
+    p.runningNode = null;
+    this.traceFinish(job, ctl, { ...at, source: 'core', port: null, reason });
+  }
+
   /** Adds a size-gate entry to the job's trace (the branch it took, or that it depends). */
   private traceGate(
     job: JobRow,
@@ -2358,6 +2383,7 @@ export class Pipeline implements JobExecutor {
   }
 
   private async cancelled(job: JobRow, ctl: JobControl, p: Prepared): Promise<void> {
+    this.traceStopped(job, ctl, p, `${TRACE_CANCELED} the job was canceled during this step`);
     await this.removeTemp(job.id);
     this.finish(job, ctl, 'cancelled', { warnings: p.warnings }, resultOf(p));
   }

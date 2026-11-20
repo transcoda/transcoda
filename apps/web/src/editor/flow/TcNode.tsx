@@ -210,6 +210,7 @@ function BranchType({ type }: { type: 'file' | 'data' }) {
 const TRACE_WORD: Record<TraceNodeData['status'], string | null> = {
   current: 'running',
   failed: 'failed',
+  cancelled: 'canceled',
   untaken: 'not taken',
   done: null,
   pending: null,
@@ -340,6 +341,7 @@ export function TcNode({ id, data, selected }: NodeProps<TcNodeType>) {
   if (trace?.paused) classes.push('is-paused');
   if (trace?.status === 'untaken') classes.push('is-untaken');
   if (trace?.status === 'failed') classes.push('is-failed');
+  if (trace?.status === 'cancelled') classes.push('is-cancelled');
   const reached = trace !== undefined && trace.status !== 'pending' && trace.status !== 'untaken';
 
   // An unknown node still gets a handle per connected port, so the edges into it draw (red

@@ -5,7 +5,14 @@ import type { WorkflowGraph } from '@transcoda/shared';
 import { useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { catalogFixture } from '../../test/fixtures/catalog.ts';
-import { PATH, RUNNING_TRACE, TRACE, traceMain, traceSub } from '../../test/fixtures/trace.ts';
+import {
+  entry,
+  PATH,
+  RUNNING_TRACE,
+  TRACE,
+  traceMain,
+  traceSub,
+} from '../../test/fixtures/trace.ts';
 import { fitTrace, type NodeRef, refitTrace, TraceCanvas } from './TraceCanvas.tsx';
 import type { TraceSource } from './traceOverlay.ts';
 
@@ -262,6 +269,27 @@ describe('TraceCanvas', () => {
     cleanup();
     await show({ source: { trace: TRACE, steps: PATH, jobState: 'done', currentNode: undefined } });
     expect(document.querySelectorAll('.tc-badge')).toHaveLength(0);
+  });
+
+  it('a node the job failed or was canceled at says so in its name and row', async () => {
+    const at = (reason: string, jobState: TraceSource['jobState']) =>
+      show({
+        source: {
+          trace: [...TRACE.slice(0, 9), entry(12, 'ca', 'finish', null, reason)],
+          steps: PATH.slice(0, 9),
+          jobState,
+          currentNode: null,
+        },
+      });
+    await at('failed: encode: ffmpeg was killed', 'failed');
+    expect(card('ca').classList.contains('is-failed')).toBe(true);
+    expect(card('ca').getAttribute('aria-label')).toMatch(/, failed$/);
+    expect(within(card('ca')).getByText('failed: encode: ffmpeg was killed')).toBeTruthy();
+    cleanup();
+    await at('canceled: the job was canceled during this step', 'cancelled');
+    expect(card('ca').classList.contains('is-cancelled')).toBe(true);
+    expect(card('ca').getAttribute('aria-label')).toMatch(/, canceled$/);
+    expect(card('sg').classList.contains('is-untaken')).toBe(true);
   });
 
   it('hides the port labels and handles from screen readers (the cards say what each node did)', async () => {

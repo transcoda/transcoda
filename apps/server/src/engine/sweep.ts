@@ -2,9 +2,10 @@ import { execFile } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
 import { basename, dirname, join } from 'node:path';
 import { promisify } from 'node:util';
-import { RUNNING_JOB_STATES } from '@transcoda/shared';
+import { type JobState, RENDER_TYPE, RUNNING_JOB_STATES } from '@transcoda/shared';
 import type { Database } from '../db/open.ts';
 import {
+  appendTrace,
   deleteRecycled,
   hasReplaceJournal,
   type JobRow,
@@ -12,9 +13,11 @@ import {
   jobsWithReplaceJournal,
   jobsWithRestoreJournal,
   listRecycled,
+  nextTraceSeq,
   type ReplaceJournal,
   updateJob,
 } from '../db/repos/jobs.ts';
+import { findVersion } from '../db/repos/workflows.ts';
 import type { Logger } from '../logger.ts';
 import { sameFingerprint } from './fingerprint.ts';
 import {
@@ -100,6 +103,42 @@ export function requeueOnce(db: Database, job: JobRow, reason: string, now: Date
         );
   if (row === null) throw new Error(`job ${job.id} vanished`);
   return row;
+}
+
+/** The states in which a job is at its Render's work: encoding, then verifying the output. */
+const RENDERING: ReadonlySet<JobState> = new Set(['encoding', 'verifying']);
+
+/**
+ * A job the sweep failed as interrupted (`job` as it was found) while it encoded or verified: the
+ * Render on its walk gets a `failed:` trace entry, as when a running job fails, so that node reads
+ * failed instead of done and the steps after it did not run. A requeued job is left alone: it
+ * walks again. Nothing is written when the walk or the workflow version cannot be read.
+ */
+export function traceInterrupted(db: Database, job: JobRow, now: Date): void {
+  if (!RENDERING.has(job.state) || job.walkPath === null) return;
+  const stored = findVersion(db, job.workflowId, job.workflowVersion);
+  if (!stored?.ok) return;
+  const { graph } = stored.row;
+  const render = job.walkPath.find(
+    (s) =>
+      s.workflowPath.length === 0 &&
+      graph.nodes.some((n) => n.id === s.nodeId && n.type === RENDER_TYPE && n.bypassed !== true),
+  );
+  if (!render) return;
+  const at = now.toISOString();
+  appendTrace(db, job.id, {
+    seq: nextTraceSeq(db, job.id),
+    attempt: job.attempt,
+    nodeId: render.nodeId,
+    workflowPath: [],
+    phase: 'finish',
+    source: 'core',
+    port: null,
+    reason: 'failed: interrupted, the server stopped during this step',
+    findings: {},
+    startedAt: at,
+    endedAt: at,
+  });
 }
 
 const execFileAsync = promisify(execFile);
@@ -230,7 +269,8 @@ export async function startupSweep(db: Database, deps: SweepDeps): Promise<Sweep
   // 3. Interrupted running jobs.
   for (const job of jobsInStates(db, [...RUNNING_JOB_STATES])) {
     if (job.replaceJournal !== null) continue;
-    requeueOnce(db, job, 'interrupted', now);
+    const row = requeueOnce(db, job, 'interrupted', now);
+    if (row.state === 'failed') traceInterrupted(db, job, now);
     result.interrupted.push(job.id);
   }
 

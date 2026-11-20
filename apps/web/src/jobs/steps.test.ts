@@ -2,6 +2,7 @@ import type { ProbeStream, ProbeSummary, TraceChanges, WorkflowGraph } from '@tr
 import { describe, expect, it } from 'vitest';
 import type { Decision } from '../editor/trace/traceOverlay.ts';
 import {
+  badgeWord,
   damagedSideOf,
   didText,
   type StepContext,
@@ -592,6 +593,63 @@ describe('steps: one sentence and a badge per node', () => {
       '/out is not writable',
       "Didn't run: the job failed first",
     ]);
+  });
+
+  it('an encode killed partway: Render (planned, then failed) reads Failed with the reason; the steps after it did not run', () => {
+    const fin = (key: string, nodeId: string, title: string, type: string, reason = '') =>
+      d({ key, nodeId, title, kind: 'finish', type, phase: 'finish', reason, port: null });
+    const list = steps(
+      [
+        fin('3', 'render-1', 'Render', 'core:render', 'render'),
+        fin('4', 'ro', 'Replace original', 'core:replace-original'),
+        fin('5', 'render-1', 'Render', 'core:render', 'failed: encode: ffmpeg was killed'),
+      ],
+      { ...DONE, state: 'failed' },
+    );
+    expect(list.map((s) => [s.decision.nodeId, s.badge, s.sentence])).toEqual([
+      ['render-1', 'failed', 'Encode: ffmpeg was killed'],
+      ['ro', 'not-run', "Didn't run: the job failed first"],
+    ]);
+    // A plugin step after it never ran either (its planned entry is all it has).
+    const plugin = d({
+      key: '6',
+      nodeId: 'note',
+      title: 'Note',
+      kind: 'finish',
+      phase: 'finish',
+      reason: 'queued',
+      plugin: true,
+      port: null,
+    });
+    const withPlugin = steps(
+      [fin('3', 'render-1', 'Render', 'core:render', 'failed: encode: ffmpeg was killed'), plugin],
+      { ...DONE, state: 'failed' },
+    );
+    expect(withPlugin[1]?.sentence).toBe("Didn't run: the job failed first");
+  });
+
+  it('canceled during the encode: Render reads Canceled, the steps after it did not run', () => {
+    const fin = (key: string, nodeId: string, title: string, type: string, reason = '') =>
+      d({ key, nodeId, title, kind: 'finish', type, phase: 'finish', reason, port: null });
+    const list = steps(
+      [
+        fin('3', 'render-1', 'Render', 'core:render', 'render'),
+        fin('4', 'ro', 'Replace original', 'core:replace-original'),
+        fin(
+          '5',
+          'render-1',
+          'Render',
+          'core:render',
+          'canceled: the job was canceled during this step',
+        ),
+      ],
+      { ...DONE, state: 'cancelled' },
+    );
+    expect(list.map((s) => [s.badge, s.sentence])).toEqual([
+      ['canceled', 'The job was canceled during this step'],
+      ['not-run', "Didn't run: the job was canceled first"],
+    ]);
+    expect(badgeWord('canceled', true)).toBe('Canceled');
   });
 
   it("lists the job's problems and warnings on their node's step (last attempt only)", () => {

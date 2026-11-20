@@ -169,6 +169,44 @@ describe('buildTraceOverlay', () => {
     expect(status(o, 'run-a')).toBe('untaken');
   });
 
+  it('a node the job failed on while it ran (an encode killed partway): failed with the reason, the nodes after it not taken', () => {
+    const trace = [
+      ...TRACE.slice(0, 9),
+      entry(10, 'sg', 'finish', 'pass', 'at least 10% smaller'),
+      entry(11, 'ro-a', 'finish', 'file', 'replace the original'),
+      entry(12, 'ca', 'finish', null, 'failed: encode: ffmpeg was killed (signal SIGKILL)'),
+    ];
+    // The walk planned sg and ro-a after ca (they have entries): they still did not run.
+    const o = buildTraceOverlay(
+      traceMain(),
+      { trace, steps: PATH, jobState: 'failed', currentNode: null },
+      [],
+    );
+    expect(o.nodes.get('ca')).toMatchObject({
+      status: 'failed',
+      reason: 'failed: encode: ffmpeg was killed (signal SIGKILL)',
+    });
+    expect(o.nodes.get('sg')).toMatchObject({ status: 'untaken', reason: null });
+    expect(status(o, 'ro-a')).toBe('untaken');
+    expect(status(o, 'vi')).toBe('done');
+    expect(edge(o, 'ca-sg')).toMatchObject({ taken: false, untaken: true });
+    expect(edge(o, 'vi-run-a')?.taken).toBe(true);
+  });
+
+  it('a node the job was canceled at reads cancelled once the job settled', () => {
+    const trace = [
+      ...TRACE.slice(0, 9),
+      entry(10, 'ca', 'finish', null, 'canceled: the job was canceled during this step'),
+    ];
+    const at = (jobState: TraceSource['jobState']) =>
+      buildTraceOverlay(traceMain(), { trace, steps: PATH, jobState, currentNode: null }, []);
+    expect(at('cancelled').nodes.get('ca')).toMatchObject({
+      status: 'cancelled',
+      reason: 'canceled: the job was canceled during this step',
+    });
+    expect(status(at('cancelled'), 'sg')).toBe('untaken');
+  });
+
   it("carries a node's own problems and warnings (problems first), at its level only; none without", () => {
     const nodeProblems = [
       { workflowPath: [], nodeId: 'ro-a', severity: 'warning' as const, message: 'notify failed' },

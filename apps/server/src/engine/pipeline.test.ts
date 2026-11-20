@@ -1357,7 +1357,43 @@ describe('pipeline', () => {
       [2, 6],
       [2, 7],
       [2, 8],
+      [2, 9],
     ]);
+    // The retried attempt 1 says nothing; the final failure is told on the Render, whose work
+    // (encode and verify) failed.
+    expect(trace.filter((e) => e.reason.startsWith('failed:'))).toEqual([
+      expect.objectContaining({ attempt: 2, nodeId: 'render-1', workflowPath: [] }),
+    ]);
+    expect(trace.at(-1)?.reason).toBe(`failed: ${job.reason}`);
+  });
+
+  it('an encode that crashes partway fails the job and its Render: the trace says failed with the reason, Replace never ran', async () => {
+    const wf = workflow(
+      line(node('in', 'core:input-manual'), toH264(), node('ro', 'core:replace-original')),
+    );
+    const id = await queue(file(), wf);
+    await t.deps.engine.start();
+    for (const n of [1, 2]) {
+      await until(`spawn ${n}`, () => spawner.calls.length === n);
+      // Killed mid-encode: some output written, then ffmpeg exits non-zero.
+      await spawner.complete({ bytes: 300, code: 137, stderr: ['Killed'] });
+    }
+    const job = await settled(id);
+    expect(job).toMatchObject({ state: 'failed', failureCode: 'encode', attempt: 2 });
+    const trace = listTrace(t.db, id).filter((e) => e.attempt === 2);
+    const failed = trace.filter((e) => e.reason.startsWith('failed:'));
+    expect(failed).toEqual([
+      expect.objectContaining({
+        nodeId: 'render-1',
+        workflowPath: [],
+        phase: 'finish',
+        port: null,
+        reason: `failed: ${job.reason}`,
+      }),
+    ]);
+    // Replace's only entry is the walk's plan; nothing says it ran.
+    expect(trace.filter((e) => e.nodeId === 'ro').map((e) => e.reason)).toHaveLength(1);
+    expect((await stat(file())).size).toBe(1000);
   });
 
   it('fingerprint change before replace → requeued once, then failed "file changed during processing"', async () => {
@@ -1398,6 +1434,12 @@ describe('pipeline', () => {
     expect(spawner.signals).toEqual(['SIGKILL']);
     expect(await listAll(transcodeDir)).toEqual([]);
     expect(findJobResult(t.db, id)?.outcome).toBe('cancelled');
+    // The Render was at work: its trace says canceled (not failed, not done).
+    expect(listTrace(t.db, id).at(-1)).toMatchObject({
+      nodeId: 'render-1',
+      reason: 'canceled: the job was canceled during this step',
+    });
+    expect(listTrace(t.db, id).some((e) => e.reason.startsWith('failed:'))).toBe(false);
 
     // Cancelled while the replacement is being written beside the original: too late.
     await t.deps.engine.stop();

@@ -18,6 +18,7 @@ import {
   isPicture,
   RENDER_DAMAGED_PORT,
   RENDER_TYPE,
+  TRACE_CANCELED,
 } from '@transcoda/shared';
 import type { Decision } from '../editor/trace/traceOverlay.ts';
 import { fmtKbps } from '../lib/rate.ts';
@@ -32,6 +33,7 @@ export type Badge =
   | 'yes'
   | 'no'
   | 'failed'
+  | 'canceled'
   | 'not-run';
 
 /** An unmet precondition or a warning on a step, with where to fix it when there is a place. */
@@ -671,14 +673,17 @@ function notRun(d: Decision, ctx: StepContext, around: Around): string | null {
   if (onDamagedSide(d, ctx) && !ctx.sourceDamaged && !ctx.dryRun && isFinalState(ctx.state)) {
     return 'the source was not damaged';
   }
-  if (!isFinalState(ctx.state) || d.plugin) return null;
+  if (!isFinalState(ctx.state)) return null;
   // A step before the failing one ran (a write, then a later step failed); a failure that is not
   // on the trace (ffmpeg, verify, the server) came after the build, before any finish step ran.
+  // A plugin step after the failing one never ran either.
   if (ctx.state === 'failed' && (around.failedAt === null || around.at > around.failedAt)) {
-    return 'the job failed first';
+    if (!d.plugin || around.failedAt !== null) return 'the job failed first';
   }
   if (ctx.state === 'failed') return null;
+  // A canceled job wrote nothing (a cancel after the write ends it done), so no plugin step ran.
   if (ctx.state === 'cancelled') return 'the job was canceled first';
+  if (d.plugin) return null;
   // A dry run's write steps never run: its sentence says what they would do.
   if (!ctx.dryRun && d.type !== null && WRITES.has(d.type)) {
     if (ctx.state === 'kept_original') return 'the original was kept';
@@ -770,6 +775,14 @@ function step(d: Decision, ctx: StepContext, around: Around): Step {
       badge: 'failed',
       quiet: false,
       sentence: capital(d.reason.slice(FAILED.length).trim()),
+    };
+  }
+  if (d.reason.startsWith(TRACE_CANCELED)) {
+    return {
+      ...base,
+      badge: 'canceled',
+      quiet: false,
+      sentence: capital(d.reason.slice(TRACE_CANCELED.length).trim()),
     };
   }
   if (d.reason === 'bypassed' || d.reason.startsWith('bypassed (')) {
@@ -864,10 +877,15 @@ function step(d: Decision, ctx: StepContext, around: Around): Step {
   };
 }
 
-/** The entry that speaks for a node in its attempt: a failure, else a gate's decision, else the last. */
+/**
+ * The entry that speaks for a node in its attempt: a failure, else a cancel there, else a gate's
+ * decision, else the last.
+ */
 function speaksFor(a: Decision, b: Decision): Decision {
   if (a.reason.startsWith(FAILED)) return a;
   if (b.reason.startsWith(FAILED)) return b;
+  if (a.reason.startsWith(TRACE_CANCELED)) return a;
+  if (b.reason.startsWith(TRACE_CANCELED)) return b;
   if (a.branch !== null && b.branch === null) return a;
   return b;
 }
@@ -961,6 +979,8 @@ export function badgeWord(badge: Badge, past: boolean): string {
       return 'No';
     case 'failed':
       return 'Failed';
+    case 'canceled':
+      return 'Canceled';
     case 'not-run':
       return "Didn't run";
   }

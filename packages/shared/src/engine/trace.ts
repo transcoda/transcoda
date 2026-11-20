@@ -106,3 +106,6 @@ export const NodeProblemSchema = z.object({
   message: z.string(),
 });
 export type NodeProblem = z.infer<typeof NodeProblemSchema>;
+
+/** A trace reason that says the job was canceled while the node ran (`canceled: …`). */
+export const TRACE_CANCELED = 'canceled:';

@@ -150,14 +150,18 @@ export const JobReportShape = {
 };
 export type JobReport = z.infer<z.ZodObject<typeof JobReportShape>>;
 
-/** A walk failure is traced on the failing node as `failed: <reason>` with no port (walk.ts). */
+/**
+ * A failure is traced on the failing node as `failed: <reason>` with no port: by the walk
+ * (walk.ts), and by the pipeline for the node at work when execute failed (the Render while it
+ * encodes and verifies, a write step).
+ */
 const FAILED_PREFIX = 'failed: ';
 
 /**
- * The node that failed the walk of a failed job: among the entries of the highest attempt, the one
- * with the highest seq (trace order is not assumed), only when that entry itself records a failure.
- * A failure outside the walk (ffmpeg, probe, verify, replace) leaves no such entry: null, never a
- * node that merely ran last. Null for any other state or an empty trace.
+ * The node that failed a failed job: among the entries of the highest attempt, the one with the
+ * highest seq (trace order is not assumed), only when that entry itself records a failure. A
+ * failure no node recorded (probe, jobs from before execute recorded one) leaves no such entry:
+ * null, never a node that merely ran last. Null for any other state or an empty trace.
  */
 export function failingNodeOf(
   detail: Pick<JobDetail, 'state' | 'trace'>,

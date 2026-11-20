@@ -12,6 +12,7 @@ import {
   insertRecycled,
   type JobRow,
   listRecycled,
+  listTrace,
   type ReplaceJournal,
   type RestoreJournal,
   updateJob,
@@ -21,6 +22,7 @@ import { insertRun } from '../db/repos/runs.ts';
 import { insertWorkflow } from '../db/repos/workflows.ts';
 import { createTestDb } from '../db/test-db.ts';
 import type { Logger } from '../logger.ts';
+import { edge, mainGraph, node } from '../workflows/test-helpers.ts';
 import { fingerprintOf } from './fingerprint.ts';
 import { tempDir, toolPaths } from './fixtures.ts';
 import { type FsOps, failingAt, nodeFsOps } from './fs-ops.ts';
@@ -208,6 +210,67 @@ describe('startupSweep without journals', () => {
       reason: 'interrupted',
       requeues: 1,
     });
+  });
+
+  it('a job failed as interrupted while it encoded or verified: its Render reads failed on the trace; a requeued one, or one still deciding, gets nothing', async () => {
+    const graph = mainGraph(
+      [
+        node('in', 'core:input-manual'),
+        node('ev', 'core:encode-video', { codec: 'h264' }),
+        node('ro', 'core:replace-original'),
+      ],
+      [edge('in', 'ev'), edge('ev', 'ro')],
+    );
+    const render = graph.nodes.find((n) => n.type === 'core:render')?.id ?? '';
+    expect(render).not.toBe('');
+    insertWorkflow(db, { id: 'w2', kind: 'workflow', name: 'Encode', graph, createdBy: 'u' }, now);
+    const walkPath = ['in', 'ev', render, 'ro'].map((nodeId) => ({
+      workflowPath: [],
+      nodeId,
+      port: 'file',
+    }));
+    for (const id of ['enc', 'ver', 'dec']) {
+      insertJob(
+        db,
+        {
+          id,
+          runId: 'r1',
+          libraryId: 'l1',
+          fileId: null,
+          path: join(lib, 'Show', `${id}.mkv`),
+          workflowId: 'w2',
+          workflowVersion: 1,
+          dryRun: false,
+          testEncode: false,
+          state: 'encoding',
+          priority: 0,
+        },
+        now,
+      );
+      updateJob(db, id, { walkPath }, now);
+    }
+    await startupSweep(db, sweepDeps());
+    expect(['enc', 'ver', 'dec'].map((id) => listTrace(db, id))).toEqual([[], [], []]);
+
+    updateJob(db, 'enc', { state: 'encoding' }, now);
+    updateJob(db, 'ver', { state: 'verifying' }, now);
+    updateJob(db, 'dec', { state: 'deciding' }, now);
+    await startupSweep(db, sweepDeps());
+    for (const id of ['enc', 'ver']) {
+      expect(findJob(db, id)).toMatchObject({ state: 'failed', failureCode: 'interrupted' });
+      expect(listTrace(db, id)).toEqual([
+        expect.objectContaining({
+          seq: 1,
+          attempt: 1,
+          nodeId: render,
+          workflowPath: [],
+          phase: 'finish',
+          reason: 'failed: interrupted, the server stopped during this step',
+        }),
+      ]);
+    }
+    expect(findJob(db, 'dec')).toMatchObject({ state: 'failed' });
+    expect(listTrace(db, 'dec')).toEqual([]);
   });
 
   it('kills a leftover ffmpeg group before touching temp', async () => {

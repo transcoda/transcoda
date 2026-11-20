@@ -205,7 +205,11 @@ export function TraceCanvas({
     for (const n of graph.nodes) {
       const t = nodes.get(n.id);
       if (!t) continue;
-      const reached = t.status === 'done' || t.status === 'current' || t.status === 'failed';
+      const reached =
+        t.status === 'done' ||
+        t.status === 'current' ||
+        t.status === 'failed' ||
+        t.status === 'cancelled';
       if (n.type === RUN_SUBWORKFLOW_TYPE && reached) {
         nodes.set(n.id, { ...t, expandable: true, expanded: openRun === n.id });
       }

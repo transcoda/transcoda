@@ -14,8 +14,11 @@ import type { NodeState } from '../model/issues.ts';
 
 /** One node's part of a job's trace (Phase B; defined here so Phase A compiles alone). */
 export type TraceNodeData = {
-  /** `failed`: the node's last entry says `failed: …` (Task 23). */
-  status: 'done' | 'current' | 'untaken' | 'pending' | 'failed';
+  /**
+   * `failed`: the node's last entry says `failed: …` (Task 23); `cancelled`: `canceled: …`, the
+   * job was canceled while the node was at work.
+   */
+  status: 'done' | 'current' | 'untaken' | 'pending' | 'failed' | 'cancelled';
   reason: string | null;
   port: string | null;
   findings: Record<string, JsonValue>;
