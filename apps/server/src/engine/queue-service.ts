@@ -492,7 +492,11 @@ export class QueueService {
     if (paths.length === 0) return rejected('not found');
     const lexicalRoot = trimSlash(resolve(row.path));
     const realRoot = await realpathOrNull(this.fs, lexicalRoot);
-    if (realRoot === null) return { kind: 'library-unreachable', path: row.path };
+    // A root that resolves but is no folder or cannot be read is as unreachable as a gone one:
+    // every file would be skipped, so the selection is refused instead of planned.
+    if (realRoot === null || !(await this.readableFolder(realRoot))) {
+      return { kind: 'library-unreachable', path: row.path };
+    }
     // The library as `checkPath` gives it: its real root and its recycle folder resolved.
     const rootCheck = await checkPath(this.db, realRoot, this.fs);
     if (!rootCheck.ok || rootCheck.library.id !== row.id) return rejected('not found');
@@ -1062,6 +1066,17 @@ export class QueueService {
       { libraryId, folder, paths: real, unlisted, startedAt },
       this.deps.now(),
     );
+  }
+
+  /** `p` is a folder this process may read (list), checked without listing it. */
+  private async readableFolder(p: string): Promise<boolean> {
+    try {
+      if (!(await this.fs.stat(p)).isDirectory()) return false;
+      await this.fs.canRead(p);
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   private statFailure(err: unknown): 'not found' | 'unreadable' | 'path too long' {
