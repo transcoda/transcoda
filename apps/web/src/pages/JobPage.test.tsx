@@ -108,6 +108,17 @@ function factOf(term: string): string | null {
 }
 
 describe('JobPage', () => {
+  it('has a breadcrumb that ends in the job itself, marked as the current page', async () => {
+    mocks.jobs.get.mockResolvedValue(jobDetail());
+    await open();
+    const crumbs = screen.getByRole('navigation', { name: 'Breadcrumb' });
+    expect(within(crumbs).getByRole('link', { name: 'Jobs' }).getAttribute('href')).toBe('/jobs');
+    const current = crumbs.querySelector('[aria-current="page"]');
+    expect(current?.textContent).toBeTruthy();
+    expect(crumbs.textContent?.endsWith(current?.textContent ?? '')).toBe(true);
+    expect(crumbs.textContent).not.toMatch(/[/›]$/);
+  });
+
   it('shows which GPU encoded the job, and no row when none did', async () => {
     mocks.jobs.get.mockResolvedValue({ ...jobDetail(), encodedOn: 'Intel Arc A310 · 07:00.0' });
     const view = await open();
@@ -154,7 +165,7 @@ describe('JobPage', () => {
     expect(factOf('Workflow')).toBe('TV cleanup v7');
     expect(factOf('When')).toMatch(/^Finished .* · took /);
     // The crumb names only the parent.
-    expect(document.querySelector('.job-crumbs')?.textContent).toBe('Jobs/');
+    expect(document.querySelector('.job-crumbs')?.textContent).toBe('Jobs›Otter and Finch S01E01');
     expect(screen.getAllByText('Replaced').length).toBeGreaterThan(0);
 
     const section = screen.getByRole('region', { name: 'What the workflow did' });

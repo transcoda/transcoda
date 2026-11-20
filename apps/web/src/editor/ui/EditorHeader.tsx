@@ -403,6 +403,8 @@ export function EditorHeader({
 
   return (
     <header className={compact ? 'editor-head is-compact' : 'editor-head'}>
+      {/* The page's h1: the breadcrumb already shows the name (as the rename button). */}
+      <h1 className="sr-only">{workflow.name}</h1>
       <nav aria-label="Breadcrumb" className="crumb">
         <GuardedLink href="/" className="crumb-link">
           Workflows

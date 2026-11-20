@@ -693,7 +693,7 @@ function StatTiles({
               ? {
                   onClick: () => onSelect(filter),
                   pressed: active === filter,
-                  buttonLabel: `Show ${filter}: ${t.value}`,
+                  buttonLabel: `${t.label}: ${t.value}, show these jobs`,
                 }
               : {})}
           />

@@ -322,7 +322,9 @@ describe('JobsPage', () => {
         expect.objectContaining({ libraryId: 'lib-movies' }),
       ),
     );
-    fireEvent.click(screen.getByRole('button', { name: /^Queued/ }));
+    // The filter chip (the "Queued" stat tile's name starts with the same word).
+    const chips = document.querySelector('.filter-chips') as HTMLElement;
+    fireEvent.click(within(chips).getByRole('button', { name: /^Queued/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Cancel all' }));
     const dialog = await screen.findByRole('dialog', { name: 'Cancel 39 jobs?' });
     expect(
@@ -627,7 +629,9 @@ describe('JobsPage', () => {
     );
     // The saved tile is information only; the other three are buttons.
     expect(within(tiles).getAllByRole('button')).toHaveLength(3);
-    const attention = within(tiles).getByRole('button', { name: 'Show Needs attention: 3' });
+    const attention = within(tiles).getByRole('button', {
+      name: 'Needs attention: 3, show these jobs',
+    });
     expect(attention.getAttribute('aria-pressed')).toBe('false');
     fireEvent.click(attention);
     await waitFor(() => expect(mocks.list).toHaveBeenCalledWith({ limit: 200, problems: true }));
@@ -640,7 +644,7 @@ describe('JobsPage', () => {
     ).toEqual(['true', 'true']);
     fireEvent.click(attention);
     expect(attention.getAttribute('aria-pressed')).toBe('false');
-    fireEvent.click(within(tiles).getByRole('button', { name: 'Show Failed: 4' }));
+    fireEvent.click(within(tiles).getByRole('button', { name: 'Failed: 4, show these jobs' }));
     await waitFor(() => expect(mocks.list).toHaveBeenCalledWith({ state: ['failed'], limit: 200 }));
     expect(screen.getByRole('button', { name: 'Failed 4' }).getAttribute('aria-pressed')).toBe(
       'true',
@@ -650,7 +654,9 @@ describe('JobsPage', () => {
   it('the pressed tile alone shows a check before its label, on every filter tile', async () => {
     await renderPage();
     const tiles = await screen.findByRole('list', { name: 'Today' });
-    const queued = await within(tiles).findByRole('button', { name: 'Show Queued: 37' });
+    const queued = await within(tiles).findByRole('button', {
+      name: 'Queued: 37, show these jobs',
+    });
     expect(tiles.querySelector('[data-icon="check"]')).toBeNull();
     fireEvent.click(queued);
     expect(
@@ -658,9 +664,9 @@ describe('JobsPage', () => {
         .getAllByRole('button')
         .map((b) => [b.getAttribute('aria-label'), b.getAttribute('aria-pressed')]),
     ).toEqual([
-      ['Show Queued: 37', 'true'],
-      ['Show Failed: 4', 'false'],
-      ['Show Needs attention: 3', 'false'],
+      ['Queued: 37, show these jobs', 'true'],
+      ['Failed: 4, show these jobs', 'false'],
+      ['Needs attention: 3, show these jobs', 'false'],
     ]);
     const checks = tiles.querySelectorAll('[data-icon="check"]');
     expect(checks).toHaveLength(1);
@@ -670,8 +676,8 @@ describe('JobsPage', () => {
     expect(screen.getByRole('button', { name: 'Queued 37' }).getAttribute('aria-pressed')).toBe(
       'true',
     );
-    fireEvent.click(within(tiles).getByRole('button', { name: 'Show Failed: 4' }));
-    const failed = within(tiles).getByRole('button', { name: 'Show Failed: 4' });
+    fireEvent.click(within(tiles).getByRole('button', { name: 'Failed: 4, show these jobs' }));
+    const failed = within(tiles).getByRole('button', { name: 'Failed: 4, show these jobs' });
     expect(tiles.querySelectorAll('[data-icon="check"]')).toHaveLength(1);
     expect(failed.querySelector('[data-icon="check"]')).not.toBeNull();
   });

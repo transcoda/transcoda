@@ -22,10 +22,16 @@ describe('StatTile', () => {
     const onClick = vi.fn();
     render(
       <ul>
-        <StatTile label="Failed" value="2" onClick={onClick} pressed buttonLabel="Show Failed: 2" />
+        <StatTile
+          label="Failed"
+          value="2"
+          onClick={onClick}
+          pressed
+          buttonLabel="Failed: 2, show these jobs"
+        />
       </ul>,
     );
-    const button = screen.getByRole('button', { name: 'Show Failed: 2' });
+    const button = screen.getByRole('button', { name: 'Failed: 2, show these jobs' });
     expect(button.getAttribute('aria-pressed')).toBe('true');
     expect(button.querySelector('svg')).not.toBeNull();
     fireEvent.click(button);

@@ -56,6 +56,7 @@ describe('toFlow', () => {
     const card = nodes.find((n) => n.type === 'tc-values');
     expect(card).toMatchObject({
       id: '~values',
+      ariaLabel: 'Values',
       position: { x: 5, y: -200 },
       selected: true,
       data: { uses: { Languages: 1 } },
@@ -78,6 +79,16 @@ describe('toFlow', () => {
     const { nodes, edges } = toFlow(chainMainReplace(), catalogFixture, [], none);
     expect(nodes.some((n) => n.type === 'tc-values')).toBe(false);
     expect(edges.some((e) => e.type === 'tc-link')).toBe(false);
+  });
+
+  it("names React Flow's wrapper of every card and group (the icon-only tile shows no words)", () => {
+    const { nodes } = toFlow(grouped(), catalogFixture, [], none);
+    expect(flowNode(nodes, 'cleanup').ariaLabel).toBe('Cleanup');
+    for (const n of nodes.filter((x): x is TcNode => x.type === 'tc-node')) {
+      const { instance, def } = n.data;
+      expect(n.ariaLabel).toBe(instance.label ?? def?.title ?? instance.type);
+      expect(n.ariaLabel).not.toBe('');
+    }
   });
 
   it('converts grouped node positions to parent-relative and lists group nodes first', () => {

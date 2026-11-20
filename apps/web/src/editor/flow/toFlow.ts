@@ -74,6 +74,8 @@ function valuesParts(
       type: 'tc-values',
       position: { x: values.position.x, y: values.position.y },
       selected: selection.group === VALUES_CARD_ID,
+      // React Flow's focusable wrapper gets a name too (the card inside is "Shared values").
+      ariaLabel: 'Values',
       data: { values, uses },
     },
     links,
@@ -134,6 +136,8 @@ export function toFlow(
       initialHeight: size.height,
       style: { width: size.width, height: size.height },
       selected: selection.group === group.id,
+      // React Flow's focusable wrapper gets a name too (the box inside it is "Group <name>").
+      ariaLabel: group.name,
       data: { group, count: counts.get(group.id) ?? 0, problem: null },
     };
   });
@@ -162,6 +166,9 @@ export function toFlow(
       initialWidth: NODE_SIZE.width,
       initialHeight: NODE_SIZE.height,
       selected: selectedNodes.has(instance.id),
+      // React Flow's focusable wrapper is named by the card's title at every zoom level (the
+      // icon-only tile shows no words).
+      ariaLabel: instance.label ?? catalog?.byType.get(instance.type)?.title ?? instance.type,
       data: {
         instance,
         def: catalog?.byType.get(instance.type) ?? null,

@@ -21,7 +21,7 @@ export function StatTile({
   zero?: boolean;
   onClick?: (() => void) | undefined;
   pressed?: boolean;
-  /** The button's accessible name ("Show Failed: 0"). */
+  /** The button's accessible name; it starts with the visible label ("Failed: 0, show these jobs"). */
   buttonLabel?: string;
   className?: string;
   /** `li` inside a `.stat-tiles` list (the default), `div` on its own. */
