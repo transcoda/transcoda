@@ -1247,6 +1247,40 @@ describe('QueueService.browse', () => {
     }
   });
 
+  it('a root that goes away after it resolved is library-unreachable; a missing subfolder of a present root stays not-found', async () => {
+    let detach = false;
+    const detaching = new QueueService({
+      db,
+      workflows,
+      events,
+      now: () => new Date(),
+      fs: {
+        ...nodeFsOps,
+        realpath: async (p) => {
+          const real = await nodeFsOps.realpath(p);
+          // Unmounted between the root resolving and the folder being checked.
+          if (detach && p === lib.path) {
+            detach = false;
+            await rename(root, `${root}-unmounted`);
+          }
+          return real;
+        },
+      },
+      onQueued: () => {},
+    });
+    expect(await detaching.browse(lib.id, 'nope')).toBe('not-found');
+    detach = true;
+    try {
+      expect(await detaching.browse(lib.id, 'Movies')).toEqual({
+        kind: 'library-unreachable',
+        path: lib.path,
+      });
+    } finally {
+      await rename(`${root}-unmounted`, root);
+    }
+    expect(await detaching.browse(lib.id, 'Movies')).toEqual({ dirs: [], files: [] });
+  });
+
   it('a root it may not list is library-unreachable; a subfolder it may not list stays unreadable', async () => {
     const denied = (p: string) => p === root || p === join(root, 'Movies');
     const locked = new QueueService({

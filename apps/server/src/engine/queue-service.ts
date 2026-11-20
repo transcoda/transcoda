@@ -942,20 +942,25 @@ export class QueueService {
     if (root === null) return unreachable;
     const target = resolve(root, relPath);
     if (!isWithin(target, root)) return rejected('outside library root');
+    /** Not found, unless the root itself went away meanwhile (unmounted after it resolved). */
+    const notFound = async (): Promise<LibraryUnreachable | 'not-found'> => {
+      const again = await realpathOrNull(this.fs, library.path);
+      return again !== null && (await this.readableFolder(again)) ? 'not-found' : unreachable;
+    };
     const check = await checkPath(this.db, target, this.fs);
-    if (!check.ok) return check.reason === 'not found' ? 'not-found' : rejected(check.reason);
+    if (!check.ok) return check.reason === 'not found' ? notFound() : rejected(check.reason);
     if (check.library.id !== libraryId) return rejected('symlink escapes root');
     if (isRecycleOrTemp(check.realPath, check.library)) return rejected('in recycle folder');
     const dir = check.realPath;
     let entries: Awaited<ReturnType<FsOps['readdir']>>;
     try {
-      if (!(await this.fs.stat(dir)).isDirectory()) return dir === root ? unreachable : 'not-found';
+      if (!(await this.fs.stat(dir)).isDirectory()) return dir === root ? unreachable : notFound();
       entries = await this.fs.readdir(dir);
     } catch (err) {
       // The root itself failing to list is the library being unreachable, whatever the error.
       if (dir === root) return unreachable;
       const why = this.statFailure(err);
-      return why === 'not found' ? 'not-found' : rejected(why);
+      return why === 'not found' ? notFound() : rejected(why);
     }
 
     const result: BrowseResult = { dirs: [], files: [] };
