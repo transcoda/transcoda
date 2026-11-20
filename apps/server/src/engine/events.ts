@@ -39,6 +39,8 @@ export type EngineEvent =
   | { type: 'resync'; at: string }
   | { type: 'job.trace'; jobId: string; entry: TraceEntry }
   | { type: 'run.changed'; runId: string }
+  /** A library's listing changed with no job state change (the media pass filled titles). */
+  | { type: 'library.changed'; libraryId: string }
   | {
       type: 'queue.changed';
       paused: boolean;

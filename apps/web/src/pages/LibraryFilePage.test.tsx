@@ -329,6 +329,26 @@ describe('LibraryFilePage', () => {
     }
   });
 
+  it('refetches when the media pass fills this library', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+    try {
+      await renderPage();
+      await waitFor(() => expect(fake.streams.length).toBeGreaterThan(0));
+      const push = (e: EngineEvent) => act(async () => fake.last().push(e));
+      await push(queueSnapshot);
+      await act(() => vi.advanceTimersByTimeAsync(REFETCH_COALESCE_MS * 2));
+      const calls = mocks.libraries.file.mock.calls.length;
+      await push({ type: 'library.changed', libraryId: 'other' });
+      await act(() => vi.advanceTimersByTimeAsync(REFETCH_COALESCE_MS * 2));
+      expect(mocks.libraries.file).toHaveBeenCalledTimes(calls);
+      await push({ type: 'library.changed', libraryId: 'l1' });
+      await act(() => vi.advanceTimersByTimeAsync(REFETCH_COALESCE_MS * 2));
+      await waitFor(() => expect(mocks.libraries.file).toHaveBeenCalledTimes(calls + 1));
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('a gone file wears a badge with an icon and the words', async () => {
     mocks.libraries.file.mockResolvedValue(
       detail({ file: { ...detail().file, gone: true }, now: null }),

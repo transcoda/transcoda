@@ -1,9 +1,11 @@
 // Fills `media` (title, poster) on each file's latest job when it is NULL: a pass reads sidecars
 // beside the files (never runs ffmpeg), a batch at a time, so the library pages need no folder read.
+// Each library it wrote to gets a `library.changed` event, at most one per library per interval.
 
 import type { Database } from '../db/open.ts';
 import { latestJobsWithoutMedia, setJobMedia } from '../db/repos/library-files.ts';
 import type { Logger } from '../logger.ts';
+import type { EngineEvent } from './events.ts';
 import type { FsOps } from './fs-ops.ts';
 import { createMediaResolver, type MediaResolver } from './media-info.ts';
 
@@ -12,6 +14,11 @@ const MEDIA_CONCURRENCY = 8;
 const DEFAULT_BATCH = 200;
 /** A burst of kicks (one per queued run) within this delay runs one pass. */
 const DEFAULT_KICK_DELAY_MS = 1000;
+/**
+ * The least time between two `library.changed` events of one pass: a backfill of thousands of
+ * files tells each open listing every few seconds, not once per batch (a refetch storm).
+ */
+const DEFAULT_NOTIFY_INTERVAL_MS = 3000;
 
 export class MediaPass {
   private running: Promise<void> | null = null;
@@ -30,6 +37,12 @@ export class MediaPass {
       batch?: number;
       /** How long a kick waits before the pass starts, so a burst of kicks runs one pass. */
       kickDelayMs?: number;
+      /** Where `library.changed` goes after a write; nowhere when left out. */
+      events?: { publish(e: EngineEvent): void };
+      /** The least time between two rounds of `library.changed` in one pass. */
+      notifyIntervalMs?: number;
+      /** A monotonic clock in ms, for the notify interval. */
+      clock?: () => number;
     },
   ) {}
 
@@ -100,41 +113,62 @@ export class MediaPass {
 
   /**
    * One pass: reads the latest jobs lacking media once, then works through that list a batch at a
-   * time. Jobs queued during the pass are left to the pass their kick runs.
+   * time. Jobs queued during the pass are left to the pass their kick runs. The libraries written
+   * to hear `library.changed` after a batch once the notify interval has passed since the last
+   * round (the first batch always), and once more when the pass ends, failed or stopped.
    */
   async run(): Promise<{ filled: number }> {
-    const { db, fs, log } = this.deps;
+    const { db, fs, log, events } = this.deps;
     const batch = this.deps.batch ?? DEFAULT_BATCH;
+    const interval = this.deps.notifyIntervalMs ?? DEFAULT_NOTIFY_INTERVAL_MS;
+    const clock = this.deps.clock ?? (() => performance.now());
     // One resolver per pass: it caches folder listings.
     const resolver = (this.deps.resolver ?? (() => createMediaResolver({ fs, log })))();
     const all = latestJobsWithoutMedia(db);
     let filled = 0;
-    for (let start = 0; start < all.length && !this.stopped; start += batch) {
-      const todo = all.slice(start, start + batch);
-      let next = 0;
-      let wrote = 0;
-      let failed = false;
-      const worker = async (): Promise<void> => {
-        while (next < todo.length && !this.stopped && !failed) {
-          const j = todo[next++];
-          if (j === undefined) return;
-          try {
-            // resolve never throws; a file whose sidecars fail gets its file-name media.
-            const media = await resolver.resolve(j.path, j.libraryRoot);
-            if (setJobMedia(db, j.jobId, media)) wrote++;
-          } catch (err) {
-            failed = true; // the other workers start no new file
-            throw err;
+    /** Libraries written to since the last round of events. */
+    const dirty = new Set<string>();
+    let notifiedAt = Number.NEGATIVE_INFINITY;
+    const notify = (): void => {
+      notifiedAt = clock();
+      for (const libraryId of dirty) events?.publish({ type: 'library.changed', libraryId });
+      dirty.clear();
+    };
+    try {
+      for (let start = 0; start < all.length && !this.stopped; start += batch) {
+        const todo = all.slice(start, start + batch);
+        let next = 0;
+        let wrote = 0;
+        let failed = false;
+        const worker = async (): Promise<void> => {
+          while (next < todo.length && !this.stopped && !failed) {
+            const j = todo[next++];
+            if (j === undefined) return;
+            try {
+              // resolve never throws; a file whose sidecars fail gets its file-name media.
+              const media = await resolver.resolve(j.path, j.libraryRoot);
+              if (setJobMedia(db, j.jobId, media)) {
+                wrote++;
+                dirty.add(j.libraryId);
+              }
+            } catch (err) {
+              failed = true; // the other workers start no new file
+              throw err;
+            }
           }
-        }
-      };
-      // Every worker settles before the pass ends, so none outlives `running` (idle, stop, kick).
-      const settled = await Promise.allSettled(
-        Array.from({ length: Math.min(MEDIA_CONCURRENCY, todo.length) }, worker),
-      );
-      filled += wrote;
-      const failure = settled.find((s) => s.status === 'rejected');
-      if (failure !== undefined) throw failure.reason;
+        };
+        // Every worker settles before the pass ends, so none outlives `running` (idle, stop, kick).
+        const settled = await Promise.allSettled(
+          Array.from({ length: Math.min(MEDIA_CONCURRENCY, todo.length) }, worker),
+        );
+        filled += wrote;
+        const failure = settled.find((s) => s.status === 'rejected');
+        if (failure !== undefined) throw failure.reason;
+        if (dirty.size > 0 && clock() - notifiedAt >= interval) notify();
+      }
+    } finally {
+      // What was written is news even when the pass failed or was stopped part way.
+      if (dirty.size > 0) notify();
     }
     if (filled > 0) log.info({ msg: 'media pass: filled job(s)', filled });
     return { filled };

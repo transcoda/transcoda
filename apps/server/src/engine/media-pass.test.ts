@@ -10,6 +10,7 @@ import { insertRun } from '../db/repos/runs.ts';
 import { insertWorkflow } from '../db/repos/workflows.ts';
 import { createTestDb } from '../db/test-db.ts';
 import type { Logger } from '../logger.ts';
+import type { EngineEvent } from './events.ts';
 import { tempDir } from './fixtures.ts';
 import { type FsOps, nodeFsOps } from './fs-ops.ts';
 import { createMediaResolver, type MediaResolver } from './media-info.ts';
@@ -144,8 +145,8 @@ describe('latestJobsWithoutMedia', () => {
     job('b-latest', 'f2', 5);
     job('a-latest', 'f1', 2);
     expect(latestJobsWithoutMedia(db, 10)).toEqual([
-      { jobId: 'a-latest', path: '/media/tv/a.mkv', libraryRoot: '/media/tv' },
-      { jobId: 'b-latest', path: '/media/tv/b.mkv', libraryRoot: '/media/tv' },
+      { jobId: 'a-latest', libraryId: 'l1', path: '/media/tv/a.mkv', libraryRoot: '/media/tv' },
+      { jobId: 'b-latest', libraryId: 'l1', path: '/media/tv/b.mkv', libraryRoot: '/media/tv' },
     ]);
     expect(latestJobsWithoutMedia(db, 1).map((j) => j.jobId)).toEqual(['a-latest']);
   });
@@ -454,5 +455,88 @@ describe('MediaPass', () => {
     expect(await pass(resolver).run()).toEqual({ filled: 1 });
     expect(mediaOf('j1')).not.toBeNull();
     expect(mediaOf('j2')).toBeNull();
+  });
+});
+
+describe('MediaPass events', () => {
+  /** A pass that records its events, with a clock the resolver can move. */
+  function watched(opts: { batch?: number; resolver?: MediaResolver } = {}) {
+    const events: EngineEvent[] = [];
+    const clock = { ms: 0 };
+    const mp = new MediaPass({
+      db,
+      fs: nodeFsOps,
+      log,
+      resolver: () => opts.resolver ?? fake(),
+      kickDelayMs: 0,
+      events: { publish: (e) => events.push(e) },
+      notifyIntervalMs: 1000,
+      clock: () => clock.ms,
+      ...(opts.batch ? { batch: opts.batch } : {}),
+    });
+    return { mp, events, clock };
+  }
+
+  it('tells each library it wrote to, once, after a one-batch pass', async () => {
+    library('l2', '/media/movies');
+    library('l3', '/media/other');
+    file('f1', 'l1', '/media/tv/a.mkv');
+    file('f2', 'l1', '/media/tv/b.mkv');
+    file('f3', 'l2', '/media/movies/c.mkv');
+    file('f4', 'l3', '/media/other/d.mkv');
+    job('j1', 'f1', 1);
+    job('j2', 'f2', 2);
+    job('j3', 'f3', 3);
+    job('j4', 'f4', 4, M); // has media: nothing written to l3
+    const { mp, events } = watched();
+    expect(await mp.run()).toEqual({ filled: 3 });
+    expect(events).toHaveLength(2);
+    expect(events).toEqual(
+      expect.arrayContaining([
+        { type: 'library.changed', libraryId: 'l1' },
+        { type: 'library.changed', libraryId: 'l2' },
+      ]),
+    );
+  });
+
+  it('sends nothing when it wrote nothing', async () => {
+    file('f1', 'l1', '/media/tv/a.mkv');
+    job('j1', 'f1', 1, M);
+    const { mp, events } = watched();
+    expect(await mp.run()).toEqual({ filled: 0 });
+    expect(events).toEqual([]);
+  });
+
+  it('a backfill of many batches tells a library at most once per interval, and at the end', async () => {
+    for (let i = 0; i < 10; i++) {
+      file(`f${i}`, 'l1', `/media/tv/${i}.mkv`);
+      job(`j${i}`, `f${i}`, i);
+    }
+    const resolver = fake();
+    const { mp, events, clock } = watched({ batch: 1, resolver });
+    // Each file takes 300 ms of the clock: ten batches over 3 s.
+    resolver.resolve.mockImplementation(async (p: string) => {
+      clock.ms += 300;
+      return media(p);
+    });
+    expect(await mp.run()).toEqual({ filled: 10 });
+    // After batch 1 (300 ms), then batches 5 (1500) and 9 (2700), then the end (3000).
+    expect(events).toEqual(Array(4).fill({ type: 'library.changed', libraryId: 'l1' }));
+  });
+
+  it('tells the libraries written to before a pass fails', async () => {
+    for (let i = 0; i < 3; i++) {
+      file(`f${i}`, 'l1', `/media/tv/${i}.mkv`);
+      job(`j${i}`, `f${i}`, i);
+    }
+    const resolver = fake(async (p) =>
+      // JSON.stringify throws on a BigInt: the first batch fails after writing 0.mkv.
+      p.endsWith('/1.mkv') ? { ...media(p), year: 1n as unknown as number } : media(p),
+    );
+    const { mp, events } = watched({ batch: 2, resolver });
+    await expect(mp.run()).rejects.toThrow();
+    expect(mediaOf('j0')).not.toBeNull();
+    expect(mediaOf('j2')).toBeNull();
+    expect(events).toEqual([{ type: 'library.changed', libraryId: 'l1' }]);
   });
 });
