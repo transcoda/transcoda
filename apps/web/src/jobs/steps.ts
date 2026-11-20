@@ -806,7 +806,8 @@ function step(d: Decision, ctx: StepContext, around: Around): Step {
       ...base,
       badge: 'failed',
       quiet: false,
-      sentence: capital(d.reason.slice(FAILED.length).trim()),
+      // The engine's raw error text, as it wrote it (never re-cased: "ffmpeg", not "Ffmpeg").
+      sentence: `Failed: ${d.reason.slice(FAILED.length).trim()}`,
     };
   }
   if (d.reason.startsWith(TRACE_CANCELED)) {

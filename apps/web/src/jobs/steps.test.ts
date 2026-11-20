@@ -590,7 +590,7 @@ describe('steps: one sentence and a badge per node', () => {
     );
     expect(list.map((s) => s.sentence)).toEqual([
       "Replaced the original, which is now in this library's recycle folder",
-      '/out is not writable',
+      'Failed: /out is not writable',
       "Didn't run: the job failed first",
     ]);
   });
@@ -607,7 +607,7 @@ describe('steps: one sentence and a badge per node', () => {
       { ...DONE, state: 'failed' },
     );
     expect(list.map((s) => [s.decision.nodeId, s.badge, s.sentence])).toEqual([
-      ['render-1', 'failed', 'Encode: ffmpeg was killed'],
+      ['render-1', 'failed', 'Failed: encode: ffmpeg was killed'],
       ['ro', 'not-run', "Didn't run: the job failed first"],
     ]);
     // A plugin step after it never ran either (its planned entry is all it has).
@@ -806,7 +806,12 @@ describe('steps: one sentence and a badge per node', () => {
         reason: 'failed: no hevc encoder is available',
       }),
     );
-    expect(failed.sentence).toBe('No hevc encoder is available');
+    expect(failed.sentence).toBe('Failed: no hevc encoder is available');
+    // Raw error text keeps its case.
+    const killed = one(
+      d({ key: '9', nodeId: 'ev', title: 'Encode video', reason: 'failed: ffmpeg killed by SIGKILL' }),
+    );
+    expect(killed.sentence).toBe('Failed: ffmpeg killed by SIGKILL');
     expect(failed.badge).toBe('failed');
     const bypassed = one(
       d({ key: '9', nodeId: 'ev', title: 'Encode video', reason: 'bypassed' }),
