@@ -5,6 +5,7 @@
 import type {
   JobState,
   JsonValue,
+  NodeProblem,
   ProbeSummary,
   TraceChanges,
   WorkflowGraph,
@@ -71,6 +72,8 @@ export interface StepContext {
   sourceDamaged?: boolean;
   /** The workflow's nodes on a Damaged side (`damagedSideOf`), top level only. */
   damagedSide?: ReadonlySet<string>;
+  /** `result.nodeProblems`: the last attempt's problems and warnings, each on its node's step. */
+  nodeProblems?: readonly NodeProblem[];
 }
 
 /**
@@ -890,7 +893,21 @@ export function steps(items: readonly Decision[], ctx: StepContext): Step[] {
   const lastAttempt = Math.max(0, ...list.map((d) => d.attempt));
   const failed = list.findIndex((d) => d.attempt === lastAttempt && d.reason.startsWith(FAILED));
   const replaces = list.some((d) => d.type === 'core:replace-original' && !d.untaken);
-  return list.map((d, at) => step(d, ctx, { at, failedAt: failed >= 0 ? failed : null, replaces }));
+  return list.map((d, at) => {
+    const s = step(d, ctx, { at, failedAt: failed >= 0 ? failed : null, replaces });
+    // The job's problems and warnings on this node (they belong to its last attempt).
+    const own = (ctx.nodeProblems ?? []).filter(
+      (p) =>
+        d.attempt === lastAttempt &&
+        p.nodeId === d.nodeId &&
+        p.workflowPath.join('/') === d.workflowPath.join('/'),
+    );
+    if (own.length === 0) return s;
+    const notes = own.map((p) => ({
+      text: `${p.severity === 'problem' ? 'Problem' : 'Warning'}: ${p.message}`,
+    }));
+    return { ...s, notes: [...notes, ...s.notes] };
+  });
 }
 
 /** The header's counts: steps that change the file, steps that do not (or did not run), notes. */

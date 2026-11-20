@@ -565,6 +565,7 @@ export class EngineService {
         logPath: previous?.logPath ?? null,
         warnings: [...(previous?.warnings ?? []), 'replace finished by the startup sweep'],
         problems: previous?.problems ?? [],
+        nodeProblems: previous?.nodeProblems ?? [],
         outputProbe: previous?.outputProbe ?? null,
         sourceDamaged: false,
         outputFingerprint,

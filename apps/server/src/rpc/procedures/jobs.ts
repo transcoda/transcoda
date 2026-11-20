@@ -255,6 +255,7 @@ export const get = os.jobs.get
         replacedTo: result.replacedTo,
         warnings: result.warnings,
         problems: result.problems,
+        nodeProblems: result.nodeProblems ?? [],
         sourceDamaged: result.sourceDamaged,
       },
       probe: detail.probe,

@@ -1738,6 +1738,22 @@ describe('pipeline', () => {
     expect(findJobResult(t.db, id)?.warnings).toEqual([
       'notify https://hooks.example.com/… failed: fetch failed for https://hooks.example.com/…',
     ]);
+    // The warning is tied to the webhook's node (the job page badges it); the job detail has it.
+    const nodeProblems = [
+      {
+        workflowPath: [],
+        nodeId: 'nw',
+        severity: 'warning',
+        message:
+          'notify https://hooks.example.com/… failed: fetch failed for https://hooks.example.com/…',
+      },
+    ];
+    expect(findJobResult(t.db, id)?.nodeProblems).toEqual(nodeProblems);
+    expect(t.deps.engine.jobDetail(id)?.result?.nodeProblems).toEqual(nodeProblems);
+    // It did not fail the node: no failed entry on its trace.
+    expect(
+      listTrace(t.db, id).filter((e) => e.nodeId === 'nw' && e.reason.startsWith('failed:')),
+    ).toEqual([]);
     const stored = JSON.stringify([
       t.db.prepare('SELECT * FROM jobs').all(),
       t.db.prepare('SELECT * FROM job_results').all(),
@@ -3996,6 +4012,10 @@ describe('pipeline: plugin finish steps and hooks', () => {
     const job = await runOnce(id, 900);
     expect(job.state).toBe('kept_original');
     expect(findJobResult(t.db, id)?.warnings).toEqual(['room is closed']);
+    // Nothing was written: on its node it is a warning too.
+    expect(findJobResult(t.db, id)?.nodeProblems).toEqual([
+      { workflowPath: [], nodeId: 'pe', severity: 'warning', message: 'room is closed' },
+    ]);
   });
 
   it('pass: the context a plugin step gets has no gate', async () => {
@@ -4279,6 +4299,10 @@ describe('pipeline: plugin finish steps and hooks', () => {
       reason: 'finished with a problem: room b did not answer',
     });
     expect(findJobResult(t.db, id)?.problems).toEqual(['room b did not answer']);
+    // Told on the step's node too: the job page badges it.
+    expect(findJobResult(t.db, id)?.nodeProblems).toEqual([
+      { workflowPath: [], nodeId: 'pn', severity: 'problem', message: 'room b did not answer' },
+    ]);
     expect((await stat(file())).size).toBe(600);
     const last = published.filter((e) => e.type === 'job.changed' && e.jobId === id).at(-1);
     expect(last).toMatchObject({ state: 'done', problems: ['room b did not answer'] });
@@ -4292,6 +4316,14 @@ describe('pipeline: plugin finish steps and hooks', () => {
     expect(findJobResult(t.db, id)).toMatchObject({
       problems: [],
       warnings: ['tell room b: room b did not answer'],
+      nodeProblems: [
+        {
+          workflowPath: [],
+          nodeId: 'pn',
+          severity: 'warning',
+          message: 'tell room b: room b did not answer',
+        },
+      ],
     });
   });
 

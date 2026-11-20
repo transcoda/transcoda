@@ -594,6 +594,26 @@ describe('steps: one sentence and a badge per node', () => {
     ]);
   });
 
+  it("lists the job's problems and warnings on their node's step (last attempt only)", () => {
+    const nw = (attempt: number, key: string) =>
+      d({
+        key,
+        attempt,
+        nodeId: 'nw',
+        title: 'Notify webhook',
+        kind: 'finish',
+        type: 'core:notify-webhook',
+        phase: 'finish',
+        settings: { method: 'POST' },
+      });
+    const message = 'notify https://hooks.example/… failed: fetch failed';
+    const list = steps([nw(1, '1'), nw(2, '2')], {
+      ...DONE,
+      nodeProblems: [{ workflowPath: [], nodeId: 'nw', severity: 'warning', message }],
+    });
+    expect(list.map((s) => s.notes.map((n) => n.text))).toEqual([[], [`Warning: ${message}`]]);
+  });
+
   it('Encode video after an earlier step converted the video says so', () => {
     const s = one(
       d({

@@ -168,6 +168,23 @@ describe('buildTraceOverlay', () => {
     expect(edge(o, 'vi-run-a')).toMatchObject({ taken: false, untaken: true });
     expect(status(o, 'run-a')).toBe('untaken');
   });
+
+  it("carries a node's own problems and warnings (problems first), at its level only; none without", () => {
+    const nodeProblems = [
+      { workflowPath: [], nodeId: 'ro-a', severity: 'warning' as const, message: 'notify failed' },
+      { workflowPath: [], nodeId: 'ro-a', severity: 'problem' as const, message: 'rescan failed' },
+      { workflowPath: ['run-a'], nodeId: 'keep', severity: 'warning' as const, message: 'inner' },
+    ];
+    const source = { ...done, nodeProblems };
+    const top = buildTraceOverlay(traceMain(), source, []);
+    expect(top.nodes.get('ro-a')?.problems).toEqual([nodeProblems[1], nodeProblems[0]]);
+    expect(top.nodes.get('sg')?.problems).toBeUndefined();
+    const child = buildTraceOverlay(traceSub(), source, ['run-a']);
+    expect(child.nodes.get('keep')?.problems).toEqual([nodeProblems[2]]);
+    // An older job (no node problems): no node carries any.
+    const old = buildTraceOverlay(traceMain(), done, []);
+    expect([...old.nodes.values()].some((n) => n.problems !== undefined)).toBe(false);
+  });
 });
 
 describe('decisions', () => {

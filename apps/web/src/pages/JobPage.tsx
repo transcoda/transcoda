@@ -258,7 +258,16 @@ function JobView({ id }: { id: string }) {
     }));
   }, [data]);
   const source = useMemo<TraceSource | null>(
-    () => (job && trace ? { trace, steps: job.path, jobState: job.state, currentNode: lit } : null),
+    () =>
+      job && trace
+        ? {
+            trace,
+            steps: job.path,
+            jobState: job.state,
+            currentNode: lit,
+            nodeProblems: job.result?.nodeProblems ?? [],
+          }
+        : null,
     [job, trace, lit],
   );
   const settled = job ? isFinalState(job.state) : false;
@@ -282,6 +291,7 @@ function JobView({ id }: { id: string }) {
             dependsOnSize: job.state === 'dry_run' && job.dependsOnSize != null,
             replacedTo: job.result?.replacedTo ?? null,
             sourceDamaged: job.result?.sourceDamaged === true,
+            nodeProblems: job.result?.nodeProblems ?? [],
             damagedSide: job.graph
               ? damagedSideOf(job.graph, (type) => catalog?.byType.get(type)?.kind)
               : new Set(),

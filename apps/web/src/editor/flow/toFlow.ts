@@ -9,6 +9,7 @@ import {
   type NodeState,
   nodeStateFor,
   stateTypeFor,
+  withJobProblems,
 } from '../model/issues.ts';
 import { VALUES_CARD_ID } from '../model/notes-values.ts';
 import { edgeStyle, edgeWord } from './edge-style.ts';
@@ -144,8 +145,11 @@ export function toFlow(
   /** Collapsed group id → the states of the members it hides. */
   const hiddenStates = new Map<string, NodeState[]>();
   const nodes: TcNode[] = draft.nodes.map((instance) => {
-    const state = nodeStateFor(instance.id, issues, stateTypeFor(instance.type, catalog));
-    states.set(instance.id, state);
+    const traced = trace?.nodes.get(instance.id);
+    const issueState = nodeStateFor(instance.id, issues, stateTypeFor(instance.type, catalog));
+    // Edges are drawn broken by the issues only: a job's problem on a node is not a broken wire.
+    states.set(instance.id, issueState);
+    const state = withJobProblems(issueState, traced?.problems);
     const group = instance.groupId !== undefined ? groups.get(instance.groupId) : undefined;
     if (group?.collapsed) {
       hiddenIn.set(instance.id, group.id);
@@ -169,7 +173,6 @@ export function toFlow(
         graphKind: draft.kind,
       },
     };
-    const traced = trace?.nodes.get(instance.id);
     if (traced) node.data.trace = traced;
     if (group) node.parentId = group.id;
     if (group?.collapsed) node.hidden = true;

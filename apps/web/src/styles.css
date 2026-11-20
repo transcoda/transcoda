@@ -8301,6 +8301,23 @@ a.nav-item.is-active .nav-count {
   color: var(--danger-text);
 }
 
+/* The job's problems and warnings on the node, one line each under its reason, in the amber the
+   job's result lists them in. */
+.tc-node-row.tc-trace-problems {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 2px;
+  height: auto;
+  padding-block: 0 10px;
+  color: var(--st-dry);
+}
+
+.tc-trace-problem {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
 .tc-trace-reason {
   flex: 1;
   min-width: 0;

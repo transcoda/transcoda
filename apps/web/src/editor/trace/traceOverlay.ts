@@ -8,6 +8,7 @@ import {
   isFinalState,
   type JobState,
   type JsonValue,
+  type NodeProblem,
   SUBWORKFLOW_END_TYPE,
   SUBWORKFLOW_START_TYPE,
   type TraceChanges,
@@ -32,6 +33,8 @@ export interface TraceSource {
    * no event yet, and the last traced node stands in while the job is active.
    */
   currentNode: CurrentNode | null | undefined;
+  /** `result.nodeProblems`: the job's problems and warnings tied to a node (absent: none). */
+  nodeProblems?: readonly NodeProblem[];
 }
 
 const FAILED = 'failed:';
@@ -208,11 +211,25 @@ function undecidedElse(
   return out;
 }
 
+/** The node problems of `nodeId` at `path`, problems before warnings (each in the job's order). */
+function problemsOf(
+  all: readonly NodeProblem[],
+  path: readonly string[],
+  nodeId: string,
+): NodeProblem[] {
+  const own = all.filter((p) => p.nodeId === nodeId && samePath(p.workflowPath, path));
+  return [
+    ...own.filter((p) => p.severity === 'problem'),
+    ...own.filter((p) => p.severity !== 'problem'),
+  ];
+}
+
 /**
  * The overlay for the graph at `path` (Run-node ids from the top level down; [] for the job's
  * own workflow). Nodes the walk reached are `done` (`current` for the node the job is at, `failed`
  * when their last entry failed); nodes never reached are `pending` while the job is active and
- * `untaken` once it is final. Data nodes are `done` once evaluated.
+ * `untaken` once it is final. Data nodes are `done` once evaluated. A node with problems or
+ * warnings of its own carries them (`problems`).
  */
 export function buildTraceOverlay(
   graph: WorkflowGraph,
@@ -239,6 +256,7 @@ export function buildTraceOverlay(
     else if (isData || (onPath.has(n.id) && entry)) status = 'done';
     else status = final && !undecided.has(n.id) ? 'untaken' : 'pending';
     const reached = status === 'done' || status === 'current' || status === 'failed';
+    const problems = problemsOf(source.nodeProblems ?? [], path, n.id);
     nodes.set(n.id, {
       status,
       reason: reached ? (entry?.reason ?? null) : null,
@@ -247,6 +265,7 @@ export function buildTraceOverlay(
       attempt: entry?.attempt ?? 1,
       retried: found?.retried ?? false,
       ...(reached && entry?.source === 'plugin' ? { plugin: true } : {}),
+      ...(problems.length > 0 ? { problems } : {}),
     });
   }
 

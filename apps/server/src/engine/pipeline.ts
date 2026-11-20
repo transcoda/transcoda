@@ -25,6 +25,7 @@ import {
   type JobState,
   type JsonValue,
   type Lane,
+  type NodeProblem,
   normalizeLanguage,
   RENDER_DAMAGED_PORT,
   RENDER_DONE_PORT,
@@ -132,6 +133,8 @@ import { removeOrigCopy, settleReplaceNow } from './sweep.ts';
 import type { TestOutputStore } from './test-outputs.ts';
 import { confirmSourceDamage, type VerifyFailure, verifyOutput } from './verify.ts';
 import {
+  type ActionNode,
+  actionNode,
   type DamagedBranch,
   type DecidedPath,
   type GateBranch,
@@ -556,6 +559,8 @@ export class Pipeline implements JobExecutor {
   private readonly checkResults = new Map<string, CheckSourceResult>();
   /** The content hash of each running real job's source, until its result is recorded. */
   private readonly sourceHashes = new Map<string, string>();
+  /** Per job, the warnings and problems of this attempt that belong to a node (`noteNode`). */
+  private readonly nodeProblems = new Map<string, NodeProblem[]>();
 
   constructor(private readonly deps: PipelineDeps) {
     this.settleMinutes = deps.settleMinutes ?? SETTLE_MINUTES;
@@ -567,6 +572,8 @@ export class Pipeline implements JobExecutor {
     job: JobRow,
     ctl: JobControl,
   ): Promise<{ lane: Lane; fit: SlotFit } | { final: true } | ExecuteOutcome> {
+    // A new attempt (or a requeue) starts without the last one's node problems.
+    this.nodeProblems.delete(job.id);
     try {
       return await this.runPrepare(job, ctl);
     } catch (err) {
@@ -1027,6 +1034,7 @@ export class Pipeline implements JobExecutor {
     const p = this.prepared.get(job.id);
     this.prepared.delete(job.id);
     this.gpuWarnings.delete(job.id);
+    this.nodeProblems.delete(job.id);
     await this.removeTemp(job.id);
     if (p) this.recordResult(job, p.fp, { ...resultOf(p), outcome: 'cancelled', logPath: null });
     this.sourceHashes.delete(job.id);
@@ -1218,6 +1226,12 @@ export class Pipeline implements JobExecutor {
         problems.push(stoppedBefore(ctl));
         break;
       }
+      const at = actionNode(action);
+      /** A problem after the write, told on this step's node too. */
+      const problem = (text: string): void => {
+        problems.push(text);
+        this.noteNode(job, at, 'problem', text);
+      };
       let failure: Failure | null = null;
       try {
         if (action.kind === 'size-gate') {
@@ -1234,7 +1248,7 @@ export class Pipeline implements JobExecutor {
               });
               return this.keepOriginal(job, ctl, p, why, extra, afterBytes);
             }
-            problems.push(`size gate after a write: ${why}`);
+            problem(`size gate after a write: ${why}`);
           } else if (gate) {
             this.traceGatePass(job, ctl, gate, saving, action.minSavingPercent);
           }
@@ -1269,7 +1283,7 @@ export class Pipeline implements JobExecutor {
             problems.push('a finish node that is not a plugin returned a plugin action');
           } else if (finishPhaseRank(action.phase) < lastPluginRank) {
             // Validation (FINISH_ORDER) forbids this; checked again so it is never silent.
-            problems.push(
+            problem(
               `${action.description}: skipped, its phase ${action.phase} is earlier than a phase that already ran`,
             );
           } else if (!wrote()) {
@@ -1291,7 +1305,7 @@ export class Pipeline implements JobExecutor {
       }
       if (failure !== null) {
         if (!wrote()) return fail(failure);
-        problems.push(failure.reason);
+        problem(failure.reason);
       }
     }
     if (p.written === null) {
@@ -1939,11 +1953,34 @@ export class Pipeline implements JobExecutor {
         body,
         signal: AbortSignal.timeout(NOTIFY_TIMEOUT_MS),
       });
-      if (!res.ok) p.warnings.push(`notify ${where} answered ${res.status}`);
+      if (!res.ok)
+        this.warnNode(job, p, actionNode(action), `notify ${where} answered ${res.status}`);
     } catch (err) {
       const why = message(err).split(action.url).join(where);
-      p.warnings.push(`notify ${where} failed: ${why}`);
+      this.warnNode(job, p, actionNode(action), `notify ${where} failed: ${why}`);
     }
+  }
+
+  /**
+   * Records a warning or problem that belongs to `at`'s node with the job's result, where the job
+   * page shows it as that node's badge (it is in the result's warnings or problems too).
+   */
+  private noteNode(
+    job: JobRow,
+    at: ActionNode | null,
+    severity: NodeProblem['severity'],
+    text: string,
+  ): void {
+    if (at === null) return;
+    const list = this.nodeProblems.get(job.id) ?? [];
+    list.push({ workflowPath: [...at.workflowPath], nodeId: at.nodeId, severity, message: text });
+    this.nodeProblems.set(job.id, list);
+  }
+
+  /** A job warning that belongs to `at`'s node. */
+  private warnNode(job: JobRow, p: StepFile, at: ActionNode | null, text: string): void {
+    p.warnings.push(text);
+    this.noteNode(job, at, 'warning', text);
   }
 
   /** Adds a size-gate entry to the job's trace (the branch it took, or that it depends). */
@@ -2400,11 +2437,18 @@ export class Pipeline implements JobExecutor {
         lane: null,
         progress: null,
       });
-      if (r.fp)
-        this.recordResult(updated, r.fp, { ...r, outcome: state, warnings: o.warnings ?? [] });
+      if (r.fp) {
+        this.recordResult(updated, r.fp, {
+          ...r,
+          outcome: state,
+          warnings: o.warnings ?? [],
+          nodeProblems: this.nodeProblems.get(job.id) ?? [],
+        });
+      }
       return updated;
     })();
     this.sourceHashes.delete(job.id);
+    this.nodeProblems.delete(job.id);
     ctl.changed(row);
     this.events().publish({ type: 'run.changed', runId: job.runId });
     // Hooks after the row is written; never for a dry run, a cancel or a skip.
@@ -2592,8 +2636,10 @@ export class Pipeline implements JobExecutor {
       });
     } else if (action.required) {
       w.problems.push(result.message);
+      // On a side branch (nothing written) the caller reports it as a warning.
+      this.noteNode(job, action, w.mode === 'kept' ? 'warning' : 'problem', result.message);
     } else {
-      p.warnings.push(`${action.description}: ${result.message}`);
+      this.warnNode(job, p, action, `${action.description}: ${result.message}`);
     }
     // The step's own answer on the job (C2), as the job page and get_job show it. The plugin
     // process has already redacted it with the plugin's secrets (`redactResult`), like the log line.
@@ -2632,6 +2678,7 @@ export class Pipeline implements JobExecutor {
         logPath: r.logPath ?? null,
         warnings: r.warnings ?? [],
         problems: r.problems ?? [],
+        nodeProblems: r.nodeProblems ?? [],
         // Only an outcome that stands on the verified output keeps its probe: a failed or
         // cancelled job threw that output away.
         outputProbe: OUTPUT_OUTCOMES.has(r.outcome) ? (r.outputProbe ?? null) : null,
@@ -2773,6 +2820,8 @@ type ResultInput = {
   logPath: string | null;
   warnings: string[];
   problems: string[];
+  /** The warnings and problems that belong to one node (filled in by `finish`). */
+  nodeProblems: NodeProblem[];
   /** The verified output's probe as the job page reads it (a JobProbe: no raw JSON). */
   outputProbe: JsonValue | null;
   /** The original was kept because the source is damaged ("Damaged source"). */

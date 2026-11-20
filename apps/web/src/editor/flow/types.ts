@@ -1,5 +1,12 @@
 import type { NodeInfo } from '@transcoda/contract';
-import type { Group, JsonValue, NodeInstance, SharedValues, WorkflowKind } from '@transcoda/shared';
+import type {
+  Group,
+  JsonValue,
+  NodeInstance,
+  NodeProblem,
+  SharedValues,
+  WorkflowKind,
+} from '@transcoda/shared';
 import type { Edge, Node } from '@xyflow/react';
 import type { PortType } from '../../hooks/useCatalog.ts';
 import type { GroupProblem } from '../model/group-state.ts';
@@ -22,6 +29,11 @@ export type TraceNodeData = {
   progress?: number;
   /** The job is paused at this (current) node: lit, but not moving. */
   paused?: boolean;
+  /**
+   * The job's problems and warnings that belong to this node (`result.nodeProblems`), problems
+   * first; the card shows the worst as its badge and lists them. Absent when there are none.
+   */
+  problems?: NodeProblem[];
   /** A Run node the file entered: its sub-workflow can be opened below the canvas (Task 23). */
   expandable?: boolean;
   expanded?: boolean;

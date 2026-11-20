@@ -233,6 +233,7 @@ describe('job report', () => {
           replacedTo: 'recycle',
           sourceDamaged: false,
           warnings: ['w1', 'w2'],
+          nodeProblems: [],
           problems: [],
         },
         plan: {
@@ -292,6 +293,7 @@ describe('job report', () => {
           replacedTo: 'recycle',
           sourceDamaged: false,
           warnings: [],
+          nodeProblems: [],
           problems: [
             'notify failed: 503',
             'the server stopped before the remaining finish actions',
@@ -322,6 +324,7 @@ describe('job report', () => {
         replacedTo: null,
         sourceDamaged: false,
         warnings: [],
+        nodeProblems: [],
         problems: [],
       },
     };

@@ -9,6 +9,8 @@ import {
   type JobState,
   type JsonValue,
   type Lane,
+  type NodeProblem,
+  NodeProblemSchema,
   parseFileName,
   planSummary,
   RUNNING_JOB_STATES,
@@ -141,6 +143,8 @@ export interface JobResultRow {
   warnings: string[];
   /** Problems the plugin finish actions reported; separate from `warnings`. */
   problems: string[];
+  /** The warnings and problems that belong to one node, with that node. Absent reads as []. */
+  nodeProblems?: NodeProblem[];
   /**
    * The probe verify read of the output, as the job page reads it (a JobProbe: no raw JSON); null
    * when nothing was verified or the job failed or was canceled after verify. Rows written before
@@ -322,6 +326,7 @@ interface DbResult {
   log_path: string | null;
   warnings: string;
   problems_json: string;
+  node_problems_json: string;
   output_probe: string | null;
   source_damaged: number;
   output_fingerprint: string | null;
@@ -356,6 +361,19 @@ interface DbRecycled {
 }
 
 const parseJson = <T>(s: string | null): T | null => (s === null ? null : (JSON.parse(s) as T));
+/** A node problems cell; a corrupt cell or entry is left out (one bad row must not break a read). */
+const parseNodeProblems = (s: string): NodeProblem[] => {
+  try {
+    const v: unknown = JSON.parse(s);
+    if (!Array.isArray(v)) return [];
+    return v.flatMap((x) => {
+      const parsed = NodeProblemSchema.safeParse(x);
+      return parsed.success ? [parsed.data] : [];
+    });
+  } catch {
+    return [];
+  }
+};
 /** A string list (GPU ids, warnings, problems) that survives a corrupt cell: one bad row must not break every job read. */
 const parseStringList = (s: string): string[] => {
   try {
@@ -451,6 +469,7 @@ const toResult = (r: DbResult): JobResultRow => ({
   logPath: r.log_path,
   warnings: parseStringList(r.warnings),
   problems: parseStringList(r.problems_json),
+  nodeProblems: parseNodeProblems(r.node_problems_json),
   outputProbe: parseJson<JsonValue>(r.output_probe),
   sourceDamaged: r.source_damaged === 1,
   outputFingerprint: r.output_fingerprint,
@@ -1119,9 +1138,9 @@ export function findProcessedResult(
 export function insertJobResult(db: Database, r: JobResultRow): void {
   db.prepare(
     `INSERT INTO job_results (job_id, fingerprint, workflow_id, workflow_version, outcome, before_bytes,
-       after_bytes, estimated_bytes, command, plan, replaced_to, log_path, warnings, problems_json, output_probe,
-       source_damaged, output_fingerprint, source_hash, output_hash, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       after_bytes, estimated_bytes, command, plan, replaced_to, log_path, warnings, problems_json, node_problems_json,
+       output_probe, source_damaged, output_fingerprint, source_hash, output_hash, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     r.jobId,
     r.fingerprint,
@@ -1137,6 +1156,7 @@ export function insertJobResult(db: Database, r: JobResultRow): void {
     r.logPath,
     JSON.stringify(r.warnings),
     JSON.stringify(r.problems),
+    JSON.stringify(r.nodeProblems ?? []),
     toJson(r.outputProbe),
     r.sourceDamaged ? 1 : 0,
     r.outputFingerprint ?? null,
