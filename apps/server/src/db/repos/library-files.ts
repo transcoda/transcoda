@@ -58,7 +58,8 @@ export interface LatestJobScope {
  *   both NULL when no job of the file has media.
  *
  * Callers append `, more AS (…)` or a `SELECT` and bind `params` (named, merged with their own).
- * The window reads each file's jobs through `jobs_file_queued`.
+ * The latest job is the stored `files.latest_job_id` (migration 21 keeps it current); only a file
+ * whose latest job has no media looks further, newest first through `jobs_file_queued`.
  */
 export function latestJobPerFileSql(scope: LatestJobScope): {
   sql: string;
@@ -71,26 +72,22 @@ export function latestJobPerFileSql(scope: LatestJobScope): {
     params.latestLibraryId = scope.libraryId;
   }
   if (scope.fileId !== undefined) {
-    where.push('j.file_id = @latestFileId');
+    where.push('f.id = @latestFileId');
     params.latestFileId = scope.fileId;
   }
-  const sql = `WITH ranked AS (
-  SELECT j.id, j.file_id, j.media,
-    ROW_NUMBER() OVER (PARTITION BY j.file_id ORDER BY
-      (j.dry_run = 0 AND j.state NOT IN ('skipped','already_processed','cancelled')) DESC,
-      j.queued_at DESC, j.rowid DESC) AS rn,
-    FIRST_VALUE(j.id) OVER by_media AS m_id,
-    FIRST_VALUE(j.media) OVER by_media AS m_media
-  FROM jobs j JOIN files f ON f.id = j.file_id
+  const sql = `WITH latest_ids AS (
+  SELECT f.id AS file_id, lj.id AS latest_id, lj.media AS latest_media,
+    CASE WHEN lj.media IS NOT NULL THEN lj.id ELSE
+      (SELECT m.id FROM jobs m WHERE m.file_id = f.id AND m.media IS NOT NULL
+       ORDER BY m.queued_at DESC, m.rowid DESC LIMIT 1)
+    END AS media_id
+  FROM files f JOIN jobs lj ON lj.id = f.latest_job_id
   ${where.length > 0 ? `WHERE ${where.join(' AND ')}` : ''}
-  WINDOW by_media AS (PARTITION BY j.file_id ORDER BY
-    (j.media IS NOT NULL) DESC, j.queued_at DESC, j.rowid DESC)
 ),
 latest AS (
-  SELECT file_id, id AS latest_id, media AS latest_media,
-    CASE WHEN media IS NOT NULL THEN id WHEN m_media IS NOT NULL THEN m_id END AS media_id,
-    COALESCE(media, m_media) AS media
-  FROM ranked WHERE rn = 1
+  SELECT li.file_id, li.latest_id, li.latest_media, li.media_id,
+    COALESCE(li.latest_media, mj.media) AS media
+  FROM latest_ids li LEFT JOIN jobs mj ON mj.id = li.media_id
 )`;
   return { sql, params };
 }
