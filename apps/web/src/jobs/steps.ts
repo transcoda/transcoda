@@ -862,7 +862,12 @@ function step(d: Decision, ctx: StepContext, around: Around): Step {
     if (onDamagedSide(d, ctx)) {
       // A real run's damaged source ran the Damaged side; otherwise it only would if damaged.
       if (ctx.sourceDamaged && !ctx.dryRun && isFinalState(ctx.state)) {
-        return { ...base, badge: 'finish', quiet: false, sentence: finishStep(d, ctx, true, around.problems) };
+        return {
+          ...base,
+          badge: 'finish',
+          quiet: false,
+          sentence: finishStep(d, ctx, true, around.problems),
+        };
       }
       const what = finishStep(d, ctx, false);
       const sentence = ctx.sourceDamaged ? what : `If the source is damaged: ${what}`;

@@ -686,7 +686,9 @@ describe('steps: one sentence and a badge per node', () => {
       one(nw, {
         ...DONE,
         nodeProblems:
-          message === null ? [] : [{ workflowPath: [], nodeId: 'nw', severity: 'warning', message }],
+          message === null
+            ? []
+            : [{ workflowPath: [], nodeId: 'nw', severity: 'warning', message }],
       }).sentence;
     expect(said('notify https://hooks.example/… failed: fetch failed')).toBe(
       "Didn't send the POST request to the webhook: fetch failed",
@@ -809,7 +811,12 @@ describe('steps: one sentence and a badge per node', () => {
     expect(failed.sentence).toBe('Failed: no hevc encoder is available');
     // Raw error text keeps its case.
     const killed = one(
-      d({ key: '9', nodeId: 'ev', title: 'Encode video', reason: 'failed: ffmpeg killed by SIGKILL' }),
+      d({
+        key: '9',
+        nodeId: 'ev',
+        title: 'Encode video',
+        reason: 'failed: ffmpeg killed by SIGKILL',
+      }),
     );
     expect(killed.sentence).toBe('Failed: ffmpeg killed by SIGKILL');
     expect(failed.badge).toBe('failed');
