@@ -632,6 +632,40 @@ describe('createMediaResolver', () => {
       expect(await none.showPoster(inSeason, '/lib')).toEqual({ path: null });
     });
 
+    it("an unlistable episode folder is unreadable even when its parent's tvshow.nfo and poster are found", async () => {
+      const files: Record<string, Entry> = {
+        [inSeason]: 'video',
+        [`${show}/tvshow.nfo`]: '<tvshow><title>The Show</title></tvshow>',
+        [`${show}/poster.jpg`]: 'img',
+      };
+      const failing = () =>
+        createMediaResolver({ fs: fakeFs(files, { readdirFails: [season] }).fs, log });
+      expect(await failing().showPoster(inSeason, '/lib')).toEqual({ unreadable: true });
+      expect(await failing().resolve(inSeason, '/lib')).not.toHaveProperty('showPosterPath');
+      // Readable again: the poster.
+      expect(
+        await createMediaResolver({ fs: fakeFs(files).fs, log }).showPoster(inSeason, '/lib'),
+      ).toEqual({ path: `${show}/poster.jpg` });
+    });
+
+    it('an earlier poster candidate that cannot be checked makes a later one found unreadable', async () => {
+      const { fs } = fakeFs({
+        [inSeason]: 'video',
+        [`${show}/poster.jpg`]: 'img',
+        [`${show}/folder.jpg`]: 'img',
+      });
+      const posterFails: FsOps = {
+        ...fs,
+        lstat: async (p) => {
+          if (p === `${show}/poster.jpg`) throw new Error('EIO');
+          return fs.lstat(p);
+        },
+      };
+      expect(
+        await createMediaResolver({ fs: posterFails, log }).showPoster(inSeason, '/lib'),
+      ).toEqual({ unreadable: true });
+    });
+
     it('a poster candidate whose check fails, or a tvshow.nfo that cannot be read, is unreadable', async () => {
       const { fs } = fakeFs({ [inSeason]: 'video', [`${show}/poster.jpg`]: 'img' });
       const lstatFails: FsOps = {

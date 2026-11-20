@@ -213,7 +213,8 @@ export function createMediaResolver(deps: { fs: FsOps; log: Logger }): MediaReso
 
   /**
    * The show folder's own poster: null without a show folder or a poster; unreadable when the
-   * show folder (or the folders that placed it) could not be read in full. Never throws.
+   * show folder (or the folders that placed it) could not be read in full, even if a poster was
+   * found. Never throws.
    */
   const showPosterOf = async (
     path: string,
@@ -231,13 +232,14 @@ export function createMediaResolver(deps: { fs: FsOps; log: Logger }): MediaReso
               throw err;
             }),
           );
-    // A poster found is there whatever else failed; "none" needs every read to have worked.
-    if (poster !== null) return { path: poster };
+    // Any failed read makes the answer unknown, a poster found included: with the episode's
+    // folder unlistable the show folder may be the wrong one, and with an earlier candidate
+    // uncheckable the poster may not be the one a full read picks.
     const incomplete =
       threw ||
       !found.complete ||
       (showFolder !== null && (unlistable.has(showFolder) || posterUncheckable.has(showFolder)));
-    return incomplete ? { unreadable: true } : { path: null };
+    return incomplete ? { unreadable: true } : { path: poster };
   };
 
   /** A step that fails leaves the earlier value. */
