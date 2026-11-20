@@ -55,6 +55,19 @@ describe('migration 0022', () => {
     expect(db.prepare('PRAGMA foreign_key_check').all()).toEqual([]);
   });
 
+  it("adds the column in place: 0021's triggers on jobs survive, and job_results keeps its rows", () => {
+    migrate(db, migrations, { backupDir });
+    const triggers = (
+      db.prepare("SELECT name FROM sqlite_master WHERE type = 'trigger' ORDER BY name").all() as {
+        name: string;
+      }[]
+    ).map((r) => r.name);
+    expect(triggers).toEqual(
+      expect.arrayContaining(['jobs_latest_delete', 'jobs_latest_insert', 'jobs_latest_update']),
+    );
+    expect(findJobResult(db, 'j1')?.nodeProblems).toEqual([]);
+  });
+
   it('reads a corrupt cell, or a bad entry in it, as no node problem', () => {
     migrate(db, migrations.slice(0, 22), { backupDir });
     db.prepare("UPDATE job_results SET node_problems_json = 'nope' WHERE job_id = 'j1'").run();
