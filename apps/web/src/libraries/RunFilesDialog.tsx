@@ -104,6 +104,8 @@ export function RunFilesDialog({
   const [checking, setChecking] = useState(false);
   const [sending, setSending] = useState(false);
   const [failed, setFailed] = useState<string | null>(null);
+  /** Bumped by "Try again" to check the same files again. */
+  const [attempt, setAttempt] = useState(0);
   const groupId = useId();
   const request = useRef(0);
   const alive = useRef(true);
@@ -129,7 +131,7 @@ export function RunFilesDialog({
   const workflowId = chosen?.id ?? null;
   const dryRun = mode === 'dry';
   const key = selectionKey(selection);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: `key` stands for the selection's content, which is what the request depends on.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `key` stands for the selection's content, which is what the request depends on; `attempt` ("Try again") asks again.
   useEffect(() => {
     if (!open || workflowId === null) return;
     const mine = ++request.current;
@@ -150,7 +152,7 @@ export function RunFilesDialog({
       if (err) setFailed(describeError(err).message);
       else setPreview(out);
     });
-  }, [open, library.id, key, workflowId, dryRun]);
+  }, [open, library.id, key, workflowId, dryRun, attempt]);
 
   const handled = preview?.alreadyHandled ?? 0;
   const count = preview === null ? 0 : preview.willRun + (force ? handled : 0);
@@ -312,9 +314,17 @@ export function RunFilesDialog({
             </label>
           )}
           {failed && (
-            <p className="alert alert-danger" role="alert">
-              {failed}
-            </p>
+            <div className="alert alert-danger" role="alert">
+              <span>{failed}</span>
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                disabled={busy}
+                onClick={() => setAttempt((n) => n + 1)}
+              >
+                Try again
+              </button>
+            </div>
           )}
         </>
       )}

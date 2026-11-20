@@ -1,4 +1,4 @@
-import { mkdir, rm, writeFile } from 'node:fs/promises';
+import { chmod, mkdir, rename, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { Capabilities } from '@transcoda/contract';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -348,6 +348,73 @@ describe('jobs.queueFiles', () => {
       expect(await json(gone)).toMatchObject({ code: 'NOT_FOUND' });
     }
     expect(count('jobs')).toBe(jobs);
+  });
+
+  it('a library whose folder is gone is 412 LIBRARY_UNREACHABLE with its path; nothing is queued', async () => {
+    const jobs = count('jobs');
+    await rename(root, `${root}-unmounted`);
+    try {
+      for (const path of ['/jobs/queue-files', '/jobs/queue-files/preview']) {
+        for (const sel of [
+          { fileIds: [ids[`${lib}:Movie.mkv`]] },
+          { paths: [join(root, 'Movie.mkv')] },
+        ]) {
+          const res = await post(path, { libraryId: lib, ...sel, workflowId: wf });
+          expect([path, res.status]).toEqual([path, 412]);
+          expect(await json(res)).toMatchObject({
+            code: 'LIBRARY_UNREACHABLE',
+            data: { path: root },
+          });
+        }
+      }
+    } finally {
+      await rename(`${root}-unmounted`, root);
+    }
+    expect(count('jobs')).toBe(jobs);
+  });
+
+  it('a root that is no longer a folder, or cannot be read, is 412 LIBRARY_UNREACHABLE; nothing is queued', async () => {
+    const jobs = count('jobs');
+    const runs = count('runs');
+    const expectUnreachable = async () => {
+      for (const path of ['/jobs/queue-files', '/jobs/queue-files/preview']) {
+        const res = await post(path, {
+          libraryId: lib,
+          fileIds: [ids[`${lib}:Movie.mkv`]],
+          workflowId: wf,
+        });
+        expect([path, res.status]).toEqual([path, 412]);
+        expect(await json(res)).toMatchObject({
+          code: 'LIBRARY_UNREACHABLE',
+          data: { path: root },
+        });
+      }
+    };
+    // Unreadable (EACCES): the root still resolves.
+    await chmod(root, 0o000);
+    try {
+      await expectUnreachable();
+    } finally {
+      await chmod(root, 0o755);
+    }
+    // A regular file where the folder was.
+    await rename(root, `${root}-moved`);
+    await writeFile(root, 'not a folder');
+    try {
+      await expectUnreachable();
+    } finally {
+      await rm(root);
+      await rename(`${root}-moved`, root);
+    }
+    expect(count('jobs')).toBe(jobs);
+    expect(count('runs')).toBe(runs);
+    // Reachable again: the same selection is previewed as usual.
+    const ok = await post('/jobs/queue-files/preview', {
+      libraryId: lib,
+      fileIds: [ids[`${lib}:Movie.mkv`]],
+      workflowId: wf,
+    });
+    expect(ok.status).toBe(200);
   });
 
   it('refuses a request with none or several of fileIds, paths and show', async () => {

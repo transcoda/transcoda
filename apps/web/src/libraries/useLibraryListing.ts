@@ -32,13 +32,15 @@ function rowChangeTracker(): (e: JobChanged) => boolean {
 
 /**
  * A job of this library changed state or was paused or resumed (progress ticks are not news for a
- * listing), or any run changed (a run's files appear and go as it plans). Stateful: make one per
- * listing and keep it.
+ * listing), the library changed with no job change (the media pass filled titles and posters), or
+ * any run changed (a run's files appear and go as it plans). Stateful: make one per listing and
+ * keep it.
  */
 export function libraryEvent(libraryId: string): (e: EngineEvent) => boolean {
   const changed = rowChangeTracker();
   return (e) =>
     (e.type === 'job.changed' && e.libraryId === libraryId && changed(e)) ||
+    (e.type === 'library.changed' && e.libraryId === libraryId) ||
     e.type === 'run.changed';
 }
 

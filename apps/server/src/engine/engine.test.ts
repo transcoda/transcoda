@@ -308,9 +308,14 @@ describe('EngineService', () => {
     const { id } = await queued();
     await t.deps.engine.mediaPass.idle();
     t.db.prepare('UPDATE jobs SET media = NULL WHERE id = ?').run(id);
+    const seen: string[] = [];
+    t.deps.engine.events.listen((e) => {
+      if (e.type === 'library.changed') seen.push(e.libraryId);
+    });
     await t.deps.engine.start();
     await t.deps.engine.mediaPass.idle();
     expect(row(id).media).not.toBeNull();
+    expect(seen).toEqual([row(id).libraryId]);
   });
 
   it('stop() kills an attached fake process and leaves the row as it was', async () => {

@@ -31,6 +31,8 @@ export const EngineEventSchema = z.discriminatedUnion('type', [
   }),
   z.object({ type: z.literal('job.trace'), jobId: z.string(), entry: TraceEntrySchema }),
   z.object({ type: z.literal('run.changed'), runId: z.string() }),
+  /** A library's listing changed with no job state change (the media pass filled titles). */
+  z.object({ type: z.literal('library.changed'), libraryId: z.string() }),
   z.object({
     type: z.literal('queue.changed'),
     paused: z.boolean(),

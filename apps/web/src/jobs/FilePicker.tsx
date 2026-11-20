@@ -69,6 +69,8 @@ export function FilePicker({
   const [libraryId, setLibraryId] = useState<string | null>(null);
   const [path, setPath] = useState('');
   const [folder, setFolder] = useState<Folder>({ status: 'loading' });
+  /** Bumped by "Try again" to list the same folder again. */
+  const [attempt, setAttempt] = useState(0);
   const [typed, setTyped] = useState('');
   /** Why the typed path was refused (shown under the input). */
   const [error, setError] = useState<string | null>(null);
@@ -102,6 +104,7 @@ export function FilePicker({
     };
   }, [open]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `attempt` ("Try again") lists the same folder again.
   useEffect(() => {
     if (!open || libraryId === null) return;
     let live = true;
@@ -120,7 +123,7 @@ export function FilePicker({
     return () => {
       live = false;
     };
-  }, [open, libraryId, path]);
+  }, [open, libraryId, path, attempt]);
 
   const library = libraries?.find((l) => l.id === libraryId) ?? null;
   const segments = path === '' ? [] : path.split('/');
@@ -226,9 +229,16 @@ export function FilePicker({
             </div>
             {folder.status === 'loading' && <Loading inline />}
             {folder.status === 'error' && (
-              <p className="alert alert-danger" role="alert">
-                {folder.message}
-              </p>
+              <div className="alert alert-danger" role="alert">
+                <span>{folder.message}</span>
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm"
+                  onClick={() => setAttempt((n) => n + 1)}
+                >
+                  Try again
+                </button>
+              </div>
             )}
             {folder.status === 'ok' && (
               <ul className="picker-list">

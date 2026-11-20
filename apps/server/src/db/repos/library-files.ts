@@ -100,12 +100,13 @@ latest AS (
 export function latestJobsWithoutMedia(
   db: Database,
   limit?: number,
-): Array<{ jobId: string; path: string; libraryRoot: string }> {
+): Array<{ jobId: string; libraryId: string; path: string; libraryRoot: string }> {
   const latest = latestJobPerFileSql({});
   const rows = db
     .prepare(
       `${latest.sql}
-SELECT lt.latest_id AS job_id, f.path AS path, l.path AS library_root
+SELECT lt.latest_id AS job_id, f.library_id AS library_id, f.path AS path,
+  l.path AS library_root
 FROM latest lt
 JOIN files f ON f.id = lt.file_id
 JOIN libraries l ON l.id = f.library_id AND l.deleted_at IS NULL
@@ -116,10 +117,16 @@ LIMIT @limit`,
     )
     .all({ ...latest.params, limit: limit ?? -1 }) as Array<{
     job_id: string;
+    library_id: string;
     path: string;
     library_root: string;
   }>;
-  return rows.map((r) => ({ jobId: r.job_id, path: r.path, libraryRoot: r.library_root }));
+  return rows.map((r) => ({
+    jobId: r.job_id,
+    libraryId: r.library_id,
+    path: r.path,
+    libraryRoot: r.library_root,
+  }));
 }
 
 /**
@@ -130,12 +137,13 @@ LIMIT @limit`,
 export function episodesWithoutShowPoster(
   db: Database,
   limit?: number,
-): Array<{ jobId: string; path: string; libraryRoot: string }> {
+): Array<{ jobId: string; libraryId: string; path: string; libraryRoot: string }> {
   const latest = latestJobPerFileSql({});
   const rows = db
     .prepare(
       `${latest.sql}
-SELECT lt.media_id AS job_id, f.path AS path, l.path AS library_root
+SELECT lt.media_id AS job_id, f.library_id AS library_id, f.path AS path,
+  l.path AS library_root
 FROM latest lt
 JOIN files f ON f.id = lt.file_id
 JOIN libraries l ON l.id = f.library_id AND l.deleted_at IS NULL
@@ -148,10 +156,16 @@ LIMIT @limit`,
     )
     .all({ ...latest.params, limit: limit ?? -1 }) as Array<{
     job_id: string;
+    library_id: string;
     path: string;
     library_root: string;
   }>;
-  return rows.map((r) => ({ jobId: r.job_id, path: r.path, libraryRoot: r.library_root }));
+  return rows.map((r) => ({
+    jobId: r.job_id,
+    libraryId: r.library_id,
+    path: r.path,
+    libraryRoot: r.library_root,
+  }));
 }
 
 /**
