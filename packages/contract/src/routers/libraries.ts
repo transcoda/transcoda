@@ -41,7 +41,7 @@ export const libraries = {
       tags,
       summary: 'List the sub-folders and media files of a library folder',
     })
-    .errors({ ...authedErrors, ...pickErrors('NOT_FOUND', 'PATH_REJECTED') })
+    .errors({ ...authedErrors, ...pickErrors('NOT_FOUND', 'PATH_REJECTED', 'LIBRARY_UNREACHABLE') })
     .input(LibraryBrowseInputSchema)
     .output(LibraryBrowseOutputSchema),
   create: oc

@@ -25,7 +25,7 @@ const controlErrors = { ...mutationErrors, ...pickErrors('NOT_FOUND', 'JOB_NOT_A
 
 const queueFilesErrors = {
   ...mutationErrors,
-  ...pickErrors('PATH_REJECTED', 'NOT_FOUND', 'WORKFLOW_INVALID'),
+  ...pickErrors('PATH_REJECTED', 'NOT_FOUND', 'WORKFLOW_INVALID', 'LIBRARY_UNREACHABLE'),
 };
 
 export const jobs = {

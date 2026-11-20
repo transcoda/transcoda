@@ -65,6 +65,15 @@ export const errorDefs = {
     data: z.object({ reason: z.string() }),
   },
   LIBRARY_BUSY: { status: 409, message: 'The library has active jobs' },
+  /**
+   * The library exists but its folder can't be reached (an unmounted share, no permission);
+   * `path` is the library's folder. Unlike NOT_FOUND, trying again later may work.
+   */
+  LIBRARY_UNREACHABLE: {
+    status: 412,
+    message: "The library folder can't be reached",
+    data: z.object({ path: z.string() }),
+  },
   /** Activation: the version's Library input names a library another active workflow feeds from. */
   LIBRARY_TAKEN: {
     status: 409,

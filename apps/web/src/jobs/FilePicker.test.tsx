@@ -63,6 +63,25 @@ function show(
 }
 
 describe('FilePicker', () => {
+  it('an unreachable library folder names the folder, and Try again lists it again', async () => {
+    mocks.browse.mockRejectedValueOnce(
+      new ORPCError('LIBRARY_UNREACHABLE', {
+        defined: true,
+        status: 412,
+        message: "The library folder can't be reached",
+        data: { path: '/media/Shows' },
+      }),
+    );
+    show();
+    const dialog = await screen.findByRole('dialog', { name: 'Dry run TV cleanup on a file' });
+    const alert = await within(dialog).findByRole('alert');
+    expect(alert.textContent).toContain("The library folder can't be reached: /media/Shows");
+    fireEvent.click(within(alert).getByRole('button', { name: 'Try again' }));
+    await within(dialog).findByRole('button', { name: 'Maple Lane' });
+    expect(within(dialog).queryByRole('alert')).toBeNull();
+    expect(mocks.browse).toHaveBeenCalledTimes(2);
+  });
+
   it('FilePicker browses folders, picks a file path under the library root, and shows PATH_REJECTED inline for a typed path', async () => {
     const onPick = vi.fn(async (path: string) =>
       path.startsWith('/etc') ? 'outside library root' : null,

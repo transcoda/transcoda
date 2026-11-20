@@ -86,6 +86,9 @@ export type QueueResult =
   | { kind: 'workflow-invalid'; issues: Issue[] }
   | { kind: 'no-feeding-workflow' };
 
+/** The library exists but its folder can't be reached (unmounted, no permission): `path` is its root. */
+export type LibraryUnreachable = { kind: 'library-unreachable'; path: string };
+
 /** A run of a chosen set of one library's files ("Run on a selection"). */
 export interface QueueFilesInput {
   libraryId: string;
@@ -404,7 +407,7 @@ export class QueueService {
    * dry run the newest; each file is checked as it is now. `start: 'now'` is a `manual` run;
    * `'runHours'` a `library` run, held to the library's run hours, also when it is a dry run.
    */
-  async queueFiles(input: QueueFilesInput): Promise<QueueResult> {
+  async queueFiles(input: QueueFilesInput): Promise<QueueResult | LibraryUnreachable> {
     const sel = await this.selection(input.libraryId, input.paths);
     if ('kind' in sel) return sel;
     const early = this.resolveWorkflow(input.workflowId, input.dryRun, undefined);
@@ -437,7 +440,7 @@ export class QueueService {
    */
   async previewFiles(
     input: Pick<QueueFilesInput, 'libraryId' | 'paths' | 'workflowId' | 'dryRun'>,
-  ): Promise<QueuePreview | Exclude<QueueResult, { kind: 'queued' }>> {
+  ): Promise<QueuePreview | Exclude<QueueResult, { kind: 'queued' }> | LibraryUnreachable> {
     const sel = await this.selection(input.libraryId, input.paths);
     if ('kind' in sel) return sel;
     const workflow = this.resolveWorkflow(input.workflowId, input.dryRun, undefined);
@@ -464,8 +467,9 @@ export class QueueService {
   }
 
   /**
-   * The library and paths of a selection, or why it is refused: an unknown or deleted library (or
-   * one whose root cannot be resolved) is `not found`, as is an empty selection; more than
+   * The library and paths of a selection, or why it is refused: an unknown or deleted library is
+   * `not found`, as is an empty selection; a library whose root cannot be resolved (an unmounted
+   * share) is `library-unreachable`; more than
    * QUEUE_FILES_MAX paths is `too many files` (with the library's root as `path`); a path that is
    * not absolute or lies outside the root (as written, by the root's stored or real path, or once
    * resolved) is `outside library root`, with that path. Each path is checked again, file by file,
@@ -474,7 +478,9 @@ export class QueueService {
   private async selection(
     libraryId: string,
     paths: readonly string[],
-  ): Promise<Selection | { kind: 'path-rejected'; reason: string; path?: string }> {
+  ): Promise<
+    Selection | { kind: 'path-rejected'; reason: string; path?: string } | LibraryUnreachable
+  > {
     const rejected = (reason: string, path?: string) => ({
       kind: 'path-rejected' as const,
       reason,
@@ -486,7 +492,7 @@ export class QueueService {
     if (paths.length === 0) return rejected('not found');
     const lexicalRoot = trimSlash(resolve(row.path));
     const realRoot = await realpathOrNull(this.fs, lexicalRoot);
-    if (realRoot === null) return rejected('not found');
+    if (realRoot === null) return { kind: 'library-unreachable', path: row.path };
     // The library as `checkPath` gives it: its real root and its recycle folder resolved.
     const rootCheck = await checkPath(this.db, realRoot, this.fs);
     if (!rootCheck.ok || rootCheck.library.id !== row.id) return rejected('not found');
@@ -919,7 +925,7 @@ export class QueueService {
   async browse(
     libraryId: string,
     relPath: string,
-  ): Promise<BrowseResult | BrowseRejection | 'not-found'> {
+  ): Promise<BrowseResult | BrowseRejection | LibraryUnreachable | 'not-found'> {
     const rejected = (reason: BrowseRejection['reason']): BrowseRejection => ({
       kind: 'path-rejected',
       reason,
@@ -927,8 +933,9 @@ export class QueueService {
     const library = findLibrary(this.db, libraryId);
     if (!library || library.deletedAt !== null) return 'not-found';
     if (isAbsolute(relPath)) return rejected('outside library root');
+    const unreachable: LibraryUnreachable = { kind: 'library-unreachable', path: library.path };
     const root = await realpathOrNull(this.fs, library.path);
-    if (root === null) return 'not-found';
+    if (root === null) return unreachable;
     const target = resolve(root, relPath);
     if (!isWithin(target, root)) return rejected('outside library root');
     const check = await checkPath(this.db, target, this.fs);
@@ -938,9 +945,11 @@ export class QueueService {
     const dir = check.realPath;
     let entries: Awaited<ReturnType<FsOps['readdir']>>;
     try {
-      if (!(await this.fs.stat(dir)).isDirectory()) return 'not-found';
+      if (!(await this.fs.stat(dir)).isDirectory()) return dir === root ? unreachable : 'not-found';
       entries = await this.fs.readdir(dir);
     } catch (err) {
+      // The root itself failing to list is the library being unreachable, whatever the error.
+      if (dir === root) return unreachable;
       const why = this.statFailure(err);
       return why === 'not found' ? 'not-found' : rejected(why);
     }

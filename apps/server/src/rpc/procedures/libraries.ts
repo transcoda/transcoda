@@ -98,6 +98,9 @@ export const browse = os.libraries.browse
   .handler(async ({ context, input, errors }) => {
     const result = await context.deps.engine.queue.browse(input.id, input.path);
     if (result === 'not-found') throw errors.NOT_FOUND();
+    if ('kind' in result && result.kind === 'library-unreachable') {
+      throw errors.LIBRARY_UNREACHABLE({ data: { path: result.path } });
+    }
     if ('kind' in result) {
       throw errors.PATH_REJECTED({ data: { path: input.path, reason: result.reason } });
     }

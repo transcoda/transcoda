@@ -1,4 +1,4 @@
-import { mkdir, rm, writeFile } from 'node:fs/promises';
+import { mkdir, rename, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { Capabilities } from '@transcoda/contract';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -346,6 +346,29 @@ describe('jobs.queueFiles', () => {
       const gone = await post('/jobs/queue-files', { libraryId: lib2, ...sel, workflowId: wf });
       expect(gone.status).toBe(404);
       expect(await json(gone)).toMatchObject({ code: 'NOT_FOUND' });
+    }
+    expect(count('jobs')).toBe(jobs);
+  });
+
+  it('a library whose folder is gone is 412 LIBRARY_UNREACHABLE with its path; nothing is queued', async () => {
+    const jobs = count('jobs');
+    await rename(root, `${root}-unmounted`);
+    try {
+      for (const path of ['/jobs/queue-files', '/jobs/queue-files/preview']) {
+        for (const sel of [
+          { fileIds: [ids[`${lib}:Movie.mkv`]] },
+          { paths: [join(root, 'Movie.mkv')] },
+        ]) {
+          const res = await post(path, { libraryId: lib, ...sel, workflowId: wf });
+          expect([path, res.status]).toEqual([path, 412]);
+          expect(await json(res)).toMatchObject({
+            code: 'LIBRARY_UNREACHABLE',
+            data: { path: root },
+          });
+        }
+      }
+    } finally {
+      await rename(`${root}-unmounted`, root);
     }
     expect(count('jobs')).toBe(jobs);
   });
