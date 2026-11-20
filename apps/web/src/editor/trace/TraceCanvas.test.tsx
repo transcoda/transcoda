@@ -268,6 +268,24 @@ describe('TraceCanvas', () => {
     expect(card('ro-a').querySelector('.tc-badge')?.textContent).toContain('problem');
     expect(within(card('ro-a')).getByText('Problem: rescan failed')).toBeTruthy();
     cleanup();
+    // Mixed: the badge shows the worst, and the name says each message's own word.
+    await show({
+      source: {
+        trace: TRACE,
+        steps: PATH,
+        jobState: 'done',
+        currentNode: undefined,
+        nodeProblems: [
+          { workflowPath: [], nodeId: 'ro-a', severity: 'problem', message: 'rescan failed' },
+          { workflowPath: [], nodeId: 'ro-a', severity: 'warning', message: 'notify failed' },
+        ],
+      },
+    });
+    expect(card('ro-a').querySelector('.tc-badge')?.textContent).toContain('problem');
+    expect(card('ro-a').getAttribute('aria-label')).toContain(
+      'problem: rescan failed; warning: notify failed',
+    );
+    cleanup();
     await show({ source: { trace: TRACE, steps: PATH, jobState: 'done', currentNode: undefined } });
     expect(document.querySelectorAll('.tc-badge')).toHaveLength(0);
   });

@@ -6,6 +6,7 @@ import { emptyGraph, type JobState, RUNNING_JOB_STATES } from '@transcoda/shared
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { Database } from '../db/open.ts';
 import {
+  appendTrace,
   deleteRecycled,
   findJob,
   insertJob,
@@ -271,6 +272,46 @@ describe('startupSweep without journals', () => {
     }
     expect(findJob(db, 'dec')).toMatchObject({ state: 'failed' });
     expect(listTrace(db, 'dec')).toEqual([]);
+
+    // Stopped in a size gate's No branch after the Render finished (the job stays verifying):
+    // the Render keeps its Done, no failed entry follows it.
+    insertJob(
+      db,
+      {
+        id: 'gate',
+        runId: 'r1',
+        libraryId: 'l1',
+        fileId: null,
+        path: join(lib, 'Show', 'gate.mkv'),
+        workflowId: 'w2',
+        workflowVersion: 1,
+        dryRun: false,
+        testEncode: false,
+        state: 'verifying',
+        priority: 0,
+      },
+      now,
+    );
+    updateJob(db, 'gate', { walkPath, requeues: 1 }, now);
+    const iso = now.toISOString();
+    appendTrace(db, 'gate', {
+      seq: 1,
+      attempt: 1,
+      nodeId: render,
+      workflowPath: [],
+      phase: 'finish',
+      source: 'core',
+      port: 'done',
+      reason: 'Render: encoded and verified \u2192 Done',
+      findings: {},
+      startedAt: iso,
+      endedAt: iso,
+    });
+    await startupSweep(db, sweepDeps());
+    expect(findJob(db, 'gate')).toMatchObject({ state: 'failed', failureCode: 'interrupted' });
+    expect(listTrace(db, 'gate').map((e) => e.reason)).toEqual([
+      'Render: encoded and verified \u2192 Done',
+    ]);
   });
 
   it('kills a leftover ffmpeg group before touching temp', async () => {

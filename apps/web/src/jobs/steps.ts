@@ -130,6 +130,8 @@ interface Around {
   failedAt: number | null;
   /** This step's index. */
   at: number;
+  /** The step belongs to an attempt before the last one. */
+  earlier?: boolean;
   /** A step replaces the original (the size gate's pass leads to it). */
   replaces: boolean;
   /** The job's problems and warnings on this step's node (its last attempt only). */
@@ -683,8 +685,9 @@ function notRun(d: Decision, ctx: StepContext, around: Around): string | null {
     if (!d.plugin || around.failedAt !== null) return 'the job failed first';
   }
   if (ctx.state === 'failed') return null;
-  // A canceled job wrote nothing (a cancel after the write ends it done), so no plugin step ran.
-  if (ctx.state === 'cancelled') return 'the job was canceled first';
+  // A canceled job wrote nothing (a cancel after the write ends it done), so no plugin step ran
+  // in the canceled attempt. An earlier attempt's steps are not the cancel's.
+  if (ctx.state === 'cancelled' && !around.earlier) return 'the job was canceled first';
   if (d.plugin) return null;
   // A dry run's write steps never run: its sentence says what they would do.
   if (!ctx.dryRun && d.type !== null && WRITES.has(d.type)) {
@@ -963,7 +966,8 @@ export function steps(items: readonly Decision[], ctx: StepContext): Step[] {
         p.workflowPath.join('/') === d.workflowPath.join('/'),
     );
     const failedAt = failed >= 0 ? failed : null;
-    const s = step(d, ctx, { at, failedAt, replaces, problems: own });
+    const earlier = d.attempt < lastAttempt;
+    const s = step(d, ctx, { at, failedAt, replaces, problems: own, earlier });
     if (own.length === 0) return s;
     const notes = own.map((p) => ({
       text: `${p.severity === 'problem' ? 'Problem' : 'Warning'}: ${p.message}`,

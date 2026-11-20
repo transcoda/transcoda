@@ -323,9 +323,11 @@ export function TcNode({ id, data, selected }: NodeProps<TcNodeType>) {
         ? runWord
         : TRACE_WORD[trace.status]
       : null;
-  // The job's problems on this node: the badge's word, then what they say.
+  // The job's problems on this node: the badge's tooltip says what they say; the card's name gives
+  // each its own word (the badge shows only the worst).
   const problemText = trace?.problems?.map((p) => p.message).join('; ');
-  const stateWord = state.word && problemText ? `${state.word}: ${problemText}` : state.word;
+  const problemWords = trace?.problems?.map((p) => `${p.severity}: ${p.message}`).join('; ');
+  const stateWord = problemWords || state.word;
   const stateWords = [stateWord, instance.bypassed ? 'skipped here' : null, traceWord].filter(
     Boolean,
   );

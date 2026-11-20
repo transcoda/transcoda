@@ -652,6 +652,30 @@ describe('steps: one sentence and a badge per node', () => {
     expect(badgeWord('canceled', true)).toBe('Canceled');
   });
 
+  it("a cancel says only the canceled attempt's steps did not run: an earlier attempt's plugin step ran", () => {
+    const note = (attempt: number, key: string, reason: string) =>
+      d({
+        key,
+        attempt,
+        nodeId: 'note',
+        title: 'Note',
+        kind: 'finish',
+        phase: 'finish',
+        reason,
+        plugin: true,
+        port: null,
+      });
+    const list = steps([note(1, '1', 'noted'), note(2, '2', 'queued')], {
+      ...DONE,
+      state: 'cancelled',
+    });
+    expect(list.map((s) => [s.decision.attempt, s.badge === 'not-run'])).toEqual([
+      [1, false],
+      [2, true],
+    ]);
+    expect(list[1]?.sentence).toBe("Didn't run: the job was canceled first");
+  });
+
   it("lists the job's problems and warnings on their node's step (last attempt only)", () => {
     const nw = (attempt: number, key: string) =>
       d({

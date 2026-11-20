@@ -13,6 +13,7 @@ import {
   jobsWithReplaceJournal,
   jobsWithRestoreJournal,
   listRecycled,
+  listTrace,
   nextTraceSeq,
   type ReplaceJournal,
   updateJob,
@@ -112,7 +113,8 @@ const RENDERING: ReadonlySet<JobState> = new Set(['encoding', 'verifying']);
  * A job the sweep failed as interrupted (`job` as it was found) while it encoded or verified: the
  * Render on its walk gets a `failed:` trace entry, as when a running job fails, so that node reads
  * failed instead of done and the steps after it did not run. A requeued job is left alone: it
- * walks again. Nothing is written when the walk or the workflow version cannot be read.
+ * walks again. A Render that already finished in this attempt is left alone too. Nothing is
+ * written when the walk or the workflow version cannot be read.
  */
 export function traceInterrupted(db: Database, job: JobRow, now: Date): void {
   if (!RENDERING.has(job.state) || job.walkPath === null) return;
@@ -125,6 +127,16 @@ export function traceInterrupted(db: Database, job: JobRow, now: Date): void {
       graph.nodes.some((n) => n.id === s.nodeId && n.type === RENDER_TYPE && n.bypassed !== true),
   );
   if (!render) return;
+  // The Render already finished in this attempt (Done or Damaged): the stop came after its work,
+  // in a step behind it (a size gate's No branch keeps the job in verifying), not during it.
+  const finished = listTrace(db, job.id).some(
+    (e) =>
+      e.attempt === job.attempt &&
+      e.nodeId === render.nodeId &&
+      e.workflowPath.length === 0 &&
+      e.phase === 'finish',
+  );
+  if (finished) return;
   const at = now.toISOString();
   appendTrace(db, job.id, {
     seq: nextTraceSeq(db, job.id),
