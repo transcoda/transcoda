@@ -5,7 +5,9 @@ import { useLocation } from 'wouter';
 import { api, safe } from '../api/client.ts';
 import { describeError } from '../api/errors.ts';
 import { Dialog } from '../components/Dialog.tsx';
+import { Icon } from '../components/Icon.tsx';
 import { ListboxSelect } from '../components/ListboxSelect.tsx';
+import { Loading } from '../components/Loading.tsx';
 import { useToast } from '../components/Toast.tsx';
 import { useWorkflows } from '../hooks/useWorkflows.ts';
 import { ACTIVATE_TO_RUN, recycleFolderText, runBlocked } from '../jobs/useRunOnFile.tsx';
@@ -87,7 +89,7 @@ export function RunFilesDialog({
 }): JSX.Element {
   const toast = useToast();
   const [, navigate] = useLocation();
-  const { workflows, reload } = useWorkflows();
+  const { workflows, error: listError, loading: listLoading, reload } = useWorkflows();
   const runnable = (workflows ?? []).filter((w) => w.kind === 'workflow' && runBlocked(w) === null);
   const feederId = library.feeds?.workflowId;
   const [picked, setPicked] = useState<string | null>(null);
@@ -238,7 +240,17 @@ export function RunFilesDialog({
         </>
       }
     >
-      {workflows !== undefined && chosen === null ? (
+      {workflows === undefined && listError ? (
+        <div className="alert alert-danger" role="alert">
+          <Icon name="cross" strokeWidth={2.4} round />
+          <span>{`Could not load the workflows: ${describeError(listError).message}`}</span>
+          <button type="button" className="btn btn-ghost btn-sm" onClick={reload}>
+            Try again
+          </button>
+        </div>
+      ) : workflows === undefined && listLoading ? (
+        <Loading />
+      ) : workflows !== undefined && chosen === null ? (
         <p>No workflow can run for real yet. Activate a version that runs first.</p>
       ) : (
         <>

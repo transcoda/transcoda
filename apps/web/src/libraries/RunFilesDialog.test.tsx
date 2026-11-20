@@ -140,6 +140,22 @@ describe('RunFilesDialog', () => {
     ).toBeTruthy();
   });
 
+  it('shows a workflow list load failure with a retry, not an empty selector', async () => {
+    mocks.list
+      .mockRejectedValueOnce(new ORPCError('INTERNAL_SERVER_ERROR', { message: 'db is down' }))
+      .mockResolvedValue({ workflows: WORKFLOWS });
+    mount();
+    const alert = await screen.findByRole('alert');
+    expect(alert.textContent).toContain('Could not load the workflows');
+    expect(alert.textContent).toContain('db is down');
+    expect(screen.queryByRole('button', { name: /Workflow/ })).toBeNull();
+    expect(mocks.preview).not.toHaveBeenCalled();
+    fireEvent.click(within(alert).getByRole('button', { name: 'Try again' }));
+    const button = await screen.findByRole('button', { name: /Workflow/ });
+    expect(button.textContent).toContain('Shows Cleanup v2');
+    expect(screen.queryByText(/Could not load the workflows/)).toBeNull();
+  });
+
   it('lists only workflows that can run, defaulting to the library feeder', async () => {
     mount(library({ feeds: { workflowId: 'w3', name: 'Episode Tidy', version: 5 } }));
     expect(await screen.findByRole('dialog', { name: 'Run a workflow on 3 files' })).toBeTruthy();
