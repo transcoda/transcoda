@@ -33,6 +33,15 @@ export const COLLAPSED_GROUP_SIZE = { width: 210, height: 60 } as const;
 export const VALUES_HANDLE = 'values';
 export const VALUE_LINK_HANDLE = 'value-link';
 
+/** A node's name: its own label, or (with no label, or an empty one) its catalogue title, else
+ *  its type. Never empty while the type is not. */
+function nodeName(
+  node: { label?: string | undefined; type: string },
+  catalog: Catalog | null,
+): string {
+  return node.label?.trim() ? node.label : (catalog?.byType.get(node.type)?.title ?? node.type);
+}
+
 /**
  * The values card and one dotted line per node that follows a value it holds (to the collapsed
  * group standing in for a hidden node). Lines are drawn only; they are never selected or deleted.
@@ -74,6 +83,8 @@ function valuesParts(
       type: 'tc-values',
       position: { x: values.position.x, y: values.position.y },
       selected: selection.group === VALUES_CARD_ID,
+      // React Flow's focusable wrapper gets a name too (the card inside is "Shared values").
+      ariaLabel: 'Values',
       data: { values, uses },
     },
     links,
@@ -134,6 +145,8 @@ export function toFlow(
       initialHeight: size.height,
       style: { width: size.width, height: size.height },
       selected: selection.group === group.id,
+      // React Flow's focusable wrapper gets a name too (the box inside it is "Group <name>").
+      ariaLabel: group.name,
       data: { group, count: counts.get(group.id) ?? 0, problem: null },
     };
   });
@@ -162,6 +175,9 @@ export function toFlow(
       initialWidth: NODE_SIZE.width,
       initialHeight: NODE_SIZE.height,
       selected: selectedNodes.has(instance.id),
+      // React Flow's focusable wrapper is named by the card's title at every zoom level (the
+      // icon-only tile shows no words).
+      ariaLabel: nodeName(instance, catalog),
       data: {
         instance,
         def: catalog?.byType.get(instance.type) ?? null,
@@ -190,7 +206,7 @@ export function toFlow(
     if (hidden !== undefined) return groups.get(hidden)?.name ?? nodeId;
     const n = byId.get(nodeId);
     if (!n) return nodeId;
-    return n.label ?? catalog?.byType.get(n.type)?.title ?? n.type;
+    return nodeName(n, catalog);
   };
   /** "Edge from Video is, Yes, to Encode video": the port only when the node has several. */
   const edgeName = (e: WorkflowGraph['edges'][number]): string => {

@@ -10,6 +10,8 @@
   --raised: #26252B;
   --line: #2E2D34;
   --line-strong: #3A3940;
+  /* Form control edges (inputs, selects, chip fields): 3:1 or better on --raised (WCAG 1.4.11). */
+  --line-control: #7A766F;
   --text: #EDEBE6;
   --muted: #B5B1A8;
   --faint: #9C988F;
@@ -71,10 +73,16 @@
   /* On a lime (accent) fill the accent ring would vanish: ring in the text colour instead. */
   --focus-ring-on-accent: 0 0 0 2px var(--accent), 0 0 0 4px var(--text);
 
+  /* Motion: UI transitions ease out; progress bars and loops keep their own linear timing. */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --dur-fast: 120ms;
+  --dur-base: 160ms;
+
   /* Hit targets */
   --target-min: 44px;
 
-  /* Sticky top bar: 12px padding x2 + 44px brand + 1px border. */
+  /* Sticky top bar, one row: 12px padding x2 + 44px brand + 1px border. Shell overrides it with
+     the measured height when the bar wraps. */
   --topbar-h: 69px;
 }
 
@@ -88,6 +96,7 @@
     --raised: #ECEAE3;
     --line: #D9D6CC;
     --line-strong: #C6C2B6;
+    --line-control: #837F76;
     --text: #17161A;
     --muted: #55524B;
     --faint: #625E57;
@@ -129,6 +138,7 @@
   --raised: #ECEAE3;
   --line: #D9D6CC;
   --line-strong: #C6C2B6;
+  --line-control: #837F76;
   --text: #17161A;
   --muted: #55524B;
   --faint: #625E57;
@@ -163,8 +173,16 @@
   --edge-untaken: #6A6770;
 }
 
+/* Reduced motion: every animation and transition jumps to its end state. Loops (spinner, running
+   border, path dash, job chip arc) also have their own still state in styles.css. */
 @media (prefers-reduced-motion: reduce) {
-  * { animation: none !important; }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 :focus-visible { outline: none; box-shadow: var(--focus-ring); }

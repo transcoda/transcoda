@@ -226,7 +226,7 @@ describe('RunPage', () => {
     expect(second?.textContent).toContain('ran on v6');
   });
 
-  it('has a breadcrumb above the title that names only the parent: "Jobs /"', async () => {
+  it('has a breadcrumb above the title that ends in the run itself: "Jobs › TV cleanup v7"', async () => {
     mocks.get.mockResolvedValue(settledRun());
     renderAt('/runs/r1', page());
     const heading = await screen.findByRole('heading', { level: 1, name: 'TV cleanup v7' });
@@ -235,7 +235,10 @@ describe('RunPage', () => {
     const jobs = within(crumbs).getByRole('link', { name: 'Jobs' });
     expect(jobs.getAttribute('href')).toBe('/jobs');
     expect(jobs.classList.contains('job-crumb-link')).toBe(true);
-    expect(crumbs.textContent).toBe('Jobs/');
+    // The page you are on ends the trail (no dangling separator), marked as the current page.
+    expect(crumbs.textContent).toBe('Jobs›TV cleanup v7');
+    const current = within(crumbs).getByText('TV cleanup v7');
+    expect(current.getAttribute('aria-current')).toBe('page');
     expect(crumbs.compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 

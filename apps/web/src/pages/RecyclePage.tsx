@@ -115,15 +115,18 @@ function LibraryFolder({
   return (
     <>
       <section className="recycle-summary" aria-label="Folder">
+        {/* What the folder does reads first, at body size; the path and sizes are quiet facts. */}
+        <p className="recycle-explain">
+          {`Originals are deleted after ${days(library.retentionDays)}, or sooner when the disk is low (`}
+          <Link href="/settings/recycle" className="text-target">
+            Settings
+          </Link>
+          {').'}
+        </p>
         <p className="recycle-folder mono">{library.folder}</p>
-        <p className="head-sub">
+        <p className="recycle-size">
           {`${fmtBytes(library.totalBytes)} in the folder`}
           {library.freeBytes !== null ? ` · ${fmtBytes(library.freeBytes)} free on this disk` : ''}
-        </p>
-        <p className="head-sub">
-          {`Originals are deleted after ${days(library.retentionDays)}, or sooner when the disk is low (`}
-          <Link href="/settings/recycle">Settings</Link>
-          {').'}
         </p>
         {library.entries.length > 0 ? (
           <EmptyFolder library={library} onChanged={onChanged} />

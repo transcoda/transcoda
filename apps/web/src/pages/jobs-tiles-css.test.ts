@@ -81,10 +81,11 @@ describe('Jobs on a narrow window', () => {
     expect(block).toMatch(/\.history-cards\s*\{\s*grid-template-columns:\s*repeat\(2,/);
   });
 
-  it('narrower still, the four tiles go 2 × 2 so no label is cut', () => {
+  it('narrower still, the lead tile takes its own row and the other three share the next', () => {
     const block = container(559);
     expect(block).toMatch(/\.stat-row > \.stat-tiles\s*\{\s*flex-wrap:\s*wrap/);
-    expect(block).toMatch(/flex:\s*1 1 calc\(50% - 4px\)/);
+    expect(block).toMatch(/\.stat-row > \.stat-tiles > \.stat-tile\s*\{\s*flex:\s*1 1 0/);
+    expect(block).toMatch(/\.stat-tile\.is-lead\s*\{\s*flex-basis:\s*100%/);
   });
 
   it('without room for every column, Library and Workflow give way and the Title keeps 240 px', () => {
@@ -156,15 +157,30 @@ describe('Jobs stat tiles (#31)', () => {
     expect(rule('.stat-tile-button')).toMatch(/flex:\s*1/);
   });
 
-  it('the tile, not the button, carries the selected ring and a bold label', () => {
+  it('the tile, not the button, carries the selected ring, and the label keeps its weight', () => {
     const ring = rule(PRESSED_TILE);
     expect(ring).toMatch(/box-shadow:\s*0 0 0 2px var\(--bg\),\s*0 0 0 4px currentColor/);
-    expect(rule(`${PRESSED_TILE} .stat-label`)).toMatch(/font-weight:\s*700/);
+    expect(css).not.toMatch(
+      /\.stat-tile:has\(> \.stat-tile-button\[aria-pressed="true"\]\) \.stat-label/,
+    );
   });
 
   it('the pressed button draws no border or ring of its own', () => {
     expect(css).not.toMatch(/\.stat-tile-button\[aria-pressed="true"\]\s*\{/);
     expect(rule('.stat-tile-button')).toMatch(/border:\s*0/);
+  });
+});
+
+describe('Jobs stat tiles: one figure leads', () => {
+  it('the lead tile is wider and its figure is a step larger than the others', () => {
+    expect(rule('.stat-tile.is-lead')).toMatch(/flex:\s*2/);
+    expect(rule('.stat-value')).toMatch(/font-size:\s*var\(--fs-h2\)/);
+    expect(rule('.stat-tile.is-lead .stat-value')).toMatch(/font-size:\s*var\(--fs-h1\)/);
+  });
+
+  it('on a phone the lead has its own row, so NEEDS ATTENTION fits its tile', () => {
+    expect(rule('.is-phone .stat-row > .stat-tiles')).toMatch(/flex-wrap:\s*wrap/);
+    expect(rule('.is-phone .stat-tile.is-lead')).toMatch(/flex-basis:\s*100%/);
   });
 });
 

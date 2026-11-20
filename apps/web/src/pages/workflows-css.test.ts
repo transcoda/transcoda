@@ -19,7 +19,11 @@ describe('workflows table CSS', () => {
 
   it('names are underlined only on hover and keyboard focus', () => {
     expect(rule('.wf-link')).toContain('text-decoration: none');
-    expect(rule('.wf-link:hover,\n.wf-link:focus-visible')).toContain('text-decoration: underline');
+    expect(rule('.wf-link:focus-visible')).toContain('text-decoration: underline');
+    // Hover only where there is a pointer that hovers, so a tap does not leave it underlined.
+    expect(css).toMatch(
+      /@media \(hover: hover\) \{\s*\.wf-link:hover \{[^}]*text-decoration: underline/,
+    );
   });
 
   it('at phone width a workflow row is a card with one meta line, without column names', () => {

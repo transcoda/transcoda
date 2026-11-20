@@ -1,6 +1,6 @@
 import type { Library, WorkflowSummary } from '@transcoda/contract';
 import { runHoursSummary } from '@transcoda/shared';
-import { type FormEvent, type ReactNode, useEffect, useId, useRef, useState } from 'react';
+import { type FormEvent, type ReactNode, useId, useRef, useState } from 'react';
 import { Link } from 'wouter';
 import { api, isDefinedError, safe } from '../api/client.ts';
 import { describeError } from '../api/errors.ts';
@@ -86,7 +86,7 @@ function NonDefaultNotes({ library }: { library: Library }) {
       </span>,
     );
   }
-  return notes.length > 0 ? <>{notes}</> : null;
+  return notes.length > 0 ? notes : null;
 }
 
 function ErrorAlert({ children }: { children: string }) {
@@ -720,7 +720,9 @@ export function LibrariesPage() {
                     {l.feeds ? (
                       <td className="lib-cell">
                         <span className="lib-feed">
-                          <Link href={`/workflows/${l.feeds.workflowId}`}>{l.feeds.name}</Link>{' '}
+                          <Link href={`/workflows/${l.feeds.workflowId}`} className="text-target">
+                            {l.feeds.name}
+                          </Link>{' '}
                           <ActivationPill active={feederActive(l.feeds)} />
                         </span>
                       </td>
@@ -745,14 +747,17 @@ export function LibrariesPage() {
                           </button>
                         ) : (
                           // The workflow list has not loaded: the editor has the same Activate.
-                          <Link href={`/workflows/${waiting.workflowId}`}>
+                          <Link href={`/workflows/${waiting.workflowId}`} className="text-target">
                             {`Activate v${waiting.version}…`}
                           </Link>
                         )}
                       </td>
                     ) : (
                       <td className="lib-cell lib-feeds-none">
-                        <span>—</span> <Link href="/">{ADD_INPUT}</Link>
+                        <span>—</span>{' '}
+                        <Link href="/" className="text-target">
+                          {ADD_INPUT}
+                        </Link>
                       </td>
                     )}
                     <td className="lib-cell lib-actions">

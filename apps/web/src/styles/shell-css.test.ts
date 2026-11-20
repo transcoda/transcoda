@@ -38,10 +38,16 @@ describe('shell css (UI review H1, M15, L10, L15)', () => {
 
   it('draws a visible focus ring on lime elements (ring in the text colour)', () => {
     expect(tokens).toMatch(/--focus-ring-on-accent:/);
-    const onLime =
-      css.match(/[^}]*a\.nav-item\.is-active:focus-visible[^{]*\{([^}]*)\}/)?.[1] ?? '';
+    const onLime = css.match(/[^}]*\.btn-primary:focus-visible[^{]*\{([^}]*)\}/)?.[1] ?? '';
     expect(onLime).toMatch(/--focus-ring-on-accent/);
-    expect(css).toMatch(/\.btn-primary:focus-visible/);
+  });
+
+  it('marks the current nav item with a neutral fill and a green icon, not a lime fill', () => {
+    const active = css.match(/\na\.nav-item\.is-active \{([^}]*)\}/)?.[1] ?? '';
+    expect(active).toContain('background: var(--raised)');
+    expect(active).toContain('color: var(--text)');
+    expect(active).not.toMatch(/--accent|font-weight|inset/);
+    expect(css).toMatch(/\n\.nav-item\.is-active \.icon \{\s*color: var\(--accent-text\)/);
   });
 
   it('uses only the named breakpoints (phone 639, tablet 1023, desktop 1280 inclusive; 899 is the auth page)', () => {
