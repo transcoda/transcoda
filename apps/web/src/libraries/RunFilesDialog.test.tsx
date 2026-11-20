@@ -182,11 +182,24 @@ describe('RunFilesDialog', () => {
     ).toBeTruthy();
     const group = screen.getByRole('radiogroup');
     expect(within(group).getAllByRole('radio')).toHaveLength(2);
+    mocks.preview.mockResolvedValue(answer({ workflowVersion: 3, dryRun: true }));
     fireEvent.click(screen.getByRole('radio', { name: /Dry run/ }));
     expect(await screen.findByText('Dry run: v3 (newest)')).toBeTruthy();
     expect(mocks.preview).toHaveBeenLastCalledWith(
       expect.objectContaining({ workflowId: 'w1', dryRun: true, libraryId: 'shows' }),
     );
+  });
+
+  it('names the version the preview checked, not the one the list reports', async () => {
+    mocks.preview.mockResolvedValue(answer({ workflowVersion: 4 }));
+    mount();
+    expect(await screen.findByText('Real run: v4 (active)')).toBeTruthy();
+    expect(
+      screen.getByRole('checkbox', { name: 'Also run the 9 files Shows Cleanup v4 already handled' }),
+    ).toBeTruthy();
+    mocks.preview.mockResolvedValue(answer({ workflowVersion: 6, dryRun: true }));
+    fireEvent.click(screen.getByRole('radio', { name: /Dry run/ }));
+    expect(await screen.findByText('Dry run: v6 (newest)')).toBeTruthy();
   });
 
   it('counts the files that will run; the box adds the already handled ones', async () => {
