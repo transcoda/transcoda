@@ -6,7 +6,7 @@ import { useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { catalogFixture } from '../../test/fixtures/catalog.ts';
 import { PATH, RUNNING_TRACE, TRACE, traceMain, traceSub } from '../../test/fixtures/trace.ts';
-import { fitTrace, type NodeRef, TraceCanvas } from './TraceCanvas.tsx';
+import { fitTrace, type NodeRef, refitTrace, TraceCanvas } from './TraceCanvas.tsx';
 import type { TraceSource } from './traceOverlay.ts';
 
 afterEach(cleanup);
@@ -268,5 +268,39 @@ describe('fitTrace', () => {
     const f = fitTrace(bounds(100, -50, 800, 40), 1000);
     expect(100 * f.viewport.zoom + f.viewport.x).toBeCloseTo((1000 - 800 * f.viewport.zoom) / 2, 5);
     expect(f.height).toBeGreaterThanOrEqual(240);
+  });
+});
+
+describe('refitTrace (the fit follows the icon tiles the first fit turned the cards into)', () => {
+  const bounds = (x: number, y: number, width: number, height: number) => ({ x, y, width, height });
+  // A 14-step chain fitted from its full cards lands at the icon level (below 40 %) ...
+  const first = fitTrace(bounds(0, 0, 3600, 900), 1200);
+  // ... where the 160 px tiles are spread again and reach further down.
+  const iconLayout = bounds(0, 0, 3500, 1400);
+
+  it('fits again so the canvas reaches the lowest tile, without zooming in', () => {
+    expect(first.viewport.zoom).toBeLessThan(0.4);
+    const next = refitTrace(first, first.viewport, iconLayout, 1200);
+    expect(next).not.toBeNull();
+    expect(next?.viewport.zoom).toBe(first.viewport.zoom);
+    const zoom = next?.viewport.zoom ?? 0;
+    expect(next?.height).toBeGreaterThanOrEqual(1400 * zoom + 24 + 64 - 1e-6);
+    expect(next?.height).toBeGreaterThan(first.height);
+  });
+
+  it('zooms out further when the new layout is wider, so nothing is cut on the right', () => {
+    const next = refitTrace(first, first.viewport, bounds(0, 0, 4000, 900), 1200);
+    expect(next?.viewport.zoom).toBeCloseTo((1200 - 48) / 4000, 5);
+  });
+
+  it('leaves the viewport alone once the viewer has panned or zoomed', () => {
+    const panned = { ...first.viewport, x: first.viewport.x - 300 };
+    expect(refitTrace(first, panned, iconLayout, 1200)).toBeNull();
+    const zoomed = { ...first.viewport, zoom: first.viewport.zoom * 1.2 };
+    expect(refitTrace(first, zoomed, iconLayout, 1200)).toBeNull();
+  });
+
+  it('does nothing when the layout fits as it is (no refit loop)', () => {
+    expect(refitTrace(first, first.viewport, bounds(0, 0, 3600, 900), 1200)).toBeNull();
   });
 });

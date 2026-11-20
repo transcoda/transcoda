@@ -4341,6 +4341,32 @@ a.btn-secondary:hover {
   display: flex;
 }
 
+/* The job page's trace draws the icon tiles twice as large (see TRACE_ICON): a 160 px circle with a
+   thicker ring and a doubled badge, so they read at the ~0.3 zoom a long workflow fits at. */
+.tc-node.zoom-icon.is-big-icon {
+  width: 160px;
+  height: 160px;
+}
+
+.tc-node.zoom-icon.is-big-icon:not(.border-red, .border-amber, .border-dashed, .is-failed) {
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--node-kind) 55%, var(--line-strong));
+}
+
+.tc-node.zoom-icon.is-big-icon.is-running::before {
+  inset: -7px;
+}
+
+.tc-node.zoom-icon.is-big-icon.is-failed {
+  box-shadow: 0 0 0 4px var(--st-failed);
+}
+
+.tc-node.zoom-icon.is-big-icon .tc-badge.is-glyph {
+  top: -10px;
+  right: -10px;
+  transform: scale(2);
+  transform-origin: center;
+}
+
 .tc-badge.is-glyph {
   top: -10px;
   right: -10px;

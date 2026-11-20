@@ -260,7 +260,8 @@ export function TcNode({ id, data, selected }: NodeProps<TcNodeType>) {
   const { instance, def, state } = data;
   const actions = useEditorActions();
   const zoom = useZoomLevel();
-  const iconScale = useIconScale();
+  const bigIcons = useTraceActions().bigIcons === true;
+  const iconScale = useIconScale(bigIcons);
   const incoming = useNodeConnections({ handleType: 'target' });
   const outgoing = useNodeConnections({ handleType: 'source' });
   const connectedIn = new Set(incoming.map((c) => c.targetHandle ?? ''));
@@ -298,6 +299,7 @@ export function TcNode({ id, data, selected }: NodeProps<TcNodeType>) {
   const runSuffix = run ? `, ${run.text}` : '';
   const classes = ['tc-node', kindClassOf(def)];
   if (zoom !== 'full') classes.push(`zoom-${zoom}`);
+  if (zoom === 'icon' && bigIcons) classes.push('is-big-icon');
   if (state.border) classes.push(`border-${state.border}`);
   if (instance.bypassed) classes.push('is-bypassed');
   if (trace?.status === 'current') classes.push('is-running');

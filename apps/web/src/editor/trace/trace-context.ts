@@ -4,6 +4,8 @@ import { createContext, useContext } from 'react';
 export interface TraceActions {
   /** Opens (or, when it is open, closes) a Run node's sub-workflow below the canvas. */
   toggleRun(runNodeId: string): void;
+  /** True on the job page's canvas: its icon-level tiles are drawn larger than the editor's. */
+  bigIcons?: boolean;
 }
 
 export const TraceActionsContext = createContext<TraceActions>({ toggleRun: () => {} });
