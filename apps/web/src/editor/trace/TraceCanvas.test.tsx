@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { catalogFixture } from '../../test/fixtures/catalog.ts';
 import { PATH, RUNNING_TRACE, TRACE, traceMain, traceSub } from '../../test/fixtures/trace.ts';
+import { READABLE_ZOOM } from '../flow/openViewport.ts';
 import { fitTrace, type NodeRef, refitTrace, TraceCanvas } from './TraceCanvas.tsx';
 import type { TraceSource } from './traceOverlay.ts';
 
@@ -237,16 +238,23 @@ describe('TraceCanvas', () => {
 describe('fitTrace', () => {
   const bounds = (x: number, y: number, width: number, height: number) => ({ x, y, width, height });
 
-  it('fits the whole width: zoom from the pane, height from the graph, nothing cut', () => {
-    // 1000 px of content in a 1100 px pane (24 px each side): zoom 1052/1000 → capped at 1.
-    const wide = fitTrace(bounds(0, 0, 2000, 300), 1100);
-    expect(wide.viewport.zoom).toBeCloseTo((1100 - 48) / 2000, 5);
+  it('fits the whole width when that is readable: zoom from the pane, height from the graph, nothing cut', () => {
+    // 1300 px of content in a 1100 px pane (24 px each side): zoom 1052/1300 ≈ 0.81.
+    const wide = fitTrace(bounds(0, 0, 1300, 300), 1100);
+    expect(wide.viewport.zoom).toBeCloseTo((1100 - 48) / 1300, 5);
     // The last node's right edge lands inside the pane, with the left pad kept.
     expect(wide.viewport.x).toBeCloseTo(24, 5);
-    expect(2000 * wide.viewport.zoom + wide.viewport.x).toBeLessThanOrEqual(1100 - 24 + 1e-6);
+    expect(1300 * wide.viewport.zoom + wide.viewport.x).toBeLessThanOrEqual(1100 - 24 + 1e-6);
     // The graph's height fits with a pad above and room below for the zoom controls.
     expect(wide.viewport.y).toBeCloseTo(24, 5);
     expect(wide.height).toBeGreaterThanOrEqual(300 * wide.viewport.zoom + 24 + 64 - 1e-6);
+  });
+
+  it('opens a graph too wide to read whole at the readable zoom, from its left edge (the trigger)', () => {
+    const wide = fitTrace(bounds(0, 0, 2000, 300), 1100);
+    expect(wide.viewport.zoom).toBe(READABLE_ZOOM);
+    expect(wide.viewport.x).toBe(24);
+    expect(wide.height).toBeGreaterThanOrEqual(300 * READABLE_ZOOM + 24 + 64 - 1e-6);
   });
 
   it('never zooms in past 100 %, and centres a graph narrower than the pane', () => {
@@ -255,11 +263,11 @@ describe('fitTrace', () => {
     expect(small.viewport.x).toBeCloseTo((1100 - 400) / 2, 5);
   });
 
-  it('goes below 40 % (the compact nodes) before it cuts the last node, down to a floor shown from the left', () => {
-    const w = fitTrace(bounds(0, 0, 3000, 300), 1000);
+  it('with a lower floor (a phone, which cannot pan) goes below 40 % before it cuts the last node, down to the floor shown from the left', () => {
+    const w = fitTrace(bounds(0, 0, 3000, 300), 1000, 0.2);
     expect(w.viewport.zoom).toBeLessThan(0.4);
     expect(w.viewport.zoom).toBeGreaterThan(0.2);
-    const huge = fitTrace(bounds(0, 0, 20000, 300), 1000);
+    const huge = fitTrace(bounds(0, 0, 20000, 300), 1000, 0.2);
     expect(huge.viewport.zoom).toBe(0.2);
     expect(huge.viewport.x).toBe(24);
   });
@@ -274,13 +282,14 @@ describe('fitTrace', () => {
 describe('refitTrace (the fit follows the icon tiles the first fit turned the cards into)', () => {
   const bounds = (x: number, y: number, width: number, height: number) => ({ x, y, width, height });
   // A 14-step chain fitted from its full cards lands at the icon level (below 40 %) ...
-  const first = fitTrace(bounds(0, 0, 3600, 900), 1200);
+  // (A phone's fit: on a desktop the readable floor keeps the full cards.)
+  const first = fitTrace(bounds(0, 0, 3600, 900), 1200, 0.1);
   // ... where the 160 px tiles are spread again and reach further down.
   const iconLayout = bounds(0, 0, 3500, 1400);
 
   it('fits again so the canvas reaches the lowest tile, without zooming in', () => {
     expect(first.viewport.zoom).toBeLessThan(0.4);
-    const next = refitTrace(first, first.viewport, iconLayout, 1200);
+    const next = refitTrace(first, first.viewport, iconLayout, 1200, 0.1);
     expect(next).not.toBeNull();
     expect(next?.viewport.zoom).toBe(first.viewport.zoom);
     const zoom = next?.viewport.zoom ?? 0;
@@ -289,18 +298,18 @@ describe('refitTrace (the fit follows the icon tiles the first fit turned the ca
   });
 
   it('zooms out further when the new layout is wider, so nothing is cut on the right', () => {
-    const next = refitTrace(first, first.viewport, bounds(0, 0, 4000, 900), 1200);
+    const next = refitTrace(first, first.viewport, bounds(0, 0, 4000, 900), 1200, 0.1);
     expect(next?.viewport.zoom).toBeCloseTo((1200 - 48) / 4000, 5);
   });
 
   it('leaves the viewport alone once the viewer has panned or zoomed', () => {
     const panned = { ...first.viewport, x: first.viewport.x - 300 };
-    expect(refitTrace(first, panned, iconLayout, 1200)).toBeNull();
+    expect(refitTrace(first, panned, iconLayout, 1200, 0.1)).toBeNull();
     const zoomed = { ...first.viewport, zoom: first.viewport.zoom * 1.2 };
-    expect(refitTrace(first, zoomed, iconLayout, 1200)).toBeNull();
+    expect(refitTrace(first, zoomed, iconLayout, 1200, 0.1)).toBeNull();
   });
 
   it('does nothing when the layout fits as it is (no refit loop)', () => {
-    expect(refitTrace(first, first.viewport, bounds(0, 0, 3600, 900), 1200)).toBeNull();
+    expect(refitTrace(first, first.viewport, bounds(0, 0, 3600, 900), 1200, 0.1)).toBeNull();
   });
 });
