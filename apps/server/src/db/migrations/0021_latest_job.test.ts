@@ -254,6 +254,16 @@ describe('files.latest_job_id after every migration', () => {
     expectLatest(null);
   });
 
+  it('a renamed job (its id changed by raw SQL) stays the latest under its new id', () => {
+    job('a', { state: 'done', queuedAt: 1 });
+    job('b', { state: 'done', queuedAt: 2 });
+    expectLatest('b');
+    db.prepare("UPDATE jobs SET id = 'b2' WHERE id = 'b'").run();
+    expectLatest('b2');
+    db.prepare("UPDATE jobs SET id = 'a2' WHERE id = 'a'").run();
+    expectLatest('b2');
+  });
+
   it('a job moved to another file re-ranks both files', () => {
     addFile(db, 'g');
     job('a', { state: 'done', queuedAt: 1 });

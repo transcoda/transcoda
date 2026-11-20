@@ -21,8 +21,8 @@ export const latestJobOfSql = (fileId: string): string =>
  * lists join on it instead of ranking every job of the library. Backfilled for every file.
  *
  * Triggers on `jobs` keep it current on every write that can change which job is latest, by
- * whatever path it comes (the repos, the engine, raw SQL): a job inserted, deleted, moved to
- * another file, or changing `dry_run`, `queued_at` or whether its state counts. They recompute the
+ * whatever path it comes (the repos, the engine, raw SQL): a job inserted, deleted, renamed (its
+ * `id`), moved to another file, or changing `dry_run`, `queued_at` or whether its state counts. They recompute the
  * file's latest job from its jobs (through `jobs_file_queued`) instead of comparing with the stored
  * one, so out-of-order inserts and deletes come out the same as the query. A later migration that
  * rebuilds `jobs` or `files` must create them again (0021's test checks they exist after all
@@ -48,8 +48,9 @@ export const latestJob: Migration = {
         UPDATE files SET latest_job_id = ${latestJobOfSql('files.id')} WHERE id = OLD.file_id;
       END;
 
-      CREATE TRIGGER jobs_latest_update AFTER UPDATE OF file_id, dry_run, queued_at, state ON jobs
-      WHEN OLD.file_id IS NOT NEW.file_id
+      CREATE TRIGGER jobs_latest_update AFTER UPDATE OF id, file_id, dry_run, queued_at, state ON jobs
+      WHEN OLD.id IS NOT NEW.id
+        OR OLD.file_id IS NOT NEW.file_id
         OR OLD.dry_run IS NOT NEW.dry_run
         OR OLD.queued_at IS NOT NEW.queued_at
         OR (OLD.state IN (${NOT_COUNTED})) IS NOT (NEW.state IN (${NOT_COUNTED}))
