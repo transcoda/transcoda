@@ -805,6 +805,42 @@ describe('titles and seasons', () => {
     });
   });
 
+  it("a show card takes the show's own poster over an episode's season poster; seasons keep theirs", () => {
+    const withShow = (m: StoredJobMedia, posterPath: string, showPosterPath?: string) => ({
+      ...withPoster(m, posterPath),
+      ...(showPosterPath !== undefined && { showPosterPath }),
+    });
+    // Season 1's episode names only its season poster (an older job, before show posters).
+    file('e1', '/media/tv/e1.mkv', 1000);
+    job('j-e1', 'e1', { state: 'done', queuedAt: 1, media: withShow(ep(1, 1), '/p/s1.jpg') });
+    file('e2', '/media/tv/e2.mkv', 1000);
+    job('j-e2', 'e2', {
+      state: 'done',
+      queuedAt: 1,
+      media: withShow(ep(2, 1), '/p/s2.jpg', '/p/show.jpg'),
+    });
+    expect(showCard().poster).toMatchObject({
+      jobId: 'j-e2',
+      of: 'show',
+      media: { showPosterPath: '/p/show.jpg' },
+    });
+    const seasons = listSeasons(db, 'l1', HILL);
+    expect(seasons.map((g) => [g.poster?.jobId, g.poster?.media.posterPath, g.poster?.of])).toEqual(
+      [
+        ['j-e1', '/p/s1.jpg', undefined],
+        ['j-e2', '/p/s2.jpg', undefined],
+      ],
+    );
+  });
+
+  it('a show card with no show poster named keeps the lowest episode poster', () => {
+    file('e1', '/media/tv/e1.mkv', 1000);
+    job('j-e1', 'e1', { state: 'done', queuedAt: 1, media: withPoster(ep(1, 1), '/p/s1.jpg') });
+    const poster = showCard().poster;
+    expect(poster).toMatchObject({ jobId: 'j-e1', media: { posterPath: '/p/s1.jpg' } });
+    expect(poster).not.toHaveProperty('of');
+  });
+
   it('with no poster anywhere the poster is the lowest file; with no media at all it is null', () => {
     addEp('e2', 1, 2);
     addEp('e1', 1, 1);

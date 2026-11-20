@@ -250,6 +250,14 @@ export function createMediaResolver(deps: { fs: FsOps; log: Logger }): MediaReso
           }
           return showPosterIn(showFolder, root);
         });
+        // The show's own poster too, for the show card (cached per folder: no extra lookups).
+        if (showFolder !== null) {
+          const folder = showFolder;
+          const showPoster = await step('could not find a show poster', path, () =>
+            showPosterIn(folder, root),
+          );
+          if (showPoster !== null) media.showPosterPath = showPoster;
+        }
         return media;
       }
 

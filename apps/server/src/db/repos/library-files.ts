@@ -403,16 +403,23 @@ export interface OutcomeCounts {
   failed: number;
   other: number;
 }
-/** One file's poster reference: the media job's id (else the latest job's) and its media. */
+/**
+ * One file's poster reference: the media job's id (else the latest job's) and its media. `of:
+ * 'show'`: the image is that media's `showPosterPath` (the show's own poster), not `posterPath`.
+ */
 export interface PosterRef {
   jobId: string;
   media: StoredJobMedia;
+  of?: 'show';
 }
 export interface ShowGroup {
   key: string;
   title: string;
   year: number | null;
-  /** Null when no job of any episode has media. */
+  /**
+   * The show's own poster when an episode's media has one (`of: 'show'`), else the group's first
+   * episode poster as for a season; null when no job of any episode has media.
+   */
   poster: PosterRef | null;
   episodes: number;
   seasons: number;
@@ -466,7 +473,8 @@ const TAGGED_SQL = `tagged AS (
       WHEN latest_state = 'failed' THEN 'failed'
       ELSE 'other'
     END AS outcome,
-    (json_extract(media_json, '$.posterPath') IS NOT NULL) AS has_poster
+    (json_extract(media_json, '$.posterPath') IS NOT NULL) AS has_poster,
+    (json_extract(media_json, '$.showPosterPath') IS NOT NULL) AS has_show_poster
   FROM listed l
   WHERE gone_at IS NULL
 )`;
@@ -484,6 +492,12 @@ const GROUP_AGG_SQL = `COUNT(*) AS episodes,
     MAX(CASE WHEN prn = 1 THEN media END) AS poster_media`;
 
 const POSTER_ORDER = 'has_poster DESC, season IS NULL, season, episode IS NULL, episode, path';
+/** A show card's own poster: the first episode (in season order) whose media names the show's. */
+const SHOW_POSTER_ORDER =
+  'has_show_poster DESC, season IS NULL, season, episode IS NULL, episode, path';
+/** The show-poster columns of a show group (`srn` ranks by {@link SHOW_POSTER_ORDER}). */
+const SHOW_POSTER_AGG_SQL = `MAX(CASE WHEN srn = 1 AND has_show_poster THEN media_id END) AS show_poster_id,
+    MAX(CASE WHEN srn = 1 AND has_show_poster THEN media END) AS show_poster_media`;
 
 interface DbGroup {
   title: string;
@@ -503,6 +517,15 @@ interface DbGroup {
 function posterOf(id: string | null, media: string | null): PosterRef | null {
   const stored = parseMedia(media);
   return id !== null && stored ? { jobId: id, media: stored } : null;
+}
+
+/** The show's own poster when one is named, else the group's episode poster. */
+function showPosterOf(
+  g: DbGroup & { show_poster_id: string | null; show_poster_media: string | null },
+): PosterRef | null {
+  const own = posterOf(g.show_poster_id, g.show_poster_media);
+  if (own?.media.showPosterPath !== undefined) return { ...own, of: 'show' };
+  return posterOf(g.poster_id, g.poster_media);
 }
 
 const outcomesOf = (g: DbGroup): OutcomeCounts => ({
@@ -531,15 +554,17 @@ export function listTitles(
   params.offset = Math.max(0, q.offset);
   const sql = `${latest.sql}, ${LISTED_SQL}, ${TAGGED_SQL},
     grouped AS (
-      SELECT *, ROW_NUMBER() OVER (PARTITION BY title, year ORDER BY ${POSTER_ORDER}) AS prn
+      SELECT *, ROW_NUMBER() OVER (PARTITION BY title, year ORDER BY ${POSTER_ORDER}) AS prn,
+        ROW_NUMBER() OVER (PARTITION BY title, year ORDER BY ${SHOW_POSTER_ORDER}) AS srn
       FROM tagged WHERE kind = 'episode' ${search}
     ),
     items AS (
-      SELECT 'show' AS type, title, year, NULL AS file_id, NULL AS latest_id, ${GROUP_AGG_SQL}
+      SELECT 'show' AS type, title, year, NULL AS file_id, NULL AS latest_id, ${GROUP_AGG_SQL},
+        ${SHOW_POSTER_AGG_SQL}
       FROM grouped GROUP BY title, year
       UNION ALL
       SELECT 'movie', title, year, id, latest_id, 1, 0, 0, 0, 0, 0, 0,
-        COALESCE(media_id, latest_id), media
+        COALESCE(media_id, latest_id), media, NULL, NULL
       FROM tagged WHERE kind IS NOT 'episode' ${search}
     )
     SELECT *, COUNT(*) OVER () AS total FROM items
@@ -548,6 +573,8 @@ export function listTitles(
     type: 'show' | 'movie';
     file_id: string | null;
     latest_id: string | null;
+    show_poster_id: string | null;
+    show_poster_media: string | null;
   };
   const page = db.prepare(sql).all(params) as (Item & { total: number })[];
   let total = (page[0] as { total: number } | undefined)?.total ?? 0;
@@ -568,7 +595,6 @@ export function listTitles(
     ).map((j) => [j.id, j]),
   );
   const items = page.flatMap((r): TitleItem[] => {
-    const poster = posterOf(r.poster_id, r.poster_media);
     if (r.type === 'show') {
       return [
         {
@@ -576,7 +602,7 @@ export function listTitles(
           key: showKey({ title: r.title, year: r.year }),
           title: r.title,
           year: r.year,
-          poster,
+          poster: showPosterOf(r),
           episodes: r.episodes,
           seasons: r.seasons,
           outcomes: outcomesOf(r),
@@ -586,7 +612,14 @@ export function listTitles(
     }
     const latestJob = r.latest_id !== null ? latestJobs.get(r.latest_id) : undefined;
     if (r.file_id === null || !latestJob) return [];
-    return [{ type: 'movie', fileId: r.file_id, poster, latest: latestJob }];
+    return [
+      {
+        type: 'movie',
+        fileId: r.file_id,
+        poster: posterOf(r.poster_id, r.poster_media),
+        latest: latestJob,
+      },
+    ];
   });
   return { items, total };
 }

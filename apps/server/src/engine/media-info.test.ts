@@ -217,6 +217,7 @@ describe('createMediaResolver', () => {
         episodeTitle: "Jed's Dilemma",
         source: 'sidecar',
         posterPath: `${show}/poster.jpg`,
+        showPosterPath: `${show}/poster.jpg`,
       }),
     );
   });
@@ -259,6 +260,7 @@ describe('createMediaResolver', () => {
         episode: 3,
         source: 'sidecar',
         posterPath: '/lib/Hillbillies/folder.png',
+        showPosterPath: '/lib/Hillbillies/folder.png',
       }),
     );
   });
@@ -279,6 +281,7 @@ describe('createMediaResolver', () => {
         episode: 4,
         source: 'filename',
         posterPath: '/lib/The Show (1962)/folder.jpg',
+        showPosterPath: '/lib/The Show (1962)/folder.jpg',
       }),
     );
   });
@@ -563,6 +566,46 @@ describe('createMediaResolver', () => {
       expect(await poster({ '/lib/Season 3/poster.jpg': 'img' }, file)).toBe(
         '/lib/Season 3/poster.jpg',
       );
+    });
+  });
+
+  describe("an episode's show poster (for the show card)", () => {
+    const show = '/lib/The Show';
+    const season = `${show}/Season 03`;
+    const inSeason = `${season}/The Show - S03E01.mkv`;
+    const resolve = (files: Record<string, Entry>, file = inSeason) =>
+      createMediaResolver({ fs: fakeFs({ [file]: 'video', ...files }).fs, log }).resolve(
+        file,
+        '/lib',
+      );
+
+    it('names the show poster beside a more specific episode or season poster', async () => {
+      const got = await resolve({
+        [`${season}/poster.jpg`]: 'img',
+        [`${show}/season03-poster.jpg`]: 'img',
+        [`${show}/poster.jpg`]: 'img',
+      });
+      expect(got.posterPath).toBe(`${season}/poster.jpg`);
+      expect(got.showPosterPath).toBe(`${show}/poster.jpg`);
+      const own = await resolve({
+        [`${season}/The Show - S03E01-poster.jpg`]: 'img',
+        [`${show}/folder.jpg`]: 'img',
+      });
+      expect(own.posterPath).toBe(`${season}/The Show - S03E01-poster.jpg`);
+      expect(own.showPosterPath).toBe(`${show}/folder.jpg`);
+    });
+
+    it('leaves it out when the show folder has no poster of its own', async () => {
+      const got = await resolve({ [`${show}/season03-poster.jpg`]: 'img' });
+      expect(got.posterPath).toBe(`${show}/season03-poster.jpg`);
+      expect(got).not.toHaveProperty('showPosterPath');
+    });
+
+    it('a movie never gets one', async () => {
+      const file = '/lib/The General (1926)/The General (1926).mkv';
+      const got = await resolve({ '/lib/The General (1926)/poster.jpg': 'img' }, file);
+      expect(got.kind).toBe('movie');
+      expect(got).not.toHaveProperty('showPosterPath');
     });
   });
 

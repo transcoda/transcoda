@@ -40,7 +40,9 @@ export async function jobPosterResponse(
   if (!sameOriginOk(c.req.raw, host, deps.allowedHosts())) {
     return c.json({ code: 'CSRF_FAILED', message: 'Cross-site request refused' }, 403);
   }
-  const thumb = await deps.engine.jobPoster(c.req.param('id') ?? '');
+  // `?of=show`: the show's own poster the job's media names (show cards).
+  const of = c.req.query('of') === 'show' ? 'show' : undefined;
+  const thumb = await deps.engine.jobPoster(c.req.param('id') ?? '', of);
   if (!thumb) return c.json({ error: 'NOT_FOUND' }, 404);
   const etag = posterEtag(thumb.size, thumb.mtimeMs);
   const headers = { ...HEADERS, etag };

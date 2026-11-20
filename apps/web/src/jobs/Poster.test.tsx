@@ -43,6 +43,16 @@ describe('Poster', () => {
     const { container } = render(<Poster job={withPoster(false)} size="card" />);
     expect(container.querySelector('.poster')?.classList.contains('poster-card')).toBe(true);
   });
+  it("of show: asks for the show's own poster; a failed one does not hide the episode's", () => {
+    const { container, rerender } = render(<Poster job={withPoster(true)} size="card" of="show" />);
+    expect(container.querySelector('img')?.getAttribute('src')).toBe(
+      '/api/v1/jobs/j-1/poster?of=show',
+    );
+    fireEvent.error(container.querySelector('img') as HTMLImageElement);
+    expect(container.querySelector('img')).toBeNull();
+    rerender(<Poster job={withPoster(true)} size="card" />);
+    expect(container.querySelector('img')?.getAttribute('src')).toBe('/api/v1/jobs/j-1/poster');
+  });
   it('tries the image again for another job', () => {
     const { container, rerender } = render(<Poster job={withPoster(true)} size="row" />);
     fireEvent.error(container.querySelector('img') as HTMLImageElement);

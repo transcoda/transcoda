@@ -39,6 +39,11 @@ export interface StoredJobMedia {
   source: 'sidecar' | 'filename';
   /** Server-internal. */
   posterPath: string | null;
+  /**
+   * Server-internal. An episode's show poster (`poster` or `folder` in the show folder) when it
+   * has one, even when `posterPath` is a more specific one; absent otherwise and on older jobs.
+   */
+  showPosterPath?: string;
 }
 
 /** Tags that never start a title: a resolution, a source or a codec. Always a cut point. */

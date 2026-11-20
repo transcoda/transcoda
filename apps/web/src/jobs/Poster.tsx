@@ -4,25 +4,24 @@ import type { Job } from '@transcoda/contract';
 import { useState } from 'react';
 import { Icon } from '../components/Icon';
 
+/** `of: 'show'`: the show's own poster the job's media names (a show card), not the episode's. */
 export function Poster({
   job,
   size,
+  of,
 }: {
   job: Pick<Job, 'id' | 'media'>;
   size: 'row' | 'page' | 'card';
+  of?: 'show' | undefined;
 }) {
-  const [failedId, setFailedId] = useState<string | null>(null);
-  const failed = failedId === job.id;
+  const src = `/api/v1/jobs/${encodeURIComponent(job.id)}/poster${of === 'show' ? '?of=show' : ''}`;
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
+  const failed = failedSrc === src;
   const cls = `poster poster-${size}`;
   if (job.media.poster && !failed) {
     return (
       <span className={cls}>
-        <img
-          src={`/api/v1/jobs/${encodeURIComponent(job.id)}/poster`}
-          alt=""
-          loading="lazy"
-          onError={() => setFailedId(job.id)}
-        />
+        <img src={src} alt="" loading="lazy" onError={() => setFailedSrc(src)} />
       </span>
     );
   }
