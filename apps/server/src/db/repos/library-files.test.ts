@@ -839,6 +839,14 @@ describe('titles and seasons', () => {
     const poster = showCard().poster;
     expect(poster).toMatchObject({ jobId: 'j-e1', media: { posterPath: '/p/s1.jpg' } });
     expect(poster).not.toHaveProperty('of');
+    // Looked up and none found (null) is the same as never looked up.
+    file('e2', '/media/tv/e2.mkv', 1000);
+    job('j-e2', 'e2', {
+      state: 'done',
+      queuedAt: 1,
+      media: { ...withPoster(ep(1, 2), '/p/s1.jpg'), showPosterPath: null },
+    });
+    expect(showCard().poster).not.toHaveProperty('of');
   });
 
   it('with no poster anywhere the poster is the lowest file; with no media at all it is null', () => {

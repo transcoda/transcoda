@@ -122,6 +122,53 @@ LIMIT @limit`,
   return rows.map((r) => ({ jobId: r.job_id, path: r.path, libraryRoot: r.library_root }));
 }
 
+/**
+ * The media jobs (as {@link latestJobPerFileSql} defines them: what the listing shows) of live
+ * libraries' present files whose stored media is an episode that has never had its show poster
+ * looked up (no `showPosterPath` key: resolved before show posters), oldest first.
+ */
+export function episodesWithoutShowPoster(
+  db: Database,
+  limit?: number,
+): Array<{ jobId: string; path: string; libraryRoot: string }> {
+  const latest = latestJobPerFileSql({});
+  const rows = db
+    .prepare(
+      `${latest.sql}
+SELECT lt.media_id AS job_id, f.path AS path, l.path AS library_root
+FROM latest lt
+JOIN files f ON f.id = lt.file_id
+JOIN libraries l ON l.id = f.library_id AND l.deleted_at IS NULL
+JOIN jobs j ON j.id = lt.media_id
+WHERE f.gone_at IS NULL AND json_valid(lt.media)
+  AND json_extract(lt.media, '$.kind') = 'episode'
+  AND json_type(lt.media, '$.showPosterPath') IS NULL
+ORDER BY j.queued_at, j.rowid
+LIMIT @limit`,
+    )
+    .all({ ...latest.params, limit: limit ?? -1 }) as Array<{
+    job_id: string;
+    path: string;
+    library_root: string;
+  }>;
+  return rows.map((r) => ({ jobId: r.job_id, path: r.path, libraryRoot: r.library_root }));
+}
+
+/**
+ * Adds `showPosterPath` (a path, or null for none) to the job's stored media, only while the key
+ * is still missing; false when the media is gone, not JSON or already has it.
+ */
+export function setShowPosterPath(db: Database, jobId: string, path: string | null): boolean {
+  return (
+    db
+      .prepare(
+        `UPDATE jobs SET media = json_set(media, '$.showPosterPath', ?)
+         WHERE id = ? AND json_valid(media) AND json_type(media, '$.showPosterPath') IS NULL`,
+      )
+      .run(path, jobId).changes > 0
+  );
+}
+
 /** Writes `media` only where the job's cell is still NULL; false when it already had some. */
 export function setJobMedia(db: Database, jobId: string, media: StoredJobMedia): boolean {
   return (
@@ -524,7 +571,7 @@ function showPosterOf(
   g: DbGroup & { show_poster_id: string | null; show_poster_media: string | null },
 ): PosterRef | null {
   const own = posterOf(g.show_poster_id, g.show_poster_media);
-  if (own?.media.showPosterPath !== undefined) return { ...own, of: 'show' };
+  if (typeof own?.media.showPosterPath === 'string') return { ...own, of: 'show' };
   return posterOf(g.poster_id, g.poster_media);
 }
 

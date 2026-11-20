@@ -4,7 +4,10 @@ import type { Job } from '@transcoda/contract';
 import { useState } from 'react';
 import { Icon } from '../components/Icon';
 
-/** `of: 'show'`: the show's own poster the job's media names (a show card), not the episode's. */
+/**
+ * `of: 'show'`: the show's own poster the job's media names (a show card); when it fails to load,
+ * the job's own (episode or season) poster is tried before the placeholder.
+ */
 export function Poster({
   job,
   size,
@@ -14,14 +17,21 @@ export function Poster({
   size: 'row' | 'page' | 'card';
   of?: 'show' | undefined;
 }) {
-  const src = `/api/v1/jobs/${encodeURIComponent(job.id)}/poster${of === 'show' ? '?of=show' : ''}`;
-  const [failedSrc, setFailedSrc] = useState<string | null>(null);
-  const failed = failedSrc === src;
+  const own = `/api/v1/jobs/${encodeURIComponent(job.id)}/poster`;
+  const candidates = of === 'show' ? [`${own}?of=show`, own] : [own];
+  const [failed, setFailed] = useState<readonly string[]>([]);
+  const src = candidates.find((c) => !failed.includes(c));
   const cls = `poster poster-${size}`;
-  if (job.media.poster && !failed) {
+  if (job.media.poster && src !== undefined) {
     return (
       <span className={cls}>
-        <img src={src} alt="" loading="lazy" onError={() => setFailedSrc(src)} />
+        <img
+          key={src}
+          src={src}
+          alt=""
+          loading="lazy"
+          onError={() => setFailed((f) => [...f, src])}
+        />
       </span>
     );
   }

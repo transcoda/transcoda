@@ -164,7 +164,7 @@ function toPoster(ref: RepoPosterRef | null): PosterRef | null {
   if (ref.of === 'show') {
     return {
       id: ref.jobId,
-      media: { ...fields, poster: showPosterPath !== undefined },
+      media: { ...fields, poster: typeof showPosterPath === 'string' },
       of: 'show',
     };
   }

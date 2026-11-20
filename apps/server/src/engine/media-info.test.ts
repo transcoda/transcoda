@@ -76,6 +76,7 @@ function fakeFs(
 
 const log: Logger = { info: () => {}, warn: () => {}, error: () => {} };
 
+/** An episode also carries `showPosterPath` (null unless given): the resolver always looks. */
 const media = (m: Partial<StoredJobMedia>): StoredJobMedia => ({
   kind: 'unknown',
   title: '',
@@ -85,6 +86,7 @@ const media = (m: Partial<StoredJobMedia>): StoredJobMedia => ({
   episodeTitle: null,
   source: 'filename',
   posterPath: null,
+  ...(m.kind === 'episode' && { showPosterPath: null }),
   ...m,
 });
 
@@ -595,10 +597,46 @@ describe('createMediaResolver', () => {
       expect(own.showPosterPath).toBe(`${show}/folder.jpg`);
     });
 
-    it('leaves it out when the show folder has no poster of its own', async () => {
+    it('is null when the show folder has no poster of its own', async () => {
       const got = await resolve({ [`${show}/season03-poster.jpg`]: 'img' });
       expect(got.posterPath).toBe(`${show}/season03-poster.jpg`);
-      expect(got).not.toHaveProperty('showPosterPath');
+      expect(got.showPosterPath).toBeNull();
+    });
+
+    it('showPoster gives what resolve gives, reading no episode sidecar and each folder once', async () => {
+      const files: Record<string, Entry> = {
+        [`${show}/tvshow.nfo`]: '<tvshow><title>The Show</title></tvshow>',
+        [`${show}/folder.jpg`]: 'img',
+        [`${season}/poster.jpg`]: 'img',
+        [`${season}/The Show - S03E01.nfo`]: '<episodedetails><title>A</title></episodedetails>',
+      };
+      for (const n of [1, 2, 3]) files[`${season}/The Show - S03E0${n}.mkv`] = 'video';
+      const { fs, calls } = fakeFs(files);
+      const r = createMediaResolver({ fs, log });
+      for (const n of [1, 2, 3]) {
+        expect(await r.showPoster(`${season}/The Show - S03E0${n}.mkv`, '/lib')).toBe(
+          `${show}/folder.jpg`,
+        );
+      }
+      expect(calls.filter((c) => c.op === 'readText').map((c) => basename(c.path))).toEqual([
+        'tvshow.nfo',
+      ]);
+      expect(
+        calls
+          .filter((c) => c.op === 'readdir')
+          .map((c) => c.path)
+          .sort(),
+      ).toEqual([show, season]);
+      expect(calls.filter((c) => c.op === 'lstat' && c.path === `${show}/folder.jpg`)).toHaveLength(
+        1,
+      );
+      const fresh = createMediaResolver({ fs: fakeFs(files).fs, log });
+      expect((await fresh.resolve(`${season}/The Show - S03E01.mkv`, '/lib')).showPosterPath).toBe(
+        `${show}/folder.jpg`,
+      );
+      // A movie-like flat folder in the root, or a file in the root itself: none.
+      const root = createMediaResolver({ fs: fakeFs({ '/lib/S01E01.mkv': 'video' }).fs, log });
+      expect(await root.showPoster('/lib/S01E01.mkv', '/lib')).toBeNull();
     });
 
     it('a movie never gets one', async () => {

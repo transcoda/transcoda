@@ -15,6 +15,12 @@ export const POSTER_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp'] as const;
 export interface MediaResolver {
   /** Never throws. `path` and `libraryRoot` are real, absolute paths. */
   resolve(path: string, libraryRoot: string): Promise<StoredJobMedia>;
+  /**
+   * The show poster `resolve` gives an episode at `path` (its `showPosterPath`), without reading
+   * the episode's own sidecars: only the folders, tvshow.nfo and the poster check, each cached per
+   * folder. Never throws.
+   */
+  showPoster(path: string, libraryRoot: string): Promise<string | null>;
 }
 
 /**
@@ -154,6 +160,42 @@ export function createMediaResolver(deps: { fs: FsOps; log: Logger }): MediaReso
     return cached;
   };
 
+  /**
+   * An episode's show folder and the tvshow.nfo that placed it: the folder that held tvshow.nfo
+   * (the file's folder or its parent, never above the root), else a season folder's parent, else
+   * the file's folder; never the library root itself unless tvshow.nfo is there.
+   */
+  const showFolderOf = async (
+    path: string,
+    root: string,
+  ): Promise<{ show: Nfo | null; showFolder: string | null }> => {
+    const dir = dirname(path);
+    const found = await step('could not read tvshow.nfo', path, async () => {
+      for (const folder of [dir, dirname(dir)]) {
+        if (!isWithin(folder, root)) continue;
+        const nfo = await showAt(folder, root);
+        if (nfo !== null) return { nfo, folder };
+      }
+      return null;
+    });
+    let showFolder: string | null = found?.folder ?? null;
+    if (showFolder === null) {
+      const parent = dirname(dir);
+      if (isSeasonFolder(basename(dir)) && isWithin(parent, root) && parent !== root) {
+        showFolder = parent;
+      } else if (dir !== root && isWithin(dir, root)) {
+        showFolder = dir;
+      }
+    }
+    return { show: found?.nfo ?? null, showFolder };
+  };
+
+  /** The show folder's own poster; null without a show folder or a poster. Never throws. */
+  const showPosterOf = async (path: string, showFolder: string | null, root: string) => {
+    if (showFolder === null) return null;
+    return step('could not find a show poster', path, () => showPosterIn(showFolder, root));
+  };
+
   /** A step that fails leaves the earlier value. */
   const step = async <T>(what: string, path: string, run: () => Promise<T>): Promise<T | null> => {
     try {
@@ -165,6 +207,11 @@ export function createMediaResolver(deps: { fs: FsOps; log: Logger }): MediaReso
   };
 
   return {
+    async showPoster(path, libraryRoot) {
+      const { showFolder } = await showFolderOf(path, libraryRoot);
+      return showPosterOf(path, showFolder, libraryRoot);
+    },
+
     async resolve(path, libraryRoot) {
       const media = parseFileName(path, libraryRoot);
       const root = libraryRoot;
@@ -202,16 +249,7 @@ export function createMediaResolver(deps: { fs: FsOps; log: Logger }): MediaReso
       }
 
       if (media.kind === 'episode') {
-        // tvshow.nfo in the file's folder or its parent (the show folder), never above the root.
-        const found = await step('could not read tvshow.nfo', path, async () => {
-          for (const folder of [dir, dirname(dir)]) {
-            if (!isWithin(folder, root)) continue;
-            const nfo = await showAt(folder, root);
-            if (nfo !== null) return { nfo, folder };
-          }
-          return null;
-        });
-        const show = found?.nfo ?? null;
+        const { show, showFolder } = await showFolderOf(path, root);
         if (show !== null && (show.title !== null || show.year !== null)) {
           media.source = 'sidecar';
           if (show.title !== null) media.title = show.title;
@@ -219,17 +257,6 @@ export function createMediaResolver(deps: { fs: FsOps; log: Logger }): MediaReso
         }
         if (show?.title == null && episodeUsable && episodeNfo?.showTitle != null) {
           media.title = episodeNfo.showTitle;
-        }
-        // The show folder: the one that held tvshow.nfo, else a season folder's parent, else the
-        // file's folder; never the library root itself unless tvshow.nfo is there.
-        let showFolder: string | null = found?.folder ?? null;
-        if (showFolder === null) {
-          const parent = dirname(dir);
-          if (isSeasonFolder(basename(dir)) && isWithin(parent, root) && parent !== root) {
-            showFolder = parent;
-          } else if (dir !== root && isWithin(dir, root)) {
-            showFolder = dir;
-          }
         }
         // The most specific poster: the episode's own, then its season's, then the show's.
         // Episode `-thumb` images are landscape stills, not posters, and are never used.
@@ -251,13 +278,7 @@ export function createMediaResolver(deps: { fs: FsOps; log: Logger }): MediaReso
           return showPosterIn(showFolder, root);
         });
         // The show's own poster too, for the show card (cached per folder: no extra lookups).
-        if (showFolder !== null) {
-          const folder = showFolder;
-          const showPoster = await step('could not find a show poster', path, () =>
-            showPosterIn(folder, root),
-          );
-          if (showPoster !== null) media.showPosterPath = showPoster;
-        }
+        media.showPosterPath = await showPosterOf(path, showFolder, root);
         return media;
       }
 
