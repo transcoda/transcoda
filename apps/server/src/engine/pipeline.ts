@@ -1095,8 +1095,10 @@ export class Pipeline implements JobExecutor {
     this.stopIfAborted(ctl);
     // Copying sidecars, extracting covers, encoding and verifying are the Render's work: it is the
     // node reported as current (the page lights it) and the one a failure or cancel is traced on.
-    p.runningNode = p.renderNodeId === null ? null : { nodeId: p.renderNodeId, workflowPath: [] };
-    ctl.setCurrentNode(p.runningNode ?? p.lastBuildNode);
+    // A walk without a Render (a workflow from before it) has its encoding node in that role.
+    p.runningNode =
+      p.renderNodeId === null ? p.lastBuildNode : { nodeId: p.renderNodeId, workflowPath: [] };
+    ctl.setCurrentNode(p.runningNode);
     job = this.update(job, ctl, { state: 'encoding', progress: null });
 
     // Sidecars are copied (open handle checked, no symlink, size capped) before anything reads them.
@@ -1176,7 +1178,7 @@ export class Pipeline implements JobExecutor {
       ...(this.deps.exec ? { exec: this.deps.exec } : {}),
     });
     this.stopIfAborted(ctl);
-    p.warnings.push(...verified.warnings);
+    for (const w of verified.warnings) this.renderWarn(job, p, w);
     if (verified.ok) {
       p.outputProbe = verified.probe;
       p.runningNode = null;
@@ -1280,9 +1282,9 @@ export class Pipeline implements JobExecutor {
             state.dest = p.realPath;
             state.mode = 'replaced';
             state.lateCancel ||= r.lateCancel;
-            if (r.problem) problems.push(r.problem);
+            if (r.problem) problem(r.problem);
             markWritten();
-            problems.push(...(await this.recycleSidecarsAfterReplace(job, p, r)));
+            for (const text of await this.recycleSidecarsAfterReplace(job, p, r)) problem(text);
             await this.afterReplace(job, ctl, p, state);
           }
         } else if (action.kind === 'move-copy') {
@@ -1570,7 +1572,9 @@ export class Pipeline implements JobExecutor {
             p.cpuDecode = true;
             p.args = args;
             p.command = renderCommandLine(config.ffmpegPath, args);
-            p.warnings.push(
+            this.renderWarn(
+              job,
+              p,
               `the Intel GPU encode failed (${cause ?? why}); retried with the source decoded on the CPU`,
             );
             this.deps.log.warn({
@@ -1588,7 +1592,11 @@ export class Pipeline implements JobExecutor {
           p.args = args;
           p.command = renderCommandLine(config.ffmpegPath, args);
           p.softwareFallback = true;
-          p.warnings.push(`the GPU encode failed (${cause ?? why}); encoded in software instead`);
+          this.renderWarn(
+            job,
+            p,
+            `the GPU encode failed (${cause ?? why}); encoded in software instead`,
+          );
           this.deps.log.warn({ msg: 'GPU encode failed, retrying in software', job: job.id });
           const row = job.encodedOn === null ? job : this.update(job, ctl, { encodedOn: null });
           return this.encode(row, ctl, p);
@@ -1604,7 +1612,7 @@ export class Pipeline implements JobExecutor {
       return fail(retryable('encode', cause ? `${why}: ${cause}` : why));
     }
     if (leading > 0) {
-      p.warnings.push(`ignored ${leading} decoder error(s) before the first output frame`);
+      this.renderWarn(job, p, `ignored ${leading} decoder error(s) before the first output frame`);
     }
     if (outputErrors.length > 0) {
       const lines = outputErrors.slice(0, MAX_ERROR_LINES);
@@ -1671,7 +1679,9 @@ export class Pipeline implements JobExecutor {
         );
       }
       if (exact === null && tag !== null && off(tag)) {
-        p.warnings.push(
+        this.renderWarn(
+          job,
+          p,
           `encode wrote ${frames} video frames; the source tag NUMBER_OF_FRAMES says ${tag}`,
         );
       }
@@ -1998,6 +2008,11 @@ export class Pipeline implements JobExecutor {
     this.noteNode(job, at, 'warning', text);
   }
 
+  /** A warning from the Render's work (encode, verify): told on the node at work, the Render. */
+  private renderWarn(job: JobRow, p: Prepared, text: string): void {
+    this.warnNode(job, p, p.runningNode, text);
+  }
+
   /**
    * The job ended (failed, canceled) while `p.runningNode` was at work: its trace says so with
    * `reason` (`failed: …`, `canceled: …`), so that node reads failed or canceled instead of done,
@@ -2093,6 +2108,7 @@ export class Pipeline implements JobExecutor {
     return this.runNoWriteSteps(job, ctl, p, gate.elseActions, g.afterBytes, g.why, {
       gate: { savedPercent: Math.round(g.saving * 10) / 10, minSavingPercent: g.minSavingPercent },
       where: 'the size gate\u2019s No branch',
+      owner: p,
     });
   }
 
@@ -2114,14 +2130,16 @@ export class Pipeline implements JobExecutor {
     return this.runNoWriteSteps(job, ctl, p, branch.actions, p.fp.sizeBytes, SOURCE_DAMAGED, {
       damage,
       where: 'Render\u2019s Damaged',
+      owner: p,
     });
   }
 
   /**
    * Runs the steps of a side branch where nothing may write (a gate's `else`, Render's Damaged):
    * notifications (outcome `kept_original` with `why`) and plugin steps, in order. A step that
-   * fails or is cut short by a stop is a warning: the original is kept either way. Returns the
-   * warnings for the job.
+   * fails or is cut short by a stop is a warning: the original is kept either way. Each step is
+   * the current node while it works, and `owner`'s node at work (what a failure is traced on).
+   * Returns the warnings for the job.
    */
   private async runNoWriteSteps(
     job: JobRow,
@@ -2130,7 +2148,7 @@ export class Pipeline implements JobExecutor {
     actions: AnyFinishAction[],
     afterBytes: number,
     why: string,
-    side: StepExtra & { where: string },
+    { owner, ...side }: StepExtra & { where: string; owner?: Prepared },
   ): Promise<string[]> {
     const out: string[] = [];
     const kept: Written = {
@@ -2143,6 +2161,9 @@ export class Pipeline implements JobExecutor {
     };
     let lastRank = -1;
     for (const action of actions) {
+      const at = actionNode(action);
+      if (owner) owner.runningNode = at;
+      if (at !== null && !ctl.signal.aborted) ctl.setCurrentNode(at);
       try {
         if (action.kind === 'notify') {
           await this.notify(job, p, action, afterBytes, null, {
@@ -2171,6 +2192,7 @@ export class Pipeline implements JobExecutor {
         break;
       }
     }
+    if (owner) owner.runningNode = null;
     // A required plugin step's failure is a problem on a written job; here it is a warning.
     return [...out, ...kept.problems];
   }

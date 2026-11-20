@@ -1122,6 +1122,16 @@ describe('pipeline', () => {
       expect(warnings(id)).toEqual([
         'the GPU encode failed (hevc_nvenc: OpenEncodeSessionEx failed: unsupported device (2)); encoded in software instead',
       ]);
+      // The Render's work fell back: the warning is told on the Render's node too.
+      expect(findJobResult(t.db, id)?.nodeProblems).toEqual([
+        {
+          workflowPath: [],
+          nodeId: 'render-1',
+          severity: 'warning',
+          message:
+            'the GPU encode failed (hevc_nvenc: OpenEncodeSessionEx failed: unsupported device (2)); encoded in software instead',
+        },
+      ]);
     });
 
     it('the same job on gpu:0 encodes with NVENC on GPU 0', async () => {
@@ -4060,6 +4070,35 @@ describe('pipeline: plugin finish steps and hooks', () => {
     ]);
   });
 
+  it('else: a notify step behind a failing gate is the current node while it sends, not the gate', async () => {
+    let id = '';
+    /** The job's current node as last published when the webhook is sent. */
+    let atSend: string | undefined;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        const last = published.filter((e) => e.type === 'job.changed' && e.jobId === id).at(-1);
+        atSend = last?.type === 'job.changed' ? last.currentNode?.nodeId : undefined;
+        return new Response(null, { status: 204 });
+      }),
+    );
+    const wf = workflow(
+      gated(
+        50,
+        [replaceNode()],
+        [
+          node('ne', 'core:notify-webhook', {
+            url: 'https://hooks.example.com/kept',
+            method: 'POST',
+          }),
+        ],
+      ),
+    );
+    id = await queue(file(), wf);
+    expect(await runOnce(id, 900)).toMatchObject({ state: 'kept_original' });
+    expect(atSend).toBe('ne');
+  });
+
   it('pass: the context a plugin step gets has no gate', async () => {
     const wf = workflow(
       gated(50, [replaceNode(), node('pp', 'example:note', { required: false })], []),
@@ -4860,6 +4899,15 @@ describe('core:embed-sidecar-subtitles in the pipeline', () => {
     expect(job.reason).toMatch(
       /^finished with a problem: subtitle file a\.de\.srt could not be recycled: /,
     );
+    // Replace original's work left it: the problem is badged on that node.
+    expect(findJobResult(t.db, id)?.nodeProblems).toEqual([
+      {
+        workflowPath: [],
+        nodeId: 'ro',
+        severity: 'problem',
+        message: expect.stringMatching(/^subtitle file a\.de\.srt could not be recycled: /),
+      },
+    ]);
   });
 });
 
