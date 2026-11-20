@@ -2,7 +2,18 @@
    Design tokens live in ./styles/tokens.css (copied unchanged from the handoff).
    The few colours below are used by the screen files but are not tokens. */
 
+/* Type scale. tokens.css owns --fs-display, --fs-h1, --fs-h2, --fs-body, --fs-small and --fs-mono;
+   these four fill the gaps so styles.css carries no raw px font-size.
+   Documented exceptions (checked by styles/type-scale-css.test.ts): the auth hero tagline
+   (64px, 40px on phone) is a display glyph size of its own, and .markdown code is 0.92em of its
+   surrounding text. */
 :root {
+  --fs-micro: 11px; /* mono caps micro labels; 12px on phone */
+  --fs-ui: 14px; /* controls, labels, dense rows */
+  --fs-h3: 17px; /* card and section headings */
+  --fs-title: 32px; /* page titles */
+  --sp-5: 20px; /* tokens.css has no 20px or 40px step; these two fill the gap */
+  --sp-10: 40px;
   --danger-text: #ff9a8c;
   --danger-line: #5c2a24;
   --accent-hover: #e2ff9e;
@@ -42,6 +53,14 @@
   --plan-drop-row: #221f22;
   --plan-tile-sep: rgb(23 22 26 / 0.25);
   color-scheme: dark;
+}
+
+/* On a phone the micro labels are 12px. Set on body (not :root) to keep the first :root block the
+   one the theme test reads. */
+@media (max-width: 639px) {
+  body {
+    --fs-micro: 12px;
+  }
 }
 
 /* Light values of the colours above (tokens.css holds the rest). Same two selectors as there:
@@ -118,6 +137,18 @@
   box-sizing: border-box;
 }
 
+/* Keyboard focus and in-page jumps stop below the sticky top bar, not under it (WCAG 2.4.11).
+   Shell writes the bar's rendered height to --topbar-h, so the offset follows it when it wraps to
+   two rows at 640px and up. The editor has no top bar and does not scroll the page, so it needs
+   none. */
+html {
+  scroll-padding-top: calc(var(--topbar-h) + var(--sp-4));
+}
+
+html:has(.editor) {
+  scroll-padding-top: 0;
+}
+
 html,
 body {
   margin: 0;
@@ -135,12 +166,20 @@ p {
   margin: 0;
 }
 
+/* Display headings sit tight: the body's 1.4 left a wrapped title's second line floating. */
+h1,
+h2 {
+  line-height: 1.2;
+}
+
 a {
   color: var(--accent-text);
 }
 
-a:hover {
-  color: var(--accent-hover);
+@media (hover: hover) {
+  a:hover {
+    color: var(--accent-hover);
+  }
 }
 
 .mono {
@@ -180,7 +219,7 @@ a:hover {
   justify-content: center;
   gap: var(--sp-2);
   height: 48px;
-  padding: 0 18px;
+  padding: 0 var(--sp-5);
   border-radius: var(--r-md);
   border: 0;
   font: inherit;
@@ -189,28 +228,45 @@ a:hover {
   cursor: pointer;
 }
 
-/* Visually smaller buttons keep a 44px hit area. */
+/* Visually smaller buttons keep a 44px hit area. Sized by height, not by an inset: the
+   pseudo-element is placed against the padding box, so an inset of -4px left a bordered
+   (ghost, secondary) button at 42px. */
 .btn-sm::before {
   content: "";
   position: absolute;
-  inset: -4px 0;
+  top: 50%;
+  right: 0;
+  left: 0;
+  height: var(--target-min);
+  transform: translateY(-50%);
 }
 
 .btn:disabled {
   cursor: not-allowed;
 }
 
+/* Pressed: the button moves down a pixel. On the button, not its ::before hit area, whose own
+   transform centres it. */
+@media (prefers-reduced-motion: no-preference) {
+  .btn {
+    transition: transform var(--dur-fast) var(--ease-out);
+  }
+  .btn:active:not(:disabled) {
+    transform: translateY(1px);
+  }
+}
+
 .btn-lg {
   height: 52px;
-  padding: 0 20px;
-  font-size: 16px;
+  padding: 0 var(--sp-5);
+  font-size: var(--fs-h3);
 }
 
 .btn-sm {
   height: 36px;
-  padding: 0 14px;
-  border-radius: 10px;
-  font-size: 14px;
+  padding: 0 var(--sp-4);
+  border-radius: var(--r-md);
+  font-size: var(--fs-ui);
 }
 
 .btn-primary {
@@ -240,8 +296,10 @@ a:hover {
   border: 1px solid var(--line-strong);
 }
 
-.btn-ghost:hover {
-  background: var(--raised);
+@media (hover: hover) {
+  .btn-ghost:hover {
+    background: var(--raised);
+  }
 }
 
 .btn-ghost:disabled {
@@ -263,12 +321,14 @@ a:hover {
   background: transparent;
   color: var(--danger-text);
   border: 1px solid var(--danger-line);
-  padding: 0 12px;
-  font-size: var(--fs-small);
+  padding: 0 var(--sp-3);
+  font-size: var(--fs-ui);
 }
 
-.btn-danger-outline:hover {
-  background: var(--st-failed-bg);
+@media (hover: hover) {
+  .btn-danger-outline:hover {
+    background: var(--st-failed-bg);
+  }
 }
 
 /* On the lime reveal card */
@@ -285,7 +345,7 @@ a:hover {
   border: 2px solid var(--on-accent);
   font-weight: 700;
   font-size: var(--fs-body);
-  padding: 0 18px;
+  padding: 0 var(--sp-5);
 }
 
 .wordmark {
@@ -298,28 +358,28 @@ a:hover {
 .field {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--sp-2);
 }
 
 .field > label,
 .scopes legend {
-  font-size: 14px;
+  font-size: var(--fs-ui);
   font-weight: 500;
 }
 
 .input {
   height: 48px;
-  padding: 0 14px;
+  padding: 0 var(--sp-4);
   background: var(--raised);
-  border: 1.5px solid var(--line-strong);
+  border: 1.5px solid var(--line-control);
   border-radius: var(--r-md);
   color: var(--text);
   font: inherit;
-  font-size: 16px;
+  font-size: var(--fs-h3);
 }
 
 .input[type="date"] {
-  padding: 0 12px;
+  padding: 0 var(--sp-3);
   color-scheme: dark;
 }
 
@@ -342,7 +402,7 @@ a:hover {
 .tc-field {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--sp-2);
   min-width: 0;
 }
 
@@ -354,7 +414,7 @@ a:hover {
 }
 
 .tc-field-label {
-  font-size: 14px;
+  font-size: var(--fs-ui);
   font-weight: 500;
 }
 
@@ -372,7 +432,7 @@ a:hover {
   position: relative;
   margin-left: auto;
   height: 24px;
-  padding: 0 8px;
+  padding: 0 var(--sp-2);
   border: 0;
   border-radius: var(--r-sm);
   background: transparent;
@@ -389,14 +449,14 @@ a:hover {
 }
 
 .tc-field-hint {
-  font-size: 12px;
+  font-size: var(--fs-mono);
   color: var(--faint);
 }
 
 .tc-field-issue {
   display: flex;
   align-items: flex-start;
-  gap: 6px;
+  gap: var(--sp-2);
   font-size: var(--fs-small);
   color: var(--st-needs-setting);
 }
@@ -405,7 +465,7 @@ a:hover {
   height: 44px;
   width: 100%;
   min-width: 0;
-  font-size: 15px;
+  font-size: var(--fs-body);
 }
 
 .tc-field.has-issue .tc-input,
@@ -484,10 +544,10 @@ a:hover {
 .tc-link-chip {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--sp-1);
   height: 24px;
   min-width: 24px;
-  padding: 0 6px;
+  padding: 0 var(--sp-2);
   border: 0;
   border-radius: var(--r-sm);
   background: transparent;
@@ -505,15 +565,16 @@ a:hover {
   margin-left: 0;
 }
 
-.tc-link-chip:hover {
-  color: var(--text);
-  background: var(--raised);
+@media (hover: hover) {
+  .tc-link-chip:hover {
+    color: var(--text);
+    background: var(--raised);
+  }
 }
 
 .tc-link-chip.is-linked {
   background: var(--raised);
   color: var(--accent-text);
-  font-weight: 600;
 }
 
 .values-row {
@@ -526,15 +587,15 @@ a:hover {
 .tc-field .tc-note-input {
   height: auto;
   min-height: 160px;
-  padding: 10px 12px;
+  padding: var(--sp-3) var(--sp-3);
   resize: vertical;
   font-family: var(--font-mono);
-  font-size: 13px;
+  font-size: var(--fs-small);
   line-height: 1.5;
 }
 
 .tc-number-box .tc-input {
-  padding-right: 48px;
+  padding-right: var(--sp-12);
 }
 
 .tc-number-unit {
@@ -543,7 +604,7 @@ a:hover {
   top: 50%;
   transform: translateY(-50%);
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--fs-mono);
   color: var(--faint);
   pointer-events: none;
 }
@@ -560,36 +621,35 @@ a:hover {
 }
 
 .tc-slider-default {
-  font-size: 12px;
+  font-size: var(--fs-mono);
   color: var(--faint);
 }
 
 .tc-segmented {
   display: flex;
-  gap: 2px;
-  padding: 2px;
+  gap: var(--sp-1);
+  padding: var(--sp-1);
   border-radius: var(--r-md);
   background: var(--raised);
-  border: 1.5px solid var(--line-strong);
+  border: 1.5px solid var(--line-control);
 }
 
 .tc-segmented button {
   flex: 1;
   min-height: 44px;
-  padding: 0 10px;
+  padding: 0 var(--sp-3);
   border: 0;
-  border-radius: 10px;
+  border-radius: var(--r-md);
   background: transparent;
   color: var(--muted);
   font: inherit;
-  font-size: 14px;
+  font-size: var(--fs-ui);
   cursor: pointer;
 }
 
 .tc-segmented button[aria-checked="true"] {
   background: var(--line);
   color: var(--text);
-  font-weight: 600;
 }
 
 .tc-language-button {
@@ -601,7 +661,7 @@ a:hover {
 
 .lang-code {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--fs-micro);
   color: var(--faint);
 }
 
@@ -609,24 +669,24 @@ a:hover {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
+  gap: var(--sp-2);
   min-width: 0;
   margin: 0;
-  padding: 8px;
+  padding: var(--sp-2);
   border-radius: var(--r-md);
   background: var(--raised);
-  border: 1.5px solid var(--line-strong);
+  border: 1.5px solid var(--line-control);
 }
 
 .lang-chip {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--sp-1);
   height: 30px;
-  padding: 0 4px 0 10px;
-  border-radius: 8px;
+  padding: 0 var(--sp-1) 0 var(--sp-3);
+  border-radius: var(--r-sm);
   background: var(--line);
-  font-size: 13px;
+  font-size: var(--fs-small);
 }
 
 .lang-chip.is-untagged {
@@ -656,13 +716,13 @@ a:hover {
 .tc-chip-add,
 .tc-toggle-chip {
   min-height: 44px;
-  padding: 0 10px;
-  border-radius: 8px;
-  border: 1px solid var(--line-strong);
+  padding: 0 var(--sp-3);
+  border-radius: var(--r-sm);
+  border: 1px solid var(--line-control);
   background: transparent;
   color: var(--text);
   font: inherit;
-  font-size: 13px;
+  font-size: var(--fs-small);
   cursor: pointer;
 }
 
@@ -680,14 +740,14 @@ a:hover {
   background: transparent;
   color: var(--text);
   font: inherit;
-  font-size: 13px;
+  font-size: var(--fs-small);
 }
 
 .tc-field .tc-raw {
   height: auto;
-  padding: 10px 12px;
+  padding: var(--sp-3) var(--sp-3);
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--fs-mono);
   resize: vertical;
 }
 
@@ -712,19 +772,21 @@ a:hover {
   gap: var(--sp-2);
   width: 100%;
   min-height: 44px;
-  padding: 0 12px;
+  padding: 0 var(--sp-3);
   border: 0;
-  border-radius: 10px;
+  border-radius: var(--r-md);
   background: transparent;
   color: var(--text);
   font: inherit;
-  font-size: 15px;
+  font-size: var(--fs-body);
   text-align: left;
   cursor: pointer;
 }
 
-.lang-picker-option:hover {
-  background: var(--raised);
+@media (hover: hover) {
+  .lang-picker-option:hover {
+    background: var(--raised);
+  }
 }
 
 .lang-picker-option.is-original {
@@ -733,7 +795,7 @@ a:hover {
 
 .lang-picker-empty {
   color: var(--faint);
-  font-size: 14px;
+  font-size: var(--fs-ui);
 }
 
 /* The grouped codec picker (editor/ui/CodecPicker, UI list #40): one listbox in labelled groups,
@@ -741,7 +803,7 @@ a:hover {
 .codec-quick {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: var(--sp-2);
 }
 
 .codec-group + .codec-group {
@@ -749,8 +811,8 @@ a:hover {
 }
 
 .codec-group-label {
-  padding: 6px 12px 2px;
-  font-size: 12px;
+  padding: var(--sp-2) var(--sp-3) var(--sp-1);
+  font-size: var(--fs-mono);
   font-weight: 600;
   color: var(--muted);
 }
@@ -760,15 +822,17 @@ a:hover {
   align-items: center;
   gap: var(--sp-2);
   min-height: 44px;
-  padding: 0 12px;
-  border-radius: 10px;
+  padding: 0 var(--sp-3);
+  border-radius: var(--r-md);
   color: var(--text);
-  font-size: 15px;
+  font-size: var(--fs-body);
   cursor: pointer;
 }
 
-.codec-option:hover {
-  background: var(--raised);
+@media (hover: hover) {
+  .codec-option:hover {
+    background: var(--raised);
+  }
 }
 
 .codec-option.is-active {
@@ -796,7 +860,7 @@ a:hover {
 }
 
 .codec-option-note {
-  font-size: 12px;
+  font-size: var(--fs-mono);
   color: var(--faint);
 }
 
@@ -840,10 +904,10 @@ a:hover {
 .alert {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 12px 14px;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-4);
   border-radius: var(--r-md);
-  font-size: 14px;
+  font-size: var(--fs-ui);
   font-weight: 500;
 }
 
@@ -894,7 +958,7 @@ a:hover {
 }
 
 .auth-logo .wordmark {
-  font-size: 26px;
+  font-size: var(--fs-h1);
 }
 
 .auth-tagline {
@@ -947,7 +1011,7 @@ a:hover {
 }
 
 .credentials h1 {
-  font-size: 34px;
+  font-size: var(--fs-title);
   font-weight: 700;
   letter-spacing: -0.02em;
 }
@@ -967,7 +1031,7 @@ a:hover {
 }
 
 .credentials .btn {
-  margin-top: 6px;
+  margin-top: var(--sp-2);
 }
 
 @media (max-width: 899px) {
@@ -1009,7 +1073,7 @@ a:hover {
   top: var(--sp-2);
   left: var(--sp-2);
   z-index: 100;
-  padding: 10px 16px;
+  padding: var(--sp-3) var(--sp-4);
   border-radius: var(--r-md);
   background: var(--text);
   color: var(--bg);
@@ -1032,7 +1096,7 @@ a:hover {
   flex-wrap: wrap;
   align-items: center;
   gap: var(--sp-4);
-  padding: 12px 20px;
+  padding: var(--sp-3) var(--sp-5);
   border-bottom: 1px solid var(--line);
   background: var(--bg);
 }
@@ -1040,19 +1104,21 @@ a:hover {
 .brand {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--sp-3);
   min-height: var(--target-min);
   color: var(--text);
   text-decoration: none;
   border-radius: var(--r-sm);
 }
 
-.brand:hover {
-  color: var(--text);
+@media (hover: hover) {
+  .brand:hover {
+    color: var(--text);
+  }
 }
 
 .brand .wordmark {
-  font-size: 20px;
+  font-size: var(--fs-h2);
 }
 
 .server-name {
@@ -1069,13 +1135,13 @@ a:hover {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
+  gap: var(--sp-3);
 }
 
 .topbar-error {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--sp-2);
   font-size: var(--fs-small);
   color: var(--st-failed-text);
 }
@@ -1084,7 +1150,7 @@ a:hover {
   display: inline-flex;
   align-items: center;
   gap: var(--sp-2);
-  font-size: 14px;
+  font-size: var(--fs-ui);
   color: var(--muted);
 }
 
@@ -1112,18 +1178,20 @@ a:hover {
   gap: var(--sp-2);
   min-width: var(--target-min);
   min-height: var(--target-min);
-  padding: 0 12px;
+  padding: 0 var(--sp-3);
   border: 1px solid var(--line-strong);
   border-radius: var(--r-pill);
   background: var(--surface);
   color: var(--text);
   font: inherit;
-  font-size: 14px;
+  font-size: var(--fs-ui);
   cursor: pointer;
 }
 
-.activity-button:hover {
-  background: var(--raised);
+@media (hover: hover) {
+  .activity-button:hover {
+    background: var(--raised);
+  }
 }
 
 .activity-button:focus-visible {
@@ -1188,7 +1256,7 @@ a:hover {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 2px;
+  gap: var(--sp-1);
   padding-bottom: var(--sp-2);
   border-bottom: 1px solid var(--line);
   font-size: var(--fs-small);
@@ -1204,7 +1272,7 @@ a:hover {
   text-overflow: ellipsis;
   white-space: nowrap;
   color: var(--text);
-  font-size: 14px;
+  font-size: var(--fs-ui);
   font-weight: 600;
   border-radius: var(--r-sm);
 }
@@ -1216,7 +1284,7 @@ a:hover {
 .activity-job > .progress {
   align-self: stretch;
   height: 6px;
-  margin: 4px 0 2px;
+  margin: var(--sp-1) 0 var(--sp-1);
 }
 
 .activity-job-progress {
@@ -1258,7 +1326,7 @@ a:hover {
 .sidenav {
   flex: 0 0 220px;
   max-width: 100%;
-  padding: 16px 12px;
+  padding: var(--sp-4) var(--sp-3);
   display: flex;
   flex-direction: column;
   gap: var(--sp-1);
@@ -1292,16 +1360,16 @@ a:hover {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
+  gap: var(--sp-3);
   margin-top: auto;
-  padding: var(--sp-4) 12px 0;
+  padding: var(--sp-4) var(--sp-3) 0;
   border-top: 1px solid var(--line);
 }
 
 @media (max-width: 639px) {
   .topbar {
     flex-wrap: nowrap;
-    padding: 12px 16px;
+    padding: var(--sp-3) var(--sp-4);
   }
   .shell-body {
     flex-direction: column;
@@ -1331,35 +1399,40 @@ a:hover {
 .nav-item {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--sp-3);
   height: var(--target-min);
-  padding: 0 12px;
+  padding: 0 var(--sp-3);
   border-radius: var(--r-md);
   color: var(--text);
   text-decoration: none;
 }
 
-a.nav-item:hover {
-  color: var(--text);
-  background: var(--raised);
+@media (hover: hover) {
+  a.nav-item:hover {
+    color: var(--text);
+    background: var(--raised);
+  }
 }
 
-a.nav-item.is-active,
-a.nav-item.is-active:hover {
-  background: var(--accent);
-  color: var(--on-accent);
-  font-weight: 700;
+/* Current: a neutral raised row with the icon in the accent, so it does not weigh as much as the
+   page's primary button. The fill, the green icon and aria-current mark it; the weight stays. */
+a.nav-item.is-active {
+  background: var(--raised);
+  color: var(--text);
+}
+
+.nav-item.is-active .icon {
+  color: var(--accent-text);
 }
 
 /* The accent ring would vanish on a lime fill: ring in the text colour. */
-a.nav-item.is-active:focus-visible,
 .btn-primary:focus-visible {
   box-shadow: var(--focus-ring-on-accent);
 }
 
 .nav-sep {
   height: 1px;
-  margin: 8px 4px;
+  margin: var(--sp-2) var(--sp-1);
   border: 0;
   background: var(--line);
 }
@@ -1389,12 +1462,12 @@ a.nav-item.is-active:focus-visible,
   flex-wrap: wrap;
   align-items: center;
   gap: var(--sp-3);
-  padding: 14px 20px;
+  padding: var(--sp-4) var(--sp-5);
   border-bottom: 1px solid var(--line);
 }
 
 .page-bar h1 {
-  font-size: 22px;
+  font-size: var(--fs-h2);
   font-weight: 700;
   letter-spacing: -0.01em;
 }
@@ -1407,12 +1480,12 @@ a.nav-item.is-active:focus-visible,
 .badge {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--sp-2);
   height: 26px;
-  padding: 0 10px;
+  padding: 0 var(--sp-3);
   border-radius: var(--r-pill);
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--fs-micro);
   font-weight: 600;
 }
 
@@ -1452,7 +1525,7 @@ a.nav-item.is-active:focus-visible,
   height: var(--target-min);
   padding: 0;
   border: 0;
-  border-radius: 10px;
+  border-radius: var(--r-md);
 }
 
 .canvas .react-flow__controls-button svg {
@@ -1496,7 +1569,7 @@ a.nav-item.is-active:focus-visible,
 }
 
 .empty-workflows h2 {
-  font-size: 26px;
+  font-size: var(--fs-h1);
   font-weight: 700;
   letter-spacing: -0.01em;
 }
@@ -1514,9 +1587,9 @@ a.nav-item.is-active:focus-visible,
 
 .empty-note kbd {
   font-family: var(--font-mono);
-  font-size: 12px;
-  padding: 2px 7px;
-  border-radius: 6px;
+  font-size: var(--fs-mono);
+  padding: var(--sp-1) var(--sp-2);
+  border-radius: var(--r-sm);
   background: var(--line);
   color: var(--text);
   border-bottom: 2px solid var(--line-strong);
@@ -1555,7 +1628,7 @@ a.nav-item.is-active:focus-visible,
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 10px;
+  gap: var(--sp-3);
   pointer-events: auto;
 }
 
@@ -1579,13 +1652,25 @@ a.nav-item.is-active:focus-visible,
   border: 0;
 }
 
+/* "Or start from an example" sits on a hairline: the examples are part of the empty state, not
+   cards inside it. */
 .empty-examples legend {
   float: left;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
   width: 100%;
-  margin-bottom: var(--sp-3);
+  margin-bottom: var(--sp-1);
   font-size: var(--fs-small);
   font-weight: 600;
   color: var(--muted);
+}
+
+.empty-examples legend::before,
+.empty-examples legend::after {
+  content: "";
+  flex: 1;
+  border-top: 1px solid var(--line);
 }
 
 .empty-example-list {
@@ -1595,22 +1680,26 @@ a.nav-item.is-active:focus-visible,
   width: 100%;
 }
 
+/* An example is a borderless row of the empty state: name and one line, a fill on hover. */
 .empty-example {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: var(--sp-4);
+  gap: var(--sp-1);
+  padding: var(--sp-3);
+  border: 0;
   border-radius: var(--r-md);
-  border: 1px solid var(--line);
-  background: var(--bg);
+  background: transparent;
   color: var(--text);
   font: inherit;
   text-align: left;
   cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease-out);
 }
 
-.empty-example:hover:not(:disabled) {
-  border-color: var(--line-strong);
+@media (hover: hover) {
+  .empty-example:hover:not(:disabled) {
+    background: var(--raised);
+  }
 }
 
 .empty-example:focus-visible {
@@ -1624,8 +1713,15 @@ a.nav-item.is-active:focus-visible,
 }
 
 .empty-example strong {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
   font-size: var(--fs-body);
   font-weight: 600;
+}
+
+.empty-example strong .icon {
+  color: var(--faint);
 }
 
 .empty-example span {
@@ -1637,7 +1733,7 @@ a.nav-item.is-active:focus-visible,
 /* ---------- API tokens (screens/03) ---------- */
 
 .page {
-  padding: 28px 32px 48px;
+  padding: 28px var(--sp-8) var(--sp-12);
   display: flex;
   flex-direction: column;
   gap: var(--sp-6);
@@ -1650,7 +1746,7 @@ a.nav-item.is-active:focus-visible,
 }
 
 .page-head h1 {
-  font-size: 32px;
+  font-size: var(--fs-title);
   font-weight: 700;
   letter-spacing: -0.02em;
 }
@@ -1671,10 +1767,10 @@ a.nav-item.is-active:focus-visible,
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: 10px;
+  gap: var(--sp-3);
   margin: 0;
   font-family: var(--font-ui);
-  font-size: 18px;
+  font-size: var(--fs-h3);
   font-weight: 700;
   letter-spacing: normal;
   text-transform: none;
@@ -1682,13 +1778,13 @@ a.nav-item.is-active:focus-visible,
 }
 .section-count {
   font-family: var(--font-mono);
-  font-size: 13px;
+  font-size: var(--fs-small);
   font-weight: 600;
   color: var(--muted);
 }
 /* The explanation under a section heading: its own muted line, never inline. */
 .section-note {
-  margin: 2px 0 0;
+  margin: var(--sp-1) 0 0;
   font-size: var(--fs-small);
   color: var(--muted);
 }
@@ -1703,7 +1799,7 @@ a.nav-item.is-active:focus-visible,
 }
 /* The one muted status line under a page's H1 (convention 1). */
 .head-sub {
-  margin: 2px 0 0;
+  margin: var(--sp-1) 0 0;
   font-size: var(--fs-small);
   color: var(--muted);
 }
@@ -1711,15 +1807,15 @@ a.nav-item.is-active:focus-visible,
 .head-row {
   display: flex;
   align-items: flex-start;
-  gap: 14px;
+  gap: var(--sp-4);
 }
 .head-row > .head-actions {
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
-  gap: 8px;
+  gap: var(--sp-2);
   margin-left: auto;
-  padding-top: 4px;
+  padding-top: var(--sp-1);
 }
 
 /* The row is the link (convention 9): put .row-link on the row and .row-link-main on its one
@@ -1729,17 +1825,21 @@ a.nav-item.is-active:focus-visible,
   position: relative;
   cursor: pointer;
 }
-.row-link:hover {
-  background: var(--raised);
+@media (hover: hover) {
+  .row-link:hover {
+    background: var(--raised);
+  }
 }
 .row-link-main {
   color: var(--text);
   font-weight: 600;
   text-decoration: none;
 }
-.row-link-main:hover {
-  color: var(--text);
-  text-decoration: none;
+@media (hover: hover) {
+  .row-link-main:hover {
+    color: var(--text);
+    text-decoration: none;
+  }
 }
 .row-link-main::after {
   content: "";
@@ -1757,9 +1857,11 @@ a.nav-item.is-active:focus-visible,
   color: var(--muted);
   text-decoration: none;
 }
-.link-muted:hover {
-  color: var(--text);
-  text-decoration: underline;
+@media (hover: hover) {
+  .link-muted:hover {
+    color: var(--text);
+    text-decoration: underline;
+  }
 }
 
 .panel {
@@ -1774,27 +1876,28 @@ a.nav-item.is-active:focus-visible,
 .reveal h3 {
   font-size: var(--fs-h2);
   font-weight: 700;
+  line-height: 1.2;
 }
 
 .reveal {
   border-radius: var(--r-lg);
   background: var(--accent);
   color: var(--on-accent);
-  padding: 22px 24px;
+  padding: var(--sp-6) var(--sp-6);
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: var(--sp-4);
 }
 
 .reveal-head {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
+  gap: var(--sp-3);
 }
 
 .reveal-warn {
-  font-size: 14px;
+  font-size: var(--fs-ui);
   font-weight: 500;
 }
 
@@ -1810,7 +1913,7 @@ a.nav-item.is-active:focus-visible,
   display: flex;
   align-items: center;
   height: 52px;
-  padding: 0 16px;
+  padding: 0 var(--sp-4);
   border-radius: var(--r-md);
   background: var(--on-accent);
   color: var(--accent-text);
@@ -1823,12 +1926,12 @@ a.nav-item.is-active:focus-visible,
 /* "Selected. Press ⌘C to copy." when the clipboard can't be written (plain http, #27). The live
    region stays in the DOM so it is announced; while empty it cancels the .reveal gap above it. */
 .reveal-hint {
-  font-size: 14px;
+  font-size: var(--fs-ui);
   font-weight: 600;
 }
 
 .reveal-hint:empty {
-  margin-top: -14px;
+  margin-top: calc(-1 * var(--sp-4));
 }
 
 .reveal-meta {
@@ -1838,16 +1941,16 @@ a.nav-item.is-active:focus-visible,
 }
 
 .token-form {
-  padding: 22px 24px;
+  padding: var(--sp-6) var(--sp-6);
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: var(--sp-5);
 }
 
 .token-form-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 20px;
+  gap: var(--sp-5);
 }
 
 .field-name {
@@ -1867,33 +1970,37 @@ a.nav-item.is-active:focus-visible,
 
 .scopes legend {
   padding: 0;
-  margin-bottom: 10px;
+  margin-bottom: var(--sp-3);
 }
 
+/* The scopes are a checklist inside the form, not chips: rows with no border or fill, the
+   checkbox shows the choice. */
 .scope-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--sp-2);
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr));
+  gap: 0 var(--sp-4);
 }
 
 .scope-chip {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: var(--sp-2);
+  gap: var(--sp-3);
   min-height: var(--target-min);
-  padding: 0 14px;
+  padding: 0 var(--sp-2);
   border-radius: var(--r-md);
-  background: var(--raised);
-  border: 1.5px solid var(--line-strong);
-  font-size: 14px;
+  font-size: var(--fs-ui);
   cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease-out);
 }
 
-.scope-chip:has(input:checked) {
-  border-color: var(--accent);
-  background: var(--accent);
-  color: var(--on-accent);
-  font-weight: 700;
+@media (hover: hover) {
+  .scope-chip:hover {
+    background: var(--raised);
+  }
+}
+
+.scope-chip > span {
+  color: var(--muted);
 }
 
 .scope-chip:has(input:focus-visible) {
@@ -1908,30 +2015,27 @@ a.nav-item.is-active:focus-visible,
   accent-color: var(--accent-text);
 }
 
-.scope-chip:has(input:checked) input {
-  accent-color: var(--on-accent);
-}
-
 .scope-chip input:focus-visible {
   box-shadow: none;
 }
 
 .scope-chip b {
   font-weight: inherit;
+  color: var(--text);
 }
 
 .form-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: var(--sp-3);
 }
 
 .form-actions .btn-primary {
-  padding: 0 20px;
+  padding: 0 var(--sp-5);
 }
 
 .form-actions + .form-reason {
-  margin-top: -10px;
+  margin-top: calc(-1 * var(--sp-3));
 }
 
 .token-table {
@@ -1942,33 +2046,33 @@ a.nav-item.is-active:focus-visible,
   width: 100%;
   min-width: 820px;
   border-collapse: collapse;
-  font-size: 14px;
+  font-size: var(--fs-ui);
 }
 
 .token-table th {
-  padding: 14px 12px;
+  padding: var(--sp-4) var(--sp-3);
   text-align: left;
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--fs-micro);
   font-weight: 600;
   color: var(--faint);
   text-transform: uppercase;
 }
 
 .token-table td {
-  padding: 14px 12px;
+  padding: var(--sp-4) var(--sp-3);
   border-top: 1px solid var(--line);
   color: var(--muted);
 }
 
 .token-table th:first-child,
 .token-table td:first-child {
-  padding-left: 20px;
+  padding-left: var(--sp-5);
 }
 
 .token-table th:last-child,
 .token-table td:last-child {
-  padding-right: 20px;
+  padding-right: var(--sp-5);
   text-align: right;
 }
 
@@ -1999,13 +2103,13 @@ a.nav-item.is-active:focus-visible,
 }
 
 .new-tag {
-  margin-left: 6px;
+  margin-left: var(--sp-2);
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-micro);
   font-weight: 600;
   color: var(--on-accent);
   background: var(--accent);
-  padding: 2px 6px;
+  padding: var(--sp-1) var(--sp-2);
   border-radius: var(--r-pill);
   text-transform: uppercase;
 }
@@ -2015,11 +2119,11 @@ a.nav-item.is-active:focus-visible,
   flex-wrap: wrap;
   gap: var(--sp-1);
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--fs-micro);
 }
 
 .scope-tag {
-  padding: 3px 7px;
+  padding: var(--sp-1) var(--sp-2);
   border-radius: var(--r-sm);
   background: var(--line);
   color: var(--text);
@@ -2034,9 +2138,9 @@ a.nav-item.is-active:focus-visible,
 .revoked-tag {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--sp-2);
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--fs-micro);
   font-weight: 600;
   color: var(--danger-text);
   text-transform: uppercase;
@@ -2057,31 +2161,33 @@ a.nav-item.is-active:focus-visible,
   top: calc(var(--topbar-h) + var(--sp-4));
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--sp-1);
 }
 
 .settings-nav-item {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--sp-3);
   min-height: var(--target-min);
-  padding: 0 12px;
+  padding: 0 var(--sp-3);
   border-radius: var(--r-md);
   color: var(--muted);
   text-decoration: none;
 }
 
-.settings-nav-item:hover {
-  color: var(--text);
-  background: var(--raised);
+@media (hover: hover) {
+  .settings-nav-item:hover {
+    color: var(--text);
+    background: var(--raised);
+  }
 }
 
-/* Current: the fill, bold text and a green icon, so colour is not the only sign. */
+/* Current: the fill, the text colour and a green icon, as in the main nav, so colour is not the
+   only sign. */
 .settings-nav-item.is-active {
   color: var(--text);
   background: var(--raised);
-  font-weight: 700;
 }
 
 .settings-nav-item.is-active .icon {
@@ -2141,17 +2247,19 @@ a.nav-item.is-active:focus-visible,
 .settings-list-link {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--sp-3);
   min-height: var(--target-min);
-  padding: 10px 16px;
+  padding: var(--sp-3) var(--sp-4);
   color: var(--text);
   text-decoration: none;
   border-radius: var(--r-lg);
 }
 
-.settings-list-link:hover {
-  color: var(--text);
-  background: var(--raised);
+@media (hover: hover) {
+  .settings-list-link:hover {
+    color: var(--text);
+    background: var(--raised);
+  }
 }
 
 .settings-list-chevron {
@@ -2163,18 +2271,20 @@ a.nav-item.is-active:focus-visible,
 .settings-back {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--sp-2);
   align-self: flex-start;
   min-height: var(--target-min);
-  padding: 0 4px;
+  padding: 0 var(--sp-1);
   color: var(--muted);
   font-weight: 600;
   text-decoration: none;
   border-radius: var(--r-sm);
 }
 
-.settings-back:hover {
-  color: var(--text);
+@media (hover: hover) {
+  .settings-back:hover {
+    color: var(--text);
+  }
 }
 
 /* A sub-page's way back to its section beside the nav: "About /" above its h2. */
@@ -2195,8 +2305,10 @@ a.nav-item.is-active:focus-visible,
   text-decoration: none;
 }
 
-.settings-crumb-link:hover {
-  color: var(--text);
+@media (hover: hover) {
+  .settings-crumb-link:hover {
+    color: var(--text);
+  }
 }
 
 /* One value, the same on every Settings screen: the label (where the value comes from as a quiet
@@ -2214,7 +2326,7 @@ a.nav-item.is-active:focus-visible,
   flex-wrap: wrap;
   align-items: baseline;
   justify-content: space-between;
-  gap: 2px var(--sp-3);
+  gap: var(--sp-1) var(--sp-3);
   min-width: 0;
 }
 
@@ -2224,7 +2336,7 @@ a.nav-item.is-active:focus-visible,
 
 .setting-tag {
   color: var(--faint);
-  font-size: 12px;
+  font-size: var(--fs-mono);
   white-space: nowrap;
 }
 
@@ -2264,7 +2376,7 @@ a.nav-item.is-active:focus-visible,
 .setting-control {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--sp-2);
   min-width: 0;
 }
 
@@ -2358,7 +2470,7 @@ a.nav-item.is-active:focus-visible,
    and long choices (a GPU's name) take a line each. */
 @media (max-width: 639px) {
   .settings-section > h2 {
-    font-size: 28px;
+    font-size: var(--fs-h1);
     letter-spacing: -0.02em;
   }
 
@@ -2372,7 +2484,7 @@ a.nav-item.is-active:focus-visible,
 .setting-radio {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--sp-3);
   min-height: var(--target-min);
   cursor: pointer;
 }
@@ -2437,15 +2549,17 @@ a.nav-item.is-active:focus-visible,
   background: transparent;
   color: var(--text);
   font: inherit;
-  font-size: 14px;
+  font-size: var(--fs-ui);
   font-weight: 600;
   text-align: left;
   cursor: pointer;
 }
 
-.disclosure-toggle:hover .disclosure-title {
-  text-decoration: underline;
-  text-underline-offset: 3px;
+@media (hover: hover) {
+  .disclosure-toggle:hover .disclosure-title {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
 }
 
 .disclosure-toggle:focus-visible {
@@ -2456,7 +2570,7 @@ a.nav-item.is-active:focus-visible,
 .disclosure-chevron {
   display: inline-flex;
   color: var(--muted);
-  transition: transform 0.15s;
+  transition: transform var(--dur-base) var(--ease-out);
 }
 
 .disclosure-toggle[aria-expanded="true"] .disclosure-chevron {
@@ -2465,7 +2579,7 @@ a.nav-item.is-active:focus-visible,
 
 .disclosure-meta {
   color: var(--faint);
-  font-size: 12px;
+  font-size: var(--fs-mono);
   font-weight: 400;
 }
 
@@ -2494,7 +2608,7 @@ a.nav-item.is-active:focus-visible,
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: 4px var(--sp-3);
+  gap: var(--sp-1) var(--sp-3);
   min-width: 0;
   overflow-wrap: anywhere;
 }
@@ -2520,7 +2634,7 @@ a.nav-item.is-active:focus-visible,
 
 /* Recycle: what the recycled originals take now, a value rather than a sentence. */
 .recycle-usage-value {
-  font-size: 20px;
+  font-size: var(--fs-h2);
   font-weight: 700;
   color: var(--text);
 }
@@ -2538,7 +2652,7 @@ a.nav-item.is-active:focus-visible,
   display: flex;
   flex-direction: column;
   gap: var(--sp-4);
-  padding: 18px 22px;
+  padding: var(--sp-5) var(--sp-6);
 }
 
 .app-update-head {
@@ -2554,7 +2668,7 @@ a.nav-item.is-active:focus-visible,
 }
 
 .app-update-head p {
-  margin: 2px 0 0;
+  margin: var(--sp-1) 0 0;
 }
 
 .app-update-icon {
@@ -2582,8 +2696,8 @@ a.nav-item.is-active:focus-visible,
   display: flex;
   align-items: center;
   gap: var(--sp-2);
-  padding: 8px 8px 8px 14px;
-  border-radius: 10px;
+  padding: var(--sp-2) var(--sp-2) var(--sp-2) var(--sp-4);
+  border-radius: var(--r-md);
   background: var(--bg);
 }
 
@@ -2592,7 +2706,7 @@ a.nav-item.is-active:focus-visible,
   min-width: 0;
   margin: 0;
   color: var(--text);
-  font-size: 12px;
+  font-size: var(--fs-mono);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
@@ -2623,7 +2737,7 @@ a.nav-item.is-active:focus-visible,
   align-items: baseline;
   gap: var(--sp-2);
   margin: 0 0 var(--sp-2);
-  font-size: 15px;
+  font-size: var(--fs-body);
 }
 
 .app-update-date {
@@ -2637,8 +2751,8 @@ a.nav-item.is-active:focus-visible,
 }
 
 .app-update-group ul {
-  margin: 4px 0 0;
-  padding-left: 18px;
+  margin: var(--sp-1) 0 0;
+  padding-left: var(--sp-5);
   list-style: disc;
   line-height: 1.5;
 }
@@ -2647,7 +2761,7 @@ a.nav-item.is-active:focus-visible,
 .app-update-group.is-breaking .group-h3 {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--sp-2);
   color: var(--st-needs-setting);
 }
 
@@ -2662,7 +2776,7 @@ a.nav-item.is-active:focus-visible,
   display: grid;
   grid-template-columns: 140px minmax(0, 1fr);
   gap: var(--sp-4);
-  padding: 12px 16px;
+  padding: var(--sp-3) var(--sp-4);
 }
 
 .about-row + .about-row {
@@ -2677,7 +2791,7 @@ a.nav-item.is-active:focus-visible,
   margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--sp-1);
   min-width: 0;
 }
 
@@ -2690,7 +2804,7 @@ a.nav-item.is-active:focus-visible,
 .about-error {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--sp-2);
   color: var(--danger-text);
 }
 
@@ -2704,7 +2818,7 @@ a.nav-item.is-active:focus-visible,
   display: flex;
   align-items: center;
   min-height: var(--target-min);
-  padding: 0 16px;
+  padding: 0 var(--sp-4);
   font-weight: 600;
   cursor: pointer;
   border-radius: var(--r-lg);
@@ -2714,7 +2828,7 @@ a.nav-item.is-active:focus-visible,
   display: flex;
   flex-direction: column;
   gap: var(--sp-2);
-  padding: 0 16px 16px;
+  padding: 0 var(--sp-4) var(--sp-4);
 }
 
 .about-chips h3 {
@@ -2726,7 +2840,7 @@ a.nav-item.is-active:focus-visible,
 .about-chips ul {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: var(--sp-2);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -2738,7 +2852,7 @@ a.nav-item.is-active:focus-visible,
   justify-content: space-between;
   gap: var(--sp-3);
   min-height: var(--target-min);
-  padding: 0 16px;
+  padding: 0 var(--sp-4);
   border-radius: var(--r-lg);
   border: 1px solid var(--line);
   background: var(--surface);
@@ -2747,16 +2861,18 @@ a.nav-item.is-active:focus-visible,
   text-decoration: none;
 }
 
-.about-link:hover {
-  color: var(--text);
-  background: var(--raised);
+@media (hover: hover) {
+  .about-link:hover {
+    color: var(--text);
+    background: var(--raised);
+  }
 }
 
 .about-backups {
   display: flex;
   flex-direction: column;
   gap: var(--sp-2);
-  padding: 12px 16px 16px;
+  padding: var(--sp-3) var(--sp-4) var(--sp-4);
   border-radius: var(--r-lg);
   border: 1px solid var(--line);
   background: var(--surface);
@@ -2791,14 +2907,14 @@ a.nav-item.is-active:focus-visible,
   align-items: center;
   justify-content: space-between;
   gap: var(--sp-3);
-  padding: 8px 0;
+  padding: var(--sp-2) 0;
   min-width: 0;
 }
 
 .about-backups-text {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--sp-1);
   min-width: 0;
 }
 
@@ -2870,7 +2986,7 @@ a.nav-item.is-active:focus-visible,
   flex-wrap: wrap;
   gap: var(--sp-2);
   min-height: var(--target-min);
-  padding: 8px 16px;
+  padding: var(--sp-2) var(--sp-4);
   cursor: pointer;
   border-radius: var(--r-lg);
 }
@@ -2884,7 +3000,7 @@ a.nav-item.is-active:focus-visible,
   display: flex;
   flex-direction: column;
   gap: var(--sp-2);
-  padding: 0 16px 16px;
+  padding: 0 var(--sp-4) var(--sp-4);
 }
 
 .licence-home {
@@ -2896,7 +3012,7 @@ a.nav-item.is-active:focus-visible,
   margin: 0;
   max-height: 320px;
   overflow: auto;
-  padding: 12px;
+  padding: var(--sp-3);
   border-radius: var(--r-md);
   background: var(--raised);
   color: var(--muted);
@@ -2913,7 +3029,7 @@ a.nav-item.is-active:focus-visible,
 
   .about-row {
     grid-template-columns: minmax(0, 1fr);
-    gap: 2px;
+    gap: var(--sp-1);
   }
 }
 
@@ -2930,7 +3046,7 @@ a.nav-item.is-active:focus-visible,
 .page-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: var(--sp-3);
 }
 
 a.btn,
@@ -2938,12 +3054,16 @@ a.btn:hover {
   text-decoration: none;
 }
 
-a.btn-primary:hover {
-  color: var(--on-accent);
+@media (hover: hover) {
+  a.btn-primary:hover {
+    color: var(--on-accent);
+  }
 }
 
-a.btn-secondary:hover {
-  color: var(--text);
+@media (hover: hover) {
+  a.btn-secondary:hover {
+    color: var(--text);
+  }
 }
 
 .wf-section + .wf-section {
@@ -2954,24 +3074,24 @@ a.btn-secondary:hover {
 .wf-title {
   display: flex;
   align-items: baseline;
-  gap: 12px;
+  gap: var(--sp-3);
 }
 
 .wf-title .wf-count {
-  font-size: 15px;
+  font-size: var(--fs-body);
 }
 
 .wf-section-head {
   display: flex;
   align-items: baseline;
-  gap: 10px;
-  margin: 0 0 12px;
-  font-size: 18px;
+  gap: var(--sp-3);
+  margin: 0 0 var(--sp-3);
+  font-size: var(--fs-h3);
 }
 
 .wf-count {
   font-family: var(--font-mono);
-  font-size: 13px;
+  font-size: var(--fs-small);
   font-weight: 600;
   color: var(--muted);
 }
@@ -2983,7 +3103,7 @@ a.btn-secondary:hover {
   min-width: 720px;
   table-layout: fixed;
   border-collapse: collapse;
-  font-size: 14px;
+  font-size: var(--fs-ui);
 }
 
 .wf-col-library {
@@ -3008,17 +3128,17 @@ a.btn-secondary:hover {
 }
 
 .wf-table th {
-  padding: 14px 12px;
+  padding: var(--sp-4) var(--sp-3);
   text-align: left;
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--fs-micro);
   font-weight: 600;
   color: var(--faint);
   text-transform: uppercase;
 }
 
 .wf-table .wf-cell {
-  padding: 12px;
+  padding: var(--sp-3);
   border-top: 1px solid var(--line);
   color: var(--muted);
   vertical-align: middle;
@@ -3026,12 +3146,12 @@ a.btn-secondary:hover {
 
 .wf-table th:first-child,
 .wf-table .wf-cell:first-child {
-  padding-left: 20px;
+  padding-left: var(--sp-5);
 }
 
 .wf-table th:last-child,
 .wf-table .wf-cell:last-child {
-  padding-right: 12px;
+  padding-right: var(--sp-3);
   text-align: right;
 }
 
@@ -3040,12 +3160,12 @@ a.btn-secondary:hover {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 4px 12px;
+  gap: var(--sp-1) var(--sp-3);
 }
 
 .inline-edit-hint {
   color: var(--faint);
-  font-size: 12px;
+  font-size: var(--fs-mono);
 }
 
 @media (max-width: 639px) {
@@ -3070,10 +3190,15 @@ a.btn-secondary:hover {
   overflow-wrap: anywhere;
 }
 
-.wf-link:hover,
 .wf-link:focus-visible {
   color: var(--text);
   text-decoration: underline;
+}
+@media (hover: hover) {
+  .wf-link:hover {
+    color: var(--text);
+    text-decoration: underline;
+  }
 }
 
 /* A problem chip next to the name grows and wraps its words rather than spill out of the cell. */
@@ -3101,7 +3226,7 @@ a.btn-secondary:hover {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 4px;
+  gap: var(--sp-1);
 }
 
 /* The pill may wrap as a fallback (a long version number in a narrow column). */
@@ -3112,7 +3237,7 @@ a.btn-secondary:hover {
 .wf-version {
   overflow: hidden;
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--fs-mono);
   white-space: nowrap;
   text-overflow: ellipsis;
 }
@@ -3142,7 +3267,7 @@ a.btn-secondary:hover {
   min-width: 160px;
   display: flex;
   flex-direction: column;
-  padding: 4px;
+  padding: var(--sp-1);
   border-radius: var(--r-md);
   border: 1px solid var(--line-strong);
   background: var(--raised);
@@ -3153,20 +3278,24 @@ a.btn-secondary:hover {
   align-items: center;
   gap: var(--sp-2);
   min-height: var(--target-min);
-  padding: 0 12px;
+  padding: 0 var(--sp-3);
   border: 0;
   border-radius: var(--r-sm);
   background: transparent;
   color: var(--text);
   font: inherit;
-  font-size: 14px;
+  font-size: var(--fs-ui);
   text-align: left;
   cursor: pointer;
 }
 
-.row-menu-list button:hover,
 .row-menu-list button:focus-visible {
   background: var(--line);
+}
+@media (hover: hover) {
+  .row-menu-list button:hover {
+    background: var(--line);
+  }
 }
 
 .row-menu-list .row-menu-danger {
@@ -3185,26 +3314,26 @@ a.btn-secondary:hover {
 /* Custom listbox dropdown (Jobs library filter): the action-menu overlay with option rows. */
 .listbox-select-button {
   height: 40px;
-  font-size: 14px;
+  font-size: var(--fs-ui);
 }
 /* In a form: the label above a full-width button that matches the text inputs. */
 .listbox-select-field {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--sp-2);
 }
 .listbox-select-label {
-  font-size: 14px;
+  font-size: var(--fs-ui);
   font-weight: 500;
 }
 .listbox-select-field .listbox-select-button {
   width: 100%;
   height: 48px;
   justify-content: space-between;
-  padding: 0 14px;
-  border: 1.5px solid var(--line-strong);
+  padding: 0 var(--sp-4);
+  border: 1.5px solid var(--line-control);
   border-radius: var(--r-md);
-  font-size: 16px;
+  font-size: var(--fs-h3);
 }
 .listbox-select-field .listbox-select-list {
   right: 0;
@@ -3227,18 +3356,15 @@ a.btn-secondary:hover {
   align-items: center;
   gap: var(--sp-2);
   min-height: var(--target-min);
-  padding: 0 12px;
+  padding: 0 var(--sp-3);
   border-radius: var(--r-sm);
   color: var(--text);
-  font-size: 14px;
+  font-size: var(--fs-ui);
   cursor: pointer;
 }
 .listbox-option.is-active {
   background: var(--line);
   box-shadow: inset 0 0 0 2px var(--text);
-}
-.listbox-option[aria-selected="true"] {
-  font-weight: 700;
 }
 .listbox-option-check {
   display: inline-flex;
@@ -3248,7 +3374,7 @@ a.btn-secondary:hover {
 
 .new-wf-form {
   max-width: 560px;
-  padding: 20px;
+  padding: var(--sp-5);
   display: flex;
   flex-direction: column;
   gap: var(--sp-4);
@@ -3270,16 +3396,16 @@ a.btn-secondary:hover {
 
 .kind-choice legend {
   margin-bottom: var(--sp-2);
-  font-size: 14px;
+  font-size: var(--fs-ui);
   font-weight: 500;
 }
 
 .kind-option {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--sp-3);
   min-height: var(--target-min);
-  padding: 8px 12px;
+  padding: var(--sp-2) var(--sp-3);
   border-radius: var(--r-md);
   border: 1px solid var(--line-strong);
   color: var(--muted);
@@ -3312,7 +3438,7 @@ a.btn-secondary:hover {
 
 @media (max-width: 639px) {
   .page {
-    padding: 20px 16px 40px;
+    padding: var(--sp-5) var(--sp-4) var(--sp-10);
   }
 }
 
@@ -3351,7 +3477,7 @@ a.btn-secondary:hover {
 /* The divider under the title mirrors the footer's: a scrolled body never slides under the title. */
 .dialog-title {
   flex: none;
-  padding: 20px 24px 16px;
+  padding: var(--sp-5) var(--sp-6) var(--sp-4);
   border-bottom: 1px solid var(--line);
   font-size: var(--fs-h2);
   font-weight: 700;
@@ -3365,7 +3491,7 @@ a.btn-secondary:hover {
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
-  padding: 16px 24px 20px;
+  padding: var(--sp-4) var(--sp-6) var(--sp-5);
   display: flex;
   flex-direction: column;
   gap: var(--sp-3);
@@ -3378,8 +3504,8 @@ a.btn-secondary:hover {
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
-  gap: 10px;
-  padding: 16px 24px;
+  gap: var(--sp-3);
+  padding: var(--sp-4) var(--sp-6);
   border-top: 1px solid var(--line);
 }
 
@@ -3406,9 +3532,11 @@ a.btn-secondary:hover {
   color: var(--muted);
   cursor: pointer;
 }
-.dialog-close:hover {
-  background: var(--raised);
-  color: var(--text);
+@media (hover: hover) {
+  .dialog-close:hover {
+    background: var(--raised);
+    color: var(--text);
+  }
 }
 .dialog:has(.dialog-close) .dialog-title {
   padding-right: 60px;
@@ -3434,13 +3562,13 @@ a.btn-secondary:hover {
 .toast {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 6px 6px 6px 14px;
+  gap: var(--sp-3);
+  padding: var(--sp-2) var(--sp-2) var(--sp-2) var(--sp-4);
   border-radius: var(--r-md);
   background: var(--raised);
   border: 1px solid var(--line-strong);
   color: var(--text);
-  font-size: 14px;
+  font-size: var(--fs-ui);
 }
 
 .toast-success {
@@ -3475,17 +3603,19 @@ a.btn-secondary:hover {
   cursor: pointer;
 }
 
-.toast-close:hover {
-  background: var(--line);
+@media (hover: hover) {
+  .toast-close:hover {
+    background: var(--line);
+  }
 }
 
 /* Activation: the workflows list's status pill (colour never alone: icon + word). */
 .activation-pill {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--sp-2);
   min-height: 32px;
-  padding: 0 12px;
+  padding: 0 var(--sp-3);
   border-radius: var(--r-pill);
   font-family: var(--font-mono);
   font-size: var(--fs-mono);
@@ -3529,7 +3659,7 @@ a.btn-secondary:hover {
 .activate-summary-versions,
 .activate-summary-changes {
   margin: var(--sp-2) 0 0;
-  padding-left: 20px;
+  padding-left: var(--sp-5);
 }
 
 .activate-jobs {
@@ -3562,12 +3692,17 @@ a.btn-secondary:hover {
 }
 
 .wf-activate {
+  /* A 32 px target that still takes 24 px of the line (WCAG 2.5.8, with room to spare). */
+  min-height: 32px;
+  margin-block: -4px;
   cursor: pointer;
 }
 
-.wf-activate:hover {
-  color: var(--text);
-  text-decoration: underline;
+@media (hover: hover) {
+  .wf-activate:hover {
+    color: var(--text);
+    text-decoration: underline;
+  }
 }
 
 .wf-activate:focus-visible {
@@ -3586,7 +3721,7 @@ a.btn-secondary:hover {
 .run-file-version {
   color: var(--faint);
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--fs-micro);
 }
 
 .activate-refused-title {
@@ -3599,7 +3734,7 @@ a.btn-secondary:hover {
 
 .activate-refused ul {
   margin: var(--sp-2) 0 0;
-  padding-left: 20px;
+  padding-left: var(--sp-5);
 }
 
 /* The activate dialog's library line when another workflow feeds the library, or it is gone. */
@@ -3614,9 +3749,9 @@ a.btn-secondary:hover {
   /* The one chip size and font (convention 8): the same pill as the Jobs list's state chip. */
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--sp-2);
   height: 28px;
-  padding: 0 10px;
+  padding: 0 var(--sp-3);
   border-radius: var(--r-pill);
   border: 1.5px solid currentColor;
   font-size: var(--fs-small);
@@ -3644,7 +3779,7 @@ a.btn-secondary:hover {
 
 .eyebrow-kind {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-micro);
   font-weight: 600;
   letter-spacing: 0.02em;
   color: var(--muted);
@@ -3670,7 +3805,7 @@ a.btn-secondary:hover {
 
 .tc-values {
   width: 240px;
-  padding: 10px 12px 12px;
+  padding: var(--sp-3) var(--sp-3) var(--sp-3);
   border-radius: var(--r-md);
   background: var(--raised);
   box-shadow: 0 0 0 1px var(--line-strong);
@@ -3685,8 +3820,8 @@ a.btn-secondary:hover {
 .tc-values-head {
   display: flex;
   align-items: center;
-  gap: 6px;
-  margin-bottom: 8px;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-2);
   font-size: var(--fs-small);
   font-weight: 700;
   color: var(--accent-text);
@@ -3700,7 +3835,7 @@ a.btn-secondary:hover {
 
 .tc-values-list {
   display: grid;
-  gap: 6px;
+  gap: var(--sp-2);
   margin: 0;
 }
 
@@ -3712,10 +3847,10 @@ a.btn-secondary:hover {
 .tc-values-row dd {
   display: flex;
   justify-content: space-between;
-  gap: 8px;
+  gap: var(--sp-2);
   margin: 0;
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--fs-mono);
   color: var(--muted);
 }
 
@@ -3765,16 +3900,16 @@ a.btn-secondary:hover {
 
 .tc-node-head {
   height: 50px;
-  padding: 8px 12px;
+  padding: var(--sp-2) var(--sp-3);
   border-bottom: 1px solid var(--node-head-line);
 }
 
 .tc-node-eyebrow {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--sp-2);
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-micro);
   font-weight: 600;
   color: var(--node-kind);
   text-transform: uppercase;
@@ -3787,7 +3922,7 @@ a.btn-secondary:hover {
 
 .tc-node-title {
   overflow: hidden;
-  font-size: 15px;
+  font-size: var(--fs-body);
   font-weight: 700;
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -3798,9 +3933,9 @@ a.btn-secondary:hover {
   display: flex;
   align-items: center;
   height: 30px;
-  padding: 0 14px;
+  padding: 0 var(--sp-4);
   border-bottom: 1px solid var(--line);
-  font-size: 12px;
+  font-size: var(--fs-mono);
   color: var(--muted);
 }
 
@@ -3837,15 +3972,15 @@ a.btn-secondary:hover {
 
 .tc-port-type::before {
   content: "·" / "";
-  margin: 0 4px;
+  margin: 0 var(--sp-1);
 }
 
 .tc-node-row {
   display: flex;
   align-items: center;
   height: 40px;
-  padding: 0 12px;
-  font-size: 12px;
+  padding: 0 var(--sp-3);
+  font-size: var(--fs-mono);
   color: var(--st-needs-setting);
 }
 
@@ -3855,7 +3990,7 @@ a.btn-secondary:hover {
   display: flex;
   flex: 1;
   align-items: center;
-  gap: 8px;
+  gap: var(--sp-2);
   min-width: 0;
   height: 100%;
   color: var(--text);
@@ -3867,7 +4002,7 @@ a.btn-secondary:hover {
 
 .tc-onnode-label {
   overflow: hidden;
-  font-size: 12px;
+  font-size: var(--fs-mono);
   color: var(--muted);
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -3878,13 +4013,13 @@ a.btn-secondary:hover {
   flex: none;
   height: 28px;
   margin-left: auto;
-  padding: 0 6px;
-  border: 1px solid var(--line-strong);
+  padding: 0 var(--sp-2);
+  border: 1px solid var(--line-control);
   border-radius: var(--r-sm);
   background: var(--surface);
   color: var(--text);
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--fs-mono);
 }
 
 .tc-onnode-input {
@@ -3909,13 +4044,13 @@ a.btn-secondary:hover {
 /* The summary is a real button over the whole slot (40 px drawn; ::before makes it 44 px). */
 .tc-onnode-summary {
   position: relative;
-  margin: 0 -6px;
-  padding: 0 6px;
+  margin: 0 calc(-1 * var(--sp-2));
+  padding: 0 var(--sp-2);
   border: 0;
   border-radius: var(--r-sm);
   background: transparent;
   font: inherit;
-  font-size: 12px;
+  font-size: var(--fs-mono);
   text-align: left;
   cursor: pointer;
 }
@@ -3926,8 +4061,10 @@ a.btn-secondary:hover {
   inset: -2px 0;
 }
 
-.tc-onnode-summary:hover {
-  background: var(--line);
+@media (hover: hover) {
+  .tc-onnode-summary:hover {
+    background: var(--line);
+  }
 }
 
 .tc-onnode-text {
@@ -3938,18 +4075,18 @@ a.btn-secondary:hover {
 
 .chips-mini {
   display: flex;
-  gap: 4px;
+  gap: var(--sp-1);
   min-width: 0;
   overflow: hidden;
 }
 
 .chips-mini > span {
   flex: none;
-  padding: 2px 6px;
+  padding: var(--sp-1) var(--sp-2);
   border-radius: var(--r-sm);
   background: var(--line);
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--fs-micro);
   color: var(--text);
 }
 
@@ -3961,10 +4098,10 @@ a.btn-secondary:hover {
 .tc-node-summary {
   height: 40px;
   line-height: 40px;
-  padding: 0 12px;
+  padding: 0 var(--sp-3);
   overflow: hidden;
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--fs-mono);
   color: var(--muted);
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -4022,13 +4159,13 @@ a.btn-secondary:hover {
   z-index: 1;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--sp-1);
   max-width: 200px;
   height: 24px;
-  padding: 0 8px;
+  padding: 0 var(--sp-2);
   border-radius: var(--r-pill);
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--fs-micro);
   font-weight: 600;
   white-space: nowrap;
 }
@@ -4050,7 +4187,7 @@ a.btn-secondary:hover {
 
 .tc-badge-bang {
   font-family: var(--font-ui);
-  font-size: 14px;
+  font-size: var(--fs-ui);
   font-weight: 800;
 }
 
@@ -4069,8 +4206,8 @@ a.btn-secondary:hover {
   --handle-scale: 1;
   transform: translate(-50%, -50%) rotate(var(--handle-turn)) scale(var(--handle-scale));
   transition:
-    transform 0.12s,
-    opacity 0.12s;
+    transform var(--dur-fast) var(--ease-out),
+    opacity var(--dur-fast) var(--ease-out);
 }
 
 .tc-node .tc-handle.react-flow__handle-left {
@@ -4133,7 +4270,7 @@ a.btn-secondary:hover {
    while faded), and its incompatible handles stay at full strength inside the faded card. */
 .tc-node.is-faded {
   opacity: 0.4;
-  transition: opacity 0.12s;
+  transition: opacity var(--dur-fast) var(--ease-out);
 }
 
 .tc-node.is-faded .tc-handle.is-incompatible {
@@ -4180,16 +4317,22 @@ a.btn-secondary:hover {
   border-radius: 50%;
 }
 
-/* N4: "+" on a free output; 44 px target around a 24 px dot. */
+/* N4: "+" on a free output; a 44 px (or larger, --tc-hit) target right of the card.
+   --tc-hit, on the "+" and the group toggle: 44 canvas px, grown as the canvas zooms out so the
+   target never drops below 24 px on screen (WCAG 2.5.8). ZoomVar writes --tc-zoom.
+   The target starts 15 px right of the card edge, where the handle's hit area ends (7 px half
+   handle plus its 8 px ::after), and grows away from the card. However far the canvas zooms out,
+   the "+" never covers the handle, so a drag from the handle always starts a connection. */
 .tc-plus {
+  --tc-hit: max(var(--target-min), calc(24px / var(--tc-zoom, 1)));
   position: absolute;
   top: 50%;
-  right: -52px;
+  right: calc(-15px - var(--tc-hit));
   display: flex;
   align-items: center;
   justify-content: center;
-  width: var(--target-min);
-  height: var(--target-min);
+  width: var(--tc-hit);
+  height: var(--tc-hit);
   padding: 0;
   border: 0;
   background: transparent;
@@ -4209,8 +4352,10 @@ a.btn-secondary:hover {
   color: var(--on-accent);
 }
 
-.tc-plus:hover .tc-plus-dot {
-  background: var(--accent-hover);
+@media (hover: hover) {
+  .tc-plus:hover .tc-plus-dot {
+    background: var(--accent-hover);
+  }
 }
 
 .tc-plus:focus-visible {
@@ -4236,12 +4381,14 @@ a.btn-secondary:hover {
 
 .tc-edge.edge-file {
   stroke: var(--edge-file);
-  stroke-width: 3px;
+  --edge-w: 3px;
+  stroke-width: var(--edge-w);
 }
 
 .tc-edge.edge-path {
   stroke: var(--edge-path);
-  stroke-width: 3.5px;
+  --edge-w: 3.5px;
+  stroke-width: var(--edge-w);
   stroke-dasharray: 10 6;
   stroke-linecap: round;
   animation: tc-dash 0.6s linear infinite;
@@ -4249,25 +4396,29 @@ a.btn-secondary:hover {
 
 .tc-edge.edge-data {
   stroke: var(--edge-data);
-  stroke-width: 2px;
+  --edge-w: 2px;
+  stroke-width: var(--edge-w);
   stroke-dasharray: 0.01 6;
   stroke-linecap: round;
 }
 
 .tc-edge.edge-untaken {
   stroke: var(--edge-untaken);
-  stroke-width: 2px;
+  --edge-w: 2px;
+  stroke-width: var(--edge-w);
   stroke-dasharray: 6 6;
 }
 
 .tc-edge.edge-broken {
   stroke: var(--edge-broken);
-  stroke-width: 2.5px;
+  --edge-w: 2.5px;
+  stroke-width: var(--edge-w);
   stroke-dasharray: 6 5;
 }
 
+/* Selected: the line itself gets 2px heavier (no glow). */
 .react-flow__edge.selected .tc-edge {
-  filter: drop-shadow(0 0 3px var(--accent));
+  stroke-width: calc(var(--edge-w, 3px) + 2px);
 }
 
 .tc-arrow.edge-file path {
@@ -4292,12 +4443,12 @@ a.btn-secondary:hover {
 
 .tc-edge-label {
   position: absolute;
-  padding: 1px 6px;
-  border-radius: 5px;
+  padding: 1px var(--sp-2);
+  border-radius: var(--r-sm);
   background: var(--data-chip-bg);
   color: var(--kind-data);
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--fs-micro);
   font-weight: 600;
   pointer-events: all;
 }
@@ -4380,8 +4531,8 @@ a.btn-secondary:hover {
    extends the hit area to 44 px tall. */
 .tc-toolbar {
   display: flex;
-  gap: 2px;
-  padding: 4px;
+  gap: var(--sp-1);
+  padding: var(--sp-1);
   border-radius: var(--r-md);
   background: var(--line);
   box-shadow: 0 6px 18px var(--toolbar-shadow);
@@ -4393,12 +4544,12 @@ a.btn-secondary:hover {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: var(--sp-2);
   min-width: var(--target-min);
   height: 34px;
-  padding: 0 10px;
+  padding: 0 var(--sp-3);
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--r-sm);
   background: transparent;
   color: var(--text);
   font: inherit;
@@ -4416,8 +4567,10 @@ a.btn-secondary:hover {
   padding: 0;
 }
 
-.tc-toolbar-btn:hover:not(:disabled) {
-  background: var(--line-strong);
+@media (hover: hover) {
+  .tc-toolbar-btn:hover:not(:disabled) {
+    background: var(--line-strong);
+  }
 }
 
 .tc-toolbar-btn:disabled {
@@ -4462,7 +4615,7 @@ a.btn-secondary:hover {
   right: 44px;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--sp-2);
   font-size: var(--fs-small);
   font-weight: 700;
   white-space: nowrap;
@@ -4485,26 +4638,28 @@ a.btn-secondary:hover {
   color: var(--muted);
 }
 
-.markdown > :first-child {
-  margin-top: 0;
-}
-
-.markdown h4 {
-  margin: 10px 0 4px;
+/* A note's "# heading" line: a bold lead-in, not a document heading (the canvas is not part of
+   the page outline, and an h4 there skipped levels). */
+.markdown .markdown-heading {
+  margin: var(--sp-3) 0 var(--sp-1);
   font-size: var(--fs-body);
   font-weight: 700;
   color: var(--text);
 }
 
+.markdown > :first-child {
+  margin-top: 0;
+}
+
 .markdown p,
 .markdown ul,
 .markdown ol {
-  margin: 0 0 6px;
+  margin: 0 0 var(--sp-2);
 }
 
 .markdown ul,
 .markdown ol {
-  padding-left: 18px;
+  padding-left: var(--sp-5);
 }
 
 .markdown strong {
@@ -4514,8 +4669,8 @@ a.btn-secondary:hover {
 .markdown code {
   font-family: var(--font-mono);
   font-size: 0.92em;
-  padding: 0 4px;
-  border-radius: 4px;
+  padding: 0 var(--sp-1);
+  border-radius: var(--r-sm);
   background: var(--raised);
   color: var(--text);
 }
@@ -4526,22 +4681,24 @@ a.btn-secondary:hover {
 
 .tc-group-count {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-micro);
   font-weight: 600;
   color: var(--faint);
   text-transform: uppercase;
 }
 
-/* 44 px target around the drawn 26 px chip; the chip sits at bottom 0, right 8 px. */
+/* 44 px target (or larger, --tc-hit) around the drawn 26 px chip; the chip sits at bottom 0,
+   right 8 px: the target is centred 21 px from the right edge and 13 px from the bottom. */
 .tc-group-toggle {
+  --tc-hit: max(var(--target-min), calc(24px / var(--tc-zoom, 1)));
   position: absolute;
-  right: -1px;
-  bottom: -9px;
+  right: calc(21px - var(--tc-hit) / 2);
+  bottom: calc(13px - var(--tc-hit) / 2);
   display: flex;
   align-items: center;
   justify-content: center;
-  width: var(--target-min);
-  height: var(--target-min);
+  width: var(--tc-hit);
+  height: var(--tc-hit);
   padding: 0;
   border: 0;
   background: transparent;
@@ -4555,12 +4712,14 @@ a.btn-secondary:hover {
   justify-content: center;
   width: 26px;
   height: 26px;
-  border-radius: 8px;
+  border-radius: var(--r-sm);
   background: var(--line);
 }
 
-.tc-group-toggle:hover .tc-group-toggle-chip {
-  background: var(--line-strong);
+@media (hover: hover) {
+  .tc-group-toggle:hover .tc-group-toggle-chip {
+    background: var(--line-strong);
+  }
 }
 
 .tc-group-toggle:focus-visible {
@@ -4582,13 +4741,13 @@ a.btn-secondary:hover {
   flex-wrap: wrap;
   align-content: center;
   row-gap: 0;
-  padding: 0 48px 0 14px;
+  padding: 0 var(--sp-12) 0 var(--sp-4);
 }
 
 .tc-group.is-collapsed .tc-group-name {
   flex: 1 1 100%;
   order: 1;
-  font-size: 15px;
+  font-size: var(--fs-body);
 }
 
 .tc-group.is-collapsed .tc-group-count {
@@ -4597,7 +4756,7 @@ a.btn-secondary:hover {
 
 .tc-group.is-collapsed .tc-group-toggle {
   top: 50%;
-  right: 4px;
+  right: calc(26px - var(--tc-hit) / 2);
   bottom: auto;
   transform: translateY(-50%);
 }
@@ -4739,8 +4898,8 @@ a.btn-secondary:hover {
   flex: none;
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  padding: 14px 12px;
+  gap: var(--sp-4);
+  padding: var(--sp-4) var(--sp-3);
   border-right: 1px solid var(--line);
   overflow-y: auto;
 }
@@ -4752,7 +4911,7 @@ a.btn-secondary:hover {
 .palette-search-input {
   width: 100%;
   height: 44px;
-  padding: 0 40px 0 12px;
+  padding: 0 var(--sp-10) 0 var(--sp-3);
   border-radius: var(--r-md);
   font-size: var(--fs-body);
 }
@@ -4762,9 +4921,9 @@ a.btn-secondary:hover {
   right: 10px;
   top: 11px;
   font-family: var(--font-mono);
-  font-size: 12px;
-  padding: 1px 7px;
-  border-radius: 6px;
+  font-size: var(--fs-mono);
+  padding: 1px var(--sp-2);
+  border-radius: var(--r-sm);
   background: var(--line);
   color: var(--text);
   border-bottom: 2px solid var(--line-strong);
@@ -4779,10 +4938,10 @@ a.btn-secondary:hover {
 .palette-heading {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 0 4px 4px;
+  gap: var(--sp-2);
+  padding: 0 var(--sp-1) var(--sp-1);
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--fs-micro);
   font-weight: 600;
   color: var(--muted);
   text-transform: uppercase;
@@ -4822,19 +4981,21 @@ a.btn-secondary:hover {
   align-items: flex-start;
   justify-content: center;
   min-height: 44px;
-  padding: 4px 10px;
+  padding: var(--sp-1) var(--sp-3);
   border: 0;
   border-radius: var(--r-sm);
   background: transparent;
   color: var(--text);
   font: inherit;
-  font-size: 14px;
+  font-size: var(--fs-ui);
   text-align: left;
   cursor: grab;
 }
 
-.palette-item:hover:not([aria-disabled="true"]) {
-  background: var(--raised);
+@media (hover: hover) {
+  .palette-item:hover:not([aria-disabled="true"]) {
+    background: var(--raised);
+  }
 }
 
 .palette-item[aria-disabled="true"] {
@@ -4846,7 +5007,7 @@ a.btn-secondary:hover {
 .palette-item-line {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--sp-2);
 }
 
 .palette-item-line > .icon {
@@ -4859,7 +5020,7 @@ a.btn-secondary:hover {
 }
 
 .palette-item-reason {
-  font-size: 12px;
+  font-size: var(--fs-mono);
   color: var(--faint);
 }
 
@@ -4867,7 +5028,7 @@ a.btn-secondary:hover {
 .palette-item-wrap {
   display: flex;
   align-items: flex-end;
-  gap: 6px;
+  gap: var(--sp-2);
 }
 .palette-item-wrap .palette-item {
   flex: 1;
@@ -4875,13 +5036,13 @@ a.btn-secondary:hover {
 }
 .palette-item-docs {
   flex: none;
-  padding: 4px 10px 8px 0;
-  font-size: 12px;
+  padding: var(--sp-1) var(--sp-3) var(--sp-2) 0;
+  font-size: var(--fs-mono);
   color: var(--muted);
 }
 
 .palette-empty {
-  padding: 0 4px;
+  padding: 0 var(--sp-1);
   font-size: var(--fs-small);
   color: var(--faint);
 }
@@ -4894,7 +5055,7 @@ a.btn-secondary:hover {
   display: flex;
   flex-direction: column;
   max-height: min(420px, 60vh);
-  margin: 12px 0 0;
+  margin: var(--sp-3) 0 0;
   padding: 0;
   overflow-y: auto;
   list-style: none;
@@ -4905,11 +5066,11 @@ a.btn-secondary:hover {
   display: grid;
   grid-template-columns: auto auto 1fr auto;
   align-items: center;
-  column-gap: 8px;
+  column-gap: var(--sp-2);
   min-height: 44px;
-  padding: 4px 10px;
+  padding: var(--sp-1) var(--sp-3);
   border-radius: var(--r-md);
-  font-size: 14px;
+  font-size: var(--fs-ui);
   cursor: pointer;
 }
 
@@ -4922,14 +5083,10 @@ a.btn-secondary:hover {
   justify-self: start;
 }
 
-/* Selected: the same marks as the current Settings item (fill, weight and a straight bar inset from
+/* Selected: the same marks as the current Settings item (fill and a straight bar inset from
    the rounded corners), so colour is not the only sign. */
 .node-search-option[aria-selected="true"] {
   background: var(--raised);
-}
-
-.node-search-option[aria-selected="true"] .node-search-title {
-  font-weight: 700;
 }
 
 .node-search-option[aria-selected="true"]::before {
@@ -4951,7 +5108,7 @@ a.btn-secondary:hover {
 .node-search-kind {
   grid-column: 4;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-micro);
   font-weight: 600;
   color: var(--faint);
   text-transform: uppercase;
@@ -4963,7 +5120,7 @@ a.btn-secondary:hover {
   grid-column: 2 / 4;
   min-width: 0;
   overflow: hidden;
-  font-size: 12px;
+  font-size: var(--fs-mono);
   color: var(--muted);
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -4990,21 +5147,21 @@ a.btn-secondary:hover {
 
 .node-search-reason {
   grid-column: 2 / -1;
-  font-size: 12px;
+  font-size: var(--fs-mono);
   color: var(--faint);
 }
 
 .node-search-empty {
-  margin-top: 12px;
+  margin-top: var(--sp-3);
   font-size: var(--fs-small);
   color: var(--faint);
 }
 
 /* N4: under a filtered list, which nodes it holds. */
 .node-search-hint {
-  margin-top: 8px;
-  padding: 0 10px;
-  font-size: 11px;
+  margin-top: var(--sp-2);
+  padding: 0 var(--sp-3);
+  font-size: var(--fs-micro);
   color: var(--faint);
 }
 
@@ -5021,7 +5178,7 @@ a.btn-secondary:hover {
 .sidenav.rail {
   flex: 0 0 56px;
   width: 56px;
-  padding: 10px 6px;
+  padding: var(--sp-3) var(--sp-2);
   align-items: center;
 }
 
@@ -5063,9 +5220,11 @@ a.btn-secondary:hover {
   cursor: pointer;
 }
 
-.rail-logout:hover {
-  color: var(--text);
-  background: var(--raised);
+@media (hover: hover) {
+  .rail-logout:hover {
+    color: var(--text);
+    background: var(--raised);
+  }
 }
 
 /* ---------- Editor page: layout and header (screen 05) ---------- */
@@ -5095,8 +5254,8 @@ a.btn-secondary:hover {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 14px;
-  padding: 10px 16px;
+  gap: var(--sp-4);
+  padding: var(--sp-3) var(--sp-4);
   border-bottom: 1px solid var(--line);
 }
 
@@ -5104,7 +5263,7 @@ a.btn-secondary:hover {
   display: flex;
   align-items: center;
   gap: var(--sp-2);
-  font-size: 15px;
+  font-size: var(--fs-body);
   min-width: 0;
 }
 
@@ -5116,8 +5275,10 @@ a.btn-secondary:hover {
   text-decoration: none;
 }
 
-.crumb-link:hover {
-  color: var(--text);
+@media (hover: hover) {
+  .crumb-link:hover {
+    color: var(--text);
+  }
 }
 
 .crumb-sep {
@@ -5127,7 +5288,7 @@ a.btn-secondary:hover {
 .crumb-name {
   min-height: var(--target-min);
   max-width: 420px;
-  padding: 0 4px;
+  padding: 0 var(--sp-1);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -5136,14 +5297,16 @@ a.btn-secondary:hover {
   background: transparent;
   color: var(--text);
   font: inherit;
-  font-size: 20px;
+  font-size: var(--fs-h2);
   font-weight: 700;
   letter-spacing: -0.01em;
   cursor: text;
 }
 
-.crumb-name:hover:not(:disabled) {
-  background: var(--raised);
+@media (hover: hover) {
+  .crumb-name:hover:not(:disabled) {
+    background: var(--raised);
+  }
 }
 
 .crumb-name:disabled {
@@ -5151,7 +5314,7 @@ a.btn-secondary:hover {
 }
 
 .crumb-input {
-  font-size: 18px;
+  font-size: var(--fs-h3);
   font-weight: 700;
 }
 
@@ -5159,15 +5322,15 @@ a.btn-secondary:hover {
   position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--sp-2);
   height: 32px;
-  padding: 0 10px;
-  border-radius: 8px;
+  padding: 0 var(--sp-3);
+  border-radius: var(--r-sm);
   border: 1px solid var(--line-strong);
   background: transparent;
   color: var(--muted);
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--fs-mono);
   white-space: nowrap;
   cursor: pointer;
 }
@@ -5179,8 +5342,10 @@ a.btn-secondary:hover {
   inset: -6px 0;
 }
 
-.version-pill-btn:hover {
-  color: var(--text);
+@media (hover: hover) {
+  .version-pill-btn:hover {
+    color: var(--text);
+  }
 }
 
 /* The shown version is the active one: a lime ring (the Save button keeps the only lime fill). */
@@ -5240,14 +5405,16 @@ a.btn-secondary:hover {
   cursor: pointer;
 }
 
-.panel-close:hover {
-  background: var(--line);
-  color: var(--text);
+@media (hover: hover) {
+  .panel-close:hover {
+    background: var(--line);
+    color: var(--text);
+  }
 }
 
 .versions-title {
-  margin: 4px 8px 6px;
-  font-size: 12px;
+  margin: var(--sp-1) var(--sp-2) var(--sp-2);
+  font-size: var(--fs-mono);
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -5264,29 +5431,34 @@ a.btn-secondary:hover {
   display: flex;
   align-items: center;
   min-height: var(--target-min);
-  padding: 4px 8px;
+  padding: var(--sp-1) var(--sp-2);
   border-radius: var(--r-sm);
   color: var(--text);
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--fs-mono);
   text-decoration: none;
 }
 
-.versions-row:hover,
 .versions-row:focus-visible {
   background: var(--line);
 }
+@media (hover: hover) {
+  .versions-row:hover {
+    background: var(--line);
+  }
+}
 
+/* The viewed version: a fill, not a side tab. The panel itself is --raised, so the fill is the
+   next step up. */
 .versions-row[aria-current="page"] {
-  font-weight: 700;
-  box-shadow: inset 3px 0 0 var(--accent-text);
+  background: var(--line);
 }
 
 /* Compact (below 1024 px): the name and the menu share one row; the version pill is a muted
    status line below them. */
 .editor-head.is-compact {
-  gap: 0 8px;
-  padding: 6px 12px 10px;
+  gap: 0 var(--sp-2);
+  padding: var(--sp-2) var(--sp-3) var(--sp-3);
 }
 
 .editor-head.is-compact .crumb {
@@ -5312,7 +5484,7 @@ a.btn-secondary:hover {
   border: 0;
   background: none;
   font-family: inherit;
-  font-size: 13px;
+  font-size: var(--fs-small);
 }
 
 .editor-head-end {
@@ -5320,26 +5492,31 @@ a.btn-secondary:hover {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
+  gap: var(--sp-3);
 }
 
 .editor-head .btn {
   height: 40px;
-  padding: 0 16px;
-  font-size: 14px;
+  padding: 0 var(--sp-4);
+  font-size: var(--fs-ui);
   font-weight: 700;
 }
 
+/* 44px hit area around the 40px buttons (see .btn-sm::before). */
 .editor-head .btn::before {
   content: "";
   position: absolute;
-  inset: -2px 0;
+  top: 50%;
+  right: 0;
+  left: 0;
+  height: var(--target-min);
+  transform: translateY(-50%);
 }
 
 .history-group {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--sp-1);
 }
 
 .editor-head .history-btn {
@@ -5434,13 +5611,13 @@ a.btn-secondary:hover {
   display: flex;
   justify-content: flex-end;
   flex: none;
-  padding: 2px 4px 0;
+  padding: var(--sp-1) var(--sp-1) 0;
 }
 
 /* ---------- Issues panel (bottom of the inspector column) ---------- */
 .inspector-issues-region {
   flex: none;
-  padding: 0 18px var(--sp-3);
+  padding: 0 var(--sp-5) var(--sp-3);
 }
 
 .issues-panel,
@@ -5465,7 +5642,7 @@ a.btn-secondary:hover {
   display: flex;
   align-items: center;
   min-height: var(--target-min);
-  font-size: 14px;
+  font-size: var(--fs-ui);
   font-weight: 600;
   color: var(--muted);
   cursor: pointer;
@@ -5476,7 +5653,7 @@ a.btn-secondary:hover {
   align-items: center;
   min-height: var(--target-min);
   margin-bottom: 0;
-  font-size: 14px;
+  font-size: var(--fs-ui);
   color: var(--muted);
 }
 
@@ -5489,7 +5666,7 @@ a.btn-secondary:hover {
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--sp-1);
 }
 
 .issues-entry {
@@ -5499,23 +5676,25 @@ a.btn-secondary:hover {
   align-items: start;
   width: 100%;
   min-height: var(--target-min);
-  padding: 8px;
+  padding: var(--sp-2);
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--r-sm);
   background: transparent;
   color: var(--text);
   font: inherit;
-  font-size: 14px;
+  font-size: var(--fs-ui);
   text-align: left;
   cursor: pointer;
 }
 
-.issues-entry:hover {
-  background: var(--raised);
+@media (hover: hover) {
+  .issues-entry:hover {
+    background: var(--raised);
+  }
 }
 
 .issues-entry > .icon {
-  margin-top: 2px;
+  margin-top: var(--sp-1);
 }
 
 .issues-entry.is-error > .icon {
@@ -5552,10 +5731,10 @@ a.btn-secondary:hover {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
-  padding: 10px 14px;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-4);
   border-radius: var(--r-md);
-  font-size: 14px;
+  font-size: var(--fs-ui);
   font-weight: 500;
   pointer-events: auto;
 }
@@ -5588,7 +5767,7 @@ a.btn-secondary:hover {
   align-items: center;
   margin-left: auto;
   min-height: var(--target-min);
-  padding: 0 8px;
+  padding: 0 var(--sp-2);
   border: 0;
   background: transparent;
   color: inherit;
@@ -5598,8 +5777,10 @@ a.btn-secondary:hover {
   cursor: pointer;
 }
 
-.canvas-banner-action:hover {
-  color: inherit;
+@media (hover: hover) {
+  .canvas-banner-action:hover {
+    color: inherit;
+  }
 }
 
 /* An action the version can't take yet (its reason is the tooltip): muted, no underline. */
@@ -5637,14 +5818,14 @@ a.btn-secondary:hover {
 .canvas-legend-toggle {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--sp-2);
   min-width: var(--target-min);
   min-height: var(--target-min);
-  padding: 0 12px;
-  border-radius: 10px;
+  padding: 0 var(--sp-3);
+  border-radius: var(--r-md);
   background: var(--line);
   color: var(--text);
-  font-size: 14px;
+  font-size: var(--fs-ui);
   font-weight: 600;
   list-style: none;
   cursor: pointer;
@@ -5667,11 +5848,11 @@ a.btn-secondary:hover {
   /* The key never grows past the canvas: it scrolls instead. */
   max-height: calc(100vh - 220px);
   overflow-y: auto;
-  padding: 10px 52px 10px 14px;
+  padding: var(--sp-3) 52px var(--sp-3) var(--sp-4);
   border-radius: var(--r-md);
   background: var(--raised);
   color: var(--legend-text);
-  font-size: 12px;
+  font-size: var(--fs-mono);
 }
 
 .canvas-legend-body > .panel-close {
@@ -5684,20 +5865,20 @@ a.btn-secondary:hover {
   display: grid;
   grid-template-columns: 96px minmax(0, 1fr);
   align-items: baseline;
-  gap: 14px;
+  gap: var(--sp-4);
 }
 
 .legend-items {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px 14px;
+  gap: var(--sp-2) var(--sp-4);
 }
 
 .legend-label {
   width: 96px;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-micro);
   font-weight: 600;
   color: var(--faint);
   text-transform: uppercase;
@@ -5706,18 +5887,18 @@ a.btn-secondary:hover {
 .legend-item {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--sp-2);
   /* An entry wraps as a whole, never "data" alone on a line. */
   white-space: nowrap;
 }
 
 .legend-item kbd {
-  padding: 0 5px;
-  border-radius: 4px;
+  padding: 0 var(--sp-1);
+  border-radius: var(--r-sm);
   background: var(--legend-kbd-bg);
   color: var(--text);
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--fs-micro);
 }
 
 .legend-stroke {
@@ -5815,7 +5996,7 @@ a.btn-secondary:hover {
 .legend-swatch.is-selected {
   width: 16px;
   height: 12px;
-  border-radius: 4px;
+  border-radius: 2px;
   background: var(--raised);
   box-shadow: 0 0 0 2px var(--accent-text);
 }
@@ -5824,7 +6005,7 @@ a.btn-secondary:hover {
 .legend-swatch.is-running {
   width: 16px;
   height: 12px;
-  border-radius: 4px;
+  border-radius: 2px;
   background: var(--raised);
   border: 2px solid var(--accent-text);
 }
@@ -5832,14 +6013,14 @@ a.btn-secondary:hover {
 .legend-swatch.is-group {
   width: 18px;
   height: 12px;
-  border-radius: 4px;
+  border-radius: 2px;
   border: 1.5px dashed var(--group-line);
 }
 
 .legend-swatch.is-kind {
   width: 10px;
   height: 10px;
-  border-radius: 3px;
+  border-radius: 2px;
 }
 
 .legend-swatch.is-trigger {
@@ -5864,7 +6045,7 @@ a.btn-secondary:hover {
 
 .legend-port {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-micro);
   font-weight: 600;
 }
 
@@ -5883,7 +6064,7 @@ a.btn-secondary:hover {
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  font-size: 11px;
+  font-size: var(--fs-micro);
   font-weight: 800;
 }
 
@@ -5917,15 +6098,15 @@ a.btn-secondary:hover {
   flex: none;
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 16px 18px;
+  gap: var(--sp-2);
+  padding: var(--sp-4) var(--sp-5);
   border-bottom: 1px solid var(--line);
 }
 
 .inspector-eyebrow {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--sp-2);
   color: var(--faint);
 }
 
@@ -5935,7 +6116,7 @@ a.btn-secondary:hover {
 }
 
 .inspector-eyebrow .eyebrow-kind {
-  font-size: 11px;
+  font-size: var(--fs-micro);
   color: inherit;
 }
 
@@ -5971,7 +6152,7 @@ a.btn-secondary:hover {
 
 .inspector-title {
   margin: 0;
-  font-size: 22px;
+  font-size: var(--fs-h2);
   font-weight: 700;
   letter-spacing: -0.01em;
   overflow-wrap: anywhere;
@@ -5988,9 +6169,9 @@ a.btn-secondary:hover {
 .inspector-note {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--sp-2);
   margin: 0;
-  font-size: 14px;
+  font-size: var(--fs-ui);
 }
 
 .inspector-state.tone-amber {
@@ -6008,7 +6189,7 @@ a.btn-secondary:hover {
 
 .inspector-issues {
   margin: 0;
-  padding-left: 18px;
+  padding-left: var(--sp-5);
   font-size: var(--fs-small);
   color: var(--muted);
 }
@@ -6017,7 +6198,7 @@ a.btn-secondary:hover {
 .node-form {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: var(--sp-5);
   min-width: 0;
 }
 
@@ -6026,7 +6207,7 @@ a.btn-secondary:hover {
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
-  padding: 16px 18px;
+  padding: var(--sp-4) var(--sp-5);
 }
 
 .inspector-section {
@@ -6039,7 +6220,7 @@ a.btn-secondary:hover {
 }
 
 .inspector-advanced .disclosure-body {
-  gap: 20px;
+  gap: var(--sp-5);
   padding-top: var(--sp-2);
 }
 
@@ -6055,14 +6236,14 @@ a.btn-secondary:hover {
   flex: none;
   display: flex;
   gap: var(--sp-2);
-  padding: 12px 18px;
+  padding: var(--sp-3) var(--sp-5);
   border-top: 1px solid var(--line);
 }
 
 .inspector-multi,
 .inspector-group {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--fs-ui);
 }
 
 .editor-load-failed {
@@ -6086,7 +6267,7 @@ a.btn-secondary:hover {
 .dialog-busy {
   margin-top: var(--sp-2);
   color: var(--faint);
-  font-size: 14px;
+  font-size: var(--fs-ui);
 }
 
 .dialog-alert {
@@ -6102,7 +6283,7 @@ a.btn-secondary:hover {
 
 .used-by {
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--fs-mono);
   color: var(--muted);
   white-space: nowrap;
 }
@@ -6116,7 +6297,7 @@ a.btn-secondary:hover {
 .run-pin-line {
   margin: 0;
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--fs-mono);
   color: var(--muted);
 }
 
@@ -6131,7 +6312,7 @@ a.btn-secondary:hover {
   display: inline-flex;
   align-items: center;
   min-height: var(--target-min);
-  font-size: 14px;
+  font-size: var(--fs-ui);
 }
 
 .run-overrides {
@@ -6144,7 +6325,7 @@ a.btn-secondary:hover {
 
 .run-overrides-title {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--fs-ui);
   font-weight: 600;
 }
 
@@ -6154,7 +6335,7 @@ a.btn-secondary:hover {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
+  gap: var(--sp-2);
   margin: 0;
   font-size: var(--fs-small);
 }
@@ -6180,7 +6361,7 @@ a.btn-secondary:hover {
 
 .overrides-node-title {
   margin: 0;
-  font-size: 12px;
+  font-size: var(--fs-mono);
   font-weight: 600;
   letter-spacing: 0.02em;
   text-transform: uppercase;
@@ -6190,7 +6371,7 @@ a.btn-secondary:hover {
 .override-row {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--sp-2);
 }
 
 .override-row-head {
@@ -6203,7 +6384,7 @@ a.btn-secondary:hover {
 .override-toggle {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--sp-2);
   min-height: var(--target-min);
   padding: 0;
   border: 0;
@@ -6255,9 +6436,9 @@ a.btn-secondary:hover {
 .live-dot {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--sp-2);
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--fs-micro);
   font-weight: 600;
   color: var(--muted);
 }
@@ -6278,27 +6459,23 @@ a.btn-secondary:hover {
 .nav-count {
   margin-left: auto;
   font-family: var(--font-mono);
-  font-size: 11px;
-  padding: 1px 7px;
+  font-size: var(--fs-micro);
+  padding: 1px var(--sp-2);
   border-radius: var(--r-pill);
   background: var(--accent);
   color: var(--on-accent);
-}
-a.nav-item.is-active .nav-count {
-  background: var(--on-accent);
-  color: var(--accent-text);
 }
 
 .jobs-page {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 28px 32px 48px;
+  gap: var(--sp-3);
+  padding: 28px var(--sp-8) var(--sp-12);
 }
 
 .jobs-head {
   /* One header row (.head-row): the title block, then the queue actions on the right. */
-  margin-bottom: 4px;
+  margin-bottom: var(--sp-1);
 }
 /* Narrow: the queue buttons move under the title rather than squeezing it ("Job…"). */
 .jobs-head.head-row {
@@ -6317,9 +6494,9 @@ a.nav-item.is-active .nav-count {
   display: grid;
   /* The lane's name takes at most half the width, so the file always has room. */
   grid-template-columns: fit-content(50%) minmax(0, 1fr);
-  column-gap: 12px;
+  column-gap: var(--sp-3);
   row-gap: 1px;
-  margin-top: 6px;
+  margin-top: var(--sp-2);
 }
 .lane {
   display: contents;
@@ -6343,10 +6520,10 @@ a.nav-item.is-active .nav-count {
 .jobs-title-row {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: var(--sp-4);
 }
 .jobs-head h1 {
-  font-size: 32px;
+  font-size: var(--fs-title);
   font-weight: 700;
   letter-spacing: -0.02em;
 }
@@ -6354,13 +6531,13 @@ a.nav-item.is-active .nav-count {
 .queue {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--sp-3);
 }
 .queue-bar {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 12px;
+  gap: var(--sp-3);
   font-size: var(--fs-small);
   color: var(--muted);
 }
@@ -6379,32 +6556,31 @@ a.nav-item.is-active .nav-count {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: var(--sp-2);
 }
 .filter-chip {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--sp-2);
   height: var(--target-min);
-  padding: 0 12px;
+  padding: 0 var(--sp-3);
   border-radius: var(--r-pill);
   border: 1.5px solid var(--line-strong);
   background: transparent;
   color: var(--text);
   font: inherit;
-  font-size: 14px;
+  font-size: var(--fs-ui);
   font-weight: 500;
   cursor: pointer;
 }
 .filter-chip .mono {
-  font-size: 11px;
+  font-size: var(--fs-micro);
   opacity: 0.8;
 }
 .filter-chip[aria-pressed="true"] {
   background: var(--accent);
   border-color: var(--accent);
   color: var(--on-accent);
-  font-weight: 700;
 }
 
 .filter-chip:focus-visible,
@@ -6429,12 +6605,12 @@ a.nav-item.is-active .nav-count {
 .poster-row {
   width: 34px;
   height: 51px;
-  border-radius: 5px;
+  border-radius: var(--r-sm);
 }
 .poster-page {
   width: 104px;
   height: 156px;
-  border-radius: 10px;
+  border-radius: var(--r-md);
 }
 @media (max-width: 639px) {
   .poster-page {
@@ -6445,7 +6621,7 @@ a.nav-item.is-active .nav-count {
 .poster-card {
   width: 100%;
   aspect-ratio: 2 / 3;
-  border-radius: 8px;
+  border-radius: var(--r-sm);
 }
 .poster-empty {
   display: flex;
@@ -6472,7 +6648,7 @@ a.nav-item.is-active .nav-count {
   min-width: 1010px;
   table-layout: fixed;
   border-collapse: collapse;
-  font-size: 14px;
+  font-size: var(--fs-ui);
 }
 .job-table.has-actions {
   min-width: 1160px;
@@ -6482,11 +6658,11 @@ a.nav-item.is-active .nav-count {
   width: 110px;
 }
 .job-col-workflow {
-  width: 170px;
+  width: 140px;
 }
-/* Fits "Nothing to do" and "Would keep original" on one line; longer states wrap. */
+/* Fits "Would replace · −74%" and "Would keep original" on one line; longer states wrap. */
 .job-col-status {
-  width: 180px;
+  width: 210px;
 }
 .job-col-result {
   width: 210px;
@@ -6499,10 +6675,10 @@ a.nav-item.is-active .nav-count {
 }
 /* The stat tiles' label style. */
 .job-table th {
-  padding: 10px 12px;
+  padding: var(--sp-3) var(--sp-3);
   text-align: left;
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--fs-micro);
   font-weight: 600;
   text-transform: uppercase;
   color: var(--faint);
@@ -6510,7 +6686,7 @@ a.nav-item.is-active .nav-count {
   border-bottom: 1px solid var(--line);
 }
 .job-table .row-link td {
-  padding: 8px 12px;
+  padding: var(--sp-2) var(--sp-3);
   vertical-align: middle;
 }
 .job-table .row-link + .row-link td {
@@ -6518,11 +6694,11 @@ a.nav-item.is-active .nav-count {
 }
 .job-table th:first-child,
 .job-table td:first-child {
-  padding-left: 16px;
+  padding-left: var(--sp-4);
 }
 .job-table th:last-child,
 .job-table td:last-child {
-  padding-right: 16px;
+  padding-right: var(--sp-4);
 }
 .job-table .job-when {
   text-align: right;
@@ -6538,7 +6714,7 @@ a.nav-item.is-active .nav-count {
    When rules, so they win on order as well as weight. */
 @container job-list (max-width: 1009px) {
   .job-table:not(.has-actions) {
-    min-width: 730px;
+    min-width: 760px;
   }
   .job-table:not(.has-actions) .job-optional {
     display: none;
@@ -6549,7 +6725,7 @@ a.nav-item.is-active .nav-count {
    the full sidebar. The Title keeps 200px. */
 @container job-list (max-width: 1159px) {
   .job-table.has-actions {
-    min-width: 710px;
+    min-width: 720px;
   }
   .job-table.has-actions .job-optional,
   .job-table.has-actions .job-when,
@@ -6557,7 +6733,7 @@ a.nav-item.is-active .nav-count {
     display: none;
   }
   .job-table.has-actions .job-col-result {
-    width: 180px;
+    width: 160px;
   }
 }
 /* Library and workflow: one line, the whole text on hover. */
@@ -6578,20 +6754,22 @@ a.nav-item.is-active .nav-count {
   white-space: nowrap;
   border-radius: var(--r-sm);
 }
-.job-name:hover {
-  color: var(--text);
+@media (hover: hover) {
+  .job-name:hover {
+    color: var(--text);
+  }
 }
 .job-title {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--sp-3);
   min-width: 0;
 }
 .job-title-main {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--sp-1);
 }
 /* A long title keeps one line and never widens the table. */
 .job-title-text {
@@ -6636,14 +6814,14 @@ a.nav-item.is-active .nav-count {
 .job-chips {
   display: inline-flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: var(--sp-2);
 }
 .job-chip {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--sp-2);
   height: 28px;
-  padding: 0 10px;
+  padding: 0 var(--sp-3);
   border-radius: var(--r-pill);
   border: 1.5px solid transparent;
   font-size: var(--fs-small);
@@ -6737,23 +6915,27 @@ a.nav-item.is-active .nav-count {
 .job-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 8px;
+  gap: var(--sp-2);
 }
 
 /* The Jobs table's Result cell: the bar under its line. */
 .job-outcome .progress {
-  margin-top: 6px;
+  margin-top: var(--sp-2);
 }
 /* Status: a long state ("Would replace if it saves ≥ 25%") wraps inside its column instead of
    running into Result. */
 .job-table .job-chips {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sp-1);
   max-width: 100%;
 }
 .job-table .job-chip {
   height: auto;
   min-height: 28px;
   max-width: 100%;
-  padding-block: 4px;
+  gap: var(--sp-1);
+  padding: var(--sp-1) var(--sp-2);
   line-height: 1.25;
   white-space: normal;
   overflow-wrap: anywhere;
@@ -6761,24 +6943,35 @@ a.nav-item.is-active .nav-count {
 .job-table .job-chip > svg {
   flex: none;
 }
+/* A dry run's "Dry run" / "Test encode" mark: in the table a small mono line under the state
+   chip (see .job-table .job-chips), not a second chip, so a dry-run row is no taller than any
+   other. */
+.job-table .badge-dry {
+  height: auto;
+  padding: 0 0 0 var(--sp-1);
+  gap: var(--sp-1);
+  border: 0;
+  background: none;
+  text-transform: uppercase;
+}
 /* Two buttons fit the 150 px column at the compact size; they wrap rather than overlap. */
 .job-table .job-actions {
   flex-wrap: wrap;
-  gap: 6px;
+  gap: var(--sp-2);
 }
 .job-table .job-actions .btn-sm {
   height: 30px;
-  padding: 0 10px;
-  font-size: 13px;
+  padding: 0 var(--sp-3);
+  font-size: var(--fs-small);
 }
 
 .jobs-empty {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px 12px;
+  gap: var(--sp-2) var(--sp-3);
   color: var(--faint);
-  font-size: 14px;
+  font-size: var(--fs-ui);
 }
 .jobs-empty p {
   margin: 0;
@@ -6790,9 +6983,9 @@ a.nav-item.is-active .nav-count {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 12px;
+  gap: var(--sp-3);
   min-height: 40vh;
-  padding: 24px;
+  padding: var(--sp-6);
   color: var(--muted);
   font-size: var(--fs-small);
 }
@@ -6806,9 +6999,9 @@ a.nav-item.is-active .nav-count {
 .loading-inline {
   flex-direction: row;
   justify-content: flex-start;
-  gap: 8px;
+  gap: var(--sp-2);
   min-height: 0;
-  padding: 8px 12px;
+  padding: var(--sp-2) var(--sp-3);
 }
 .loading-inline .loading-spinner {
   width: 14px;
@@ -6835,20 +7028,20 @@ a.nav-item.is-active .nav-count {
   height: var(--target-min);
 }
 .jobs-page.is-phone {
-  padding: 16px 16px 24px;
-  gap: 12px;
+  padding: var(--sp-4) var(--sp-4) var(--sp-6);
+  gap: var(--sp-3);
 }
 .is-phone .jobs-head {
-  gap: 10px;
+  gap: var(--sp-3);
 }
 .is-phone .jobs-title {
   flex: 1;
 }
 .is-phone .jobs-title-row {
-  gap: 10px;
+  gap: var(--sp-3);
 }
 .is-phone .head-actions {
-  padding-top: 2px;
+  padding-top: var(--sp-1);
 }
 /* Two or more actions (Retry failed, Cancel all) do not fit beside the title on a phone: they go
    to their own row under it, so the lanes line keeps the full width. */
@@ -6864,13 +7057,10 @@ a.nav-item.is-active .nav-count {
   padding-top: 0;
 }
 .is-phone .jobs-head h1 {
-  font-size: 26px;
+  font-size: var(--fs-h1);
 }
-/* The phone's filters are one scrollable row of chips, not a wrapped block. */
-.is-phone .filter-chips {
-  flex-wrap: nowrap;
-  overflow-x: auto;
-}
+/* The phone's filters wrap onto as many rows as they need: a sideways-scrolling row hid the last
+   chips with nothing to say they were there. */
 .is-phone .filter-chip {
   flex: none;
 }
@@ -6891,7 +7081,7 @@ a.nav-item.is-active .nav-count {
 }
 .week-bars text {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-micro);
   fill: var(--faint);
 }
 .week-bars-day.is-hover rect:not(.week-bars-hit) {
@@ -6907,9 +7097,9 @@ a.nav-item.is-active .nav-count {
   z-index: 20;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--sp-1);
   min-width: max-content;
-  padding: 6px 9px;
+  padding: var(--sp-2) var(--sp-2);
   border: 1px solid var(--line-strong);
   border-radius: var(--r-md);
   background: var(--surface);
@@ -6930,7 +7120,7 @@ a.nav-item.is-active .nav-count {
   display: inline-block;
   width: 9px;
   height: 9px;
-  margin-right: 5px;
+  margin-right: var(--sp-1);
   border-radius: 2px;
 }
 .chart-tip-total {
@@ -6965,14 +7155,14 @@ a.nav-item.is-active .nav-count {
 .load-strip-axis {
   display: flex;
   justify-content: space-between;
-  margin-top: 2px;
+  margin-top: var(--sp-1);
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-micro);
   color: var(--faint);
 }
 .stat-tiles {
   display: flex;
-  gap: 8px;
+  gap: var(--sp-2);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -6980,8 +7170,8 @@ a.nav-item.is-active .nav-count {
 .stat-tile {
   flex: 1;
   min-width: 0;
-  padding: 12px 14px;
-  border-radius: 14px;
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--r-md);
   background: var(--raised);
   display: flex;
   flex-direction: column;
@@ -7000,7 +7190,7 @@ a.nav-item.is-active .nav-count {
   align-items: flex-start;
   min-width: 0;
   min-height: var(--target-min);
-  padding: 12px 14px;
+  padding: var(--sp-3) var(--sp-4);
   border: 0;
   border-radius: inherit;
   background: transparent;
@@ -7016,11 +7206,8 @@ a.nav-item.is-active .nav-count {
     0 0 0 2px var(--bg),
     0 0 0 4px currentColor;
 }
-.stat-tile:has(> .stat-tile-button[aria-pressed="true"]) .stat-label {
-  font-weight: 700;
-}
 .stat-label .icon {
-  margin-right: 4px;
+  margin-right: var(--sp-1);
   vertical-align: -2px;
 }
 .stat-tile-button:focus-visible {
@@ -7029,7 +7216,7 @@ a.nav-item.is-active .nav-count {
 }
 .stat-label {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-micro);
   font-weight: 600;
   text-transform: uppercase;
   color: var(--faint);
@@ -7039,7 +7226,7 @@ a.nav-item.is-active .nav-count {
   color: var(--muted);
 }
 .stat-value {
-  font-size: 24px;
+  font-size: var(--fs-h2);
   font-weight: 700;
   /* "2 MB" never breaks across two lines on a phone. */
   white-space: nowrap;
@@ -7052,10 +7239,19 @@ a.nav-item.is-active .nav-count {
 .stat-tile.is-zero .stat-value {
   color: var(--faint);
 }
+/* One figure leads: "Needs attention" (the count that asks for something to be done) is twice as
+   wide and has the larger figure, so the row is not four equal blocks. */
+.stat-tile.is-lead {
+  flex: 2;
+}
+.stat-tile.is-lead .stat-value {
+  font-size: var(--fs-h1);
+  line-height: 1.2;
+}
 /* "Saved all time" sits at the end of the Today row, apart from its list. */
 .stat-row {
   display: flex;
-  gap: 8px;
+  gap: var(--sp-2);
 }
 .stat-row > .stat-tiles {
   flex: 4;
@@ -7067,6 +7263,20 @@ a.nav-item.is-active .nav-count {
 .is-phone .stat-row {
   flex-wrap: wrap;
 }
+/* Phone: the lead tile has its own row and the other three share the next, so the longest micro
+   label (NEEDS ATTENTION) has the full width; 12px side padding keeps SAVED TODAY inside. A tile
+   that filters keeps no padding of its own, so its button (which carries the padding) is the
+   whole tile and a tap anywhere on it filters. */
+.is-phone .stat-row > .stat-tiles {
+  flex-wrap: wrap;
+}
+.is-phone .stat-tile:not(.is-button),
+.is-phone .stat-tile-button {
+  padding-inline: var(--sp-3);
+}
+.is-phone .stat-tile.is-lead {
+  flex-basis: 100%;
+}
 .is-phone .stat-row > .stat-tiles,
 .is-phone .stat-row > .stat-tile.is-alltime {
   flex: 1 1 100%;
@@ -7076,7 +7286,7 @@ a.nav-item.is-active .nav-count {
   container: jobs-overview / inline-size;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--sp-3);
 }
 /* Last 7 days and the encoder's last hour: one row of four half-height cards (2 × 2 on a phone),
    title and total on one line, the chart under them. */
@@ -7087,19 +7297,22 @@ a.nav-item.is-active .nav-count {
 .history-cards {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px;
+  gap: var(--sp-2);
 }
 .is-phone .history-cards {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
+/* The four cards share a baseline: the header line (title, total and any legend) at the top, the
+   chart and its axis always the last line, pushed to the bottom of the stretched card. */
 .history-card {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  column-gap: 8px;
+  align-content: space-between;
+  column-gap: var(--sp-2);
   min-width: 0;
-  padding: 8px 12px;
-  border-radius: 14px;
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-md);
   background: var(--raised);
 }
 .history-card-title {
@@ -7108,7 +7321,7 @@ a.nav-item.is-active .nav-count {
 }
 .history-card-total {
   margin: 0;
-  font-size: 18px;
+  font-size: var(--fs-h3);
   font-weight: 700;
 }
 .history-card-total small {
@@ -7120,8 +7333,9 @@ a.nav-item.is-active .nav-count {
   color: var(--faint);
 }
 .history-card .week-bars {
+  order: 2;
   flex: 1 1 100%;
-  margin-top: 6px;
+  margin-top: var(--sp-2);
 }
 .history-card .week-bars-svg,
 .history-card .load-strip-svg {
@@ -7132,29 +7346,31 @@ a.nav-item.is-active .nav-count {
 .week-days {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  margin-top: 2px;
+  margin-top: var(--sp-1);
   text-align: center;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-micro);
   color: var(--faint);
 }
 .history-legend {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 3px;
+  gap: var(--sp-3);
+  margin-top: var(--sp-1);
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-micro);
   color: var(--muted);
 }
+/* "Files done" puts its legend on the header line, at the right, not under its chart. */
 .history-card > .history-legend {
-  flex: 1 1 100%;
+  order: 1;
+  margin-left: auto;
 }
 .history-legend i {
   display: inline-block;
   width: 7px;
   height: 7px;
-  margin-right: 5px;
+  margin-right: var(--sp-1);
   border-radius: 2px;
 }
 .encoder-card .load-strip-axis {
@@ -7164,27 +7380,28 @@ a.nav-item.is-active .nav-count {
   margin: 0;
 }
 .encoder-gpu {
+  order: 1;
   flex: 1 1 100%;
-  margin-top: 3px;
-  font-size: 11px;
+  margin-top: var(--sp-1);
+  font-size: var(--fs-micro);
   color: var(--muted);
 }
 /* Phone: smaller type; no legends or day names, the GPU's name under the title. */
 .is-phone .history-card {
-  padding: 10px 10px 8px;
+  padding: var(--sp-3) var(--sp-3) var(--sp-2);
 }
 .is-phone .history-card-title {
   flex: 1 1 100%;
   overflow: hidden;
-  font-size: 11px;
+  font-size: var(--fs-micro);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .is-phone .history-card-total {
-  font-size: 16px;
+  font-size: var(--fs-h3);
 }
 .is-phone .history-card-total small {
-  font-size: 11px;
+  font-size: var(--fs-micro);
 }
 .is-phone .history-card .week-bars-svg,
 .is-phone .history-card .load-strip-svg {
@@ -7199,7 +7416,6 @@ a.nav-item.is-active .nav-count {
   justify-content: flex-start;
 }
 .is-phone .encoder-gpu {
-  order: 2;
   margin: 0;
 }
 /* Too narrow for one row: "Saved all time" under the tiles, the cards 2 × 2. After the base
@@ -7216,35 +7432,39 @@ a.nav-item.is-active .nav-count {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
-/* Too narrow for four tiles in a row: 2 × 2, so no label is cut. */
+/* Too narrow for four tiles in a row: the lead on its own row, the other three under it, so no
+   label is cut. */
 @container jobs-overview (max-width: 559px) {
   .stat-row > .stat-tiles {
     flex-wrap: wrap;
   }
   .stat-row > .stat-tiles > .stat-tile {
-    flex: 1 1 calc(50% - 4px);
+    flex: 1 1 0;
+  }
+  .stat-row > .stat-tiles > .stat-tile.is-lead {
+    flex-basis: 100%;
   }
 }
 .phone-section {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--sp-3);
 }
 .phone-section .section-h2 {
-  margin-top: 6px;
+  margin-top: var(--sp-2);
 }
 .phone-card {
-  padding: 14px;
-  border-radius: 14px;
+  padding: var(--sp-4);
+  border-radius: var(--r-md);
   background: var(--raised);
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--sp-3);
 }
 .phone-card-head {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--sp-2);
 }
 .phone-card-head .job-name {
   flex: 1;
@@ -7252,10 +7472,10 @@ a.nav-item.is-active .nav-count {
 }
 /* The episode line sits close under the title. */
 .phone-card .job-title-sub {
-  margin-top: -6px;
+  margin-top: calc(-1 * var(--sp-2));
 }
 .phone-card-head .mono {
-  font-size: 12px;
+  font-size: var(--fs-mono);
   font-weight: 600;
 }
 .phone-card .progress {
@@ -7268,27 +7488,29 @@ a.nav-item.is-active .nav-count {
 }
 .phone-card-actions {
   display: flex;
-  gap: 8px;
+  gap: var(--sp-2);
 }
 .phone-finished {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--sp-3);
   min-height: 56px;
-  padding: 0 14px;
-  border-radius: 14px;
+  padding: 0 var(--sp-4);
+  border-radius: var(--r-md);
   background: var(--surface);
   color: var(--text);
   text-decoration: none;
 }
-.phone-finished:hover {
-  color: var(--text);
+@media (hover: hover) {
+  .phone-finished:hover {
+    color: var(--text);
+  }
 }
 .phone-finished-icon {
   flex: none;
   width: 32px;
   height: 32px;
-  border-radius: 10px;
+  border-radius: var(--r-md);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -7345,21 +7567,21 @@ a.nav-item.is-active .nav-count {
   width: 100%;
   min-width: 720px;
   border-collapse: collapse;
-  font-size: 14px;
+  font-size: var(--fs-ui);
 }
 
 .lib-table th {
-  padding: 14px 12px;
+  padding: var(--sp-4) var(--sp-3);
   text-align: left;
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--fs-micro);
   font-weight: 600;
   color: var(--faint);
   text-transform: uppercase;
 }
 
 .lib-table .lib-cell {
-  padding: 12px;
+  padding: var(--sp-3);
   border-top: 1px solid var(--line);
   color: var(--muted);
   vertical-align: middle;
@@ -7380,9 +7602,9 @@ a.nav-item.is-active .nav-count {
 
 /* The count beside the H1 ("Libraries 1"), like a section heading's count. */
 .lib-h1-count {
-  margin-left: 4px;
+  margin-left: var(--sp-1);
   font-family: var(--font-mono);
-  font-size: 15px;
+  font-size: var(--fs-body);
   font-weight: 600;
   letter-spacing: 0;
   color: var(--muted);
@@ -7398,20 +7620,20 @@ a.nav-item.is-active .nav-count {
   text-overflow: ellipsis;
   direction: rtl;
   text-align: left;
-  font-size: 13px;
+  font-size: var(--fs-small);
   color: var(--muted);
 }
 .lib-note-path {
   display: inline-block;
   vertical-align: bottom;
   max-width: calc(100% - 7em);
-  font-size: 12px;
+  font-size: var(--fs-mono);
 }
 /* A setting that differs from the default, under the path. */
 .lib-note {
   display: block;
-  margin-top: 2px;
-  font-size: 12px;
+  margin-top: var(--sp-1);
+  font-size: var(--fs-mono);
   color: var(--muted);
 }
 
@@ -7420,23 +7642,23 @@ a.nav-item.is-active .nav-count {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: var(--sp-2);
   color: var(--text);
 }
 .lib-feed .activation-pill {
   min-height: 24px;
-  padding: 0 9px;
-  font-size: 11px;
+  padding: 0 var(--sp-2);
+  font-size: var(--fs-micro);
 }
 
 .lib-table th:first-child,
 .lib-table .lib-cell:first-child {
-  padding-left: 20px;
+  padding-left: var(--sp-5);
 }
 
 .lib-table th:last-child,
 .lib-table .lib-cell:last-child {
-  padding-right: 20px;
+  padding-right: var(--sp-5);
   text-align: right;
 }
 
@@ -7448,7 +7670,7 @@ a.nav-item.is-active .nav-count {
 
 /* The empty row's one cell is also the last one: keep it left-aligned. */
 .lib-table .lib-cell.lib-empty {
-  padding-left: 20px;
+  padding-left: var(--sp-5);
   text-align: left;
   color: var(--faint);
 }
@@ -7466,7 +7688,7 @@ a.nav-item.is-active .nav-count {
 .lib-notices-icon {
   display: flex;
   flex: none;
-  margin-top: 2px;
+  margin-top: var(--sp-1);
 }
 
 .lib-notices-body {
@@ -7475,8 +7697,8 @@ a.nav-item.is-active .nav-count {
 }
 
 .lib-notices-title {
-  margin: 0 0 4px;
-  font-size: 14px;
+  margin: 0 0 var(--sp-1);
+  font-size: var(--fs-ui);
   font-weight: 700;
 }
 
@@ -7487,7 +7709,7 @@ a.nav-item.is-active .nav-count {
 }
 
 .lib-notices-body p {
-  margin: 6px 0 0;
+  margin: var(--sp-2) 0 0;
 }
 
 .lib-notices .btn {
@@ -7514,8 +7736,10 @@ a.nav-item.is-active .nav-count {
   cursor: pointer;
 }
 
-.lib-activate:hover {
-  color: var(--accent-hover);
+@media (hover: hover) {
+  .lib-activate:hover {
+    color: var(--accent-hover);
+  }
 }
 
 .lib-dry-list {
@@ -7533,7 +7757,7 @@ a.nav-item.is-active .nav-count {
 }
 
 .lib-actions .row-menu {
-  margin-left: 8px;
+  margin-left: var(--sp-2);
   vertical-align: middle;
 }
 
@@ -7552,16 +7776,16 @@ a.nav-item.is-active .nav-count {
 .lib-recycle {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--sp-2);
   margin: 0;
   padding: 0;
   border: 0;
 }
 
 .lib-recycle legend {
-  margin-bottom: 4px;
+  margin-bottom: var(--sp-1);
   padding: 0;
-  font-size: 14px;
+  font-size: var(--fs-ui);
   font-weight: 500;
 }
 
@@ -7569,7 +7793,7 @@ a.nav-item.is-active .nav-count {
 .lib-check {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--sp-3);
   min-height: 44px;
   cursor: pointer;
 }
@@ -7604,7 +7828,7 @@ a.nav-item.is-active .nav-count {
 }
 
 .required-mark {
-  margin-left: 3px;
+  margin-left: var(--sp-1);
   color: var(--muted);
   font-weight: 700;
 }
@@ -7623,7 +7847,7 @@ a.nav-item.is-active .nav-count {
 }
 
 .lib-switch-label {
-  font-size: 14px;
+  font-size: var(--fs-ui);
   font-weight: 500;
 }
 
@@ -7676,19 +7900,19 @@ a.nav-item.is-active .nav-count {
 .run-files table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 14px;
+  font-size: var(--fs-ui);
 }
 .run-files th {
-  padding: 14px 12px;
+  padding: var(--sp-4) var(--sp-3);
   text-align: left;
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--fs-micro);
   font-weight: 600;
   text-transform: uppercase;
   color: var(--faint);
 }
 .run-cell {
-  padding: 12px;
+  padding: var(--sp-3);
   border-top: 1px solid var(--line);
   color: var(--muted);
   vertical-align: middle;
@@ -7703,33 +7927,33 @@ a.nav-item.is-active .nav-count {
 /* Why a file ended as it did, under its name (no Reason column). */
 .run-file-note {
   display: block;
-  margin-top: 2px;
+  margin-top: var(--sp-1);
   font-size: var(--fs-small);
   color: var(--muted);
 }
 .run-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--sp-3);
 }
 .run-cards {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--sp-2);
 }
 .run-cell.run-size {
   color: var(--muted);
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--fs-mono);
   white-space: nowrap;
 }
 
 @media (max-width: 639px) {
   .run-page {
-    padding: 20px 16px 32px;
+    padding: var(--sp-5) var(--sp-4) var(--sp-8);
   }
   .run-page .page-head h1 {
-    font-size: 26px;
+    font-size: var(--fs-h1);
   }
   /* Phone: the saved tile on its own row, the outcomes side by side under it. */
   .run-stats {
@@ -7747,27 +7971,27 @@ a.nav-item.is-active .nav-count {
 .plan {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: var(--sp-5);
 }
 .plan-hero {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 20px;
+  gap: var(--sp-5);
 }
 /* A plain line: the "Dry run" chip in the header is the one marker; this says what it means. */
 .plan-eyebrow {
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--fs-mono);
   font-weight: 600;
 }
 .plan-tiles {
   display: flex;
   align-items: center;
-  gap: 18px;
-  padding: 16px 20px;
-  border-radius: 16px;
+  gap: var(--sp-5);
+  padding: var(--sp-4) var(--sp-5);
+  border-radius: var(--r-lg);
   /* The dry-run tone (amber, dashed): a plan that changed nothing is not the lime of a success. */
   background: var(--st-dry-bg);
   color: var(--st-dry);
@@ -7778,12 +8002,12 @@ a.nav-item.is-active .nav-count {
   flex-direction: column;
 }
 .plan-tile-label {
-  font-size: 11px;
+  font-size: var(--fs-micro);
   font-weight: 600;
   text-transform: uppercase;
 }
 .plan-tile-value {
-  font-size: 22px;
+  font-size: var(--fs-h2);
   font-weight: 700;
 }
 .plan-tile-now {
@@ -7796,28 +8020,28 @@ a.nav-item.is-active .nav-count {
   opacity: 0.4;
 }
 .plan-percent {
-  font-size: 30px;
+  font-size: var(--fs-title);
   font-weight: 800;
   letter-spacing: -0.03em;
 }
 .plan-card {
-  border-radius: 16px;
+  border-radius: var(--r-lg);
   background: var(--surface);
   border: 1px solid var(--line);
   overflow: hidden;
 }
 .plan-card h2 {
-  font-size: 20px;
+  font-size: var(--fs-h2);
   font-weight: 700;
 }
 .plan-card-head {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: 12px;
-  padding: 16px 20px;
+  gap: var(--sp-3);
+  padding: var(--sp-4) var(--sp-5);
   border-bottom: 1px solid var(--line);
-  font-size: 14px;
+  font-size: var(--fs-ui);
 }
 .plan-table-wrap {
   overflow-x: auto;
@@ -7828,7 +8052,7 @@ a.nav-item.is-active .nav-count {
   /* Audio and Subtitles share one colgroup, so their columns line up down the page. */
   table-layout: fixed;
   border-collapse: collapse;
-  font-size: 15px;
+  font-size: var(--fs-body);
 }
 .plan-col-lang {
   width: 26%;
@@ -7847,9 +8071,9 @@ a.nav-item.is-active .nav-count {
 }
 .plan-table thead th {
   text-align: left;
-  padding: 10px 12px;
+  padding: var(--sp-3) var(--sp-3);
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--fs-micro);
   font-weight: 600;
   color: var(--faint);
   text-transform: uppercase;
@@ -7862,42 +8086,42 @@ a.nav-item.is-active .nav-count {
 }
 .plan-cell,
 .plan-lang {
-  padding: 12px;
+  padding: var(--sp-3);
   vertical-align: top;
 }
 .plan-lang {
-  padding-left: 20px;
+  padding-left: var(--sp-5);
   text-align: left;
   font-weight: 700;
   background: var(--surface);
 }
 .plan-table thead th:first-child {
-  padding-left: 20px;
+  padding-left: var(--sp-5);
 }
 .plan-lang-code {
-  font-size: 12px;
+  font-size: var(--fs-mono);
   font-weight: 400;
   color: var(--faint);
 }
 .plan-original {
-  margin-left: 4px;
-  padding: 2px 7px;
-  border-radius: 6px;
+  margin-left: var(--sp-1);
+  padding: var(--sp-1) var(--sp-2);
+  border-radius: var(--r-sm);
   background: var(--data-chip-bg);
   color: var(--kind-data);
-  font-size: 11px;
+  font-size: var(--fs-micro);
   font-weight: 600;
   text-transform: uppercase;
 }
 .plan-track {
-  font-size: 13px;
+  font-size: var(--fs-small);
 }
 .plan-default {
   display: inline-flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
-  font-size: 14px;
+  gap: var(--sp-2);
+  font-size: var(--fs-ui);
 }
 .plan-default-now {
   color: var(--accent-text);
@@ -7907,17 +8131,17 @@ a.nav-item.is-active .nav-count {
 }
 .plan-default-why {
   flex-basis: 100%;
-  font-size: 12px;
+  font-size: var(--fs-mono);
   color: var(--muted);
 }
 .plan-result {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--sp-2);
   height: 28px;
-  padding: 0 10px;
+  padding: 0 var(--sp-3);
   border-radius: var(--r-pill);
-  font-size: 13px;
+  font-size: var(--fs-small);
   font-weight: 700;
 }
 .plan-result-keep,
@@ -7935,9 +8159,9 @@ a.nav-item.is-active .nav-count {
 .plan-drops summary {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--sp-3);
   min-height: var(--target-min);
-  padding: 0 20px;
+  padding: 0 var(--sp-5);
   cursor: pointer;
   list-style: none;
   color: var(--danger-text);
@@ -7971,8 +8195,8 @@ a.nav-item.is-active .nav-count {
 }
 .plan-sidecar-note {
   display: block;
-  margin-top: 2px;
-  font-size: 12px;
+  margin-top: var(--sp-1);
+  font-size: var(--fs-mono);
   font-weight: 400;
   color: var(--muted);
 }
@@ -8001,37 +8225,37 @@ a.nav-item.is-active .nav-count {
   .plan-table .plan-row {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
-    column-gap: 12px;
+    column-gap: var(--sp-3);
     align-items: center;
-    padding: 12px 16px;
+    padding: var(--sp-3) var(--sp-4);
   }
   .plan-row .plan-lang,
   .plan-row .plan-lang-repeat {
     display: block;
     grid-column: 1 / -1;
-    padding: 0 0 4px;
+    padding: 0 0 var(--sp-1);
     background: transparent;
     font-weight: 700;
   }
   .plan-row .plan-cell {
-    padding: 4px 0;
+    padding: var(--sp-1) 0;
   }
   .plan-row .plan-cell-default {
     grid-column: 1 / -1;
   }
   .plan-row .plan-cell-default::before {
     content: attr(data-label) " ";
-    margin-right: 6px;
+    margin-right: var(--sp-2);
     color: var(--faint);
     font-family: var(--font-mono);
-    font-size: 11px;
+    font-size: var(--fs-micro);
     font-weight: 600;
     text-transform: uppercase;
   }
   .plan-sidecars .plan-row {
     display: flex;
     flex-wrap: wrap;
-    gap: 4px 12px;
+    gap: var(--sp-1) var(--sp-3);
   }
   .plan-sidecars .plan-row .plan-lang {
     flex-basis: 100%;
@@ -8040,7 +8264,7 @@ a.nav-item.is-active .nav-count {
     content: attr(data-label) " ";
     color: var(--faint);
     font-family: var(--font-mono);
-    font-size: 11px;
+    font-size: var(--fs-micro);
     font-weight: 600;
     text-transform: uppercase;
   }
@@ -8058,45 +8282,43 @@ a.nav-item.is-active .nav-count {
 .plan-drop-list {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  padding: 0 20px 16px 44px;
+  gap: var(--sp-2);
+  padding: 0 var(--sp-5) var(--sp-4) 44px;
 }
 .plan-drop-chip {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--sp-2);
   height: 28px;
-  padding: 0 10px;
+  padding: 0 var(--sp-3);
   border-radius: var(--r-sm);
   background: var(--raised);
-  font-size: 13px;
+  font-size: var(--fs-small);
   color: var(--muted);
 }
 .plan-other {
-  padding: 16px 20px;
+  padding: var(--sp-4) var(--sp-5);
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--sp-3);
 }
+/* One line per stream and the container, as plain text in the card (no boxes inside it). */
 .plan-other-list {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
-  font-size: 14px;
+  gap: var(--sp-2) var(--sp-6);
+  font-size: var(--fs-ui);
 }
 .plan-other-item {
   display: inline-flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
-  padding: 10px 14px;
-  border-radius: 12px;
-  background: var(--raised);
+  gap: var(--sp-2);
 }
 .plan-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: var(--sp-3);
 }
 .picker {
   display: flex;
@@ -8120,7 +8342,7 @@ a.nav-item.is-active .nav-count {
   display: flex;
   flex: 1;
   align-items: center;
-  gap: 4px;
+  gap: var(--sp-1);
   min-width: 0;
   overflow: hidden;
   color: var(--text);
@@ -8130,7 +8352,7 @@ a.nav-item.is-active .nav-count {
   display: inline-flex;
   flex: 0 1 auto;
   align-items: center;
-  gap: 4px;
+  gap: var(--sp-1);
   min-width: 0;
   max-width: 14em;
 }
@@ -8150,15 +8372,17 @@ a.nav-item.is-active .nav-count {
 }
 .picker-crumb-btn {
   min-height: var(--target-min);
-  padding: 0 4px;
+  padding: 0 var(--sp-1);
   border: 0;
   background: transparent;
   color: var(--muted);
   font: inherit;
   cursor: pointer;
 }
-.picker-crumb-btn:hover {
-  color: var(--text);
+@media (hover: hover) {
+  .picker-crumb-btn:hover {
+    color: var(--text);
+  }
 }
 .picker-list {
   margin: 0;
@@ -8176,9 +8400,9 @@ a.nav-item.is-active .nav-count {
   width: 100%;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--sp-3);
   min-height: var(--target-min);
-  padding: 0 12px;
+  padding: 0 var(--sp-3);
   border: 0;
   background: transparent;
   color: var(--text);
@@ -8186,8 +8410,10 @@ a.nav-item.is-active .nav-count {
   text-align: left;
   cursor: pointer;
 }
-.picker-item:hover:not(:disabled) {
-  background: var(--raised);
+@media (hover: hover) {
+  .picker-item:hover:not(:disabled) {
+    background: var(--raised);
+  }
 }
 .picker-item:focus-visible,
 .picker-crumb-btn:focus-visible {
@@ -8200,15 +8426,15 @@ a.nav-item.is-active .nav-count {
   overflow-wrap: break-word;
 }
 .picker-size {
-  font-size: 12px;
+  font-size: var(--fs-mono);
 }
 .picker-note {
-  padding: 12px;
+  padding: var(--sp-3);
 }
 .picker-empty {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--sp-2);
   color: var(--text);
 }
 .picker-typed-row {
@@ -8293,8 +8519,8 @@ a.nav-item.is-active .nav-count {
 }
 
 .tc-trace-row.is-current {
+  background: var(--raised);
   color: var(--accent-text);
-  font-weight: 600;
 }
 
 .tc-trace-row.is-failed {
@@ -8313,9 +8539,9 @@ a.nav-item.is-active .nav-count {
 .tc-node-row.tc-trace-problems {
   flex-direction: column;
   align-items: stretch;
-  gap: 2px;
+  gap: var(--sp-1);
   height: auto;
-  padding-block: 0 10px;
+  padding-block: 0 var(--sp-3);
   color: var(--st-dry);
 }
 
@@ -8383,13 +8609,13 @@ a.nav-item.is-active .nav-count {
   position: relative;
   flex: none;
   height: 28px;
-  padding: 0 10px;
+  padding: 0 var(--sp-3);
   border-radius: var(--r-sm);
   border: 1px solid var(--line-strong);
   background: transparent;
   color: var(--text);
   font: inherit;
-  font-size: 12px;
+  font-size: var(--fs-mono);
   cursor: pointer;
 }
 
@@ -8407,7 +8633,6 @@ a.nav-item.is-active .nav-count {
 
 .tc-port-out.is-taken {
   color: var(--accent-text);
-  font-weight: 700;
 }
 
 .tc-port-out.is-dimmed {
@@ -8454,9 +8679,19 @@ a.nav-item.is-active .nav-count {
   text-decoration: none;
 }
 
+/* The page you are on ends the trail: one line, cut with an ellipsis when it is long (the h1 under
+   it has the whole name). */
+.job-crumbs [aria-current="page"] {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted);
+}
+
 .job-head h1 {
   min-width: 0;
-  font-size: 32px;
+  font-size: var(--fs-title);
   font-weight: 700;
   letter-spacing: -0.02em;
   overflow-wrap: anywhere;
@@ -8495,7 +8730,7 @@ a.nav-item.is-active .nav-count {
 }
 
 .job-year {
-  font-size: 22px;
+  font-size: var(--fs-h2);
   font-weight: 500;
   color: var(--faint);
 }
@@ -8520,7 +8755,7 @@ a.nav-item.is-active .nav-count {
 .job-path {
   min-width: 0;
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--fs-mono);
   color: var(--muted);
   overflow-wrap: anywhere;
 }
@@ -8540,7 +8775,7 @@ a.nav-item.is-active .nav-count {
 
 .file-path-chevron {
   display: inline-flex;
-  transition: transform 0.15s;
+  transition: transform var(--dur-base) var(--ease-out);
 }
 
 .file-path-toggle[aria-expanded="true"] .file-path-chevron {
@@ -8581,7 +8816,7 @@ a.nav-item.is-active .nav-count {
     display: flex;
     min-width: 0;
     font-family: var(--font-mono);
-    font-size: 12px;
+    font-size: var(--fs-mono);
     color: var(--muted);
   }
 
@@ -8610,13 +8845,13 @@ a.nav-item.is-active .nav-count {
 .job-facts {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px 28px;
+  gap: var(--sp-2) 28px;
   margin: 0;
 }
 
 .job-fact dt {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--fs-micro);
   font-weight: 600;
   text-transform: uppercase;
   color: var(--faint);
@@ -8624,7 +8859,7 @@ a.nav-item.is-active .nav-count {
 
 .job-fact dd {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--fs-ui);
   color: var(--muted);
 }
 
@@ -8684,7 +8919,7 @@ a.nav-item.is-active .nav-count {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 4px;
+  gap: var(--sp-1);
 }
 
 .job-again-actions {
@@ -8759,8 +8994,8 @@ a.nav-item.is-active .nav-count {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px 10px;
-  padding: 18px 22px;
+  gap: var(--sp-2) var(--sp-3);
+  padding: var(--sp-5) var(--sp-6);
   border-bottom: 1px solid var(--line);
 }
 
@@ -8792,12 +9027,12 @@ a.nav-item.is-active .nav-count {
 
 .job-steps-list {
   margin: 0;
-  padding: 8px 0;
+  padding: var(--sp-2) 0;
   list-style: none;
 }
 
 .job-steps-retry .group-h3 {
-  margin: 8px 22px 0;
+  margin: var(--sp-2) var(--sp-6) 0;
 }
 
 /* One row: the kind tile on a rail that joins the rows, then the row's text. */
@@ -8805,7 +9040,7 @@ a.nav-item.is-active .nav-count {
   position: relative;
   display: grid;
   grid-template-columns: 52px minmax(0, 1fr);
-  padding: 0 22px 0 14px;
+  padding: 0 var(--sp-6) 0 var(--sp-4);
 }
 
 .job-step::before {
@@ -8824,12 +9059,12 @@ a.nav-item.is-active .nav-count {
 
 /* A sub-workflow's steps sit in a little (the "in <Run>" after the name says where). */
 .job-step.depth-1 {
-  padding-left: 30px;
+  padding-left: var(--sp-8);
 }
 
 .job-step.depth-2,
 .job-step.depth-3 {
-  padding-left: 46px;
+  padding-left: var(--sp-12);
 }
 
 .job-step.depth-1::before {
@@ -8848,8 +9083,8 @@ a.nav-item.is-active .nav-count {
   justify-content: center;
   width: 28px;
   height: 28px;
-  margin: 14px 0 0 12px;
-  border-radius: 9px;
+  margin: var(--sp-4) 0 0 var(--sp-3);
+  border-radius: var(--r-sm);
   background: var(--raised);
   color: var(--faint);
   box-shadow: inset 0 0 0 1.5px currentColor;
@@ -8882,7 +9117,7 @@ a.nav-item.is-active .nav-count {
 
 .job-step-body {
   min-width: 0;
-  padding: 10px 0 12px;
+  padding: var(--sp-3) 0 var(--sp-3);
   border-bottom: 1px solid var(--line);
 }
 
@@ -8894,16 +9129,16 @@ a.nav-item.is-active .nav-count {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto var(--target-min);
   align-items: center;
-  gap: 14px;
+  gap: var(--sp-4);
 }
 
 .job-step-main {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--sp-1);
   min-width: 0;
   min-height: var(--target-min);
-  padding: 4px 8px;
+  padding: var(--sp-1) var(--sp-2);
   margin-left: -8px;
   border: 0;
   border-radius: var(--r-sm);
@@ -8914,8 +9149,10 @@ a.nav-item.is-active .nav-count {
   cursor: pointer;
 }
 
-.job-step-main:hover {
-  background: var(--raised);
+@media (hover: hover) {
+  .job-step-main:hover {
+    background: var(--raised);
+  }
 }
 
 /* The row whose node is selected on the canvas. */
@@ -8928,8 +9165,8 @@ a.nav-item.is-active .nav-count {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: 0 8px;
-  font-size: 15px;
+  gap: 0 var(--sp-2);
+  font-size: var(--fs-body);
 }
 
 .job-step-title .icon {
@@ -8939,18 +9176,18 @@ a.nav-item.is-active .nav-count {
 
 .job-step-kind {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-micro);
   font-weight: 600;
   text-transform: uppercase;
 }
 
 .job-step-within {
   color: var(--muted);
-  font-size: 13px;
+  font-size: var(--fs-small);
 }
 
 .job-step-sentence {
-  font-size: 15px;
+  font-size: var(--fs-body);
   overflow-wrap: anywhere;
 }
 
@@ -8963,9 +9200,9 @@ a.nav-item.is-active .nav-count {
 .step-badge {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--sp-2);
   height: 28px;
-  padding: 0 10px;
+  padding: 0 var(--sp-3);
   border-radius: var(--r-pill);
   border: 1.5px solid var(--line-strong);
   color: var(--muted);
@@ -9005,27 +9242,29 @@ a.nav-item.is-active .nav-count {
   cursor: pointer;
 }
 
-button.job-step-more:hover {
-  background: var(--raised);
-  color: var(--text);
+@media (hover: hover) {
+  button.job-step-more:hover {
+    background: var(--raised);
+    color: var(--text);
+  }
 }
 
 /* An unmet precondition or a warning on the step, with where to fix it. */
 .job-step-note {
   display: flex;
   align-items: flex-start;
-  gap: 8px;
-  margin: 8px 0 0;
-  padding: 10px 12px;
-  border-radius: 10px;
+  gap: var(--sp-2);
+  margin: var(--sp-2) 0 0;
+  padding: var(--sp-3) var(--sp-3);
+  border-radius: var(--r-md);
   background: var(--st-dry-bg);
   color: var(--st-dry);
-  font-size: 13px;
+  font-size: var(--fs-small);
 }
 
 .job-step-note .icon {
   flex: none;
-  margin-top: 2px;
+  margin-top: var(--sp-1);
 }
 
 .job-step-note a {
@@ -9034,7 +9273,7 @@ button.job-step-more:hover {
 }
 
 .step-details {
-  margin: 8px 0 0;
+  margin: var(--sp-2) 0 0;
 }
 
 .step-table-wrap {
@@ -9046,13 +9285,13 @@ button.job-step-more:hover {
 .step-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 13px;
+  font-size: var(--fs-small);
 }
 
 .step-table th {
-  padding: 8px;
+  padding: var(--sp-2);
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-micro);
   font-weight: 600;
   color: var(--faint);
   text-align: left;
@@ -9060,13 +9299,13 @@ button.job-step-more:hover {
 }
 
 .step-table td {
-  padding: 8px;
+  padding: var(--sp-2);
   border-top: 1px solid var(--node-head-line);
 }
 
 .step-table th:first-child,
 .step-table td:first-child {
-  padding-left: 14px;
+  padding-left: var(--sp-4);
 }
 
 .step-table td.is-off {
@@ -9075,46 +9314,44 @@ button.job-step-more:hover {
 
 .step-table td.is-on {
   color: var(--accent-text);
-  font-weight: 700;
 }
 
 .step-tiles {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
-  gap: 8px;
-  font-size: 13px;
+  gap: var(--sp-3) var(--sp-6);
+  font-size: var(--fs-small);
 }
 
+/* Before, after and pixel format: label over value, apart by space, no boxes inside the card. */
 .step-tile {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: 10px 12px;
-  border-radius: 10px;
-  background: var(--raised);
+  gap: var(--sp-1);
   overflow-wrap: anywhere;
 }
 
 .step-tile-label {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-micro);
   color: var(--faint);
   text-transform: uppercase;
 }
 
+/* Kept, found and dropped languages: one line of plain items, a dot between them, no fills. */
 .step-chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: var(--sp-1) var(--sp-2);
   padding: 0;
   list-style: none;
-  font-size: 13px;
+  font-size: var(--fs-small);
 }
 
-.step-chips li {
-  padding: 4px 10px;
-  border-radius: 8px;
-  background: var(--raised);
+.step-chips li + li::before {
+  content: "·";
+  margin-right: var(--sp-2);
+  color: var(--faint);
 }
 
 .step-chips li.is-quiet {
@@ -9123,7 +9360,7 @@ button.job-step-more:hover {
 
 @media (max-width: 639px) {
   .job-steps-head {
-    padding: 14px 16px;
+    padding: var(--sp-4) var(--sp-4);
   }
   .job-steps-filter {
     margin-left: 0;
@@ -9131,7 +9368,7 @@ button.job-step-more:hover {
   }
   .job-step {
     grid-template-columns: 40px minmax(0, 1fr);
-    padding: 0 12px 0 4px;
+    padding: 0 var(--sp-3) 0 var(--sp-1);
   }
   .job-step::before {
     left: 23px;
@@ -9139,7 +9376,7 @@ button.job-step-more:hover {
   .job-step.depth-1,
   .job-step.depth-2,
   .job-step.depth-3 {
-    padding-left: 12px;
+    padding-left: var(--sp-3);
   }
   .job-step.depth-1::before,
   .job-step.depth-2::before,
@@ -9147,13 +9384,13 @@ button.job-step-more:hover {
     left: 31px;
   }
   .job-step-icon {
-    margin-left: 6px;
+    margin-left: var(--sp-2);
   }
   /* The badge moves under the sentence; the chevron keeps its place at the end, by the title. */
   .job-step-row {
     grid-template-columns: minmax(0, 1fr) var(--target-min);
     align-items: start;
-    gap: 4px 8px;
+    gap: var(--sp-1) var(--sp-2);
   }
   .job-step-main {
     grid-column: 1;
@@ -9177,7 +9414,7 @@ button.job-step-more:hover {
   column-gap: var(--sp-3);
   row-gap: var(--sp-2);
   align-items: start;
-  padding: 18px 22px;
+  padding: var(--sp-5) var(--sp-6);
 }
 
 .job-result > :not(.job-result-icon, h2) {
@@ -9222,7 +9459,7 @@ button.job-step-more:hover {
   margin: 0;
   font-size: var(--fs-h2);
   font-weight: 700;
-  line-height: 1.3;
+  line-height: 1.2;
   overflow-wrap: anywhere;
 }
 
@@ -9247,12 +9484,13 @@ button.job-step-more:hover {
 
 .job-result .ffmpeg-raw {
   margin-top: var(--sp-2);
+  padding-top: var(--sp-1);
 }
 
 .job-result-warnings {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--sp-1);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -9263,7 +9501,7 @@ button.job-step-more:hover {
 .job-result-warnings li {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--sp-2);
 }
 
 .job-result-problems {
@@ -9274,8 +9512,8 @@ button.job-step-more:hover {
 .before-after-head {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: 18px 22px 8px;
+  gap: var(--sp-1);
+  padding: var(--sp-5) var(--sp-6) var(--sp-2);
 }
 
 .ba-table-wrap {
@@ -9285,15 +9523,15 @@ button.job-step-more:hover {
 .ba-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 14px;
+  font-size: var(--fs-ui);
 }
 
 .ba-table thead th {
   width: 42%;
-  padding: 8px 12px;
+  padding: var(--sp-2) var(--sp-3);
   text-align: left;
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--fs-micro);
   font-weight: 600;
   color: var(--faint);
   text-transform: uppercase;
@@ -9304,7 +9542,7 @@ button.job-step-more:hover {
 }
 
 .ba-table tbody th {
-  padding: 10px 12px 10px 20px;
+  padding: var(--sp-3) var(--sp-3) var(--sp-3) var(--sp-5);
   text-align: left;
   vertical-align: top;
   font-weight: 700;
@@ -9312,7 +9550,7 @@ button.job-step-more:hover {
 }
 
 .ba-table td {
-  padding: 10px 12px;
+  padding: var(--sp-3) var(--sp-3);
   vertical-align: top;
 }
 
@@ -9320,7 +9558,7 @@ button.job-step-more:hover {
   display: inline-flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 2px 6px;
+  gap: var(--sp-1) var(--sp-2);
 }
 
 /* A value never breaks inside itself ("1920×1080", "≈9.6 Mbit/s"): the list wraps between values. */
@@ -9336,7 +9574,7 @@ button.job-step-more:hover {
 .ba-loss {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--sp-1);
   color: var(--st-dry);
   font-weight: 700;
   white-space: nowrap;
@@ -9360,21 +9598,21 @@ button.job-step-more:hover {
     clip-path: inset(50%);
   }
   .before-after-head {
-    padding: 16px 16px 8px;
+    padding: var(--sp-4) var(--sp-4) var(--sp-2);
   }
   .ba-table tbody tr {
-    padding: 10px 16px;
+    padding: var(--sp-3) var(--sp-4);
   }
   .ba-table tbody th,
   .ba-table td {
-    padding: 2px 0;
+    padding: var(--sp-1) 0;
   }
   .ba-table td::before {
     content: attr(data-label);
     display: block;
     color: var(--faint);
     font-family: var(--font-mono);
-    font-size: 11px;
+    font-size: var(--fs-micro);
     font-weight: 600;
     text-transform: uppercase;
   }
@@ -9384,20 +9622,20 @@ button.job-step-more:hover {
 .test-output {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 16px 20px;
+  gap: var(--sp-3);
+  padding: var(--sp-4) var(--sp-5);
 }
 
 .test-output-head {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: 4px 12px;
+  gap: var(--sp-1) var(--sp-3);
 }
 
 .test-output-title {
   margin: 0;
-  font-size: 16px;
+  font-size: var(--fs-h3);
   font-weight: 700;
 }
 
@@ -9410,7 +9648,7 @@ button.job-step-more:hover {
 .test-output-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--sp-2);
 }
 
 .test-output-note {
@@ -9430,14 +9668,14 @@ button.job-step-more:hover {
 .command-block {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 16px 20px;
+  gap: var(--sp-3);
+  padding: var(--sp-4) var(--sp-5);
 }
 
 .command-head {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--sp-3);
 }
 
 .command-head .btn {
@@ -9447,12 +9685,12 @@ button.job-step-more:hover {
 .command-text,
 .job-log-text {
   margin: 0;
-  padding: 12px 14px;
-  border-radius: 10px;
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--r-md);
   background: var(--bg);
   color: var(--muted);
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--fs-mono);
   line-height: 1.6;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
@@ -9462,19 +9700,19 @@ button.job-step-more:hover {
 .ffmpeg-notes {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 18px 22px;
+  gap: var(--sp-3);
+  padding: var(--sp-5) var(--sp-6);
 }
 
 .ffmpeg-notes-head {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: 4px 10px;
+  gap: var(--sp-1) var(--sp-3);
 }
 
 .ffmpeg-notes-summary {
-  font-size: 14px;
+  font-size: var(--fs-ui);
   color: var(--muted);
 }
 
@@ -9482,7 +9720,7 @@ button.job-step-more:hover {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
+  gap: var(--sp-3);
   color: var(--danger-text);
 }
 
@@ -9493,7 +9731,7 @@ button.job-step-more:hover {
 .ffmpeg-note-cards {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
-  gap: 10px;
+  gap: var(--sp-3);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -9502,8 +9740,8 @@ button.job-step-more:hover {
 .ffmpeg-note {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 12px 14px;
+  gap: var(--sp-1);
+  padding: var(--sp-3) var(--sp-4);
   border-radius: var(--r-md);
   background: var(--raised);
 }
@@ -9512,13 +9750,13 @@ button.job-step-more:hover {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
-  font-size: 14px;
+  gap: var(--sp-2);
+  font-size: var(--fs-ui);
 }
 
 .ffmpeg-note p {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--fs-small);
   line-height: 1.45;
   color: var(--muted);
 }
@@ -9527,10 +9765,10 @@ button.job-step-more:hover {
   display: inline-flex;
   align-items: center;
   height: 22px;
-  padding: 0 8px;
+  padding: 0 var(--sp-2);
   border-radius: var(--r-pill);
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-micro);
   font-weight: 600;
   text-transform: uppercase;
 }
@@ -9546,18 +9784,18 @@ button.job-step-more:hover {
 }
 
 .ffmpeg-raw {
-  border-radius: var(--r-md);
-  background: var(--bg);
+  /* Part of the card it sits in (the result, the notes), not a box inside it: a divider above. */
+  border-top: 1px solid var(--line);
 }
 
 .ffmpeg-raw > summary {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--sp-2);
   min-height: var(--target-min);
-  padding: 0 14px;
+  padding: 0;
   border-radius: var(--r-md);
-  font-size: 14px;
+  font-size: var(--fs-ui);
   font-weight: 600;
   list-style: none;
   cursor: pointer;
@@ -9579,7 +9817,7 @@ button.job-step-more:hover {
 
 .ffmpeg-raw-count {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--fs-micro);
   font-weight: 400;
   color: var(--faint);
 }
@@ -9587,8 +9825,8 @@ button.job-step-more:hover {
 .ffmpeg-raw-body {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 0 14px 14px;
+  gap: var(--sp-2);
+  padding: 0 0 var(--sp-2);
 }
 
 /* The command inside the raw output is part of it, not a panel of its own. */
@@ -9601,7 +9839,7 @@ button.job-step-more:hover {
 .ffmpeg-raw .command-head h3,
 .ffmpeg-raw-label {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--fs-ui);
   font-weight: 600;
 }
 
@@ -9614,7 +9852,7 @@ button.job-step-more:hover {
 .ffmpeg-raw-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--sp-2);
 }
 
 .job-log-text {
@@ -9626,13 +9864,13 @@ button.job-step-more:hover {
   display: flex;
   align-items: center;
   gap: var(--sp-3);
-  padding: 16px 20px;
+  padding: var(--sp-4) var(--sp-5);
 }
 
 /* ---------- Plugins (screen 09) ---------- */
 
 .plugins-page {
-  gap: 26px;
+  gap: 28px;
 }
 
 /* Toolbar: search, All / Installed / Updates, and the catalog's state as items that wrap whole. */
@@ -9640,7 +9878,7 @@ button.job-step-more:hover {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
+  gap: var(--sp-3);
 }
 .plugins-search {
   position: relative;
@@ -9658,25 +9896,25 @@ button.job-step-more:hover {
 .plugins-search .input {
   width: 100%;
   height: 44px;
-  padding: 0 14px 0 40px;
-  font-size: 15px;
+  padding: 0 var(--sp-4) 0 var(--sp-10);
+  font-size: var(--fs-body);
 }
 .plugins-show {
   display: flex;
-  padding: 3px;
+  padding: var(--sp-1);
   border-radius: var(--r-md);
   background: var(--raised);
 }
 .plugins-show button {
   position: relative;
   height: 38px;
-  padding: 0 14px;
+  padding: 0 var(--sp-4);
   border: 0;
-  border-radius: 9px;
+  border-radius: var(--r-sm);
   background: transparent;
   color: var(--text);
   font: inherit;
-  font-size: 14px;
+  font-size: var(--fs-ui);
   font-weight: 600;
   cursor: pointer;
 }
@@ -9696,7 +9934,7 @@ button.job-step-more:hover {
 }
 .plugins-show-count {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--fs-micro);
   opacity: 0.8;
 }
 .plugins-source {
@@ -9704,7 +9942,7 @@ button.job-step-more:hover {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px 10px;
+  gap: var(--sp-2) var(--sp-3);
   font-size: var(--fs-small);
   color: var(--faint);
 }
@@ -9714,7 +9952,7 @@ button.job-step-more:hover {
 .plugins-source-official {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: var(--sp-1);
   color: var(--muted);
 }
 
@@ -9724,7 +9962,7 @@ button.job-step-more:hover {
   flex-wrap: wrap;
   align-items: center;
   gap: var(--sp-4);
-  padding: 18px 20px;
+  padding: var(--sp-5) var(--sp-5);
   border-radius: var(--r-lg);
   background: var(--raised);
   box-shadow: inset 0 0 0 1.5px var(--st-dry);
@@ -9745,14 +9983,14 @@ button.job-step-more:hover {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--sp-1);
 }
 .plugins-need-text h2 {
-  font-size: 18px;
+  font-size: var(--fs-h3);
   font-weight: 700;
 }
 .plugins-need-text p {
-  font-size: 14px;
+  font-size: var(--fs-ui);
   color: var(--muted);
 }
 .plugins-need-workflow {
@@ -9762,7 +10000,7 @@ button.job-step-more:hover {
 .plugins-section {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--sp-3);
 }
 /* The section's name with Update all beside it (on the Updates tab). */
 .plugins-section-head {
@@ -9770,7 +10008,7 @@ button.job-step-more:hover {
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: var(--sp-3);
 }
 
 /* The 40px tile: the plugin's own icon (an image) or its monogram. */
@@ -9785,7 +10023,7 @@ button.job-step-more:hover {
   background: var(--line);
   color: var(--text);
   /* Two letters ("So", "TM") fit the 40px tile. */
-  font-size: 15px;
+  font-size: var(--fs-body);
   font-weight: 800;
   letter-spacing: -0.02em;
 }
@@ -9812,29 +10050,29 @@ button.job-step-more:hover {
   display: grid;
   grid-template-columns: 44px minmax(0, 1fr) auto auto;
   align-items: center;
-  gap: 14px;
-  padding: 14px 18px;
+  gap: var(--sp-4);
+  padding: var(--sp-4) var(--sp-5);
 }
 .plugin-row-text {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--sp-1);
 }
 .plugin-row-title {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: 8px;
+  gap: var(--sp-2);
 }
 .plugin-row-title h3 {
   margin: 0;
-  font-size: 16px;
+  font-size: var(--fs-h3);
   font-weight: 700;
 }
 .plugin-version {
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--fs-mono);
   color: var(--faint);
 }
 .plugin-row-update {
@@ -9857,13 +10095,13 @@ button.job-step-more:hover {
 }
 .plugin-row-actions {
   display: flex;
-  gap: 8px;
+  gap: var(--sp-2);
 }
 .plugin-row-actions .btn {
   height: 40px;
-  padding: 0 14px;
-  border-radius: 10px;
-  font-size: 14px;
+  padding: 0 var(--sp-4);
+  border-radius: var(--r-md);
+  font-size: var(--fs-ui);
 }
 .plugin-row-actions .btn.is-open {
   background: var(--line);
@@ -9878,20 +10116,20 @@ button.job-step-more:hover {
   color: var(--faint);
 }
 .plugin-row-alert {
-  margin: 0 18px 14px 76px;
+  margin: 0 var(--sp-5) var(--sp-4) 76px;
 }
 /* The hosts it connects to, under the name, as the install dialog lists them. */
 .plugin-row-hosts {
-  margin: -6px 18px 14px 76px;
+  margin: calc(-1 * var(--sp-2)) var(--sp-5) var(--sp-4) 76px;
 }
 
 /* A row's settings: inset under the name, on the raised surface. */
 .plugin-panel {
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  margin: 0 18px 18px 76px;
-  padding: 18px;
+  gap: var(--sp-4);
+  margin: 0 var(--sp-5) var(--sp-5) 76px;
+  padding: var(--sp-5);
   border-radius: var(--r-md);
   background: var(--raised);
 }
@@ -9901,28 +10139,28 @@ button.job-step-more:hover {
 .plugin-settings {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: var(--sp-4);
 }
 .plugin-settings-fields {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
-  gap: 14px;
+  gap: var(--sp-4);
 }
 .plugin-settings-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--sp-2);
 }
 .plugin-settings-actions .plugin-remove {
   margin-left: auto;
   height: 44px;
-  padding: 0 14px;
-  font-size: 14px;
+  padding: 0 var(--sp-4);
+  font-size: var(--fs-ui);
 }
 /* A stored secret: never its value, a dashed read-only line and Replace. */
 .plugin-secret {
   display: flex;
-  gap: 8px;
+  gap: var(--sp-2);
 }
 .plugin-secret .input {
   flex: 1;
@@ -9934,11 +10172,11 @@ button.job-step-more:hover {
 }
 .plugin-test-result {
   display: flex;
-  gap: 10px;
+  gap: var(--sp-3);
   align-items: flex-start;
-  padding: 10px 12px;
-  border-radius: 10px;
-  font-size: 14px;
+  padding: var(--sp-3) var(--sp-3);
+  border-radius: var(--r-md);
+  font-size: var(--fs-ui);
 }
 .plugin-test-result.is-ok {
   background: var(--ok-bg);
@@ -9951,26 +10189,26 @@ button.job-step-more:hover {
 .plugin-test-line {
   display: inline-flex;
   flex-wrap: wrap;
-  gap: 0 8px;
+  gap: 0 var(--sp-2);
   overflow-wrap: anywhere;
 }
 .plugin-test-effect {
   display: block;
 }
 .plugin-test-warnings {
-  margin: 4px 0 0;
-  padding-left: 18px;
+  margin: var(--sp-1) 0 0;
+  padding-left: var(--sp-5);
   color: var(--st-dry);
 }
 .plugin-versions h4 {
-  margin: 0 0 6px;
-  font-size: 14px;
+  margin: 0 0 var(--sp-2);
+  font-size: var(--fs-ui);
   font-weight: 700;
 }
 .plugin-versions ul {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--sp-2);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -9979,7 +10217,7 @@ button.job-step-more:hover {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
+  gap: var(--sp-3);
 }
 .plugin-mappings {
   border: 0;
@@ -9988,11 +10226,11 @@ button.job-step-more:hover {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--sp-2);
 }
 .plugin-mappings-empty {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--fs-ui);
   color: var(--muted);
 }
 /* One mapping: its two labelled paths, its buttons, then its test answer, stacked (#46). */
@@ -10004,12 +10242,12 @@ button.job-step-more:hover {
   border-radius: var(--r-md);
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--sp-3);
 }
 .plugin-mapping-title {
-  padding: 0 4px;
+  padding: 0 var(--sp-1);
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-micro);
   font-weight: 600;
   color: var(--faint);
 }
@@ -10017,7 +10255,7 @@ button.job-step-more:hover {
 .plugin-mapping-fields {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
-  gap: 10px var(--sp-4);
+  gap: var(--sp-3) var(--sp-4);
 }
 .plugin-mapping-fields .input {
   width: 100%;
@@ -10026,7 +10264,7 @@ button.job-step-more:hover {
 .plugin-mapping-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--sp-2);
 }
 .plugin-mapping-remove {
   margin-left: auto;
@@ -10042,7 +10280,7 @@ button.job-step-more:hover {
 .plugin-facts {
   display: grid;
   grid-template-columns: max-content 1fr;
-  gap: 6px var(--sp-4);
+  gap: var(--sp-2) var(--sp-4);
   margin: 0;
   font-size: var(--fs-small);
 }
@@ -10052,7 +10290,7 @@ button.job-step-more:hover {
 .plugin-facts dt {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--sp-1);
   color: var(--muted);
 }
 .plugin-facts dd {
@@ -10082,7 +10320,7 @@ button.job-step-more:hover {
   font-size: var(--fs-small);
 }
 .plugin-network-title {
-  margin: 0 0 4px;
+  margin: 0 0 var(--sp-1);
   font-size: var(--fs-small);
   font-weight: 600;
   color: var(--muted);
@@ -10093,24 +10331,24 @@ button.job-step-more:hover {
   overflow-wrap: anywhere;
 }
 .plugin-network-list li + li {
-  margin-top: 2px;
+  margin-top: var(--sp-1);
 }
 /* A host an update adds: an amber "new" pill after it. */
 .plugin-network-new {
   display: inline-block;
-  margin-left: 6px;
-  padding: 0 6px;
-  border-radius: 999px;
+  margin-left: var(--sp-2);
+  padding: 0 var(--sp-2);
+  border-radius: var(--r-lg);
   background: var(--st-dry);
   color: var(--st-dry-ink);
-  font-size: 11px;
+  font-size: var(--fs-micro);
   font-weight: 600;
   line-height: 16px;
   vertical-align: 1px;
 }
 .plugin-network-note,
 .plugin-network-unlisted {
-  margin: 6px 0 0;
+  margin: var(--sp-2) 0 0;
   color: var(--muted);
 }
 .plugin-network-unlisted {
@@ -10120,7 +10358,7 @@ button.job-step-more:hover {
 @media (max-width: 639px) {
   .plugin-facts {
     grid-template-columns: 1fr;
-    row-gap: 2px;
+    row-gap: var(--sp-1);
   }
   .plugin-facts > div + div dt {
     margin-top: var(--sp-2);
@@ -10138,15 +10376,17 @@ button.job-step-more:hover {
 }
 .info-tip-btn {
   display: inline-flex;
-  padding: 2px;
+  padding: var(--sp-1);
   border: 0;
   border-radius: 50%;
   background: transparent;
   color: var(--muted);
   cursor: help;
 }
-.info-tip-btn:hover {
-  color: var(--text);
+@media (hover: hover) {
+  .info-tip-btn:hover {
+    color: var(--text);
+  }
 }
 .info-tip-btn:focus-visible {
   outline: none;
@@ -10159,7 +10399,7 @@ button.job-step-more:hover {
   z-index: 10;
   width: max-content;
   max-width: 280px;
-  padding: 8px 10px;
+  padding: var(--sp-2) var(--sp-3);
   border-radius: var(--r-md);
   border: 1px solid var(--line-strong);
   background: var(--raised);
@@ -10172,7 +10412,7 @@ button.job-step-more:hover {
   box-shadow: 0 6px 18px var(--toolbar-shadow);
   visibility: hidden;
   opacity: 0;
-  transition: opacity 120ms;
+  transition: opacity var(--dur-fast) var(--ease-out);
   pointer-events: none;
 }
 .info-tip:hover .info-tip-text,
@@ -10186,7 +10426,7 @@ button.job-step-more:hover {
   font-weight: 600;
 }
 .plugin-promise p {
-  margin-top: 8px;
+  margin-top: var(--sp-2);
   font-size: var(--fs-small);
 }
 
@@ -10194,7 +10434,7 @@ button.job-step-more:hover {
 .node-chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: var(--sp-2);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -10203,12 +10443,12 @@ button.job-step-more:hover {
   --chip-kind: var(--faint);
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--sp-2);
   min-height: 26px;
-  padding: 0 9px;
-  border-radius: 8px;
+  padding: 0 var(--sp-2);
+  border-radius: var(--r-sm);
   background: var(--raised);
-  font-size: 12px;
+  font-size: var(--fs-mono);
 }
 .plugin-panel .node-chip {
   background: var(--surface);
@@ -10237,7 +10477,7 @@ button.job-step-more:hover {
 }
 .node-chip-kind {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-micro);
   font-weight: 600;
   color: var(--chip-kind);
   text-transform: uppercase;
@@ -10247,7 +10487,7 @@ button.job-step-more:hover {
 .catalog-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr));
-  gap: 12px;
+  gap: var(--sp-3);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -10257,8 +10497,8 @@ button.job-step-more:hover {
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 16px 18px;
+  gap: var(--sp-3);
+  padding: var(--sp-4) var(--sp-5);
   border-radius: var(--r-lg);
   background: var(--surface);
   border: 1px solid var(--line);
@@ -10266,7 +10506,7 @@ button.job-step-more:hover {
 .catalog-card-head {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--sp-3);
 }
 .catalog-card-name {
   flex: 1;
@@ -10276,31 +10516,31 @@ button.job-step-more:hover {
 }
 .catalog-card-name h3 {
   margin: 0;
-  font-size: 16px;
+  font-size: var(--fs-h3);
   font-weight: 700;
 }
 .catalog-card-ids {
   display: flex;
   flex-wrap: wrap;
-  gap: 0 8px;
-  font-size: 11px;
+  gap: 0 var(--sp-2);
+  font-size: var(--fs-micro);
   color: var(--faint);
 }
 .catalog-card-head .btn {
   height: 40px;
-  padding: 0 16px;
-  border-radius: 10px;
-  font-size: 14px;
+  padding: 0 var(--sp-4);
+  border-radius: var(--r-md);
+  font-size: var(--fs-ui);
 }
 .catalog-card-text {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--fs-ui);
   line-height: 1.45;
   color: var(--muted);
 }
 .catalog-card-source {
   margin: 0;
-  font-size: 12px;
+  font-size: var(--fs-mono);
   color: var(--faint);
 }
 .catalog-url {
@@ -10321,14 +10561,14 @@ button.job-step-more:hover {
 /* A list item keeps the disclosure triangle; the padding makes a 44px target. */
 .catalog-details summary {
   width: fit-content;
-  padding: 13px 0;
+  padding: var(--sp-3) 0;
   cursor: pointer;
 }
 .catalog-details-body {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding-top: 8px;
+  gap: var(--sp-3);
+  padding-top: var(--sp-2);
 }
 .catalog-details-body p {
   margin: 0;
@@ -10336,7 +10576,7 @@ button.job-step-more:hover {
 .catalog-sources {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--sp-2);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -10345,7 +10585,7 @@ button.job-step-more:hover {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px 12px;
+  gap: var(--sp-2) var(--sp-3);
 }
 .catalog-source .catalog-url {
   color: var(--muted);
@@ -10354,18 +10594,18 @@ button.job-step-more:hover {
   display: inline-flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px 10px;
+  gap: var(--sp-2) var(--sp-3);
 }
 .catalog-add {
   display: flex;
   flex-direction: column;
   gap: var(--sp-3);
-  padding: 16px 20px;
+  padding: var(--sp-4) var(--sp-5);
   max-width: 640px;
   color: var(--text);
 }
 .catalog-add h3 {
-  font-size: 16px;
+  font-size: var(--fs-h3);
   font-weight: 700;
 }
 
@@ -10382,8 +10622,8 @@ button.job-step-more:hover {
   }
   .plugin-row-main {
     grid-template-columns: 44px minmax(0, 1fr);
-    gap: 10px 12px;
-    padding: 14px;
+    gap: var(--sp-3) var(--sp-3);
+    padding: var(--sp-4);
   }
   .plugin-status {
     grid-column: 2;
@@ -10399,10 +10639,10 @@ button.job-step-more:hover {
   .plugin-row-alert,
   .plugin-row-hosts,
   .plugin-panel {
-    margin: 0 12px 12px;
+    margin: 0 var(--sp-3) var(--sp-3);
   }
   .plugin-panel {
-    padding: 14px;
+    padding: var(--sp-4);
   }
   .plugin-settings-actions .btn {
     flex: 1 1 auto;
@@ -10411,7 +10651,7 @@ button.job-step-more:hover {
     margin-left: 0;
   }
   .catalog-add {
-    padding: 14px 16px;
+    padding: var(--sp-4) var(--sp-4);
   }
 }
 
@@ -10446,12 +10686,12 @@ button.job-step-more:hover {
 .tc-trace-plug {
   display: inline-flex;
   vertical-align: -2px;
-  margin-right: 4px;
+  margin-right: var(--sp-1);
   color: var(--muted);
 }
 
 .update-block + .update-block {
-  margin-top: var(--sp-3, 12px);
+  margin-top: var(--sp-3);
 }
 
 .update-block p {
@@ -10459,8 +10699,8 @@ button.job-step-more:hover {
 }
 
 .update-list {
-  margin: 8px 0 0;
-  padding-left: 18px;
+  margin: var(--sp-2) 0 0;
+  padding-left: var(--sp-5);
 }
 
 /* ---------- TMDB attribution (plugin settings, shell footer) ---------- */
@@ -10482,7 +10722,7 @@ button.job-step-more:hover {
 }
 
 .shell-footer {
-  padding: 12px 20px;
+  padding: var(--sp-3) var(--sp-5);
   border-top: 1px solid var(--line);
 }
 
@@ -10537,8 +10777,8 @@ button.job-step-more:hover {
 }
 
 .rh-card legend {
-  padding: 0 4px;
-  font-size: 14px;
+  padding: 0 var(--sp-1);
+  font-size: var(--fs-ui);
   font-weight: 500;
 }
 
@@ -10554,7 +10794,7 @@ button.job-step-more:hover {
 .rh-grid {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: var(--sp-1);
   margin-top: var(--sp-2);
   touch-action: none;
   user-select: none;
@@ -10569,7 +10809,7 @@ button.job-step-more:hover {
 .rh-day {
   flex: 0 0 30px;
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--fs-micro);
   color: var(--muted);
 }
 
@@ -10578,7 +10818,7 @@ button.job-step-more:hover {
   flex: 1;
   display: grid;
   grid-template-columns: repeat(24, minmax(0, 1fr));
-  gap: 2px;
+  gap: var(--sp-1);
 }
 
 .rh-cell {
@@ -10586,7 +10826,7 @@ button.job-step-more:hover {
   height: 28px;
   padding: 0;
   border: 0;
-  border-radius: 3px;
+  border-radius: var(--r-sm);
   background: var(--raised);
   cursor: pointer;
 }
@@ -10623,13 +10863,13 @@ button.job-step-more:hover {
 
 .rh-ticks span {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--fs-micro);
   color: var(--faint);
 }
 
 .rh-summary {
   margin: var(--sp-1) 0 0;
-  font-size: 14px;
+  font-size: var(--fs-ui);
   font-weight: 600;
 }
 
@@ -10639,21 +10879,105 @@ button.job-step-more:hover {
   color: var(--muted);
 }
 
-/* The one not-found state (NotFound.tsx): an alert panel with a heading and a way back. */
-.not-found-panel {
+/* The one not-found state (NotFound.tsx), in the empty state's language: the address as a node
+   card whose output port has a broken cable (the red "into a broken node" dash) running into an
+   empty dashed slot. Real elements, no picture. */
+.not-found-state {
   display: flex;
-  gap: var(--sp-3);
-  align-items: flex-start;
-  max-width: 36rem;
-  padding: var(--sp-4);
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-4);
+  padding: 64px var(--sp-6);
+  border-radius: var(--r-lg);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  text-align: center;
 }
 .not-found-title {
-  font-size: 18px;
-  margin: 0 0 var(--sp-2);
+  font-size: var(--fs-h1);
+  font-weight: 700;
+  letter-spacing: -0.01em;
 }
-.not-found-panel p {
-  margin: 0 0 var(--sp-3);
+.not-found-state p {
+  max-width: 420px;
+  font-size: var(--fs-body);
+  line-height: 1.5;
   color: var(--muted);
+}
+.not-found-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--sp-3);
+  margin-top: var(--sp-2);
+}
+.lost-chain {
+  display: flex;
+  align-items: center;
+  max-width: 100%;
+  margin-bottom: var(--sp-2);
+}
+.lost-node {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sp-1);
+  max-width: 240px;
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-md);
+  border: 1.5px solid var(--line-strong);
+  background: var(--raised);
+  text-align: left;
+}
+.lost-node-kind {
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+.lost-node-path {
+  max-width: 100%;
+  overflow: hidden;
+  font-family: var(--font-mono);
+  font-size: var(--fs-small);
+  color: var(--text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* The output jack, half over the card's edge, then the cable that reaches nothing. */
+.lost-port {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  margin-left: -8px;
+  border-radius: 50%;
+  border: 2px solid var(--muted);
+  background: var(--surface);
+}
+.lost-cable {
+  flex: none;
+  width: 72px;
+  border-top: 2.5px dashed var(--st-failed);
+}
+.lost-slot {
+  flex: none;
+  width: 56px;
+  height: 40px;
+  border-radius: var(--r-md);
+  border: 2px dashed var(--empty-link);
+}
+@media (max-width: 639px) {
+  .not-found-state {
+    padding: var(--sp-10) var(--sp-4);
+  }
+  .lost-node {
+    max-width: 180px;
+  }
+  .lost-cable {
+    width: 40px;
+  }
 }
 
 /* In the desktop editor the right column is the inspector (340 px) with its issues footer at the
@@ -10667,7 +10991,7 @@ button.job-step-more:hover {
 /* A menu item's second line (the Examples menu: what an example needs) and a divider. */
 .row-menu-list .row-menu-note {
   display: block;
-  font-size: 12px;
+  font-size: var(--fs-mono);
   color: var(--muted);
 }
 .row-menu-list button:has(.row-menu-note) {
@@ -10676,13 +11000,13 @@ button.job-step-more:hover {
 .row-menu-sep {
   border: 0;
   border-top: 1px solid var(--line);
-  margin: 4px 0;
+  margin: var(--sp-1) 0;
 }
 /* A disabled item's reason, shown under it (not only as a tooltip). */
 .row-menu-hint {
   display: block;
-  padding: 0 12px 8px 38px;
-  font-size: 12px;
+  padding: 0 var(--sp-3) var(--sp-2) var(--sp-10);
+  font-size: var(--fs-mono);
   color: var(--muted);
 }
 
@@ -10693,11 +11017,11 @@ button.job-step-more:hover {
   align-items: flex-start;
   gap: var(--sp-3);
   max-width: 40rem;
-  padding: var(--sp-5, 24px);
+  padding: var(--sp-6);
 }
 .lib-empty-state h2 {
   margin: 0;
-  font-size: 18px;
+  font-size: var(--fs-h3);
 }
 .lib-empty-state p {
   margin: 0;
@@ -10706,9 +11030,9 @@ button.job-step-more:hover {
 .lib-run-hours {
   display: flex;
   align-items: center;
-  gap: 4px;
-  margin-top: 2px;
-  font-size: 12px;
+  gap: var(--sp-1);
+  margin-top: var(--sp-1);
+  font-size: var(--fs-mono);
   font-weight: 400;
   color: var(--muted);
 }
@@ -10721,24 +11045,24 @@ button.job-step-more:hover {
 
 /* The job page's "Queued 21:03 · started … · took 4 s" line, under the file's place. */
 .job-head-times {
-  margin: 2px 0 0;
-  font-size: 13px;
+  margin: var(--sp-1) 0 0;
+  font-size: var(--fs-small);
   color: var(--muted);
 }
 
 /* About: what Transcoda encodes with, first in "Show all encoders". */
 .about-encoders {
   list-style: none;
-  margin: var(--sp-3) 16px var(--sp-2);
+  margin: var(--sp-3) var(--sp-4) var(--sp-2);
   padding: 0;
   display: grid;
-  gap: 6px;
+  gap: var(--sp-2);
 }
 .about-encoders-row {
   display: grid;
   grid-template-columns: 6rem minmax(0, 1fr);
   gap: var(--sp-3);
-  font-size: 13px;
+  font-size: var(--fs-small);
 }
 .about-encoders-label {
   color: var(--muted);
@@ -10746,7 +11070,7 @@ button.job-step-more:hover {
 .about-caps > summary {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--sp-2);
   cursor: pointer;
   list-style: none;
 }
@@ -10754,7 +11078,7 @@ button.job-step-more:hover {
   display: none;
 }
 .about-caps-chevron {
-  transition: transform 0.15s;
+  transition: transform var(--dur-base) var(--ease-out);
 }
 .about-caps[open] .about-caps-chevron {
   transform: rotate(180deg);
@@ -10790,8 +11114,8 @@ button.job-step-more:hover {
   .lib-table tbody tr {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
-    gap: 4px 12px;
-    padding: 12px 16px;
+    gap: var(--sp-1) var(--sp-3);
+    padding: var(--sp-3) var(--sp-4);
   }
   .wf-table tbody tr + tr,
   .lib-table tbody tr + tr {
@@ -10814,7 +11138,7 @@ button.job-step-more:hover {
   .lib-table [data-label]::before {
     content: attr(data-label) ": ";
     color: var(--muted);
-    font-size: 12px;
+    font-size: var(--fs-mono);
   }
 }
 @media (max-width: 639px) {
@@ -10824,8 +11148,8 @@ button.job-step-more:hover {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    row-gap: 4px;
-    padding: 12px 16px;
+    row-gap: var(--sp-1);
+    padding: var(--sp-3) var(--sp-4);
   }
   .wf-table .wf-cell.wf-name {
     flex: 1 1 calc(100% - var(--target-min) - 12px);
@@ -10833,7 +11157,7 @@ button.job-step-more:hover {
   }
   .wf-table .wf-cell.wf-actions {
     order: 1;
-    margin-left: 12px;
+    margin-left: var(--sp-3);
     align-self: flex-start;
   }
   .wf-table .wf-cell.wf-meta {
@@ -10841,11 +11165,11 @@ button.job-step-more:hover {
     min-width: 0;
     max-width: 100%;
     color: var(--muted);
-    font-size: 12px;
+    font-size: var(--fs-mono);
   }
   .wf-table .wf-meta + .wf-meta::before {
     content: "·";
-    margin-left: 6px;
+    margin-left: var(--sp-2);
     color: var(--faint);
   }
   .wf-table .wf-meta,
@@ -10853,19 +11177,19 @@ button.job-step-more:hover {
     display: inline-flex;
     flex-direction: row;
     align-items: center;
-    gap: 6px;
+    gap: var(--sp-2);
   }
   .wf-table .wf-meta .activation-pill {
     min-height: 22px;
-    padding: 0 8px;
-    font-size: 11px;
+    padding: 0 var(--sp-2);
+    font-size: var(--fs-micro);
   }
   .wf-table .wf-activate,
   .wf-table .wf-activate-off {
-    font-size: 12px;
+    font-size: var(--fs-mono);
   }
   .wf-table .wf-version {
-    font-size: 11px;
+    font-size: var(--fs-micro);
   }
 }
 @media (max-width: 639px) {
@@ -10899,7 +11223,7 @@ button.job-step-more:hover {
     align-self: start;
   }
   .lib-table .lib-path {
-    font-size: 12px;
+    font-size: var(--fs-mono);
   }
 }
 @media (max-width: 639px) {
@@ -10934,18 +11258,30 @@ button.job-step-more:hover {
 
 /* Plugin settings: path mappings and insecure TLS, under "Advanced". */
 .plugin-advanced .disclosure-body {
-  gap: 14px;
-  padding-top: 4px;
+  gap: var(--sp-4);
+  padding-top: var(--sp-1);
 }
 
 /* ---------- Recycle folder page ---------- */
 .recycle-summary {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--sp-1);
+}
+/* The explanation at body size; the path under it in small muted mono, then the sizes. */
+.recycle-explain {
+  margin: 0 0 var(--sp-1);
+  font-size: var(--fs-body);
+  line-height: 1.5;
 }
 .recycle-folder {
+  font-size: var(--fs-small);
+  color: var(--muted);
   overflow-wrap: anywhere;
+}
+.recycle-size {
+  font-size: var(--fs-small);
+  color: var(--faint);
 }
 .recycle-empty {
   color: var(--muted);
@@ -10957,19 +11293,19 @@ button.job-step-more:hover {
   width: 100%;
   min-width: 640px;
   border-collapse: collapse;
-  font-size: 14px;
+  font-size: var(--fs-ui);
 }
 .recycle-table th {
-  padding: 14px 12px;
+  padding: var(--sp-4) var(--sp-3);
   text-align: left;
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--fs-micro);
   font-weight: 600;
   color: var(--faint);
   text-transform: uppercase;
 }
 .recycle-cell {
-  padding: 12px;
+  padding: var(--sp-3);
   border-top: 1px solid var(--line);
   color: var(--muted);
   vertical-align: middle;
@@ -10990,25 +11326,27 @@ button.job-step-more:hover {
   padding-top: 0;
 }
 .recycle-sidecar .recycle-cell:first-child {
-  padding-left: 32px;
+  padding-left: var(--sp-8);
 }
 .recycle-cards {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--sp-3);
 }
 .recycle-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--sp-2);
   justify-content: flex-end;
 }
 .recycle-empty-action {
-  margin-top: 4px;
+  margin-top: var(--sp-1);
 }
 /* The size stays on one line; the file name keeps room to read, the buttons may wrap. */
-.recycle-table td:nth-child(2) {
+.recycle-table td:nth-child(2),
+.recycle-table th:nth-child(2) {
   white-space: nowrap;
+  text-align: right;
 }
 .recycle-table td:first-child {
   min-width: 14em;
@@ -11024,6 +11362,7 @@ button.job-step-more:hover {
   display: inline-flex;
   align-items: center;
   gap: var(--sp-2);
+  min-width: 0;
 }
 .library-count {
   margin-left: var(--sp-3);
@@ -11045,15 +11384,18 @@ button.job-step-more:hover {
   text-decoration: underline;
   text-decoration-thickness: 1px;
   text-underline-offset: 3px;
-  /* A little room inside the focus ring, without moving the name. */
-  margin: -2px -4px;
-  padding: 2px 4px;
+  /* A little room inside the focus ring, and a 24 px-plus target (WCAG 2.5.8), without moving
+     the name. */
+  margin: -4px;
+  padding: var(--sp-1);
   border-radius: var(--r-sm);
   overflow-wrap: anywhere;
 }
-.lib-name-text:hover {
-  color: var(--accent-hover);
-  text-decoration-thickness: 2px;
+@media (hover: hover) {
+  .lib-name-text:hover {
+    color: var(--accent-hover);
+    text-decoration-thickness: 2px;
+  }
 }
 .lib-name-text:focus-visible {
   outline: none;
@@ -11071,27 +11413,28 @@ button.job-step-more:hover {
 .selection-bar {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 8px 12px;
-  margin-top: 12px;
+  gap: var(--sp-3);
+  padding: var(--sp-2) var(--sp-3);
+  margin-top: var(--sp-3);
   border: 1px solid var(--line);
   border-radius: var(--r-lg);
   background: var(--raised);
   position: sticky;
   bottom: 0;
   z-index: 2;
-  padding-bottom: max(8px, env(safe-area-inset-bottom));
+  padding-bottom: max(var(--sp-2), env(safe-area-inset-bottom));
 }
 .selection-count {
   font-weight: 600;
   margin-right: auto;
 }
 .file-head-actions {
-  margin-top: 12px;
+  margin-top: var(--sp-3);
 }
-.library-table td.library-col-size {
+.library-table td.library-col-size,
+.library-table th.library-col-size {
   white-space: nowrap;
-  font-variant-numeric: tabular-nums;
+  text-align: right;
 }
 .library-sort {
   all: unset;
@@ -11106,11 +11449,11 @@ button.job-step-more:hover {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 8px;
-  padding: 12px 0;
+  gap: var(--sp-2);
+  padding: var(--sp-3) 0;
 }
 .library-pager-range {
-  margin-right: 8px;
+  margin-right: var(--sp-2);
   font-size: var(--fs-small);
   color: var(--muted);
 }
@@ -11130,13 +11473,15 @@ button.job-step-more:hover {
 .library-card {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--sp-1);
   color: inherit;
   text-decoration: none;
-  border-radius: 8px;
+  border-radius: var(--r-sm);
 }
-.library-card:hover .library-card-title {
-  text-decoration: underline;
+@media (hover: hover) {
+  .library-card:hover .library-card-title {
+    text-decoration: underline;
+  }
 }
 .library-card:focus-visible {
   outline: none;
@@ -11148,7 +11493,7 @@ button.job-step-more:hover {
   -webkit-line-clamp: 2;
   overflow: hidden;
   overflow-wrap: anywhere;
-  margin-top: 4px;
+  margin-top: var(--sp-1);
   font-weight: 600;
 }
 .library-card-line {
@@ -11190,5 +11535,69 @@ button.job-step-more:hover {
 }
 .file-jobs-title {
   margin: 0;
-  font-size: var(--fs-h3, 16px);
+  font-size: var(--fs-h3);
+}
+
+/* ---------- Target size (WCAG 2.2 2.5.8: 24 x 24 px at least) ---------- */
+
+/* .text-target: a small text link outside a sentence gets 4 px of padding above and below,
+   cancelled by a matching negative margin: the target grows to 24 px or more and the text does not
+   move. The Jobs table's titles need nothing here: their ::after (.row-link-main) covers the row. */
+.text-target {
+  padding-block: var(--sp-1);
+  margin-block: -4px;
+}
+
+/* ---------- Numerals ----------
+   Figures line up in columns and do not jitter as they change: sizes, durations, percentages,
+   counts, dates and the plan, step and before/after numbers. */
+.stat-value,
+.stat-sub,
+.job-table td,
+.lib-table .lib-cell,
+.library-table td,
+.recycle-table td,
+.run-cell.run-size,
+.job-result-pct,
+.job-result-meta,
+.job-progress-detail,
+.job-outcome-sizes,
+.job-year,
+.plan-tile-value,
+.plan-tile-now,
+.plan-percent,
+.plan-original,
+.plan-track,
+.plan-table td,
+.step-table td,
+.ba-table td,
+.library-count,
+.library-pager-range,
+.selection-count,
+.recycle-usage-value,
+.rh-ticks span,
+.rh-summary,
+.tc-trace-row {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Help text measure ---------- */
+
+/* Help and description paragraphs stop at about 70 characters a line. Paths and file names are not
+   listed here and stay as long as they need. */
+.field-hint,
+.section-note,
+.section-intro,
+.setting-hint,
+.about-backups-hint,
+.about-backups-help .disclosure-body,
+.recycle-note,
+.recycle-explain,
+.catalog-sources,
+.plugin-network-note,
+.picker-hint,
+.picker-note,
+.run-note,
+.inline-edit-hint {
+  max-width: 70ch;
 }

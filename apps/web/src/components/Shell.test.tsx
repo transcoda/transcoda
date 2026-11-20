@@ -73,6 +73,45 @@ afterEach(() => {
 describe('Shell', () => {
   const NOTICE = 'This product uses the TMDB API but is not endorsed or certified by TMDB.';
 
+  it("keeps the scroll offset at the top bar's rendered height when the bar wraps to two rows", () => {
+    const root = document.documentElement;
+    let barHeight = 129;
+    const height = vi
+      .spyOn(HTMLElement.prototype, 'offsetHeight', 'get')
+      .mockImplementation(function (this: HTMLElement) {
+        return this.classList.contains('topbar') ? barHeight : 0;
+      });
+    const resized: Array<() => void> = [];
+    const RealObserver = globalThis.ResizeObserver;
+    globalThis.ResizeObserver = class {
+      constructor(private readonly callback: ResizeObserverCallback) {
+        resized.push(() => this.callback([], this as unknown as ResizeObserver));
+      }
+      observe(): void {}
+      unobserve(): void {}
+      disconnect(): void {}
+    } as unknown as typeof ResizeObserver;
+    try {
+      appearance.current = { theme: 'system', serverName: 'A rather long server name here' };
+      const view = render(<Shell>x</Shell>);
+      expect(root.style.getPropertyValue('--topbar-h')).toBe('129px');
+      // Back on one row: the offset follows.
+      barHeight = 69;
+      act(() => {
+        for (const fire of resized) fire();
+      });
+      expect(root.style.getPropertyValue('--topbar-h')).toBe('69px');
+      view.unmount();
+      expect(root.style.getPropertyValue('--topbar-h')).toBe('');
+      // The editor's rail has no top bar, so the token stands.
+      render(<Shell rail>x</Shell>);
+      expect(root.style.getPropertyValue('--topbar-h')).toBe('');
+    } finally {
+      globalThis.ResizeObserver = RealObserver;
+      height.mockRestore();
+    }
+  });
+
   it('shows the TMDB notice when the tmdb plugin is installed', async () => {
     pluginsList.mockResolvedValue({ plugins: [plugin(), plugin({ name: 'tmdb' })] });
     render(<Shell>x</Shell>);

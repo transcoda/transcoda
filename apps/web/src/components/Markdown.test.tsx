@@ -5,9 +5,11 @@ import { Markdown } from './Markdown.tsx';
 const html = (text: string) => render(<Markdown text={text} />).container.innerHTML;
 
 describe('Markdown', () => {
-  it('renders headings, paragraphs and inline marks', () => {
+  it('renders headings as bold lead-ins (not page headings), paragraphs and inline marks', () => {
     const out = html('## Start here\n\nChange **Languages** to *yours*, then `Save`.');
-    expect(out).toContain('<h4>Start here</h4>');
+    // A note sits on the canvas, outside the page outline: no <h4> that skips levels.
+    expect(out).toContain('<p class="markdown-heading">Start here</p>');
+    expect(out).not.toMatch(/<h[1-6]/);
     expect(out).toContain(
       '<p>Change <strong>Languages</strong> to <em>yours</em>, then <code>Save</code>.</p>',
     );

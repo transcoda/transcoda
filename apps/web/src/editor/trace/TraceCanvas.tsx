@@ -19,8 +19,10 @@ import type { Catalog } from '../../hooks/useCatalog.ts';
 import { usePhone } from '../../lib/usePhone.ts';
 import { DEFAULT_EDITOR_ACTIONS, EditorActionsContext } from '../flow/actions-context.ts';
 import { ARIA_LABELS, edgeTypes, nodeTypes } from '../flow/nodeTypes.ts';
+import { READABLE_ZOOM } from '../flow/openViewport.ts';
 import { toFlow, withViewCollapse } from '../flow/toFlow.ts';
 import type { TcFlowEdge, TcFlowNode, TraceOverlay } from '../flow/types.ts';
+import { ZoomVar } from '../flow/ZoomVar.tsx';
 import { MIN_ZOOM } from '../ui/Canvas.tsx';
 import { TraceActionsContext } from './trace-context.ts';
 import { spreadCards, spreadMembers } from './traceLayout.ts';
@@ -40,11 +42,12 @@ const CONTROLS_ROOM = 64;
 /** A flow narrower than this still gets a canvas it can be read and clicked in. */
 const FIT_MIN_HEIGHT = 240;
 /**
- * The lowest zoom the first fit goes to. Below 40 % the cards are icon tiles (N9, with the icons
- * counter-scaled), so a long workflow still fits the pane whole instead of being cut off; past
- * this floor it is shown from its left edge (the trigger) and panned.
+ * The lowest zoom the first fit goes to on a desktop: the readable zoom the editor opens at too
+ * (`READABLE_ZOOM`, the full cards). A graph wider than that allows is shown from its left edge
+ * (the trigger) and panned; "Fit view" in the controls still shows it whole. A phone cannot pan
+ * (a drag scrolls the page), so there the graph is fitted whole down to `MIN_ZOOM`.
  */
-const FIT_MIN_ZOOM = 0.2;
+const FIT_MIN_ZOOM = READABLE_ZOOM;
 
 /**
  * The viewport that shows the whole graph in a pane `paneWidth` wide (at most `maxZoom`, 100 % by
@@ -328,6 +331,7 @@ export function TraceCanvas({
                 // No attribution link on the job page (React Flow is MIT licensed).
                 proOptions={{ hideAttribution: true }}
               >
+                <ZoomVar />
                 <Background
                   variant={BackgroundVariant.Dots}
                   gap={22}

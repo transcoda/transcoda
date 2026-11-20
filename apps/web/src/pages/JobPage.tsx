@@ -63,6 +63,7 @@ import { useNodeParam } from '../jobs/useTryOnFile.ts';
 import { usePageTitle } from '../lib/pageTitle.ts';
 import { fmtDate } from '../lib/time.ts';
 import { usePhone } from '../lib/usePhone.ts';
+import { Crumbs } from '../libraries/Crumbs.tsx';
 import { RestoreButton } from '../recycle/RestoreButton.tsx';
 
 type Live = Pick<JobDetail, 'state' | 'paused' | 'progress' | 'lane' | 'problems' | 'reason'>;
@@ -372,12 +373,12 @@ function JobView({ id }: { id: string }) {
         </p>
       ) : null}
       <header className="job-head">
-        <nav aria-label="Breadcrumb" className="job-crumbs">
-          <Link href="/jobs" className="job-crumb-link">
-            Jobs
-          </Link>
-          <span aria-hidden="true">/</span>
-        </nav>
+        <Crumbs
+          crumbs={[
+            { label: 'Jobs', href: '/jobs' },
+            { label: jobTitle(job), href: null },
+          ]}
+        />
         <div className="job-head-body">
           <Poster job={job} size="page" />
           <div className="job-head-main">
@@ -473,20 +474,20 @@ function JobView({ id }: { id: string }) {
             <FilePath path={job.filePath} />
             <dl className="job-facts">
               <Fact term="Library">
-                <Link href="/libraries" className="link-muted">
+                <Link href="/libraries" className="link-muted text-target">
                   {job.libraryName}
                 </Link>
               </Fact>
               <Fact term="Workflow">
                 <Link
                   href={`/workflows/${job.workflowId}?version=${job.workflowVersion}`}
-                  className="link-muted"
+                  className="link-muted text-target"
                 >
                   {`${job.workflowName} v${job.workflowVersion}`}
                 </Link>
               </Fact>
               <Fact term="Run">
-                <Link href={`/runs/${job.runId}`} className="link-muted">
+                <Link href={`/runs/${job.runId}`} className="link-muted text-target">
                   Run
                 </Link>
               </Fact>

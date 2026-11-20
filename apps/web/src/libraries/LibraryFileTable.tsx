@@ -203,7 +203,14 @@ export function LibraryFileTable({
                 </th>
               ) : null}
               <SortHeader label="Title" sort="title" active={sort} desc={desc} onSort={onSort} />
-              <SortHeader label="Size" sort="size" active={sort} desc={desc} onSort={onSort} />
+              <SortHeader
+                label="Size"
+                sort="size"
+                active={sort}
+                desc={desc}
+                onSort={onSort}
+                className="library-col-size"
+              />
               <SortHeader label="Status" sort="result" active={sort} desc={desc} onSort={onSort} />
               <th scope="col">Result</th>
               <SortHeader

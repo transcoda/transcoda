@@ -554,7 +554,7 @@ export function WorkflowsPage() {
                       />
                     ) : (
                       <div className="wf-name-line">
-                        <Link href={`/workflows/${w.id}`} className="wf-link">
+                        <Link href={`/workflows/${w.id}`} className="wf-link text-target">
                           {w.name}
                         </Link>
                         <ProblemChips w={w} />

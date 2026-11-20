@@ -1,4 +1,9 @@
-import type { Issue, PortRef, WorkflowGraph } from '@transcoda/shared';
+import {
+  type Issue,
+  type PortRef,
+  SUBWORKFLOW_START_TYPE,
+  type WorkflowGraph,
+} from '@transcoda/shared';
 import {
   applyNodeChanges,
   Background,
@@ -11,7 +16,10 @@ import {
   type FinalConnectionState,
   type NodeChange,
   ReactFlow,
+  type ReactFlowState,
+  useNodesInitialized,
   useReactFlow,
+  useStore,
   type Viewport,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
@@ -20,6 +28,7 @@ import {
   type KeyboardEvent,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -28,10 +37,12 @@ import { Icon } from '../../components/Icon.tsx';
 import type { Catalog } from '../../hooks/useCatalog.ts';
 import { type FlowChangeResult, fromEdgeChanges, fromNodeChanges } from '../flow/fromFlow.ts';
 import { ARIA_LABELS, edgeTypes, nodeTypes } from '../flow/nodeTypes.ts';
+import { type OpenBox, openBounds, openViewport } from '../flow/openViewport.ts';
 import { TcConnectionLine } from '../flow/TcConnectionLine.tsx';
 import { TcMiniMap } from '../flow/TcMiniMap.tsx';
 import { COLLAPSED_GROUP_SIZE, toFlow } from '../flow/toFlow.ts';
 import type { TcFlowEdge, TcFlowNode } from '../flow/types.ts';
+import { ZoomVar } from '../flow/ZoomVar.tsx';
 import { checkConnection } from '../model/connection.ts';
 import type { EditorState } from '../model/editor-state.ts';
 import { connect, NODE_SIZE, type OpResult, type Position } from '../model/graph-ops.ts';
@@ -49,6 +60,51 @@ export const MIN_ZOOM = 0.1;
 
 /** A small graph is fitted at 100 %, never blown up. */
 export const FIT_VIEW = { maxZoom: 1, padding: 0.2 };
+
+const paneWidth = (s: ReactFlowState) => s.width;
+const paneHeight = (s: ReactFlowState) => s.height;
+
+/**
+ * The first view of a loaded graph, once its cards are measured and the pane has a size: the
+ * whole graph when that is readable, else a readable zoom from the trigger (`openViewport`).
+ * The trigger is the workflow's trigger or a sub-workflow's start; without one, the leftmost card.
+ * Runs before paint, so the canvas never shows the unfitted graph. Renders nothing.
+ */
+function OpenView({ graph, catalog }: { graph: WorkflowGraph; catalog: Catalog | null }) {
+  const rf = useReactFlow<FlowNode, TcFlowEdge>();
+  const ready = useNodesInitialized();
+  const width = useStore(paneWidth);
+  const height = useStore(paneHeight);
+  const done = useRef(false);
+  useLayoutEffect(() => {
+    if (done.current || !ready || width === 0 || height === 0) return;
+    // Every shown card counts for the fit (group members too: one may sit past its group's
+    // edge); the anchor is only ever a top-level card.
+    const visible = rf.getNodes().filter((n) => !n.hidden);
+    const shown = visible.filter((n) => n.parentId === undefined);
+    if (shown.length === 0) return;
+    done.current = true;
+    const boxOf = (n: FlowNode): OpenBox => {
+      const measured = rf.getInternalNode(n.id)?.measured;
+      return {
+        id: n.id,
+        parentId: n.parentId,
+        ...n.position,
+        width: measured?.width ?? NODE_SIZE.width,
+        height: measured?.height ?? 0,
+      };
+    };
+    const trigger = graph.nodes.find(
+      (n) => n.type === SUBWORKFLOW_START_TYPE || catalog?.byType.get(n.type)?.kind === 'trigger',
+    );
+    const leftmost = shown.reduce((a, b) => (b.position.x < a.position.x ? b : a));
+    const anchor = shown.find((n) => n.id === trigger?.id) ?? leftmost;
+    const bounds = openBounds(visible.map(boxOf));
+    if (!bounds) return;
+    void rf.setViewport(openViewport(bounds, boxOf(anchor), { width, height }, FIT_VIEW));
+  }, [ready, width, height, rf, graph, catalog]);
+  return null;
+}
 
 /** Keys that add a clicked card to the selection: React Flow's Meta/Control plus Shift. */
 const MULTI_SELECT_KEYS = ['Meta', 'Control', 'Shift'];
@@ -140,8 +196,8 @@ export function Canvas({
   // The overview is on by default and can be switched off to give a small canvas its room back.
   // The minimap would cover most of a small canvas: it starts hidden below 768 px.
   const [showMap, setShowMap] = useState(() => !window.matchMedia('(max-width: 767px)').matches);
-  // Fit the loaded graph once unless a viewport is remembered; an empty graph starts at 100 %
-  // instead of fitting its first node.
+  // Open the loaded graph at a readable view (OpenView) unless a viewport is remembered; an empty
+  // graph starts at 100 % instead of fitting its first node.
   const [fitOnLoad] = useState(() => defaultViewport === undefined && graph.nodes.length > 0);
   const derived = useMemo(
     () => toFlow(graph, catalog, issues, selection),
@@ -397,7 +453,6 @@ export function Canvas({
         // Shift-click adds a card to the selection too (Shift-drag on the pane still box-selects).
         multiSelectionKeyCode={MULTI_SELECT_KEYS}
         minZoom={MIN_ZOOM}
-        fitView={fitOnLoad}
         {...(defaultViewport ? { defaultViewport } : {})}
         {...(onMoveEnd ? { onMoveEnd } : {})}
         fitViewOptions={FIT_VIEW}
@@ -406,6 +461,8 @@ export function Canvas({
         // React Flow is MIT; the credit stays on Settings → About → Open-source licences.
         proOptions={PRO_OPTIONS}
       >
+        <ZoomVar />
+        {fitOnLoad && <OpenView graph={graph} catalog={catalog} />}
         {/* Dots of 1.2px radius every 22px (React Flow's `size` is the dot diameter). */}
         <Background
           variant={BackgroundVariant.Dots}

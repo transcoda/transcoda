@@ -11,10 +11,11 @@ function rule(selector: string): string {
 }
 
 describe('settings nav: the current item (Jan: green icon, no bar)', () => {
-  it('is marked by a green icon, bold text and the fill, with no bar or inset shadow', () => {
+  it('is marked by a green icon, the text colour and the fill, with no bar, inset shadow or weight change', () => {
     const active = rule('.settings-nav-item.is-active');
     expect(active).not.toContain('inset');
-    expect(active).toContain('font-weight: 700');
+    expect(active).not.toContain('font-weight');
+    expect(active).toContain('color: var(--text)');
     expect(active).toContain('background: var(--raised)');
     expect(rule('.settings-nav-item.is-active .icon')).toContain('color: var(--accent-text)');
     expect(css).not.toContain('.settings-nav-item.is-active::before');

@@ -71,7 +71,8 @@ function inline(text: string): ReactNode[] {
 }
 
 function block(b: Block): ReactNode {
-  if (b.kind === 'heading') return <h4>{inline(b.text)}</h4>;
+  // A bold lead-in, not an <h4>: notes sit on a canvas, outside the page's heading outline.
+  if (b.kind === 'heading') return <p className="markdown-heading">{inline(b.text)}</p>;
   if (b.kind === 'para') return <p>{inline(b.text)}</p>;
   const items = b.items.map((item, j) => (
     // biome-ignore lint/suspicious/noArrayIndexKey: list items have no id; the text is re-rendered whole.

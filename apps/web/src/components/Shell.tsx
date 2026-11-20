@@ -1,5 +1,12 @@
 import { RUNNING_JOB_STATES } from '@transcoda/shared';
-import { type ReactNode, useEffect, useRef, useState } from 'react';
+import {
+  type ReactNode,
+  type RefObject,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 import { useLocation, useRoute } from 'wouter';
 import { useAuth } from '../auth/useAuth.ts';
 import { useAppUpdate } from '../hooks/useAppUpdate.ts';
@@ -70,6 +77,31 @@ function SkipLink() {
 }
 
 /**
+ * Writes the top bar's rendered height to `--topbar-h` on the root, so the scroll offset that keeps
+ * keyboard focus out from under it (WCAG 2.4.11) and everything placed below it follow the bar
+ * when it wraps to a second row (a long server name beside the account group at 640 px and up).
+ * Without a bar, or before it has a size, the token's one-row height stands.
+ */
+function useTopbarHeight(ref: RefObject<HTMLElement | null>, present: boolean): void {
+  useLayoutEffect(() => {
+    const bar = ref.current;
+    if (!present || !bar) return;
+    const root = document.documentElement;
+    const write = () => {
+      const h = bar.offsetHeight;
+      if (h > 0) root.style.setProperty('--topbar-h', `${h}px`);
+    };
+    write();
+    const observer = new ResizeObserver(write);
+    observer.observe(bar);
+    return () => {
+      observer.disconnect();
+      root.style.removeProperty('--topbar-h');
+    };
+  }, [ref, present]);
+}
+
+/**
  * The app frame: top bar and side nav. The top bar and the nav stay in view while a long page
  * scrolls. Below 640 px every page gets the same phone header (brand and a Menu button) and the
  * nav becomes a drawer under it, holding the signed-in user and Sign out. `rail` (the editor,
@@ -100,6 +132,8 @@ export function Shell({
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLButtonElement>(null);
   const navRef = useRef<HTMLElement>(null);
+  const topbarRef = useRef<HTMLElement>(null);
+  useTopbarHeight(topbarRef, !rail);
   const [location] = useLocation();
   const open = phone && menuOpen;
 
@@ -230,7 +264,7 @@ export function Shell({
   return (
     <div className="shell">
       <SkipLink />
-      <header className="topbar">
+      <header ref={topbarRef} className="topbar">
         <GuardedLink href="/" className="brand">
           <Mark size={30} />
           <Wordmark />

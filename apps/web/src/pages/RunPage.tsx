@@ -34,6 +34,7 @@ import { fmtBytes } from '../lib/bytes.ts';
 import { usePageTitle } from '../lib/pageTitle.ts';
 import { fmtFull, fmtStamp } from '../lib/time.ts';
 import { usePhone } from '../lib/usePhone.ts';
+import { Crumbs } from '../libraries/Crumbs.tsx';
 
 type RunFile = RunDetail['files'][number];
 
@@ -235,12 +236,12 @@ function RunBody({ detail }: { detail: RunDetail }) {
   const waiting = counts.queued + counts.in_progress;
   return (
     <>
-      <nav aria-label="Breadcrumb" className="job-crumbs">
-        <Link href="/jobs" className="job-crumb-link">
-          Jobs
-        </Link>
-        <span aria-hidden="true">/</span>
-      </nav>
+      <Crumbs
+        crumbs={[
+          { label: 'Jobs', href: '/jobs' },
+          { label: `${detail.workflowName} v${run.workflowVersion}`, href: null },
+        ]}
+      />
       <div className="page-head">
         <div className="head-row run-head-row">
           <div className="run-title-row">

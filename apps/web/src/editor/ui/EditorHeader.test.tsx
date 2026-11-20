@@ -37,6 +37,13 @@ function header(props: Partial<Parameters<typeof EditorHeader>[0]> = {}) {
   return { onTry };
 }
 
+describe('EditorHeader heading', () => {
+  it("is the page's h1: the workflow's name (the breadcrumb shows it as the rename button)", () => {
+    header();
+    expect(screen.getByRole('heading', { level: 1, name: 'TV cleanup' })).toBeTruthy();
+  });
+});
+
 const items = () =>
   within(screen.getByRole('menu', { name: 'More actions' }))
     .getAllByRole('menuitem')
@@ -158,7 +165,8 @@ describe('EditorHeader', () => {
   it('compact: one row for the name and the menu, the version pill after them as the status line', () => {
     header({ compact: true });
     const head = document.querySelector('header.editor-head.is-compact') as HTMLElement;
-    const order = [...head.children].map((c) => c.className);
+    // The visually hidden h1 takes no room; the visible order is what counts.
+    const order = [...head.children].map((c) => c.className).filter((c) => c !== 'sr-only');
     expect(order).toEqual(['crumb', 'editor-head-end', 'version-pill-wrap']);
   });
 

@@ -6,10 +6,11 @@ import { describe, expect, it } from 'vitest';
 // Comments dropped, so a rule's selector list is only selectors.
 const css = readFileSync(join(__dirname, '../styles.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
 
-/** The declarations of every rule whose selector list contains `selector` as one entry. */
+/** The declarations of every rule whose selector list contains `selector` as one entry, at the
+ *  top level or one level inside an at-rule such as `@media (hover: hover)`. */
 function rulesFor(selector: string): string {
   const out: string[] = [];
-  for (const m of css.matchAll(/(?:^|\n)([^{}\n][^{}]*)\{([^}]*)\}/g)) {
+  for (const m of css.matchAll(/(?:^|\n)\s*([^{}\s@][^{}]*)\{([^}]*)\}/g)) {
     const selectors = (m[1] ?? '').split(',').map((x) => x.trim());
     if (selectors.includes(selector)) out.push(m[2] ?? '');
   }
@@ -78,5 +79,75 @@ describe('the library name on the Libraries page reads as a link (not by hover o
     expect(rulesFor('.lib-name-text')).toMatch(/color:\s*var\(--accent-text\)/);
     expect(rulesFor('.lib-name-text')).toMatch(/text-decoration:\s*underline/);
     expect(rulesFor('.lib-name-text:focus-visible')).toMatch(/box-shadow:\s*var\(--focus-ring\)/);
+  });
+});
+
+describe('accessibility: focus and target size', () => {
+  it('focus and in-page jumps stop below the sticky top bar; the editor has no top bar', () => {
+    expect(rulesFor('html')).toMatch(
+      /scroll-padding-top:\s*calc\(var\(--topbar-h\) \+ var\(--sp-4\)\)/,
+    );
+    expect(rulesFor('html:has(.editor)')).toMatch(/scroll-padding-top:\s*0/);
+  });
+
+  it('a small button keeps a 44 px hit area around its 36 px box, border or not', () => {
+    expect(rulesFor('.btn-sm')).toMatch(/height:\s*36px/);
+    expect(rulesFor('.btn')).toMatch(/position:\s*relative/);
+    const before = rulesFor('.btn-sm::before');
+    expect(before).toMatch(/content:\s*""/);
+    expect(before).toMatch(/position:\s*absolute/);
+    // A height, not an inset: an inset counts from the padding box and loses the border.
+    expect(before).toMatch(/height:\s*var\(--target-min\)/);
+    expect(before).toMatch(/top:\s*50%/);
+    expect(before).toMatch(/transform:\s*translateY\(-50%\)/);
+    expect(before).not.toMatch(/inset:/);
+    expect(rulesFor('.editor-head .btn::before')).toMatch(/height:\s*var\(--target-min\)/);
+  });
+
+  it('small text links grow to 24 px without moving the text', () => {
+    const rule = rulesFor('.text-target');
+    expect(rule).toMatch(/padding-block:\s*var\(--sp-1\)/);
+    expect(rule).toMatch(/margin-block:\s*-4px/);
+    expect(rulesFor('.wf-activate')).toMatch(/min-height:\s*32px/);
+    expect(rulesFor('.lib-name-text')).toMatch(/padding:\s*var\(--sp-1\)/);
+  });
+
+  it("the canvas's + and group toggle never drop below 24 px on screen when zoomed out", () => {
+    for (const sel of ['.tc-plus', '.tc-group-toggle']) {
+      const rule = rulesFor(sel);
+      expect(rule).toMatch(
+        /--tc-hit:\s*max\(var\(--target-min\), calc\(24px \/ var\(--tc-zoom, 1\)\)\)/,
+      );
+      expect(rule).toMatch(/width:\s*var\(--tc-hit\)/);
+      expect(rule).toMatch(/height:\s*var\(--tc-hit\)/);
+    }
+  });
+
+  it("the canvas's + starts past the output handle's hit area at every zoom, so a handle drag is never blocked", () => {
+    // Its right edge sits `gap + --tc-hit` right of the card edge, so its left edge is `gap` right
+    // of the card edge, whatever --tc-hit grows to as the canvas zooms out.
+    const plus = rulesFor('.tc-plus');
+    const gap = Number(
+      plus.match(/right:\s*calc\(-(\d+)px - var\(--tc-hit\)\)/)?.[1] ?? Number.NaN,
+    );
+    // The handle is centred on the card edge; its hit area is half its width plus the ::after.
+    const handle = rulesFor('.tc-node .tc-handle');
+    const half = Number(handle.match(/(?:^|\n)\s*width:\s*(\d+)px/)?.[1] ?? Number.NaN) / 2;
+    const after = rulesFor('.tc-node .tc-handle::after');
+    const reach = -Number(after.match(/inset:\s*(-\d+)px/)?.[1] ?? Number.NaN);
+    expect(half + reach).toBe(15);
+    expect(gap).toBeGreaterThanOrEqual(half + reach);
+  });
+});
+
+describe('Jobs stat tiles on a phone', () => {
+  it('a filtering tile stays unpadded so its button covers the whole tile', () => {
+    expect(rulesFor('.stat-tile.is-button')).toMatch(/padding:\s*0/);
+    // No phone rule pads every tile (that would pad the filtering tile around its button).
+    expect(rulesFor('.is-phone .stat-tile')).not.toMatch(/padding/);
+    expect(rulesFor('.is-phone .stat-tile:not(.is-button)')).toMatch(
+      /padding-inline:\s*var\(--sp-3\)/,
+    );
+    expect(rulesFor('.is-phone .stat-tile-button')).toMatch(/padding-inline:\s*var\(--sp-3\)/);
   });
 });
