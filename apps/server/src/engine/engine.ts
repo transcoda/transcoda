@@ -437,9 +437,10 @@ export class EngineService {
   }
 
   /** null for an unknown job, a job without a poster, or when no thumbnail can be produced. */
-  async jobPoster(id: string): Promise<Thumbnail | null> {
+  /** `of: 'show'`: the show's own poster the job's media names, not the episode's. */
+  async jobPoster(id: string, of?: 'show'): Promise<Thumbnail | null> {
     const job = findJob(this.db, id);
-    const posterPath = job?.media?.posterPath;
+    const posterPath = of === 'show' ? job?.media?.showPosterPath : job?.media?.posterPath;
     if (!job || !posterPath) return null;
     // A deleted or missing library: its folder is no longer vouched for, so the cache only.
     const library = findLibrary(this.db, job.libraryId);

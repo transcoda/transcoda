@@ -272,6 +272,33 @@ describe('library browser read routes', () => {
     expect(JSON.stringify(body)).not.toContain('posterPath');
   });
 
+  it("a show card points at the show's own poster (of: show); seasons and files keep theirs, no path leaks", async () => {
+    t.db
+      .prepare('UPDATE jobs SET media = ? WHERE id = ?')
+      .run(JSON.stringify(media({ episode: 2, showPosterPath: '/media/tv/show.jpg' })), 'j2');
+    const key = showKey({ title: SHOW, year: 1962 });
+    const titles = await get('/libraries/l1/titles');
+    const show = titles.body.items.find((i: { type: string }) => i.type === 'show');
+    expect(show.poster).toEqual({
+      id: 'j2',
+      of: 'show',
+      media: expect.objectContaining({ episode: 2, poster: true }),
+    });
+    const seasons = await get(`/libraries/l1/seasons?show=${key}`);
+    expect(seasons.body.seasons[0].poster).toEqual({
+      id: 'j1b',
+      media: expect.objectContaining({ poster: true }),
+    });
+    const files = await get(`/libraries/l1/files?show=${key}`);
+    const f2 = files.body.files.find((f: { id: string }) => f.id === 'f2');
+    expect(f2.poster).toEqual({ id: 'j2', media: expect.objectContaining({ poster: false }) });
+    const jobs = await get('/jobs');
+    expect(jobs.body.jobs.map((j: { id: string }) => j.id)).toContain('j2');
+    for (const body of [titles.body, seasons.body, files.body, jobs.body]) {
+      expect(JSON.stringify(body)).not.toMatch(/posterPath|show\.jpg/i);
+    }
+  });
+
   it('GET /libraries/:id/files pages, sorts and searches over REST query parameters', async () => {
     const { body } = await get('/libraries/l1/files?search=beverly&sort=title&limit=1&offset=1');
     expect(body).toMatchObject({ total: 2, files: [{ fileName: 'S01E02.mkv', id: 'f2' }] });

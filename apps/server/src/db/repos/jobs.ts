@@ -401,7 +401,8 @@ function isStoredMedia(v: unknown): v is StoredJobMedia {
     isIntOrNull(m.season) &&
     isIntOrNull(m.episode) &&
     isStringOrNull(m.episodeTitle) &&
-    isStringOrNull(m.posterPath)
+    isStringOrNull(m.posterPath) &&
+    (m.showPosterPath === undefined || isStringOrNull(m.showPosterPath))
   );
 }
 

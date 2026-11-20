@@ -170,6 +170,47 @@ describe('GET /jobs/{id}/poster', () => {
     }
   });
 
+  it("?of=show serves the show poster the job's media names; a job naming none → 404", async () => {
+    await writeFile(join(base, 'lib', 'show.jpg'), SOURCE);
+    insertJob(
+      t.db,
+      {
+        id: 'ep',
+        runId: 'r1',
+        libraryId: 'l1',
+        fileId: null,
+        path: join(base, 'lib', 'ep.mkv'),
+        workflowId: 'w1',
+        workflowVersion: 1,
+        dryRun: false,
+        testEncode: false,
+        state: 'queued',
+        priority: 0,
+        media: {
+          ...media(join(base, 'lib', 'missing.jpg')),
+          kind: 'episode',
+          showPosterPath: join(base, 'lib', 'show.jpg'),
+        },
+      },
+      t.clock.now(),
+    );
+    const lookup = vi.spyOn(t.deps.engine, 'jobPoster');
+    // The episode's own poster is gone; the show's is there.
+    expect((await send(t, 'GET', url('ep'), { headers: asSession(s, false) })).status).toBe(404);
+    const show = await send(t, 'GET', `${url('ep')}?of=show`, { headers: asSession(s, false) });
+    expect(show.status).toBe(200);
+    expect(Buffer.from(await show.arrayBuffer()).equals(THUMB)).toBe(true);
+    expect(lookup.mock.calls).toEqual([
+      ['ep', undefined],
+      ['ep', 'show'],
+    ]);
+    // A job with only its own poster has no show poster; an unknown `of` is the own poster.
+    const none = await send(t, 'GET', `${url('a')}?of=show`, { headers: asSession(s, false) });
+    expect(none.status).toBe(404);
+    const other = await send(t, 'GET', `${url('a')}?of=season`, { headers: asSession(s, false) });
+    expect(other.status).toBe(200);
+  });
+
   it('a soft-deleted library with no cached thumbnail → 404', async () => {
     softDeleteLibrary(t.db, 'l1', t.clock.now());
     const res = await send(t, 'GET', url('a'), { headers: asSession(s, false) });

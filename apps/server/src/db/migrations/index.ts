@@ -19,6 +19,7 @@ import { restore } from './0017_restore.ts';
 import { failureCode } from './0018_failure_code.ts';
 import { jobMedia } from './0019_job_media.ts';
 import { libraryBrowser } from './0020_library_browser.ts';
+import { latestJob } from './0021_latest_job.ts';
 import { nodeProblems } from './0021_node_problems.ts';
 
 export const migrations: Migration[] = [
@@ -42,5 +43,6 @@ export const migrations: Migration[] = [
   failureCode,
   jobMedia,
   libraryBrowser,
+  latestJob,
   nodeProblems,
 ];

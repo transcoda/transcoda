@@ -1,8 +1,14 @@
-// Fills `media` (title, poster) on each file's latest job when it is NULL: a pass reads sidecars
-// beside the files (never runs ffmpeg), a batch at a time, so the library pages need no folder read.
+// Fills `media` (title, poster) on each file's latest job when it is NULL, and the show poster on
+// episode media resolved before show posters existed: a pass reads sidecars beside the files
+// (never runs ffmpeg), a batch at a time, so the library pages need no folder read.
 
 import type { Database } from '../db/open.ts';
-import { latestJobsWithoutMedia, setJobMedia } from '../db/repos/library-files.ts';
+import {
+  episodesWithoutShowPoster,
+  latestJobsWithoutMedia,
+  setJobMedia,
+  setShowPosterPath,
+} from '../db/repos/library-files.ts';
 import type { Logger } from '../logger.ts';
 import type { FsOps } from './fs-ops.ts';
 import { createMediaResolver, type MediaResolver } from './media-info.ts';
@@ -100,28 +106,79 @@ export class MediaPass {
 
   /**
    * One pass: reads the latest jobs lacking media once, then works through that list a batch at a
-   * time. Jobs queued during the pass are left to the pass their kick runs.
+   * time; then the same for episode media that never had its show poster looked up (the key is
+   * written once the show folder was read in full, null when it has none, so later passes skip it;
+   * a read error leaves it missing for a later pass, logged once per pass). Jobs queued
+   * during the pass are left to the pass their kick runs. `filled`: jobs given media.
    */
   async run(): Promise<{ filled: number }> {
     const { db, fs, log } = this.deps;
-    const batch = this.deps.batch ?? DEFAULT_BATCH;
-    // One resolver per pass: it caches folder listings.
+    // One resolver per pass: it caches folder listings, tvshow.nfo and show posters per folder.
     const resolver = (this.deps.resolver ?? (() => createMediaResolver({ fs, log })))();
-    const all = latestJobsWithoutMedia(db);
-    let filled = 0;
+    const filled = await this.inBatches(latestJobsWithoutMedia(db), async (j) =>
+      // resolve never throws; a file whose sidecars fail gets its file-name media.
+      setJobMedia(db, j.jobId, await resolver.resolve(j.path, j.libraryRoot)),
+    );
+    if (filled > 0) log.info({ msg: 'media pass: filled job(s)', filled });
+    if (this.stopped) return { filled };
+    // A library whose root cannot be listed (an unmounted share) is skipped for this pass, and a
+    // show folder that cannot be read leaves the key missing: both are looked up again later.
+    const reachable = new Map<string, Promise<boolean>>();
+    const rootReachable = (root: string): Promise<boolean> => {
+      let r = reachable.get(root);
+      if (r === undefined) {
+        r = fs.readdir(root).then(
+          () => true,
+          () => false,
+        );
+        reachable.set(root, r);
+      }
+      return r;
+    };
+    const unreachable = new Set<string>();
+    let unreadable = 0;
+    const showPosters = await this.inBatches(episodesWithoutShowPoster(db), async (j) => {
+      if (!(await rootReachable(j.libraryRoot))) {
+        unreachable.add(j.libraryRoot);
+        return false;
+      }
+      const found = await resolver.showPoster(j.path, j.libraryRoot);
+      if (!('path' in found)) {
+        unreadable++;
+        return false;
+      }
+      return setShowPosterPath(db, j.jobId, found.path);
+    });
+    if (showPosters > 0) {
+      log.info({ msg: 'media pass: looked up show posters', jobs: showPosters });
+    }
+    if (unreadable > 0 || unreachable.size > 0) {
+      log.warn({
+        msg: 'media pass: some show folders could not be read; their show posters are looked up on a later pass',
+        jobs: unreadable,
+        unreachableLibraries: unreachable.size,
+      });
+    }
+    return { filled };
+  }
+
+  /**
+   * Runs `write` over `all` a batch at a time, {@link MEDIA_CONCURRENCY} at once; the count of
+   * writes that changed a row. A failure stops new work and rethrows once every worker settled.
+   */
+  private async inBatches<T>(all: T[], write: (item: T) => Promise<boolean>): Promise<number> {
+    const batch = this.deps.batch ?? DEFAULT_BATCH;
+    let wrote = 0;
     for (let start = 0; start < all.length && !this.stopped; start += batch) {
       const todo = all.slice(start, start + batch);
       let next = 0;
-      let wrote = 0;
       let failed = false;
       const worker = async (): Promise<void> => {
         while (next < todo.length && !this.stopped && !failed) {
-          const j = todo[next++];
-          if (j === undefined) return;
+          const item = todo[next++];
+          if (item === undefined) return;
           try {
-            // resolve never throws; a file whose sidecars fail gets its file-name media.
-            const media = await resolver.resolve(j.path, j.libraryRoot);
-            if (setJobMedia(db, j.jobId, media)) wrote++;
+            if (await write(item)) wrote++;
           } catch (err) {
             failed = true; // the other workers start no new file
             throw err;
@@ -132,11 +189,9 @@ export class MediaPass {
       const settled = await Promise.allSettled(
         Array.from({ length: Math.min(MEDIA_CONCURRENCY, todo.length) }, worker),
       );
-      filled += wrote;
       const failure = settled.find((s) => s.status === 'rejected');
       if (failure !== undefined) throw failure.reason;
     }
-    if (filled > 0) log.info({ msg: 'media pass: filled job(s)', filled });
-    return { filled };
+    return wrote;
   }
 }
