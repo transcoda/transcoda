@@ -1,6 +1,6 @@
 import type { Library, WorkflowSummary } from '@transcoda/contract';
 import { runHoursSummary } from '@transcoda/shared';
-import { type FormEvent, type ReactNode, useEffect, useId, useRef, useState } from 'react';
+import { type FormEvent, type ReactNode, useId, useRef, useState } from 'react';
 import { Link } from 'wouter';
 import { api, isDefinedError, safe } from '../api/client.ts';
 import { describeError } from '../api/errors.ts';
@@ -86,7 +86,7 @@ function NonDefaultNotes({ library }: { library: Library }) {
       </span>,
     );
   }
-  return notes.length > 0 ? <>{notes}</> : null;
+  return notes.length > 0 ? notes : null;
 }
 
 function ErrorAlert({ children }: { children: string }) {
