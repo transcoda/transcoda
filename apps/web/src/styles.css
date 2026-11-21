@@ -2,7 +2,16 @@
    Design tokens live in ./styles/tokens.css (copied unchanged from the handoff).
    The few colours below are used by the screen files but are not tokens. */
 
+/* Type scale. tokens.css owns --fs-display, --fs-h1, --fs-h2, --fs-body, --fs-small and --fs-mono;
+   these four fill the gaps so styles.css carries no raw px font-size.
+   Documented exceptions (checked by styles/type-scale-css.test.ts): the auth hero tagline
+   (64px, 40px on phone) is a display glyph size of its own, and .markdown code is 0.92em of its
+   surrounding text. */
 :root {
+  --fs-micro: 11px; /* mono caps micro labels; 12px on phone */
+  --fs-ui: 14px; /* controls, labels, dense rows */
+  --fs-h3: 17px; /* card and section headings */
+  --fs-title: 32px; /* page titles */
   --danger-text: #ff9a8c;
   --danger-line: #5c2a24;
   --accent-hover: #e2ff9e;
@@ -42,6 +51,14 @@
   --plan-drop-row: #221f22;
   --plan-tile-sep: rgb(23 22 26 / 0.25);
   color-scheme: dark;
+}
+
+/* On a phone the micro labels are 12px. Set on body (not :root) to keep the first :root block the
+   one the theme test reads. */
+@media (max-width: 639px) {
+  body {
+    --fs-micro: 12px;
+  }
 }
 
 /* Light values of the colours above (tokens.css holds the rest). Same two selectors as there:
@@ -238,14 +255,14 @@ a {
 .btn-lg {
   height: 52px;
   padding: 0 20px;
-  font-size: 16px;
+  font-size: var(--fs-h3);
 }
 
 .btn-sm {
   height: 36px;
   padding: 0 14px;
   border-radius: 10px;
-  font-size: 14px;
+  font-size: var(--fs-ui);
 }
 
 .btn-primary {
@@ -301,7 +318,7 @@ a {
   color: var(--danger-text);
   border: 1px solid var(--danger-line);
   padding: 0 12px;
-  font-size: 14px;
+  font-size: var(--fs-ui);
 }
 
 @media (hover: hover) {
@@ -342,7 +359,7 @@ a {
 
 .field > label,
 .scopes legend {
-  font-size: 14px;
+  font-size: var(--fs-ui);
   font-weight: 500;
 }
 
@@ -354,7 +371,7 @@ a {
   border-radius: var(--r-md);
   color: var(--text);
   font: inherit;
-  font-size: 16px;
+  font-size: var(--fs-h3);
 }
 
 .input[type="date"] {
@@ -393,7 +410,7 @@ a {
 }
 
 .tc-field-label {
-  font-size: 14px;
+  font-size: var(--fs-ui);
   font-weight: 500;
 }
 
@@ -428,7 +445,7 @@ a {
 }
 
 .tc-field-hint {
-  font-size: 12px;
+  font-size: var(--fs-mono);
   color: var(--faint);
 }
 
@@ -444,7 +461,7 @@ a {
   height: 44px;
   width: 100%;
   min-width: 0;
-  font-size: 15px;
+  font-size: var(--fs-body);
 }
 
 .tc-field.has-issue .tc-input,
@@ -554,7 +571,6 @@ a {
 .tc-link-chip.is-linked {
   background: var(--raised);
   color: var(--accent-text);
-  font-weight: 600;
 }
 
 .values-row {
@@ -570,7 +586,7 @@ a {
   padding: 10px 12px;
   resize: vertical;
   font-family: var(--font-mono);
-  font-size: 13px;
+  font-size: var(--fs-small);
   line-height: 1.5;
 }
 
@@ -584,7 +600,7 @@ a {
   top: 50%;
   transform: translateY(-50%);
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--fs-mono);
   color: var(--faint);
   pointer-events: none;
 }
@@ -601,7 +617,7 @@ a {
 }
 
 .tc-slider-default {
-  font-size: 12px;
+  font-size: var(--fs-mono);
   color: var(--faint);
 }
 
@@ -623,14 +639,13 @@ a {
   background: transparent;
   color: var(--muted);
   font: inherit;
-  font-size: 14px;
+  font-size: var(--fs-ui);
   cursor: pointer;
 }
 
 .tc-segmented button[aria-checked="true"] {
   background: var(--line);
   color: var(--text);
-  font-weight: 600;
 }
 
 .tc-language-button {
@@ -642,7 +657,7 @@ a {
 
 .lang-code {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--fs-micro);
   color: var(--faint);
 }
 
@@ -667,7 +682,7 @@ a {
   padding: 0 4px 0 10px;
   border-radius: 8px;
   background: var(--line);
-  font-size: 13px;
+  font-size: var(--fs-small);
 }
 
 .lang-chip.is-untagged {
@@ -703,7 +718,7 @@ a {
   background: transparent;
   color: var(--text);
   font: inherit;
-  font-size: 13px;
+  font-size: var(--fs-small);
   cursor: pointer;
 }
 
@@ -721,14 +736,14 @@ a {
   background: transparent;
   color: var(--text);
   font: inherit;
-  font-size: 13px;
+  font-size: var(--fs-small);
 }
 
 .tc-field .tc-raw {
   height: auto;
   padding: 10px 12px;
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--fs-mono);
   resize: vertical;
 }
 
@@ -759,7 +774,7 @@ a {
   background: transparent;
   color: var(--text);
   font: inherit;
-  font-size: 15px;
+  font-size: var(--fs-body);
   text-align: left;
   cursor: pointer;
 }
@@ -776,7 +791,7 @@ a {
 
 .lang-picker-empty {
   color: var(--faint);
-  font-size: 14px;
+  font-size: var(--fs-ui);
 }
 
 /* The grouped codec picker (editor/ui/CodecPicker, UI list #40): one listbox in labelled groups,
@@ -793,7 +808,7 @@ a {
 
 .codec-group-label {
   padding: 6px 12px 2px;
-  font-size: 12px;
+  font-size: var(--fs-mono);
   font-weight: 600;
   color: var(--muted);
 }
@@ -806,7 +821,7 @@ a {
   padding: 0 12px;
   border-radius: 10px;
   color: var(--text);
-  font-size: 15px;
+  font-size: var(--fs-body);
   cursor: pointer;
 }
 
@@ -841,7 +856,7 @@ a {
 }
 
 .codec-option-note {
-  font-size: 12px;
+  font-size: var(--fs-mono);
   color: var(--faint);
 }
 
@@ -888,7 +903,7 @@ a {
   gap: 10px;
   padding: 12px 14px;
   border-radius: var(--r-md);
-  font-size: 14px;
+  font-size: var(--fs-ui);
   font-weight: 500;
 }
 
@@ -939,7 +954,7 @@ a {
 }
 
 .auth-logo .wordmark {
-  font-size: 26px;
+  font-size: var(--fs-h1);
 }
 
 .auth-tagline {
@@ -992,7 +1007,7 @@ a {
 }
 
 .credentials h1 {
-  font-size: 34px;
+  font-size: var(--fs-title);
   font-weight: 700;
   letter-spacing: -0.02em;
 }
@@ -1099,7 +1114,7 @@ a {
 }
 
 .brand .wordmark {
-  font-size: 20px;
+  font-size: var(--fs-h2);
 }
 
 .server-name {
@@ -1131,7 +1146,7 @@ a {
   display: inline-flex;
   align-items: center;
   gap: var(--sp-2);
-  font-size: 14px;
+  font-size: var(--fs-ui);
   color: var(--muted);
 }
 
@@ -1165,7 +1180,7 @@ a {
   background: var(--surface);
   color: var(--text);
   font: inherit;
-  font-size: 14px;
+  font-size: var(--fs-ui);
   cursor: pointer;
 }
 
@@ -1253,7 +1268,7 @@ a {
   text-overflow: ellipsis;
   white-space: nowrap;
   color: var(--text);
-  font-size: 14px;
+  font-size: var(--fs-ui);
   font-weight: 600;
   border-radius: var(--r-sm);
 }
@@ -1448,7 +1463,7 @@ a.nav-item.is-active {
 }
 
 .page-bar h1 {
-  font-size: 22px;
+  font-size: var(--fs-h2);
   font-weight: 700;
   letter-spacing: -0.01em;
 }
@@ -1466,7 +1481,7 @@ a.nav-item.is-active {
   padding: 0 10px;
   border-radius: var(--r-pill);
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--fs-micro);
   font-weight: 600;
 }
 
@@ -1550,7 +1565,7 @@ a.nav-item.is-active {
 }
 
 .empty-workflows h2 {
-  font-size: 26px;
+  font-size: var(--fs-h1);
   font-weight: 700;
   letter-spacing: -0.01em;
 }
@@ -1568,7 +1583,7 @@ a.nav-item.is-active {
 
 .empty-note kbd {
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--fs-mono);
   padding: 2px 7px;
   border-radius: 6px;
   background: var(--line);
@@ -1706,7 +1721,7 @@ a.nav-item.is-active {
 }
 
 .page-head h1 {
-  font-size: 32px;
+  font-size: var(--fs-title);
   font-weight: 700;
   letter-spacing: -0.02em;
 }
@@ -1730,7 +1745,7 @@ a.nav-item.is-active {
   gap: 10px;
   margin: 0;
   font-family: var(--font-ui);
-  font-size: 18px;
+  font-size: var(--fs-h3);
   font-weight: 700;
   letter-spacing: normal;
   text-transform: none;
@@ -1738,7 +1753,7 @@ a.nav-item.is-active {
 }
 .section-count {
   font-family: var(--font-mono);
-  font-size: 13px;
+  font-size: var(--fs-small);
   font-weight: 600;
   color: var(--muted);
 }
@@ -1857,7 +1872,7 @@ a.nav-item.is-active {
 }
 
 .reveal-warn {
-  font-size: 14px;
+  font-size: var(--fs-ui);
   font-weight: 500;
 }
 
@@ -1886,7 +1901,7 @@ a.nav-item.is-active {
 /* "Selected. Press ⌘C to copy." when the clipboard can't be written (plain http, #27). The live
    region stays in the DOM so it is announced; while empty it cancels the .reveal gap above it. */
 .reveal-hint {
-  font-size: 14px;
+  font-size: var(--fs-ui);
   font-weight: 600;
 }
 
@@ -1948,7 +1963,7 @@ a.nav-item.is-active {
   border-radius: var(--r-md);
   background: var(--raised);
   border: 1.5px solid var(--line-strong);
-  font-size: 14px;
+  font-size: var(--fs-ui);
   cursor: pointer;
 }
 
@@ -1956,7 +1971,6 @@ a.nav-item.is-active {
   border-color: var(--accent);
   background: var(--accent);
   color: var(--on-accent);
-  font-weight: 700;
 }
 
 .scope-chip:has(input:focus-visible) {
@@ -2005,14 +2019,14 @@ a.nav-item.is-active {
   width: 100%;
   min-width: 820px;
   border-collapse: collapse;
-  font-size: 14px;
+  font-size: var(--fs-ui);
 }
 
 .token-table th {
   padding: 14px 12px;
   text-align: left;
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--fs-micro);
   font-weight: 600;
   color: var(--faint);
   text-transform: uppercase;
@@ -2064,7 +2078,7 @@ a.nav-item.is-active {
 .new-tag {
   margin-left: 6px;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-micro);
   font-weight: 600;
   color: var(--on-accent);
   background: var(--accent);
@@ -2078,7 +2092,7 @@ a.nav-item.is-active {
   flex-wrap: wrap;
   gap: var(--sp-1);
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--fs-micro);
 }
 
 .scope-tag {
@@ -2099,7 +2113,7 @@ a.nav-item.is-active {
   align-items: center;
   gap: 6px;
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--fs-micro);
   font-weight: 600;
   color: var(--danger-text);
   text-transform: uppercase;
@@ -2295,7 +2309,7 @@ a.nav-item.is-active {
 
 .setting-tag {
   color: var(--faint);
-  font-size: 12px;
+  font-size: var(--fs-mono);
   white-space: nowrap;
 }
 
@@ -2429,7 +2443,7 @@ a.nav-item.is-active {
    and long choices (a GPU's name) take a line each. */
 @media (max-width: 639px) {
   .settings-section > h2 {
-    font-size: 28px;
+    font-size: var(--fs-h1);
     letter-spacing: -0.02em;
   }
 
@@ -2508,7 +2522,7 @@ a.nav-item.is-active {
   background: transparent;
   color: var(--text);
   font: inherit;
-  font-size: 14px;
+  font-size: var(--fs-ui);
   font-weight: 600;
   text-align: left;
   cursor: pointer;
@@ -2538,7 +2552,7 @@ a.nav-item.is-active {
 
 .disclosure-meta {
   color: var(--faint);
-  font-size: 12px;
+  font-size: var(--fs-mono);
   font-weight: 400;
 }
 
@@ -2593,7 +2607,7 @@ a.nav-item.is-active {
 
 /* Recycle: what the recycled originals take now, a value rather than a sentence. */
 .recycle-usage-value {
-  font-size: 20px;
+  font-size: var(--fs-h2);
   font-weight: 700;
   color: var(--text);
 }
@@ -2665,7 +2679,7 @@ a.nav-item.is-active {
   min-width: 0;
   margin: 0;
   color: var(--text);
-  font-size: 12px;
+  font-size: var(--fs-mono);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
@@ -2696,7 +2710,7 @@ a.nav-item.is-active {
   align-items: baseline;
   gap: var(--sp-2);
   margin: 0 0 var(--sp-2);
-  font-size: 15px;
+  font-size: var(--fs-body);
 }
 
 .app-update-date {
@@ -3037,7 +3051,7 @@ a.btn:hover {
 }
 
 .wf-title .wf-count {
-  font-size: 15px;
+  font-size: var(--fs-body);
 }
 
 .wf-section-head {
@@ -3045,12 +3059,12 @@ a.btn:hover {
   align-items: baseline;
   gap: 10px;
   margin: 0 0 12px;
-  font-size: 18px;
+  font-size: var(--fs-h3);
 }
 
 .wf-count {
   font-family: var(--font-mono);
-  font-size: 13px;
+  font-size: var(--fs-small);
   font-weight: 600;
   color: var(--muted);
 }
@@ -3062,7 +3076,7 @@ a.btn:hover {
   min-width: 720px;
   table-layout: fixed;
   border-collapse: collapse;
-  font-size: 14px;
+  font-size: var(--fs-ui);
 }
 
 .wf-col-library {
@@ -3090,7 +3104,7 @@ a.btn:hover {
   padding: 14px 12px;
   text-align: left;
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--fs-micro);
   font-weight: 600;
   color: var(--faint);
   text-transform: uppercase;
@@ -3124,7 +3138,7 @@ a.btn:hover {
 
 .inline-edit-hint {
   color: var(--faint);
-  font-size: 12px;
+  font-size: var(--fs-mono);
 }
 
 @media (max-width: 639px) {
@@ -3196,7 +3210,7 @@ a.btn:hover {
 .wf-version {
   overflow: hidden;
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--fs-mono);
   white-space: nowrap;
   text-overflow: ellipsis;
 }
@@ -3243,7 +3257,7 @@ a.btn:hover {
   background: transparent;
   color: var(--text);
   font: inherit;
-  font-size: 14px;
+  font-size: var(--fs-ui);
   text-align: left;
   cursor: pointer;
 }
@@ -3273,7 +3287,7 @@ a.btn:hover {
 /* Custom listbox dropdown (Jobs library filter): the action-menu overlay with option rows. */
 .listbox-select-button {
   height: 40px;
-  font-size: 14px;
+  font-size: var(--fs-ui);
 }
 /* In a form: the label above a full-width button that matches the text inputs. */
 .listbox-select-field {
@@ -3282,7 +3296,7 @@ a.btn:hover {
   gap: 6px;
 }
 .listbox-select-label {
-  font-size: 14px;
+  font-size: var(--fs-ui);
   font-weight: 500;
 }
 .listbox-select-field .listbox-select-button {
@@ -3292,7 +3306,7 @@ a.btn:hover {
   padding: 0 14px;
   border: 1.5px solid var(--line-control);
   border-radius: var(--r-md);
-  font-size: 16px;
+  font-size: var(--fs-h3);
 }
 .listbox-select-field .listbox-select-list {
   right: 0;
@@ -3318,15 +3332,12 @@ a.btn:hover {
   padding: 0 12px;
   border-radius: var(--r-sm);
   color: var(--text);
-  font-size: 14px;
+  font-size: var(--fs-ui);
   cursor: pointer;
 }
 .listbox-option.is-active {
   background: var(--line);
   box-shadow: inset 0 0 0 2px var(--text);
-}
-.listbox-option[aria-selected="true"] {
-  font-weight: 700;
 }
 .listbox-option-check {
   display: inline-flex;
@@ -3358,7 +3369,7 @@ a.btn:hover {
 
 .kind-choice legend {
   margin-bottom: var(--sp-2);
-  font-size: 14px;
+  font-size: var(--fs-ui);
   font-weight: 500;
 }
 
@@ -3530,7 +3541,7 @@ a.btn:hover {
   background: var(--raised);
   border: 1px solid var(--line-strong);
   color: var(--text);
-  font-size: 14px;
+  font-size: var(--fs-ui);
 }
 
 .toast-success {
@@ -3683,7 +3694,7 @@ a.btn:hover {
 .run-file-version {
   color: var(--faint);
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--fs-micro);
 }
 
 .activate-refused-title {
@@ -3741,7 +3752,7 @@ a.btn:hover {
 
 .eyebrow-kind {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-micro);
   font-weight: 600;
   letter-spacing: 0.02em;
   color: var(--muted);
@@ -3812,7 +3823,7 @@ a.btn:hover {
   gap: 8px;
   margin: 0;
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--fs-mono);
   color: var(--muted);
 }
 
@@ -3871,7 +3882,7 @@ a.btn:hover {
   align-items: center;
   gap: 6px;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-micro);
   font-weight: 600;
   color: var(--node-kind);
   text-transform: uppercase;
@@ -3884,7 +3895,7 @@ a.btn:hover {
 
 .tc-node-title {
   overflow: hidden;
-  font-size: 15px;
+  font-size: var(--fs-body);
   font-weight: 700;
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -3897,7 +3908,7 @@ a.btn:hover {
   height: 30px;
   padding: 0 14px;
   border-bottom: 1px solid var(--line);
-  font-size: 12px;
+  font-size: var(--fs-mono);
   color: var(--muted);
 }
 
@@ -3942,7 +3953,7 @@ a.btn:hover {
   align-items: center;
   height: 40px;
   padding: 0 12px;
-  font-size: 12px;
+  font-size: var(--fs-mono);
   color: var(--st-needs-setting);
 }
 
@@ -3964,7 +3975,7 @@ a.btn:hover {
 
 .tc-onnode-label {
   overflow: hidden;
-  font-size: 12px;
+  font-size: var(--fs-mono);
   color: var(--muted);
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -3981,7 +3992,7 @@ a.btn:hover {
   background: var(--surface);
   color: var(--text);
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--fs-mono);
 }
 
 .tc-onnode-input {
@@ -4012,7 +4023,7 @@ a.btn:hover {
   border-radius: var(--r-sm);
   background: transparent;
   font: inherit;
-  font-size: 12px;
+  font-size: var(--fs-mono);
   text-align: left;
   cursor: pointer;
 }
@@ -4048,7 +4059,7 @@ a.btn:hover {
   border-radius: var(--r-sm);
   background: var(--line);
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--fs-micro);
   color: var(--text);
 }
 
@@ -4063,7 +4074,7 @@ a.btn:hover {
   padding: 0 12px;
   overflow: hidden;
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--fs-mono);
   color: var(--muted);
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -4127,7 +4138,7 @@ a.btn:hover {
   padding: 0 8px;
   border-radius: var(--r-pill);
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--fs-micro);
   font-weight: 600;
   white-space: nowrap;
 }
@@ -4149,7 +4160,7 @@ a.btn:hover {
 
 .tc-badge-bang {
   font-family: var(--font-ui);
-  font-size: 14px;
+  font-size: var(--fs-ui);
   font-weight: 800;
 }
 
@@ -4407,7 +4418,7 @@ a.btn:hover {
   background: var(--data-chip-bg);
   color: var(--kind-data);
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--fs-micro);
   font-weight: 600;
   pointer-events: all;
 }
@@ -4640,7 +4651,7 @@ a.btn:hover {
 
 .tc-group-count {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-micro);
   font-weight: 600;
   color: var(--faint);
   text-transform: uppercase;
@@ -4706,7 +4717,7 @@ a.btn:hover {
 .tc-group.is-collapsed .tc-group-name {
   flex: 1 1 100%;
   order: 1;
-  font-size: 15px;
+  font-size: var(--fs-body);
 }
 
 .tc-group.is-collapsed .tc-group-count {
@@ -4880,7 +4891,7 @@ a.btn:hover {
   right: 10px;
   top: 11px;
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--fs-mono);
   padding: 1px 7px;
   border-radius: 6px;
   background: var(--line);
@@ -4900,7 +4911,7 @@ a.btn:hover {
   gap: 6px;
   padding: 0 4px 4px;
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--fs-micro);
   font-weight: 600;
   color: var(--muted);
   text-transform: uppercase;
@@ -4946,7 +4957,7 @@ a.btn:hover {
   background: transparent;
   color: var(--text);
   font: inherit;
-  font-size: 14px;
+  font-size: var(--fs-ui);
   text-align: left;
   cursor: grab;
 }
@@ -4979,7 +4990,7 @@ a.btn:hover {
 }
 
 .palette-item-reason {
-  font-size: 12px;
+  font-size: var(--fs-mono);
   color: var(--faint);
 }
 
@@ -4996,7 +5007,7 @@ a.btn:hover {
 .palette-item-docs {
   flex: none;
   padding: 4px 10px 8px 0;
-  font-size: 12px;
+  font-size: var(--fs-mono);
   color: var(--muted);
 }
 
@@ -5029,7 +5040,7 @@ a.btn:hover {
   min-height: 44px;
   padding: 4px 10px;
   border-radius: var(--r-md);
-  font-size: 14px;
+  font-size: var(--fs-ui);
   cursor: pointer;
 }
 
@@ -5042,14 +5053,10 @@ a.btn:hover {
   justify-self: start;
 }
 
-/* Selected: the same marks as the current Settings item (fill, weight and a straight bar inset from
+/* Selected: the same marks as the current Settings item (fill and a straight bar inset from
    the rounded corners), so colour is not the only sign. */
 .node-search-option[aria-selected="true"] {
   background: var(--raised);
-}
-
-.node-search-option[aria-selected="true"] .node-search-title {
-  font-weight: 700;
 }
 
 .node-search-option[aria-selected="true"]::before {
@@ -5071,7 +5078,7 @@ a.btn:hover {
 .node-search-kind {
   grid-column: 4;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-micro);
   font-weight: 600;
   color: var(--faint);
   text-transform: uppercase;
@@ -5083,7 +5090,7 @@ a.btn:hover {
   grid-column: 2 / 4;
   min-width: 0;
   overflow: hidden;
-  font-size: 12px;
+  font-size: var(--fs-mono);
   color: var(--muted);
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -5110,7 +5117,7 @@ a.btn:hover {
 
 .node-search-reason {
   grid-column: 2 / -1;
-  font-size: 12px;
+  font-size: var(--fs-mono);
   color: var(--faint);
 }
 
@@ -5124,7 +5131,7 @@ a.btn:hover {
 .node-search-hint {
   margin-top: 8px;
   padding: 0 10px;
-  font-size: 11px;
+  font-size: var(--fs-micro);
   color: var(--faint);
 }
 
@@ -5226,7 +5233,7 @@ a.btn:hover {
   display: flex;
   align-items: center;
   gap: var(--sp-2);
-  font-size: 15px;
+  font-size: var(--fs-body);
   min-width: 0;
 }
 
@@ -5260,7 +5267,7 @@ a.btn:hover {
   background: transparent;
   color: var(--text);
   font: inherit;
-  font-size: 20px;
+  font-size: var(--fs-h2);
   font-weight: 700;
   letter-spacing: -0.01em;
   cursor: text;
@@ -5277,7 +5284,7 @@ a.btn:hover {
 }
 
 .crumb-input {
-  font-size: 18px;
+  font-size: var(--fs-h3);
   font-weight: 700;
 }
 
@@ -5293,7 +5300,7 @@ a.btn:hover {
   background: transparent;
   color: var(--muted);
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--fs-mono);
   white-space: nowrap;
   cursor: pointer;
 }
@@ -5377,7 +5384,7 @@ a.btn:hover {
 
 .versions-title {
   margin: 4px 8px 6px;
-  font-size: 12px;
+  font-size: var(--fs-mono);
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -5398,7 +5405,7 @@ a.btn:hover {
   border-radius: var(--r-sm);
   color: var(--text);
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--fs-mono);
   text-decoration: none;
 }
 
@@ -5414,7 +5421,6 @@ a.btn:hover {
 /* The viewed version: a fill, not a side tab. The panel itself is --raised, so the fill is the
    next step up. */
 .versions-row[aria-current="page"] {
-  font-weight: 700;
   background: var(--line);
 }
 
@@ -5448,7 +5454,7 @@ a.btn:hover {
   border: 0;
   background: none;
   font-family: inherit;
-  font-size: 13px;
+  font-size: var(--fs-small);
 }
 
 .editor-head-end {
@@ -5462,7 +5468,7 @@ a.btn:hover {
 .editor-head .btn {
   height: 40px;
   padding: 0 16px;
-  font-size: 14px;
+  font-size: var(--fs-ui);
   font-weight: 700;
 }
 
@@ -5606,7 +5612,7 @@ a.btn:hover {
   display: flex;
   align-items: center;
   min-height: var(--target-min);
-  font-size: 14px;
+  font-size: var(--fs-ui);
   font-weight: 600;
   color: var(--muted);
   cursor: pointer;
@@ -5617,7 +5623,7 @@ a.btn:hover {
   align-items: center;
   min-height: var(--target-min);
   margin-bottom: 0;
-  font-size: 14px;
+  font-size: var(--fs-ui);
   color: var(--muted);
 }
 
@@ -5646,7 +5652,7 @@ a.btn:hover {
   background: transparent;
   color: var(--text);
   font: inherit;
-  font-size: 14px;
+  font-size: var(--fs-ui);
   text-align: left;
   cursor: pointer;
 }
@@ -5698,7 +5704,7 @@ a.btn:hover {
   gap: 10px;
   padding: 10px 14px;
   border-radius: var(--r-md);
-  font-size: 14px;
+  font-size: var(--fs-ui);
   font-weight: 500;
   pointer-events: auto;
 }
@@ -5789,7 +5795,7 @@ a.btn:hover {
   border-radius: 10px;
   background: var(--line);
   color: var(--text);
-  font-size: 14px;
+  font-size: var(--fs-ui);
   font-weight: 600;
   list-style: none;
   cursor: pointer;
@@ -5816,7 +5822,7 @@ a.btn:hover {
   border-radius: var(--r-md);
   background: var(--raised);
   color: var(--legend-text);
-  font-size: 12px;
+  font-size: var(--fs-mono);
 }
 
 .canvas-legend-body > .panel-close {
@@ -5842,7 +5848,7 @@ a.btn:hover {
 .legend-label {
   width: 96px;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-micro);
   font-weight: 600;
   color: var(--faint);
   text-transform: uppercase;
@@ -5862,7 +5868,7 @@ a.btn:hover {
   background: var(--legend-kbd-bg);
   color: var(--text);
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--fs-micro);
 }
 
 .legend-stroke {
@@ -6009,7 +6015,7 @@ a.btn:hover {
 
 .legend-port {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-micro);
   font-weight: 600;
 }
 
@@ -6028,7 +6034,7 @@ a.btn:hover {
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  font-size: 11px;
+  font-size: var(--fs-micro);
   font-weight: 800;
 }
 
@@ -6080,7 +6086,7 @@ a.btn:hover {
 }
 
 .inspector-eyebrow .eyebrow-kind {
-  font-size: 11px;
+  font-size: var(--fs-micro);
   color: inherit;
 }
 
@@ -6116,7 +6122,7 @@ a.btn:hover {
 
 .inspector-title {
   margin: 0;
-  font-size: 22px;
+  font-size: var(--fs-h2);
   font-weight: 700;
   letter-spacing: -0.01em;
   overflow-wrap: anywhere;
@@ -6135,7 +6141,7 @@ a.btn:hover {
   align-items: center;
   gap: 6px;
   margin: 0;
-  font-size: 14px;
+  font-size: var(--fs-ui);
 }
 
 .inspector-state.tone-amber {
@@ -6207,7 +6213,7 @@ a.btn:hover {
 .inspector-multi,
 .inspector-group {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--fs-ui);
 }
 
 .editor-load-failed {
@@ -6231,7 +6237,7 @@ a.btn:hover {
 .dialog-busy {
   margin-top: var(--sp-2);
   color: var(--faint);
-  font-size: 14px;
+  font-size: var(--fs-ui);
 }
 
 .dialog-alert {
@@ -6247,7 +6253,7 @@ a.btn:hover {
 
 .used-by {
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--fs-mono);
   color: var(--muted);
   white-space: nowrap;
 }
@@ -6261,7 +6267,7 @@ a.btn:hover {
 .run-pin-line {
   margin: 0;
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--fs-mono);
   color: var(--muted);
 }
 
@@ -6276,7 +6282,7 @@ a.btn:hover {
   display: inline-flex;
   align-items: center;
   min-height: var(--target-min);
-  font-size: 14px;
+  font-size: var(--fs-ui);
 }
 
 .run-overrides {
@@ -6289,7 +6295,7 @@ a.btn:hover {
 
 .run-overrides-title {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--fs-ui);
   font-weight: 600;
 }
 
@@ -6325,7 +6331,7 @@ a.btn:hover {
 
 .overrides-node-title {
   margin: 0;
-  font-size: 12px;
+  font-size: var(--fs-mono);
   font-weight: 600;
   letter-spacing: 0.02em;
   text-transform: uppercase;
@@ -6402,7 +6408,7 @@ a.btn:hover {
   align-items: center;
   gap: 6px;
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--fs-micro);
   font-weight: 600;
   color: var(--muted);
 }
@@ -6423,7 +6429,7 @@ a.btn:hover {
 .nav-count {
   margin-left: auto;
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--fs-micro);
   padding: 1px 7px;
   border-radius: var(--r-pill);
   background: var(--accent);
@@ -6487,7 +6493,7 @@ a.btn:hover {
   gap: 14px;
 }
 .jobs-head h1 {
-  font-size: 32px;
+  font-size: var(--fs-title);
   font-weight: 700;
   letter-spacing: -0.02em;
 }
@@ -6533,19 +6539,18 @@ a.btn:hover {
   background: transparent;
   color: var(--text);
   font: inherit;
-  font-size: 14px;
+  font-size: var(--fs-ui);
   font-weight: 500;
   cursor: pointer;
 }
 .filter-chip .mono {
-  font-size: 11px;
+  font-size: var(--fs-micro);
   opacity: 0.8;
 }
 .filter-chip[aria-pressed="true"] {
   background: var(--accent);
   border-color: var(--accent);
   color: var(--on-accent);
-  font-weight: 700;
 }
 
 .filter-chip:focus-visible,
@@ -6613,7 +6618,7 @@ a.btn:hover {
   min-width: 1010px;
   table-layout: fixed;
   border-collapse: collapse;
-  font-size: 14px;
+  font-size: var(--fs-ui);
 }
 .job-table.has-actions {
   min-width: 1160px;
@@ -6643,7 +6648,7 @@ a.btn:hover {
   padding: 10px 12px;
   text-align: left;
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--fs-micro);
   font-weight: 600;
   text-transform: uppercase;
   color: var(--faint);
@@ -6912,7 +6917,7 @@ a.btn:hover {
 .job-table .job-actions .btn-sm {
   height: 30px;
   padding: 0 10px;
-  font-size: 13px;
+  font-size: var(--fs-small);
 }
 
 .jobs-empty {
@@ -6921,7 +6926,7 @@ a.btn:hover {
   align-items: center;
   gap: 8px 12px;
   color: var(--faint);
-  font-size: 14px;
+  font-size: var(--fs-ui);
 }
 .jobs-empty p {
   margin: 0;
@@ -7007,7 +7012,7 @@ a.btn:hover {
   padding-top: 0;
 }
 .is-phone .jobs-head h1 {
-  font-size: 26px;
+  font-size: var(--fs-h1);
 }
 /* The phone's filters are one scrollable row of chips, not a wrapped block. */
 .is-phone .filter-chips {
@@ -7034,7 +7039,7 @@ a.btn:hover {
 }
 .week-bars text {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-micro);
   fill: var(--faint);
 }
 .week-bars-day.is-hover rect:not(.week-bars-hit) {
@@ -7110,7 +7115,7 @@ a.btn:hover {
   justify-content: space-between;
   margin-top: 2px;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-micro);
   color: var(--faint);
 }
 .stat-tiles {
@@ -7159,9 +7164,6 @@ a.btn:hover {
     0 0 0 2px var(--bg),
     0 0 0 4px currentColor;
 }
-.stat-tile:has(> .stat-tile-button[aria-pressed="true"]) .stat-label {
-  font-weight: 700;
-}
 .stat-label .icon {
   margin-right: 4px;
   vertical-align: -2px;
@@ -7172,7 +7174,7 @@ a.btn:hover {
 }
 .stat-label {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-micro);
   font-weight: 600;
   text-transform: uppercase;
   color: var(--faint);
@@ -7182,7 +7184,7 @@ a.btn:hover {
   color: var(--muted);
 }
 .stat-value {
-  font-size: 24px;
+  font-size: var(--fs-h2);
   font-weight: 700;
   /* "2 MB" never breaks across two lines on a phone. */
   white-space: nowrap;
@@ -7251,7 +7253,7 @@ a.btn:hover {
 }
 .history-card-total {
   margin: 0;
-  font-size: 18px;
+  font-size: var(--fs-h3);
   font-weight: 700;
 }
 .history-card-total small {
@@ -7278,7 +7280,7 @@ a.btn:hover {
   margin-top: 2px;
   text-align: center;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-micro);
   color: var(--faint);
 }
 .history-legend {
@@ -7287,7 +7289,7 @@ a.btn:hover {
   gap: 10px;
   margin-top: 3px;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-micro);
   color: var(--muted);
 }
 .history-card > .history-legend {
@@ -7309,7 +7311,7 @@ a.btn:hover {
 .encoder-gpu {
   flex: 1 1 100%;
   margin-top: 3px;
-  font-size: 11px;
+  font-size: var(--fs-micro);
   color: var(--muted);
 }
 /* Phone: smaller type; no legends or day names, the GPU's name under the title. */
@@ -7319,15 +7321,15 @@ a.btn:hover {
 .is-phone .history-card-title {
   flex: 1 1 100%;
   overflow: hidden;
-  font-size: 11px;
+  font-size: var(--fs-micro);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .is-phone .history-card-total {
-  font-size: 16px;
+  font-size: var(--fs-h3);
 }
 .is-phone .history-card-total small {
-  font-size: 11px;
+  font-size: var(--fs-micro);
 }
 .is-phone .history-card .week-bars-svg,
 .is-phone .history-card .load-strip-svg {
@@ -7398,7 +7400,7 @@ a.btn:hover {
   margin-top: -6px;
 }
 .phone-card-head .mono {
-  font-size: 12px;
+  font-size: var(--fs-mono);
   font-weight: 600;
 }
 .phone-card .progress {
@@ -7490,14 +7492,14 @@ a.btn:hover {
   width: 100%;
   min-width: 720px;
   border-collapse: collapse;
-  font-size: 14px;
+  font-size: var(--fs-ui);
 }
 
 .lib-table th {
   padding: 14px 12px;
   text-align: left;
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--fs-micro);
   font-weight: 600;
   color: var(--faint);
   text-transform: uppercase;
@@ -7527,7 +7529,7 @@ a.btn:hover {
 .lib-h1-count {
   margin-left: 4px;
   font-family: var(--font-mono);
-  font-size: 15px;
+  font-size: var(--fs-body);
   font-weight: 600;
   letter-spacing: 0;
   color: var(--muted);
@@ -7543,20 +7545,20 @@ a.btn:hover {
   text-overflow: ellipsis;
   direction: rtl;
   text-align: left;
-  font-size: 13px;
+  font-size: var(--fs-small);
   color: var(--muted);
 }
 .lib-note-path {
   display: inline-block;
   vertical-align: bottom;
   max-width: calc(100% - 7em);
-  font-size: 12px;
+  font-size: var(--fs-mono);
 }
 /* A setting that differs from the default, under the path. */
 .lib-note {
   display: block;
   margin-top: 2px;
-  font-size: 12px;
+  font-size: var(--fs-mono);
   color: var(--muted);
 }
 
@@ -7571,7 +7573,7 @@ a.btn:hover {
 .lib-feed .activation-pill {
   min-height: 24px;
   padding: 0 9px;
-  font-size: 11px;
+  font-size: var(--fs-micro);
 }
 
 .lib-table th:first-child,
@@ -7621,7 +7623,7 @@ a.btn:hover {
 
 .lib-notices-title {
   margin: 0 0 4px;
-  font-size: 14px;
+  font-size: var(--fs-ui);
   font-weight: 700;
 }
 
@@ -7708,7 +7710,7 @@ a.btn:hover {
 .lib-recycle legend {
   margin-bottom: 4px;
   padding: 0;
-  font-size: 14px;
+  font-size: var(--fs-ui);
   font-weight: 500;
 }
 
@@ -7770,7 +7772,7 @@ a.btn:hover {
 }
 
 .lib-switch-label {
-  font-size: 14px;
+  font-size: var(--fs-ui);
   font-weight: 500;
 }
 
@@ -7823,13 +7825,13 @@ a.btn:hover {
 .run-files table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 14px;
+  font-size: var(--fs-ui);
 }
 .run-files th {
   padding: 14px 12px;
   text-align: left;
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--fs-micro);
   font-weight: 600;
   text-transform: uppercase;
   color: var(--faint);
@@ -7867,7 +7869,7 @@ a.btn:hover {
 .run-cell.run-size {
   color: var(--muted);
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--fs-mono);
   white-space: nowrap;
 }
 
@@ -7876,7 +7878,7 @@ a.btn:hover {
     padding: 20px 16px 32px;
   }
   .run-page .page-head h1 {
-    font-size: 26px;
+    font-size: var(--fs-h1);
   }
   /* Phone: the saved tile on its own row, the outcomes side by side under it. */
   .run-stats {
@@ -7906,7 +7908,7 @@ a.btn:hover {
 /* A plain line: the "Dry run" chip in the header is the one marker; this says what it means. */
 .plan-eyebrow {
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--fs-mono);
   font-weight: 600;
 }
 .plan-tiles {
@@ -7925,12 +7927,12 @@ a.btn:hover {
   flex-direction: column;
 }
 .plan-tile-label {
-  font-size: 11px;
+  font-size: var(--fs-micro);
   font-weight: 600;
   text-transform: uppercase;
 }
 .plan-tile-value {
-  font-size: 22px;
+  font-size: var(--fs-h2);
   font-weight: 700;
 }
 .plan-tile-now {
@@ -7943,7 +7945,7 @@ a.btn:hover {
   opacity: 0.4;
 }
 .plan-percent {
-  font-size: 30px;
+  font-size: var(--fs-title);
   font-weight: 800;
   letter-spacing: -0.03em;
 }
@@ -7954,7 +7956,7 @@ a.btn:hover {
   overflow: hidden;
 }
 .plan-card h2 {
-  font-size: 20px;
+  font-size: var(--fs-h2);
   font-weight: 700;
 }
 .plan-card-head {
@@ -7964,7 +7966,7 @@ a.btn:hover {
   gap: 12px;
   padding: 16px 20px;
   border-bottom: 1px solid var(--line);
-  font-size: 14px;
+  font-size: var(--fs-ui);
 }
 .plan-table-wrap {
   overflow-x: auto;
@@ -7975,7 +7977,7 @@ a.btn:hover {
   /* Audio and Subtitles share one colgroup, so their columns line up down the page. */
   table-layout: fixed;
   border-collapse: collapse;
-  font-size: 15px;
+  font-size: var(--fs-body);
 }
 .plan-col-lang {
   width: 26%;
@@ -7996,7 +7998,7 @@ a.btn:hover {
   text-align: left;
   padding: 10px 12px;
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--fs-micro);
   font-weight: 600;
   color: var(--faint);
   text-transform: uppercase;
@@ -8022,7 +8024,7 @@ a.btn:hover {
   padding-left: 20px;
 }
 .plan-lang-code {
-  font-size: 12px;
+  font-size: var(--fs-mono);
   font-weight: 400;
   color: var(--faint);
 }
@@ -8032,19 +8034,19 @@ a.btn:hover {
   border-radius: 6px;
   background: var(--data-chip-bg);
   color: var(--kind-data);
-  font-size: 11px;
+  font-size: var(--fs-micro);
   font-weight: 600;
   text-transform: uppercase;
 }
 .plan-track {
-  font-size: 13px;
+  font-size: var(--fs-small);
 }
 .plan-default {
   display: inline-flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 6px;
-  font-size: 14px;
+  font-size: var(--fs-ui);
 }
 .plan-default-now {
   color: var(--accent-text);
@@ -8054,7 +8056,7 @@ a.btn:hover {
 }
 .plan-default-why {
   flex-basis: 100%;
-  font-size: 12px;
+  font-size: var(--fs-mono);
   color: var(--muted);
 }
 .plan-result {
@@ -8064,7 +8066,7 @@ a.btn:hover {
   height: 28px;
   padding: 0 10px;
   border-radius: var(--r-pill);
-  font-size: 13px;
+  font-size: var(--fs-small);
   font-weight: 700;
 }
 .plan-result-keep,
@@ -8119,7 +8121,7 @@ a.btn:hover {
 .plan-sidecar-note {
   display: block;
   margin-top: 2px;
-  font-size: 12px;
+  font-size: var(--fs-mono);
   font-weight: 400;
   color: var(--muted);
 }
@@ -8171,7 +8173,7 @@ a.btn:hover {
     margin-right: 6px;
     color: var(--faint);
     font-family: var(--font-mono);
-    font-size: 11px;
+    font-size: var(--fs-micro);
     font-weight: 600;
     text-transform: uppercase;
   }
@@ -8187,7 +8189,7 @@ a.btn:hover {
     content: attr(data-label) " ";
     color: var(--faint);
     font-family: var(--font-mono);
-    font-size: 11px;
+    font-size: var(--fs-micro);
     font-weight: 600;
     text-transform: uppercase;
   }
@@ -8216,7 +8218,7 @@ a.btn:hover {
   padding: 0 10px;
   border-radius: var(--r-sm);
   background: var(--raised);
-  font-size: 13px;
+  font-size: var(--fs-small);
   color: var(--muted);
 }
 .plan-other {
@@ -8229,7 +8231,7 @@ a.btn:hover {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
-  font-size: 14px;
+  font-size: var(--fs-ui);
 }
 .plan-other-item {
   display: inline-flex;
@@ -8351,7 +8353,7 @@ a.btn:hover {
   overflow-wrap: break-word;
 }
 .picker-size {
-  font-size: 12px;
+  font-size: var(--fs-mono);
 }
 .picker-note {
   padding: 12px;
@@ -8444,8 +8446,8 @@ a.btn:hover {
 }
 
 .tc-trace-row.is-current {
+  background: var(--raised);
   color: var(--accent-text);
-  font-weight: 600;
 }
 
 .tc-trace-row.is-failed {
@@ -8516,7 +8518,7 @@ a.btn:hover {
   background: transparent;
   color: var(--text);
   font: inherit;
-  font-size: 12px;
+  font-size: var(--fs-mono);
   cursor: pointer;
 }
 
@@ -8534,7 +8536,6 @@ a.btn:hover {
 
 .tc-port-out.is-taken {
   color: var(--accent-text);
-  font-weight: 700;
 }
 
 .tc-port-out.is-dimmed {
@@ -8593,7 +8594,7 @@ a.btn:hover {
 
 .job-head h1 {
   min-width: 0;
-  font-size: 32px;
+  font-size: var(--fs-title);
   font-weight: 700;
   letter-spacing: -0.02em;
   overflow-wrap: anywhere;
@@ -8632,7 +8633,7 @@ a.btn:hover {
 }
 
 .job-year {
-  font-size: 22px;
+  font-size: var(--fs-h2);
   font-weight: 500;
   color: var(--faint);
 }
@@ -8657,7 +8658,7 @@ a.btn:hover {
 .job-path {
   min-width: 0;
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--fs-mono);
   color: var(--muted);
   overflow-wrap: anywhere;
 }
@@ -8718,7 +8719,7 @@ a.btn:hover {
     display: flex;
     min-width: 0;
     font-family: var(--font-mono);
-    font-size: 12px;
+    font-size: var(--fs-mono);
     color: var(--muted);
   }
 
@@ -8753,7 +8754,7 @@ a.btn:hover {
 
 .job-fact dt {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--fs-micro);
   font-weight: 600;
   text-transform: uppercase;
   color: var(--faint);
@@ -8761,7 +8762,7 @@ a.btn:hover {
 
 .job-fact dd {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--fs-ui);
   color: var(--muted);
 }
 
@@ -9068,7 +9069,7 @@ a.btn:hover {
   flex-wrap: wrap;
   align-items: baseline;
   gap: 0 8px;
-  font-size: 15px;
+  font-size: var(--fs-body);
 }
 
 .job-step-title .icon {
@@ -9078,18 +9079,18 @@ a.btn:hover {
 
 .job-step-kind {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-micro);
   font-weight: 600;
   text-transform: uppercase;
 }
 
 .job-step-within {
   color: var(--muted);
-  font-size: 13px;
+  font-size: var(--fs-small);
 }
 
 .job-step-sentence {
-  font-size: 15px;
+  font-size: var(--fs-body);
   overflow-wrap: anywhere;
 }
 
@@ -9161,7 +9162,7 @@ a.btn:hover {
   border-radius: 10px;
   background: var(--st-dry-bg);
   color: var(--st-dry);
-  font-size: 13px;
+  font-size: var(--fs-small);
 }
 
 .job-step-note .icon {
@@ -9187,13 +9188,13 @@ a.btn:hover {
 .step-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 13px;
+  font-size: var(--fs-small);
 }
 
 .step-table th {
   padding: 8px;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-micro);
   font-weight: 600;
   color: var(--faint);
   text-align: left;
@@ -9216,14 +9217,13 @@ a.btn:hover {
 
 .step-table td.is-on {
   color: var(--accent-text);
-  font-weight: 700;
 }
 
 .step-tiles {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
   gap: 8px;
-  font-size: 13px;
+  font-size: var(--fs-small);
 }
 
 .step-tile {
@@ -9238,7 +9238,7 @@ a.btn:hover {
 
 .step-tile-label {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-micro);
   color: var(--faint);
   text-transform: uppercase;
 }
@@ -9249,7 +9249,7 @@ a.btn:hover {
   gap: 6px;
   padding: 0;
   list-style: none;
-  font-size: 13px;
+  font-size: var(--fs-small);
 }
 
 .step-chips li {
@@ -9426,7 +9426,7 @@ a.btn:hover {
 .ba-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 14px;
+  font-size: var(--fs-ui);
 }
 
 .ba-table thead th {
@@ -9434,7 +9434,7 @@ a.btn:hover {
   padding: 8px 12px;
   text-align: left;
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--fs-micro);
   font-weight: 600;
   color: var(--faint);
   text-transform: uppercase;
@@ -9515,7 +9515,7 @@ a.btn:hover {
     display: block;
     color: var(--faint);
     font-family: var(--font-mono);
-    font-size: 11px;
+    font-size: var(--fs-micro);
     font-weight: 600;
     text-transform: uppercase;
   }
@@ -9538,7 +9538,7 @@ a.btn:hover {
 
 .test-output-title {
   margin: 0;
-  font-size: 16px;
+  font-size: var(--fs-h3);
   font-weight: 700;
 }
 
@@ -9593,7 +9593,7 @@ a.btn:hover {
   background: var(--bg);
   color: var(--muted);
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--fs-mono);
   line-height: 1.6;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
@@ -9615,7 +9615,7 @@ a.btn:hover {
 }
 
 .ffmpeg-notes-summary {
-  font-size: 14px;
+  font-size: var(--fs-ui);
   color: var(--muted);
 }
 
@@ -9654,12 +9654,12 @@ a.btn:hover {
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-  font-size: 14px;
+  font-size: var(--fs-ui);
 }
 
 .ffmpeg-note p {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--fs-small);
   line-height: 1.45;
   color: var(--muted);
 }
@@ -9671,7 +9671,7 @@ a.btn:hover {
   padding: 0 8px;
   border-radius: var(--r-pill);
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-micro);
   font-weight: 600;
   text-transform: uppercase;
 }
@@ -9698,7 +9698,7 @@ a.btn:hover {
   min-height: var(--target-min);
   padding: 0 14px;
   border-radius: var(--r-md);
-  font-size: 14px;
+  font-size: var(--fs-ui);
   font-weight: 600;
   list-style: none;
   cursor: pointer;
@@ -9720,7 +9720,7 @@ a.btn:hover {
 
 .ffmpeg-raw-count {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--fs-micro);
   font-weight: 400;
   color: var(--faint);
 }
@@ -9742,7 +9742,7 @@ a.btn:hover {
 .ffmpeg-raw .command-head h3,
 .ffmpeg-raw-label {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--fs-ui);
   font-weight: 600;
 }
 
@@ -9800,7 +9800,7 @@ a.btn:hover {
   width: 100%;
   height: 44px;
   padding: 0 14px 0 40px;
-  font-size: 15px;
+  font-size: var(--fs-body);
 }
 .plugins-show {
   display: flex;
@@ -9817,7 +9817,7 @@ a.btn:hover {
   background: transparent;
   color: var(--text);
   font: inherit;
-  font-size: 14px;
+  font-size: var(--fs-ui);
   font-weight: 600;
   cursor: pointer;
 }
@@ -9837,7 +9837,7 @@ a.btn:hover {
 }
 .plugins-show-count {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--fs-micro);
   opacity: 0.8;
 }
 .plugins-source {
@@ -9889,11 +9889,11 @@ a.btn:hover {
   gap: 2px;
 }
 .plugins-need-text h2 {
-  font-size: 18px;
+  font-size: var(--fs-h3);
   font-weight: 700;
 }
 .plugins-need-text p {
-  font-size: 14px;
+  font-size: var(--fs-ui);
   color: var(--muted);
 }
 .plugins-need-workflow {
@@ -9926,7 +9926,7 @@ a.btn:hover {
   background: var(--line);
   color: var(--text);
   /* Two letters ("So", "TM") fit the 40px tile. */
-  font-size: 15px;
+  font-size: var(--fs-body);
   font-weight: 800;
   letter-spacing: -0.02em;
 }
@@ -9970,12 +9970,12 @@ a.btn:hover {
 }
 .plugin-row-title h3 {
   margin: 0;
-  font-size: 16px;
+  font-size: var(--fs-h3);
   font-weight: 700;
 }
 .plugin-version {
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--fs-mono);
   color: var(--faint);
 }
 .plugin-row-update {
@@ -10004,7 +10004,7 @@ a.btn:hover {
   height: 40px;
   padding: 0 14px;
   border-radius: 10px;
-  font-size: 14px;
+  font-size: var(--fs-ui);
 }
 .plugin-row-actions .btn.is-open {
   background: var(--line);
@@ -10058,7 +10058,7 @@ a.btn:hover {
   margin-left: auto;
   height: 44px;
   padding: 0 14px;
-  font-size: 14px;
+  font-size: var(--fs-ui);
 }
 /* A stored secret: never its value, a dashed read-only line and Replace. */
 .plugin-secret {
@@ -10079,7 +10079,7 @@ a.btn:hover {
   align-items: flex-start;
   padding: 10px 12px;
   border-radius: 10px;
-  font-size: 14px;
+  font-size: var(--fs-ui);
 }
 .plugin-test-result.is-ok {
   background: var(--ok-bg);
@@ -10105,7 +10105,7 @@ a.btn:hover {
 }
 .plugin-versions h4 {
   margin: 0 0 6px;
-  font-size: 14px;
+  font-size: var(--fs-ui);
   font-weight: 700;
 }
 .plugin-versions ul {
@@ -10133,7 +10133,7 @@ a.btn:hover {
 }
 .plugin-mappings-empty {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--fs-ui);
   color: var(--muted);
 }
 /* One mapping: its two labelled paths, its buttons, then its test answer, stacked (#46). */
@@ -10150,7 +10150,7 @@ a.btn:hover {
 .plugin-mapping-title {
   padding: 0 4px;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-micro);
   font-weight: 600;
   color: var(--faint);
 }
@@ -10244,7 +10244,7 @@ a.btn:hover {
   border-radius: 999px;
   background: var(--st-dry);
   color: var(--st-dry-ink);
-  font-size: 11px;
+  font-size: var(--fs-micro);
   font-weight: 600;
   line-height: 16px;
   vertical-align: 1px;
@@ -10351,7 +10351,7 @@ a.btn:hover {
   padding: 0 9px;
   border-radius: 8px;
   background: var(--raised);
-  font-size: 12px;
+  font-size: var(--fs-mono);
 }
 .plugin-panel .node-chip {
   background: var(--surface);
@@ -10380,7 +10380,7 @@ a.btn:hover {
 }
 .node-chip-kind {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-micro);
   font-weight: 600;
   color: var(--chip-kind);
   text-transform: uppercase;
@@ -10419,31 +10419,31 @@ a.btn:hover {
 }
 .catalog-card-name h3 {
   margin: 0;
-  font-size: 16px;
+  font-size: var(--fs-h3);
   font-weight: 700;
 }
 .catalog-card-ids {
   display: flex;
   flex-wrap: wrap;
   gap: 0 8px;
-  font-size: 11px;
+  font-size: var(--fs-micro);
   color: var(--faint);
 }
 .catalog-card-head .btn {
   height: 40px;
   padding: 0 16px;
   border-radius: 10px;
-  font-size: 14px;
+  font-size: var(--fs-ui);
 }
 .catalog-card-text {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--fs-ui);
   line-height: 1.45;
   color: var(--muted);
 }
 .catalog-card-source {
   margin: 0;
-  font-size: 12px;
+  font-size: var(--fs-mono);
   color: var(--faint);
 }
 .catalog-url {
@@ -10508,7 +10508,7 @@ a.btn:hover {
   color: var(--text);
 }
 .catalog-add h3 {
-  font-size: 16px;
+  font-size: var(--fs-h3);
   font-weight: 700;
 }
 
@@ -10681,7 +10681,7 @@ a.btn:hover {
 
 .rh-card legend {
   padding: 0 4px;
-  font-size: 14px;
+  font-size: var(--fs-ui);
   font-weight: 500;
 }
 
@@ -10712,7 +10712,7 @@ a.btn:hover {
 .rh-day {
   flex: 0 0 30px;
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--fs-micro);
   color: var(--muted);
 }
 
@@ -10766,13 +10766,13 @@ a.btn:hover {
 
 .rh-ticks span {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--fs-micro);
   color: var(--faint);
 }
 
 .rh-summary {
   margin: var(--sp-1) 0 0;
-  font-size: 14px;
+  font-size: var(--fs-ui);
   font-weight: 600;
 }
 
@@ -10791,7 +10791,7 @@ a.btn:hover {
   padding: var(--sp-4);
 }
 .not-found-title {
-  font-size: 18px;
+  font-size: var(--fs-h3);
   margin: 0 0 var(--sp-2);
 }
 .not-found-panel p {
@@ -10810,7 +10810,7 @@ a.btn:hover {
 /* A menu item's second line (the Examples menu: what an example needs) and a divider. */
 .row-menu-list .row-menu-note {
   display: block;
-  font-size: 12px;
+  font-size: var(--fs-mono);
   color: var(--muted);
 }
 .row-menu-list button:has(.row-menu-note) {
@@ -10825,7 +10825,7 @@ a.btn:hover {
 .row-menu-hint {
   display: block;
   padding: 0 12px 8px 38px;
-  font-size: 12px;
+  font-size: var(--fs-mono);
   color: var(--muted);
 }
 
@@ -10840,7 +10840,7 @@ a.btn:hover {
 }
 .lib-empty-state h2 {
   margin: 0;
-  font-size: 18px;
+  font-size: var(--fs-h3);
 }
 .lib-empty-state p {
   margin: 0;
@@ -10851,7 +10851,7 @@ a.btn:hover {
   align-items: center;
   gap: 4px;
   margin-top: 2px;
-  font-size: 12px;
+  font-size: var(--fs-mono);
   font-weight: 400;
   color: var(--muted);
 }
@@ -10865,7 +10865,7 @@ a.btn:hover {
 /* The job page's "Queued 21:03 · started … · took 4 s" line, under the file's place. */
 .job-head-times {
   margin: 2px 0 0;
-  font-size: 13px;
+  font-size: var(--fs-small);
   color: var(--muted);
 }
 
@@ -10881,7 +10881,7 @@ a.btn:hover {
   display: grid;
   grid-template-columns: 6rem minmax(0, 1fr);
   gap: var(--sp-3);
-  font-size: 13px;
+  font-size: var(--fs-small);
 }
 .about-encoders-label {
   color: var(--muted);
@@ -10957,7 +10957,7 @@ a.btn:hover {
   .lib-table [data-label]::before {
     content: attr(data-label) ": ";
     color: var(--muted);
-    font-size: 12px;
+    font-size: var(--fs-mono);
   }
 }
 @media (max-width: 639px) {
@@ -10984,7 +10984,7 @@ a.btn:hover {
     min-width: 0;
     max-width: 100%;
     color: var(--muted);
-    font-size: 12px;
+    font-size: var(--fs-mono);
   }
   .wf-table .wf-meta + .wf-meta::before {
     content: "·";
@@ -11001,14 +11001,14 @@ a.btn:hover {
   .wf-table .wf-meta .activation-pill {
     min-height: 22px;
     padding: 0 8px;
-    font-size: 11px;
+    font-size: var(--fs-micro);
   }
   .wf-table .wf-activate,
   .wf-table .wf-activate-off {
-    font-size: 12px;
+    font-size: var(--fs-mono);
   }
   .wf-table .wf-version {
-    font-size: 11px;
+    font-size: var(--fs-micro);
   }
 }
 @media (max-width: 639px) {
@@ -11042,7 +11042,7 @@ a.btn:hover {
     align-self: start;
   }
   .lib-table .lib-path {
-    font-size: 12px;
+    font-size: var(--fs-mono);
   }
 }
 @media (max-width: 639px) {
@@ -11100,13 +11100,13 @@ a.btn:hover {
   width: 100%;
   min-width: 640px;
   border-collapse: collapse;
-  font-size: 14px;
+  font-size: var(--fs-ui);
 }
 .recycle-table th {
   padding: 14px 12px;
   text-align: left;
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--fs-micro);
   font-weight: 600;
   color: var(--faint);
   text-transform: uppercase;
@@ -11150,8 +11150,10 @@ a.btn:hover {
   margin-top: 4px;
 }
 /* The size stays on one line; the file name keeps room to read, the buttons may wrap. */
-.recycle-table td:nth-child(2) {
+.recycle-table td:nth-child(2),
+.recycle-table th:nth-child(2) {
   white-space: nowrap;
+  text-align: right;
 }
 .recycle-table td:first-child {
   min-width: 14em;
@@ -11236,9 +11238,10 @@ a.btn:hover {
 .file-head-actions {
   margin-top: 12px;
 }
-.library-table td.library-col-size {
+.library-table td.library-col-size,
+.library-table th.library-col-size {
   white-space: nowrap;
-  font-variant-numeric: tabular-nums;
+  text-align: right;
 }
 .library-sort {
   all: unset;
@@ -11339,7 +11342,7 @@ a.btn:hover {
 }
 .file-jobs-title {
   margin: 0;
-  font-size: var(--fs-h3, 16px);
+  font-size: var(--fs-h3);
 }
 
 /* ---------- Target size (WCAG 2.2 2.5.8: 24 x 24 px at least) ---------- */
@@ -11350,4 +11353,37 @@ a.btn:hover {
 .text-target {
   padding-block: 4px;
   margin-block: -4px;
+}
+
+/* ---------- Numerals ----------
+   Figures line up in columns and do not jitter as they change: sizes, durations, percentages,
+   counts, dates and the plan, step and before/after numbers. */
+.stat-value,
+.stat-sub,
+.job-table td,
+.lib-table .lib-cell,
+.library-table td,
+.recycle-table td,
+.run-cell.run-size,
+.job-result-pct,
+.job-result-meta,
+.job-progress-detail,
+.job-outcome-sizes,
+.job-year,
+.plan-tile-value,
+.plan-tile-now,
+.plan-percent,
+.plan-original,
+.plan-track,
+.plan-table td,
+.step-table td,
+.ba-table td,
+.library-count,
+.library-pager-range,
+.selection-count,
+.recycle-usage-value,
+.rh-ticks span,
+.rh-summary,
+.tc-trace-row {
+  font-variant-numeric: tabular-nums;
 }

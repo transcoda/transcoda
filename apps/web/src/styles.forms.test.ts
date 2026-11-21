@@ -60,11 +60,11 @@ describe('forms (M2, L8)', () => {
 });
 
 describe('selected (M8)', () => {
-  it('every selected control is a fill plus bold', () => {
+  it('every selected control is a fill, and its weight does not change', () => {
     for (const sel of ['.filter-chip[aria-pressed="true"]', '.scope-chip:has(input:checked)']) {
       const r = rule(sel);
       expect(r, sel).toMatch(/background:\s*var\(--accent\)/);
-      expect(r, sel).toMatch(/font-weight:\s*700/);
+      expect(r, sel).not.toMatch(/font-weight/);
     }
   });
 

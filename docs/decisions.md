@@ -2041,6 +2041,11 @@ Approved plan: `docs/plans/2026-10-21-dryrun-depends-on-size.md` (local).
 - The current nav item is a neutral `--raised` row with `--text` and the icon in `--accent-text`, not a lime fill: it weighed as much as the page's primary button. The settings sub-nav already looked like this; both now keep the normal weight.
 - The viewed row in the versions panel is a `--line` fill, not an inset side tab. The panel itself is `--raised`, so the fill is one step up. A selected edge on the canvas is 2px heavier, not a drop-shadow glow.
 - The danger outline button's text is 14px, like the other small buttons. h1 and h2 have line-height 1.2 (they inherited the body's 1.4); the job result heading went from 1.3 to 1.2.
+- Type scale: every `font-size` in styles.css is a `--fs-*` variable. tokens.css has display, h1, h2, body, small and mono; four more sit at the top of styles.css because tokens.css is vendored: `--fs-micro` 11px, `--fs-ui` 14px, `--fs-h3` 17px and `--fs-title` 32px. Raw sizes moved by at most one step: 10px went up to 11px, 16px and 18px became 17px, and the odd display sizes (22, 24, 26, 28, 30, 34) went onto h2 (20), h1 (28) or title (32). The Jobs stat figure (24px to 20px), the plan percentage (30px to 32px) and the credentials title (34px to 32px) are the visible changes. A test fails when a raw px size comes back.
+- Two sizes stay raw on purpose: the auth hero tagline (64px, 40px on phone) is a display glyph, and `.markdown code` is 0.92em of its text. They are listed in a comment at the top of styles.css and in the test.
+- On a phone (up to 639px) `--fs-micro` is 12px, so the mono caps labels stay readable at arm's length.
+- Figures use `font-variant-numeric: tabular-nums` (stat tiles, job, library, recycle, plan, step and before/after tables, sizes, durations, percentages), and the library and recycle Size columns are right-aligned with their headers.
+- Selection no longer changes the font weight (the chip, segmented control, filter chip, scope chip, listbox option, node search result, versions row, stat tile label, trace row, taken port and step table cell). A bolder label is wider, so the row reflowed on click. Selection shows with a fill, a colour or a check; the current trace row gained a `--raised` fill because it only had colour.
 
 ## Follow-ups (2026-10-17)
 

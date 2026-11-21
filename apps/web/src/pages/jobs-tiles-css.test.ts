@@ -156,10 +156,12 @@ describe('Jobs stat tiles (#31)', () => {
     expect(rule('.stat-tile-button')).toMatch(/flex:\s*1/);
   });
 
-  it('the tile, not the button, carries the selected ring and a bold label', () => {
+  it('the tile, not the button, carries the selected ring, and the label keeps its weight', () => {
     const ring = rule(PRESSED_TILE);
     expect(ring).toMatch(/box-shadow:\s*0 0 0 2px var\(--bg\),\s*0 0 0 4px currentColor/);
-    expect(rule(`${PRESSED_TILE} .stat-label`)).toMatch(/font-weight:\s*700/);
+    expect(css).not.toMatch(
+      /\.stat-tile:has\(> \.stat-tile-button\[aria-pressed="true"\]\) \.stat-label/,
+    );
   });
 
   it('the pressed button draws no border or ring of its own', () => {

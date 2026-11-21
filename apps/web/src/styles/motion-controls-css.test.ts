@@ -114,8 +114,8 @@ describe('no side tabs, no glows', () => {
 });
 
 describe('type details', () => {
-  it('the danger outline button reads at 14px', () => {
-    expect(rule('.btn-danger-outline')).toContain('font-size: 14px');
+  it('the danger outline button reads at the UI size (14px)', () => {
+    expect(rule('.btn-danger-outline')).toContain('font-size: var(--fs-ui)');
   });
 
   it('display headings sit at line-height 1.2', () => {
