@@ -114,7 +114,7 @@ Colours that are not tokens are named variables at the top of `styles.css`, with
 ## Layout and composition
 
 - The editor is three columns: palette, canvas, inspector. The default widths are 240 / flexible / 340, and 200 / flexible / 280 between 1024 and 1279px. In the editor the side nav collapses to a 56px icon rail.
-- Pages are a side nav plus a sticky top bar (`--topbar-h` 69px), with content in a single column of lists and tables. `html` keeps `scroll-padding-top` at the bar's height plus 16px, so focus never lands under it. There are no card grids: the plugin catalog is a list of rows, like the installed plugins. The Jobs stat tiles are filters, and "Needs attention" leads them (first, twice as wide, larger figure), because it is the one count that asks you to act.
+- Pages are a side nav plus a sticky top bar (`--topbar-h` 69px), with content in a single column of lists and tables. `html` keeps `scroll-padding-top` at the bar's height plus 16px, so focus never lands under it. The plugin catalog is the one card grid (kept by choice; its node chips stay inside the cards). The Jobs stat tiles are filters, and "Needs attention" leads them (first, twice as wide, larger figure), because it is the one count that asks you to act.
 - Help and description text stops at 70ch. Paths may run long.
 - Signature layout move: the canvas is the page. Run traces reuse the editor's canvas, with the path taken lit and everything else dimmed, so "what happened" is drawn on the same diagram as "what should happen". The canvas opens at 0.75 zoom or closer (`openViewport`): whole if the graph fits, otherwise from the trigger. On a phone the trace still fits the whole graph.
 - Breakpoints:
@@ -292,6 +292,7 @@ The Refactoring UI checks that failed now pass:
 That makes the expected score 10 / 10, but it has not been re-audited yet.
 
 Still open:
+- The plugin catalog keeps its grid of cards with node chips inside them. This is a deliberate choice; the list version was tried and turned down.
 - The API tokens table is 820px wide inside a horizontally scrolling panel on phone.
 - The empty workflows state has two lime buttons ("New workflow" and "Add a trigger").
 - Native checkboxes and radios keep the browser's own edge.
@@ -303,6 +304,6 @@ Still open:
 
 ## Changelog
 
-- 2026-11-20: fixed the audit findings (accessibility, canvas zoom, control edges and motion tokens, type and spacing scales, nested cards, plugin catalog rows, 404, Jobs tiles and status column, recycle page); the system sections describe the fixed state.
+- 2026-11-20: fixed the audit findings (accessibility, canvas zoom, control edges and motion tokens, type and spacing scales, nested cards, 404, Jobs tiles and status column, recycle page); the system sections describe the fixed state.
 - 2026-11-20: added the rendered audit (desktop dark and light, phone dark) and the Refactoring UI diagnostic.
 - 2026-11-20: first version. Documents the existing Patchbay system (no visual changes) and records the first slop and accessibility audit.
