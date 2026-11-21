@@ -106,10 +106,10 @@ describe('accessibility: focus and target size', () => {
 
   it('small text links grow to 24 px without moving the text', () => {
     const rule = rulesFor('.text-target');
-    expect(rule).toMatch(/padding-block:\s*4px/);
+    expect(rule).toMatch(/padding-block:\s*var\(--sp-1\)/);
     expect(rule).toMatch(/margin-block:\s*-4px/);
     expect(rulesFor('.wf-activate')).toMatch(/min-height:\s*32px/);
-    expect(rulesFor('.lib-name-text')).toMatch(/padding:\s*4px/);
+    expect(rulesFor('.lib-name-text')).toMatch(/padding:\s*var\(--sp-1\)/);
   });
 
   it("the canvas's + and group toggle never drop below 24 px on screen when zoomed out", () => {
