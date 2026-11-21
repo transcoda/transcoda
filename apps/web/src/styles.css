@@ -10451,84 +10451,60 @@ a.btn:hover {
   text-transform: uppercase;
 }
 
-/* Catalog: one list of rows per purpose, in the installed list's language (one panel, a divider
-   between rows): tile, name and version, one line of text, the nodes it adds as quiet mono text,
-   and Install on the right. */
-.catalog-rows {
+/* Catalog: cards in a grid, one section per purpose. */
+.catalog-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr));
+  gap: var(--sp-3);
   margin: 0;
   padding: 0;
   list-style: none;
+}
+.catalog-card {
+  height: 100%;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  padding: var(--sp-4) var(--sp-5);
   border-radius: var(--r-lg);
   background: var(--surface);
   border: 1px solid var(--line);
-  overflow: hidden;
 }
-.catalog-row + .catalog-row {
-  border-top: 1px solid var(--line);
+.catalog-card-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
 }
-.catalog-row-main {
-  display: grid;
-  grid-template-columns: 44px minmax(0, 1fr) auto;
-  align-items: start;
-  gap: var(--sp-4);
-  padding: var(--sp-4) var(--sp-5);
-}
-.catalog-row-text {
+.catalog-card-name {
+  flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--sp-1);
 }
-.catalog-row-title {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0 var(--sp-2);
-}
-.catalog-row-title h3 {
+.catalog-card-name h3 {
   margin: 0;
   font-size: var(--fs-h3);
   font-weight: 700;
 }
-.catalog-row-desc {
-  margin: 0;
-  max-width: 70ch;
-  font-size: var(--fs-ui);
-  line-height: 1.45;
-  color: var(--muted);
+.catalog-card-ids {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--sp-2);
+  font-size: var(--fs-micro);
+  color: var(--faint);
 }
-.catalog-row-action {
-  align-self: center;
-}
-.catalog-row-action .btn {
+.catalog-card-head .btn {
   height: 40px;
   padding: 0 var(--sp-4);
   border-radius: var(--r-md);
   font-size: var(--fs-ui);
 }
-/* The nodes it adds: the kind's swatch and the name in mono, no chip fill (the row is the box). */
-.catalog-row .node-chips {
-  gap: 0 var(--sp-4);
-  margin-top: var(--sp-1);
-}
-.catalog-row .node-chip {
-  min-height: 0;
-  padding: 0;
-  background: none;
-  font-family: var(--font-mono);
-  font-size: var(--fs-mono);
-  color: var(--faint);
-}
-@media (max-width: 639px) {
-  .catalog-row-main {
-    grid-template-columns: 40px minmax(0, 1fr);
-    gap: var(--sp-3);
-    padding: var(--sp-4);
-  }
-  .catalog-row-action {
-    grid-column: 2;
-    justify-self: start;
-  }
+.catalog-card-text {
+  margin: 0;
+  font-size: var(--fs-ui);
+  line-height: 1.45;
+  color: var(--muted);
 }
 .catalog-card-source {
   margin: 0;
