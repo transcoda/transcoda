@@ -1971,30 +1971,36 @@ a.nav-item.is-active {
   margin-bottom: var(--sp-3);
 }
 
+/* The scopes are a checklist inside the form, not chips: rows with no border or fill, the
+   checkbox shows the choice. */
 .scope-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--sp-2);
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr));
+  gap: 0 var(--sp-4);
 }
 
 .scope-chip {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: var(--sp-2);
+  gap: var(--sp-3);
   min-height: var(--target-min);
-  padding: 0 var(--sp-4);
+  padding: 0 var(--sp-2);
   border-radius: var(--r-md);
-  background: var(--raised);
-  border: 1.5px solid var(--line-strong);
   font-size: var(--fs-ui);
   cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease-out);
 }
 
-.scope-chip:has(input:checked) {
-  border-color: var(--accent);
-  background: var(--accent);
-  color: var(--on-accent);
+@media (hover: hover) {
+  .scope-chip:hover {
+    background: var(--raised);
+  }
 }
+
+.scope-chip > span {
+  color: var(--muted);
+}
+
 
 .scope-chip:has(input:focus-visible) {
   box-shadow: var(--focus-ring);
@@ -2008,16 +2014,13 @@ a.nav-item.is-active {
   accent-color: var(--accent-text);
 }
 
-.scope-chip:has(input:checked) input {
-  accent-color: var(--on-accent);
-}
-
 .scope-chip input:focus-visible {
   box-shadow: none;
 }
 
 .scope-chip b {
   font-weight: inherit;
+  color: var(--text);
 }
 
 .form-actions {

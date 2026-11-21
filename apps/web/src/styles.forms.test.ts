@@ -61,11 +61,16 @@ describe('forms (M2, L8)', () => {
 
 describe('selected (M8)', () => {
   it('every selected control is a fill, and its weight does not change', () => {
-    for (const sel of ['.filter-chip[aria-pressed="true"]', '.scope-chip:has(input:checked)']) {
-      const r = rule(sel);
-      expect(r, sel).toMatch(/background:\s*var\(--accent\)/);
-      expect(r, sel).not.toMatch(/font-weight/);
-    }
+    const r = rule('.filter-chip[aria-pressed="true"]');
+    expect(r).toMatch(/background:\s*var\(--accent\)/);
+    expect(r).not.toMatch(/font-weight/);
+  });
+
+  it("the token form's scopes are a checklist, not filled chips inside the form panel", () => {
+    // The checkbox shows the choice; a lime fill per scope would outweigh Create token.
+    expect(css).not.toMatch(/\.scope-chip:has\(input:checked\)/);
+    expect(rule('.scope-chip')).not.toMatch(/border:/);
+    expect(rule('.scope-chip')).not.toMatch(/background:/);
   });
 
   it('a selected kind card is a lime ring and dot, never a fill, and keeps regular weight', () => {
