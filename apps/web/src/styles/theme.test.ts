@@ -156,6 +156,19 @@ describe('light theme (UI review M13)', () => {
     expect(auto.get('--st-replaced-text')).not.toBe(auto.get('--st-replaced'));
   });
 
+  it('draws form control edges at 3:1 or better on every surface, in light and dark (WCAG 1.4.11)', () => {
+    for (const name of ['light', 'dark'] as const) {
+      const get = (token: string): string =>
+        (name === 'light' ? auto.get(`--${token}`) : undefined) ?? dark.get(`--${token}`) ?? '';
+      for (const bg of SURFACES) {
+        expect(
+          ratio(get('line-control'), get(bg)),
+          `${name} line-control on ${bg}`,
+        ).toBeGreaterThanOrEqual(3);
+      }
+    }
+  });
+
   it('draws the focus ring in a colour that shows against the page, in light', () => {
     for (const t of ['accent-text', 'text']) {
       expect(ratio(auto.get(`--${t}`) ?? '', auto.get('--bg') ?? '')).toBeGreaterThanOrEqual(3);

@@ -145,12 +145,20 @@ p {
   margin: 0;
 }
 
+/* Display headings sit tight: the body's 1.4 left a wrapped title's second line floating. */
+h1,
+h2 {
+  line-height: 1.2;
+}
+
 a {
   color: var(--accent-text);
 }
 
-a:hover {
-  color: var(--accent-hover);
+@media (hover: hover) {
+  a:hover {
+    color: var(--accent-hover);
+  }
 }
 
 .mono {
@@ -216,6 +224,17 @@ a:hover {
   cursor: not-allowed;
 }
 
+/* Pressed: the button moves down a pixel. On the button, not its ::before hit area, whose own
+   transform centres it. */
+@media (prefers-reduced-motion: no-preference) {
+  .btn {
+    transition: transform var(--dur-fast) var(--ease-out);
+  }
+  .btn:active:not(:disabled) {
+    transform: translateY(1px);
+  }
+}
+
 .btn-lg {
   height: 52px;
   padding: 0 20px;
@@ -256,8 +275,10 @@ a:hover {
   border: 1px solid var(--line-strong);
 }
 
-.btn-ghost:hover {
-  background: var(--raised);
+@media (hover: hover) {
+  .btn-ghost:hover {
+    background: var(--raised);
+  }
 }
 
 .btn-ghost:disabled {
@@ -280,11 +301,13 @@ a:hover {
   color: var(--danger-text);
   border: 1px solid var(--danger-line);
   padding: 0 12px;
-  font-size: var(--fs-small);
+  font-size: 14px;
 }
 
-.btn-danger-outline:hover {
-  background: var(--st-failed-bg);
+@media (hover: hover) {
+  .btn-danger-outline:hover {
+    background: var(--st-failed-bg);
+  }
 }
 
 /* On the lime reveal card */
@@ -327,7 +350,7 @@ a:hover {
   height: 48px;
   padding: 0 14px;
   background: var(--raised);
-  border: 1.5px solid var(--line-strong);
+  border: 1.5px solid var(--line-control);
   border-radius: var(--r-md);
   color: var(--text);
   font: inherit;
@@ -521,9 +544,11 @@ a:hover {
   margin-left: 0;
 }
 
-.tc-link-chip:hover {
-  color: var(--text);
-  background: var(--raised);
+@media (hover: hover) {
+  .tc-link-chip:hover {
+    color: var(--text);
+    background: var(--raised);
+  }
 }
 
 .tc-link-chip.is-linked {
@@ -586,7 +611,7 @@ a:hover {
   padding: 2px;
   border-radius: var(--r-md);
   background: var(--raised);
-  border: 1.5px solid var(--line-strong);
+  border: 1.5px solid var(--line-control);
 }
 
 .tc-segmented button {
@@ -631,7 +656,7 @@ a:hover {
   padding: 8px;
   border-radius: var(--r-md);
   background: var(--raised);
-  border: 1.5px solid var(--line-strong);
+  border: 1.5px solid var(--line-control);
 }
 
 .lang-chip {
@@ -674,7 +699,7 @@ a:hover {
   min-height: 44px;
   padding: 0 10px;
   border-radius: 8px;
-  border: 1px solid var(--line-strong);
+  border: 1px solid var(--line-control);
   background: transparent;
   color: var(--text);
   font: inherit;
@@ -739,8 +764,10 @@ a:hover {
   cursor: pointer;
 }
 
-.lang-picker-option:hover {
-  background: var(--raised);
+@media (hover: hover) {
+  .lang-picker-option:hover {
+    background: var(--raised);
+  }
 }
 
 .lang-picker-option.is-original {
@@ -783,8 +810,10 @@ a:hover {
   cursor: pointer;
 }
 
-.codec-option:hover {
-  background: var(--raised);
+@media (hover: hover) {
+  .codec-option:hover {
+    background: var(--raised);
+  }
 }
 
 .codec-option.is-active {
@@ -1063,8 +1092,10 @@ a:hover {
   border-radius: var(--r-sm);
 }
 
-.brand:hover {
-  color: var(--text);
+@media (hover: hover) {
+  .brand:hover {
+    color: var(--text);
+  }
 }
 
 .brand .wordmark {
@@ -1138,8 +1169,10 @@ a:hover {
   cursor: pointer;
 }
 
-.activity-button:hover {
-  background: var(--raised);
+@media (hover: hover) {
+  .activity-button:hover {
+    background: var(--raised);
+  }
 }
 
 .activity-button:focus-visible {
@@ -1355,20 +1388,25 @@ a:hover {
   text-decoration: none;
 }
 
-a.nav-item:hover {
-  color: var(--text);
-  background: var(--raised);
+@media (hover: hover) {
+  a.nav-item:hover {
+    color: var(--text);
+    background: var(--raised);
+  }
 }
 
-a.nav-item.is-active,
-a.nav-item.is-active:hover {
-  background: var(--accent);
-  color: var(--on-accent);
-  font-weight: 700;
+/* Current: a neutral raised row with the icon in the accent, so it does not weigh as much as the
+   page's primary button. The fill, the green icon and aria-current mark it; the weight stays. */
+a.nav-item.is-active {
+  background: var(--raised);
+  color: var(--text);
+}
+
+.nav-item.is-active .icon {
+  color: var(--accent-text);
 }
 
 /* The accent ring would vanish on a lime fill: ring in the text colour. */
-a.nav-item.is-active:focus-visible,
 .btn-primary:focus-visible {
   box-shadow: var(--focus-ring-on-accent);
 }
@@ -1625,8 +1663,10 @@ a.nav-item.is-active:focus-visible,
   cursor: pointer;
 }
 
-.empty-example:hover:not(:disabled) {
-  border-color: var(--line-strong);
+@media (hover: hover) {
+  .empty-example:hover:not(:disabled) {
+    border-color: var(--line-strong);
+  }
 }
 
 .empty-example:focus-visible {
@@ -1745,17 +1785,21 @@ a.nav-item.is-active:focus-visible,
   position: relative;
   cursor: pointer;
 }
-.row-link:hover {
-  background: var(--raised);
+@media (hover: hover) {
+  .row-link:hover {
+    background: var(--raised);
+  }
 }
 .row-link-main {
   color: var(--text);
   font-weight: 600;
   text-decoration: none;
 }
-.row-link-main:hover {
-  color: var(--text);
-  text-decoration: none;
+@media (hover: hover) {
+  .row-link-main:hover {
+    color: var(--text);
+    text-decoration: none;
+  }
 }
 .row-link-main::after {
   content: "";
@@ -1773,9 +1817,11 @@ a.nav-item.is-active:focus-visible,
   color: var(--muted);
   text-decoration: none;
 }
-.link-muted:hover {
-  color: var(--text);
-  text-decoration: underline;
+@media (hover: hover) {
+  .link-muted:hover {
+    color: var(--text);
+    text-decoration: underline;
+  }
 }
 
 .panel {
@@ -1790,6 +1836,7 @@ a.nav-item.is-active:focus-visible,
 .reveal h3 {
   font-size: var(--fs-h2);
   font-weight: 700;
+  line-height: 1.2;
 }
 
 .reveal {
@@ -2088,16 +2135,18 @@ a.nav-item.is-active:focus-visible,
   text-decoration: none;
 }
 
-.settings-nav-item:hover {
-  color: var(--text);
-  background: var(--raised);
+@media (hover: hover) {
+  .settings-nav-item:hover {
+    color: var(--text);
+    background: var(--raised);
+  }
 }
 
-/* Current: the fill, bold text and a green icon, so colour is not the only sign. */
+/* Current: the fill, the text colour and a green icon, as in the main nav, so colour is not the
+   only sign. */
 .settings-nav-item.is-active {
   color: var(--text);
   background: var(--raised);
-  font-weight: 700;
 }
 
 .settings-nav-item.is-active .icon {
@@ -2165,9 +2214,11 @@ a.nav-item.is-active:focus-visible,
   border-radius: var(--r-lg);
 }
 
-.settings-list-link:hover {
-  color: var(--text);
-  background: var(--raised);
+@media (hover: hover) {
+  .settings-list-link:hover {
+    color: var(--text);
+    background: var(--raised);
+  }
 }
 
 .settings-list-chevron {
@@ -2189,8 +2240,10 @@ a.nav-item.is-active:focus-visible,
   border-radius: var(--r-sm);
 }
 
-.settings-back:hover {
-  color: var(--text);
+@media (hover: hover) {
+  .settings-back:hover {
+    color: var(--text);
+  }
 }
 
 /* A sub-page's way back to its section beside the nav: "About /" above its h2. */
@@ -2211,8 +2264,10 @@ a.nav-item.is-active:focus-visible,
   text-decoration: none;
 }
 
-.settings-crumb-link:hover {
-  color: var(--text);
+@media (hover: hover) {
+  .settings-crumb-link:hover {
+    color: var(--text);
+  }
 }
 
 /* One value, the same on every Settings screen: the label (where the value comes from as a quiet
@@ -2459,9 +2514,11 @@ a.nav-item.is-active:focus-visible,
   cursor: pointer;
 }
 
-.disclosure-toggle:hover .disclosure-title {
-  text-decoration: underline;
-  text-underline-offset: 3px;
+@media (hover: hover) {
+  .disclosure-toggle:hover .disclosure-title {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
 }
 
 .disclosure-toggle:focus-visible {
@@ -2472,7 +2529,7 @@ a.nav-item.is-active:focus-visible,
 .disclosure-chevron {
   display: inline-flex;
   color: var(--muted);
-  transition: transform 0.15s;
+  transition: transform var(--dur-base) var(--ease-out);
 }
 
 .disclosure-toggle[aria-expanded="true"] .disclosure-chevron {
@@ -2763,9 +2820,11 @@ a.nav-item.is-active:focus-visible,
   text-decoration: none;
 }
 
-.about-link:hover {
-  color: var(--text);
-  background: var(--raised);
+@media (hover: hover) {
+  .about-link:hover {
+    color: var(--text);
+    background: var(--raised);
+  }
 }
 
 .about-backups {
@@ -2954,12 +3013,16 @@ a.btn:hover {
   text-decoration: none;
 }
 
-a.btn-primary:hover {
-  color: var(--on-accent);
+@media (hover: hover) {
+  a.btn-primary:hover {
+    color: var(--on-accent);
+  }
 }
 
-a.btn-secondary:hover {
-  color: var(--text);
+@media (hover: hover) {
+  a.btn-secondary:hover {
+    color: var(--text);
+  }
 }
 
 .wf-section + .wf-section {
@@ -3086,10 +3149,15 @@ a.btn-secondary:hover {
   overflow-wrap: anywhere;
 }
 
-.wf-link:hover,
 .wf-link:focus-visible {
   color: var(--text);
   text-decoration: underline;
+}
+@media (hover: hover) {
+  .wf-link:hover {
+    color: var(--text);
+    text-decoration: underline;
+  }
 }
 
 /* A problem chip next to the name grows and wraps its words rather than spill out of the cell. */
@@ -3180,9 +3248,13 @@ a.btn-secondary:hover {
   cursor: pointer;
 }
 
-.row-menu-list button:hover,
 .row-menu-list button:focus-visible {
   background: var(--line);
+}
+@media (hover: hover) {
+  .row-menu-list button:hover {
+    background: var(--line);
+  }
 }
 
 .row-menu-list .row-menu-danger {
@@ -3218,7 +3290,7 @@ a.btn-secondary:hover {
   height: 48px;
   justify-content: space-between;
   padding: 0 14px;
-  border: 1.5px solid var(--line-strong);
+  border: 1.5px solid var(--line-control);
   border-radius: var(--r-md);
   font-size: 16px;
 }
@@ -3422,9 +3494,11 @@ a.btn-secondary:hover {
   color: var(--muted);
   cursor: pointer;
 }
-.dialog-close:hover {
-  background: var(--raised);
-  color: var(--text);
+@media (hover: hover) {
+  .dialog-close:hover {
+    background: var(--raised);
+    color: var(--text);
+  }
 }
 .dialog:has(.dialog-close) .dialog-title {
   padding-right: 60px;
@@ -3491,8 +3565,10 @@ a.btn-secondary:hover {
   cursor: pointer;
 }
 
-.toast-close:hover {
-  background: var(--line);
+@media (hover: hover) {
+  .toast-close:hover {
+    background: var(--line);
+  }
 }
 
 /* Activation: the workflows list's status pill (colour never alone: icon + word). */
@@ -3584,9 +3660,11 @@ a.btn-secondary:hover {
   cursor: pointer;
 }
 
-.wf-activate:hover {
-  color: var(--text);
-  text-decoration: underline;
+@media (hover: hover) {
+  .wf-activate:hover {
+    color: var(--text);
+    text-decoration: underline;
+  }
 }
 
 .wf-activate:focus-visible {
@@ -3898,7 +3976,7 @@ a.btn-secondary:hover {
   height: 28px;
   margin-left: auto;
   padding: 0 6px;
-  border: 1px solid var(--line-strong);
+  border: 1px solid var(--line-control);
   border-radius: var(--r-sm);
   background: var(--surface);
   color: var(--text);
@@ -3945,8 +4023,10 @@ a.btn-secondary:hover {
   inset: -2px 0;
 }
 
-.tc-onnode-summary:hover {
-  background: var(--line);
+@media (hover: hover) {
+  .tc-onnode-summary:hover {
+    background: var(--line);
+  }
 }
 
 .tc-onnode-text {
@@ -4088,8 +4168,8 @@ a.btn-secondary:hover {
   --handle-scale: 1;
   transform: translate(-50%, -50%) rotate(var(--handle-turn)) scale(var(--handle-scale));
   transition:
-    transform 0.12s,
-    opacity 0.12s;
+    transform var(--dur-fast) var(--ease-out),
+    opacity var(--dur-fast) var(--ease-out);
 }
 
 .tc-node .tc-handle.react-flow__handle-left {
@@ -4152,7 +4232,7 @@ a.btn-secondary:hover {
    while faded), and its incompatible handles stay at full strength inside the faded card. */
 .tc-node.is-faded {
   opacity: 0.4;
-  transition: opacity 0.12s;
+  transition: opacity var(--dur-fast) var(--ease-out);
 }
 
 .tc-node.is-faded .tc-handle.is-incompatible {
@@ -4231,8 +4311,10 @@ a.btn-secondary:hover {
   color: var(--on-accent);
 }
 
-.tc-plus:hover .tc-plus-dot {
-  background: var(--accent-hover);
+@media (hover: hover) {
+  .tc-plus:hover .tc-plus-dot {
+    background: var(--accent-hover);
+  }
 }
 
 .tc-plus:focus-visible {
@@ -4258,12 +4340,14 @@ a.btn-secondary:hover {
 
 .tc-edge.edge-file {
   stroke: var(--edge-file);
-  stroke-width: 3px;
+  --edge-w: 3px;
+  stroke-width: var(--edge-w);
 }
 
 .tc-edge.edge-path {
   stroke: var(--edge-path);
-  stroke-width: 3.5px;
+  --edge-w: 3.5px;
+  stroke-width: var(--edge-w);
   stroke-dasharray: 10 6;
   stroke-linecap: round;
   animation: tc-dash 0.6s linear infinite;
@@ -4271,25 +4355,29 @@ a.btn-secondary:hover {
 
 .tc-edge.edge-data {
   stroke: var(--edge-data);
-  stroke-width: 2px;
+  --edge-w: 2px;
+  stroke-width: var(--edge-w);
   stroke-dasharray: 0.01 6;
   stroke-linecap: round;
 }
 
 .tc-edge.edge-untaken {
   stroke: var(--edge-untaken);
-  stroke-width: 2px;
+  --edge-w: 2px;
+  stroke-width: var(--edge-w);
   stroke-dasharray: 6 6;
 }
 
 .tc-edge.edge-broken {
   stroke: var(--edge-broken);
-  stroke-width: 2.5px;
+  --edge-w: 2.5px;
+  stroke-width: var(--edge-w);
   stroke-dasharray: 6 5;
 }
 
+/* Selected: the line itself gets 2px heavier (no glow). */
 .react-flow__edge.selected .tc-edge {
-  filter: drop-shadow(0 0 3px var(--accent));
+  stroke-width: calc(var(--edge-w, 3px) + 2px);
 }
 
 .tc-arrow.edge-file path {
@@ -4438,8 +4526,10 @@ a.btn-secondary:hover {
   padding: 0;
 }
 
-.tc-toolbar-btn:hover:not(:disabled) {
-  background: var(--line-strong);
+@media (hover: hover) {
+  .tc-toolbar-btn:hover:not(:disabled) {
+    background: var(--line-strong);
+  }
 }
 
 .tc-toolbar-btn:disabled {
@@ -4585,8 +4675,10 @@ a.btn-secondary:hover {
   background: var(--line);
 }
 
-.tc-group-toggle:hover .tc-group-toggle-chip {
-  background: var(--line-strong);
+@media (hover: hover) {
+  .tc-group-toggle:hover .tc-group-toggle-chip {
+    background: var(--line-strong);
+  }
 }
 
 .tc-group-toggle:focus-visible {
@@ -4859,8 +4951,10 @@ a.btn-secondary:hover {
   cursor: grab;
 }
 
-.palette-item:hover:not([aria-disabled="true"]) {
-  background: var(--raised);
+@media (hover: hover) {
+  .palette-item:hover:not([aria-disabled="true"]) {
+    background: var(--raised);
+  }
 }
 
 .palette-item[aria-disabled="true"] {
@@ -5089,9 +5183,11 @@ a.btn-secondary:hover {
   cursor: pointer;
 }
 
-.rail-logout:hover {
-  color: var(--text);
-  background: var(--raised);
+@media (hover: hover) {
+  .rail-logout:hover {
+    color: var(--text);
+    background: var(--raised);
+  }
 }
 
 /* ---------- Editor page: layout and header (screen 05) ---------- */
@@ -5142,8 +5238,10 @@ a.btn-secondary:hover {
   text-decoration: none;
 }
 
-.crumb-link:hover {
-  color: var(--text);
+@media (hover: hover) {
+  .crumb-link:hover {
+    color: var(--text);
+  }
 }
 
 .crumb-sep {
@@ -5168,8 +5266,10 @@ a.btn-secondary:hover {
   cursor: text;
 }
 
-.crumb-name:hover:not(:disabled) {
-  background: var(--raised);
+@media (hover: hover) {
+  .crumb-name:hover:not(:disabled) {
+    background: var(--raised);
+  }
 }
 
 .crumb-name:disabled {
@@ -5205,8 +5305,10 @@ a.btn-secondary:hover {
   inset: -6px 0;
 }
 
-.version-pill-btn:hover {
-  color: var(--text);
+@media (hover: hover) {
+  .version-pill-btn:hover {
+    color: var(--text);
+  }
 }
 
 /* The shown version is the active one: a lime ring (the Save button keeps the only lime fill). */
@@ -5266,9 +5368,11 @@ a.btn-secondary:hover {
   cursor: pointer;
 }
 
-.panel-close:hover {
-  background: var(--line);
-  color: var(--text);
+@media (hover: hover) {
+  .panel-close:hover {
+    background: var(--line);
+    color: var(--text);
+  }
 }
 
 .versions-title {
@@ -5298,14 +5402,20 @@ a.btn-secondary:hover {
   text-decoration: none;
 }
 
-.versions-row:hover,
 .versions-row:focus-visible {
   background: var(--line);
 }
+@media (hover: hover) {
+  .versions-row:hover {
+    background: var(--line);
+  }
+}
 
+/* The viewed version: a fill, not a side tab. The panel itself is --raised, so the fill is the
+   next step up. */
 .versions-row[aria-current="page"] {
   font-weight: 700;
-  box-shadow: inset 3px 0 0 var(--accent-text);
+  background: var(--line);
 }
 
 /* Compact (below 1024 px): the name and the menu share one row; the version pill is a muted
@@ -5541,8 +5651,10 @@ a.btn-secondary:hover {
   cursor: pointer;
 }
 
-.issues-entry:hover {
-  background: var(--raised);
+@media (hover: hover) {
+  .issues-entry:hover {
+    background: var(--raised);
+  }
 }
 
 .issues-entry > .icon {
@@ -5629,8 +5741,10 @@ a.btn-secondary:hover {
   cursor: pointer;
 }
 
-.canvas-banner-action:hover {
-  color: inherit;
+@media (hover: hover) {
+  .canvas-banner-action:hover {
+    color: inherit;
+  }
 }
 
 /* An action the version can't take yet (its reason is the tooltip): muted, no underline. */
@@ -6315,10 +6429,6 @@ a.btn-secondary:hover {
   background: var(--accent);
   color: var(--on-accent);
 }
-a.nav-item.is-active .nav-count {
-  background: var(--on-accent);
-  color: var(--accent-text);
-}
 
 .jobs-page {
   display: flex;
@@ -6609,8 +6719,10 @@ a.nav-item.is-active .nav-count {
   white-space: nowrap;
   border-radius: var(--r-sm);
 }
-.job-name:hover {
-  color: var(--text);
+@media (hover: hover) {
+  .job-name:hover {
+    color: var(--text);
+  }
 }
 .job-title {
   display: flex;
@@ -7312,8 +7424,10 @@ a.nav-item.is-active .nav-count {
   color: var(--text);
   text-decoration: none;
 }
-.phone-finished:hover {
-  color: var(--text);
+@media (hover: hover) {
+  .phone-finished:hover {
+    color: var(--text);
+  }
 }
 .phone-finished-icon {
   flex: none;
@@ -7545,8 +7659,10 @@ a.nav-item.is-active .nav-count {
   cursor: pointer;
 }
 
-.lib-activate:hover {
-  color: var(--accent-hover);
+@media (hover: hover) {
+  .lib-activate:hover {
+    color: var(--accent-hover);
+  }
 }
 
 .lib-dry-list {
@@ -8188,8 +8304,10 @@ a.nav-item.is-active .nav-count {
   font: inherit;
   cursor: pointer;
 }
-.picker-crumb-btn:hover {
-  color: var(--text);
+@media (hover: hover) {
+  .picker-crumb-btn:hover {
+    color: var(--text);
+  }
 }
 .picker-list {
   margin: 0;
@@ -8217,8 +8335,10 @@ a.nav-item.is-active .nav-count {
   text-align: left;
   cursor: pointer;
 }
-.picker-item:hover:not(:disabled) {
-  background: var(--raised);
+@media (hover: hover) {
+  .picker-item:hover:not(:disabled) {
+    background: var(--raised);
+  }
 }
 .picker-item:focus-visible,
 .picker-crumb-btn:focus-visible {
@@ -8557,7 +8677,7 @@ a.nav-item.is-active .nav-count {
 
 .file-path-chevron {
   display: inline-flex;
-  transition: transform 0.15s;
+  transition: transform var(--dur-base) var(--ease-out);
 }
 
 .file-path-toggle[aria-expanded="true"] .file-path-chevron {
@@ -8931,8 +9051,10 @@ a.nav-item.is-active .nav-count {
   cursor: pointer;
 }
 
-.job-step-main:hover {
-  background: var(--raised);
+@media (hover: hover) {
+  .job-step-main:hover {
+    background: var(--raised);
+  }
 }
 
 /* The row whose node is selected on the canvas. */
@@ -9022,9 +9144,11 @@ a.nav-item.is-active .nav-count {
   cursor: pointer;
 }
 
-button.job-step-more:hover {
-  background: var(--raised);
-  color: var(--text);
+@media (hover: hover) {
+  button.job-step-more:hover {
+    background: var(--raised);
+    color: var(--text);
+  }
 }
 
 /* An unmet precondition or a warning on the step, with where to fix it. */
@@ -9239,7 +9363,7 @@ button.job-step-more:hover {
   margin: 0;
   font-size: var(--fs-h2);
   font-weight: 700;
-  line-height: 1.3;
+  line-height: 1.2;
   overflow-wrap: anywhere;
 }
 
@@ -10162,8 +10286,10 @@ button.job-step-more:hover {
   color: var(--muted);
   cursor: help;
 }
-.info-tip-btn:hover {
-  color: var(--text);
+@media (hover: hover) {
+  .info-tip-btn:hover {
+    color: var(--text);
+  }
 }
 .info-tip-btn:focus-visible {
   outline: none;
@@ -10189,7 +10315,7 @@ button.job-step-more:hover {
   box-shadow: 0 6px 18px var(--toolbar-shadow);
   visibility: hidden;
   opacity: 0;
-  transition: opacity 120ms;
+  transition: opacity var(--dur-fast) var(--ease-out);
   pointer-events: none;
 }
 .info-tip:hover .info-tip-text,
@@ -10771,7 +10897,7 @@ button.job-step-more:hover {
   display: none;
 }
 .about-caps-chevron {
-  transition: transform 0.15s;
+  transition: transform var(--dur-base) var(--ease-out);
 }
 .about-caps[open] .about-caps-chevron {
   transform: rotate(180deg);
@@ -11070,9 +11196,11 @@ button.job-step-more:hover {
   border-radius: var(--r-sm);
   overflow-wrap: anywhere;
 }
-.lib-name-text:hover {
-  color: var(--accent-hover);
-  text-decoration-thickness: 2px;
+@media (hover: hover) {
+  .lib-name-text:hover {
+    color: var(--accent-hover);
+    text-decoration-thickness: 2px;
+  }
 }
 .lib-name-text:focus-visible {
   outline: none;
@@ -11154,8 +11282,10 @@ button.job-step-more:hover {
   text-decoration: none;
   border-radius: 8px;
 }
-.library-card:hover .library-card-title {
-  text-decoration: underline;
+@media (hover: hover) {
+  .library-card:hover .library-card-title {
+    text-decoration: underline;
+  }
 }
 .library-card:focus-visible {
   outline: none;

@@ -6,10 +6,11 @@ import { describe, expect, it } from 'vitest';
 // Comments dropped, so a rule's selector list is only selectors.
 const css = readFileSync(join(__dirname, '../styles.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
 
-/** The declarations of every rule whose selector list contains `selector` as one entry. */
+/** The declarations of every rule whose selector list contains `selector` as one entry, at the
+ *  top level or one level inside an at-rule such as `@media (hover: hover)`. */
 function rulesFor(selector: string): string {
   const out: string[] = [];
-  for (const m of css.matchAll(/(?:^|\n)([^{}\n][^{}]*)\{([^}]*)\}/g)) {
+  for (const m of css.matchAll(/(?:^|\n)\s*([^{}\s@][^{}]*)\{([^}]*)\}/g)) {
     const selectors = (m[1] ?? '').split(',').map((x) => x.trim());
     if (selectors.includes(selector)) out.push(m[2] ?? '');
   }

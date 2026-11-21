@@ -2033,6 +2033,14 @@ Approved plan: `docs/plans/2026-10-21-dryrun-depends-on-size.md` (local).
 - A graph too wide for the floor opens at 0.75 with the trigger (a sub-workflow's start, else the leftmost card) 48px from the left edge, so the flow reads on to the right. The editor centres the graph vertically when it fits, else the trigger. The trace already started from its left edge past its floor; only the floor moved (from 0.2). "Fit view" in the controls still shows the whole graph.
 - On a phone the trace keeps fitting the whole graph down to 0.1: a drag there scrolls the page, so a cut-off graph could not be panned into view.
 - The editor's first view is `openViewport` (a pure function, tested) run by a small `OpenView` component before paint, in place of React Flow's `fitView` prop. A remembered viewport still wins.
+- tokens.css differs from the handoff: a new `--line-control` token (#7A766F dark, #837F76 light) for form control edges. The handoff drew them in `--line-strong`, about 1.3:1 on `--raised`. The new edge is 3.4:1 (dark) and 3.3:1 (light) on `--raised`, and higher on the other surfaces (WCAG 1.4.11). Inputs, the listbox field button, segmented controls, chip fields, toggle chips and the on-card inputs use it. Native checkboxes and radios keep the browser's own edge.
+- tokens.css differs from the handoff: motion tokens `--ease-out` (cubic-bezier(0.23, 1, 0.32, 1)), `--dur-fast` (120ms) and `--dur-base` (160ms). Every UI transition uses them. Progress fills and loops keep their own linear timing.
+- tokens.css differs from the handoff: reduced motion clamps every animation and transition to 0.01ms and one run, instead of `animation: none`. Things that need an end state still reach it. The loops (path dash, running border) are still switched off in styles.css, and the spinners only turn when motion is allowed.
+- A button moves down 1px while pressed, only when motion is allowed. The transform is on the button, not on its `::before` hit area, which has its own centring transform.
+- Hover fills, colours and underlines apply only under `@media (hover: hover)`, so a tap does not leave them stuck. Focus styles are not gated. Overrides that undo a library's hover (the canvas controls' disabled state, `a.btn`) and the info tip's reveal stay ungated.
+- The current nav item is a neutral `--raised` row with `--text` and the icon in `--accent-text`, not a lime fill: it weighed as much as the page's primary button. The settings sub-nav already looked like this; both now keep the normal weight.
+- The viewed row in the versions panel is a `--line` fill, not an inset side tab. The panel itself is `--raised`, so the fill is one step up. A selected edge on the canvas is 2px heavier, not a drop-shadow glow.
+- The danger outline button's text is 14px, like the other small buttons. h1 and h2 have line-height 1.2 (they inherited the body's 1.4); the job result heading went from 1.3 to 1.2.
 
 ## Follow-ups (2026-10-17)
 
