@@ -138,7 +138,9 @@
 }
 
 /* Keyboard focus and in-page jumps stop below the sticky top bar, not under it (WCAG 2.4.11).
-   The editor has no top bar and does not scroll the page, so it needs none. */
+   Shell writes the bar's rendered height to --topbar-h, so the offset follows it when it wraps to
+   two rows at 640px and up. The editor has no top bar and does not scroll the page, so it needs
+   none. */
 html {
   scroll-padding-top: calc(var(--topbar-h) + var(--sp-4));
 }
@@ -4315,14 +4317,17 @@ a.btn:hover {
   border-radius: 50%;
 }
 
-/* N4: "+" on a free output; a 44 px (or larger, --tc-hit) target centred 30 px right of the card.
+/* N4: "+" on a free output; a 44 px (or larger, --tc-hit) target right of the card.
    --tc-hit, on the "+" and the group toggle: 44 canvas px, grown as the canvas zooms out so the
-   target never drops below 24 px on screen (WCAG 2.5.8). ZoomVar writes --tc-zoom. */
+   target never drops below 24 px on screen (WCAG 2.5.8). ZoomVar writes --tc-zoom.
+   The target starts 15 px right of the card edge, where the handle's hit area ends (7 px half
+   handle plus its 8 px ::after), and grows away from the card. However far the canvas zooms out,
+   the "+" never covers the handle, so a drag from the handle always starts a connection. */
 .tc-plus {
   --tc-hit: max(var(--target-min), calc(24px / var(--tc-zoom, 1)));
   position: absolute;
   top: 50%;
-  right: calc(-30px - var(--tc-hit) / 2);
+  right: calc(-15px - var(--tc-hit));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -7259,11 +7264,14 @@ a.btn:hover {
   flex-wrap: wrap;
 }
 /* Phone: the lead tile has its own row and the other three share the next, so the longest micro
-   label (NEEDS ATTENTION) has the full width; 12px side padding keeps SAVED TODAY inside. */
+   label (NEEDS ATTENTION) has the full width; 12px side padding keeps SAVED TODAY inside. A tile
+   that filters keeps no padding of its own, so its button (which carries the padding) is the
+   whole tile and a tap anywhere on it filters. */
 .is-phone .stat-row > .stat-tiles {
   flex-wrap: wrap;
 }
-.is-phone .stat-tile {
+.is-phone .stat-tile:not(.is-button),
+.is-phone .stat-tile-button {
   padding-inline: var(--sp-3);
 }
 .is-phone .stat-tile.is-lead {

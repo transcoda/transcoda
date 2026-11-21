@@ -81,7 +81,8 @@
   /* Hit targets */
   --target-min: 44px;
 
-  /* Sticky top bar: 12px padding x2 + 44px brand + 1px border. */
+  /* Sticky top bar, one row: 12px padding x2 + 44px brand + 1px border. Shell overrides it with
+     the measured height when the bar wraps. */
   --topbar-h: 69px;
 }
 

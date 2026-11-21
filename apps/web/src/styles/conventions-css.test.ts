@@ -122,4 +122,32 @@ describe('accessibility: focus and target size', () => {
       expect(rule).toMatch(/height:\s*var\(--tc-hit\)/);
     }
   });
+
+  it("the canvas's + starts past the output handle's hit area at every zoom, so a handle drag is never blocked", () => {
+    // Its right edge sits `gap + --tc-hit` right of the card edge, so its left edge is `gap` right
+    // of the card edge, whatever --tc-hit grows to as the canvas zooms out.
+    const plus = rulesFor('.tc-plus');
+    const gap = Number(
+      plus.match(/right:\s*calc\(-(\d+)px - var\(--tc-hit\)\)/)?.[1] ?? Number.NaN,
+    );
+    // The handle is centred on the card edge; its hit area is half its width plus the ::after.
+    const handle = rulesFor('.tc-node .tc-handle');
+    const half = Number(handle.match(/(?:^|\n)\s*width:\s*(\d+)px/)?.[1] ?? Number.NaN) / 2;
+    const after = rulesFor('.tc-node .tc-handle::after');
+    const reach = -Number(after.match(/inset:\s*(-\d+)px/)?.[1] ?? Number.NaN);
+    expect(half + reach).toBe(15);
+    expect(gap).toBeGreaterThanOrEqual(half + reach);
+  });
+});
+
+describe('Jobs stat tiles on a phone', () => {
+  it('a filtering tile stays unpadded so its button covers the whole tile', () => {
+    expect(rulesFor('.stat-tile.is-button')).toMatch(/padding:\s*0/);
+    // No phone rule pads every tile (that would pad the filtering tile around its button).
+    expect(rulesFor('.is-phone .stat-tile')).not.toMatch(/padding/);
+    expect(rulesFor('.is-phone .stat-tile:not(.is-button)')).toMatch(
+      /padding-inline:\s*var\(--sp-3\)/,
+    );
+    expect(rulesFor('.is-phone .stat-tile-button')).toMatch(/padding-inline:\s*var\(--sp-3\)/);
+  });
 });
