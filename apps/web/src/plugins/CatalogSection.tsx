@@ -48,7 +48,7 @@ export function latestVersion(entry: Entry): Version | null {
   return entry.versions.find((v) => v.version === entry.latest) ?? null;
 }
 
-/** One plugin of one catalog, as a card. */
+/** One plugin of one catalog, as a row. */
 export interface CatalogCard {
   catalog: CatalogView;
   entry: Entry;
@@ -127,26 +127,39 @@ function CatalogCardView({
       : `Install ${entry.title} ${version.version} from ${hostOf(catalog.catalogUrl)}`
     : `Install ${entry.title}`;
   return (
-    <li>
-      <article className="catalog-card" aria-labelledby={`${id}-title`}>
-        <div className="catalog-card-head">
-          <PluginTile title={entry.title} icon={entry.icon} />
-          <div className="catalog-card-name">
+    <li className="catalog-row">
+      <article className="catalog-row-main" aria-labelledby={`${id}-title`}>
+        <PluginTile title={entry.title} icon={entry.icon} />
+        <div className="catalog-row-text">
+          <div className="catalog-row-title">
             <h3 id={`${id}-title`}>{entry.title}</h3>
-            <span className="catalog-card-ids">
-              {/* The id only when the title doesn't already say it ("tmdb" under "TMDB" doesn't). */}
-              {entry.name === entry.title.toLowerCase() ? null : (
-                <span className="mono">{entry.name}</span>
-              )}
-              {shownVersion ? <span className="mono">{shownVersion}</span> : null}
-            </span>
+            {/* The id only when the title doesn't already say it ("tmdb" under "TMDB" doesn't). */}
+            {entry.name === entry.title.toLowerCase() ? null : (
+              <span className="mono plugin-version">{entry.name}</span>
+            )}
+            {shownVersion ? <span className="mono plugin-version">{shownVersion}</span> : null}
           </div>
+          <p className="catalog-row-desc">{cardDescription(entry.title, entry.description)}</p>
+          <NodeChips nodes={entry.nodes} label={`Nodes ${entry.title} adds`} />
+          {catalog.official ? null : (
+            <p className="catalog-card-source">
+              {'From '}
+              <span className="mono">{hostOf(catalog.catalogUrl)}</span>
+            </p>
+          )}
+          {reason && entry.installed === null ? (
+            <p id={`${id}-reason`} className="catalog-needs">
+              {reason}
+            </p>
+          ) : null}
+        </div>
+        <div className="catalog-row-action">
           {entry.installed !== null ? (
             <StatusChip tone="ok" icon="check">
               Installed
             </StatusChip>
           ) : (
-            // Secondary on the card: the install dialog holds the one primary action.
+            // Secondary on the row: the install dialog holds the one primary action.
             <button
               type="button"
               className="btn btn-secondary"
@@ -161,25 +174,12 @@ function CatalogCardView({
             </button>
           )}
         </div>
-        <p className="catalog-card-text">{cardDescription(entry.title, entry.description)}</p>
-        <NodeChips nodes={entry.nodes} label={`Nodes ${entry.title} adds`} />
-        {catalog.official ? null : (
-          <p className="catalog-card-source">
-            {'From '}
-            <span className="mono">{hostOf(catalog.catalogUrl)}</span>
-          </p>
-        )}
-        {reason && entry.installed === null ? (
-          <p id={`${id}-reason`} className="catalog-needs">
-            {reason}
-          </p>
-        ) : null}
       </article>
     </li>
   );
 }
 
-/** The catalog's cards, one section per purpose. */
+/** The catalog's rows, one list per purpose, in the installed list's row language. */
 export function CatalogGroups({
   groups,
   onInstall,
@@ -194,7 +194,7 @@ export function CatalogGroups({
           <SectionHeading id={`group-${group.id}`} note={group.sub}>
             {group.title}
           </SectionHeading>
-          <ul className="catalog-grid">
+          <ul className="catalog-rows">
             {cards.map((card) => (
               <CatalogCardView
                 key={`${card.catalog.catalogUrl} ${card.entry.name}`}
