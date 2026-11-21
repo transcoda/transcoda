@@ -39,17 +39,20 @@ This file explains the Transcoda web UI's design system: what it is for, the rul
 
 - UI and display: Bricolage Grotesque, 400/500/700/800, `@fontsource/bricolage-grotesque`, OFL-1.1.
 - Mono: JetBrains Mono, 400/600, `@fontsource/jetbrains-mono`, OFL-1.1. Used for caps micro labels, paths, codecs, sizes and durations.
-- Scale: a deliberately tight scale for a dense tool. The steps are roughly 1.15 in the UI and open up to 1.4 to 1.57 for headings.
+- Scale: a deliberately tight scale for a dense tool. The steps are roughly 1.08 to 1.15 in the UI and open up to 1.4 to 1.57 for headings. Six steps live in `tokens.css`; four more (`--fs-micro`, `--fs-ui`, `--fs-h3`, `--fs-title`) sit at the top of `styles.css`, because `tokens.css` is vendored. Every `font-size` uses one of them; a test (`styles/type-scale-css.test.ts`) fails on a raw px size. The two exceptions are the auth hero tagline and inline code in notes.
 
   | Token | Size | Weight / tracking | Use |
   |---|---|---|---|
   | `--fs-display` | 44px | 700, -0.03em | auth hero |
-  | (page title) | 32px | 700, -0.01em | page titles |
+  | `--fs-title` | 32px | 700, -0.01em | page titles |
   | `--fs-h1` | 28px | 700, -0.01em | section titles |
   | `--fs-h2` | 20px | 700 | panel titles |
+  | `--fs-h3` | 17px | 700 | card and section headings |
   | `--fs-body` | 15px | 400, line-height 1.5 | text |
+  | `--fs-ui` | 14px | 500 | controls, labels, dense rows |
   | `--fs-small` | 13px | 500 | meta |
   | `--fs-mono` | 12px | 600, caps | labels |
+  | `--fs-micro` | 11px (12px on phone) | 600, mono caps | micro labels |
 
 - Wordmark: 800 weight, -0.04em, lowercase "transcoda".
 - Rules:
@@ -57,11 +60,14 @@ This file explains the Transcoda web UI's design system: what it is for, the rul
   - Nothing is below 11px.
   - Headings are no tighter than -0.02em, except the wordmark.
   - Caps are for short mono labels only.
+  - Headings have line-height 1.2.
+  - Figures (sizes, durations, counts, percentages) use `tabular-nums`.
+  - A selected or current item never changes weight; it changes fill, colour or icon.
 
 ## Color
 
 - Strategy: one loud lime on warm near-black. Lime (hue about 124) stays well away from the indigo/violet band that AI UIs default to, and reads like an indicator LED. The neutrals have very low chroma: slightly cool in dark, warm in light. Every other hue is semantic: node kinds and job verdicts.
-- Distribution: roughly 85 neutral / 10 semantic / 5 lime. Lime marks the primary action, the path taken, the current item and the focus ring.
+- Distribution: roughly 85 neutral / 10 semantic / 5 lime. Lime fill is for the single primary action on a view. Lime as a line or icon marks the path taken, the current nav item (a neutral `--raised` row with a lime icon) and the focus ring.
 - Light mode keeps lime as the fill (with dark ink) and moves lime text and lines to a deep green that passes AA.
 
 | Role | Token | Dark | Light |
@@ -71,6 +77,7 @@ This file explains the Transcoda web UI's design system: what it is for, the rul
 | raised | `--raised` | oklch(26.8% 0.011 293) #26252B | oklch(93.7% 0.010 94) #ECEAE3 |
 | border | `--line` | oklch(30.1% 0.013 292) #2E2D34 | oklch(87.6% 0.014 93) #D9D6CC |
 | border strong | `--line-strong` | oklch(34.8% 0.012 292) #3A3940 | oklch(81.4% 0.017 92) #C6C2B6 |
+| control edge | `--line-control` | #7A766F (3.4:1 on raised) | #837F76 (3.3:1 on raised) |
 | fg | `--text` | oklch(94.0% 0.007 89) #EDEBE6 | #17161A |
 | muted | `--muted` | oklch(76.1% 0.013 87) #B5B1A8 | oklch(43.9% 0.012 88) #55524B |
 | faint | `--faint` | oklch(68.0% 0.014 87) #9C988F | oklch(48.3% 0.012 82) #625E57 |
@@ -97,8 +104,8 @@ Colours that are not tokens are named variables at the top of `styles.css`, with
 
 ## Spacing, radius, shadow
 
-- Spacing: 4px base. `--sp-1` 4, `--sp-2` 8, `--sp-3` 12, `--sp-4` 16, `--sp-6` 24, `--sp-8` 32, `--sp-12` 48. Tight inside a group (4 to 8), generous between sections (24 to 48).
-- Radius: `--r-sm` 6px for chips in dense rows, small controls and node ports; `--r-md` 12px for inputs, buttons, cards and node cards; `--r-lg` 16px for large panels only; `--r-pill` for tags, filter chips and dots. Nothing above 16px except pills.
+- Spacing: 4px base. `--sp-1` 4, `--sp-2` 8, `--sp-3` 12, `--sp-4` 16, `--sp-5` 20, `--sp-6` 24, `--sp-8` 32, `--sp-10` 40, `--sp-12` 48 (`--sp-5` and `--sp-10` sit at the top of `styles.css`). Tight inside a group (4 to 8), generous between sections (24 to 48). Every padding, margin and gap uses a token; a test (`styles/spacing-radius-css.test.ts`) fails on a raw length, apart from listed 1px hairlines.
+- Radius: `--r-sm` 6px for chips in dense rows, small controls and node ports; `--r-md` 12px for inputs, buttons, cards and node cards; `--r-lg` 16px for large panels only; `--r-pill` for tags, filter chips and dots. Nothing above 16px except pills. 2px only for tiny marks (swatches, port handles, highlights).
 - Shadows: defined edges, not elevation. Cards and rows are a 1px or 1.5px border plus a lightness step (bg < surface < raised). Box-shadow is used for:
   - focus rings
   - zero-blur state rings
@@ -107,8 +114,9 @@ Colours that are not tokens are named variables at the top of `styles.css`, with
 ## Layout and composition
 
 - The editor is three columns: palette, canvas, inspector. The default widths are 240 / flexible / 340, and 200 / flexible / 280 between 1024 and 1279px. In the editor the side nav collapses to a 56px icon rail.
-- Pages are a side nav plus a sticky top bar (`--topbar-h` 69px), with content in a single column of lists and tables. There are no card grids except the jobs overview stat tiles, and those are filters.
-- Signature layout move: the canvas is the page. Run traces reuse the editor's canvas, with the path taken lit and everything else dimmed, so "what happened" is drawn on the same diagram as "what should happen".
+- Pages are a side nav plus a sticky top bar (`--topbar-h` 69px), with content in a single column of lists and tables. `html` keeps `scroll-padding-top` at the bar's height plus 16px, so focus never lands under it. There are no card grids: the plugin catalog is a list of rows, like the installed plugins. The Jobs stat tiles are filters, and "Needs attention" leads them (first, twice as wide, larger figure), because it is the one count that asks you to act.
+- Help and description text stops at 70ch. Paths may run long.
+- Signature layout move: the canvas is the page. Run traces reuse the editor's canvas, with the path taken lit and everything else dimmed, so "what happened" is drawn on the same diagram as "what should happen". The canvas opens at 0.75 zoom or closer (`openViewport`): whole if the graph fits, otherwise from the trigger. On a phone the trace still fits the whole graph.
 - Breakpoints:
   - Phone: up to 639px.
   - Auth layout splits at 900px.
@@ -122,13 +130,16 @@ Colours that are not tokens are named variables at the top of `styles.css`, with
   - `.btn-secondary`, `.btn-ghost`.
   - `.btn-danger` and `.btn-danger-outline`: destructive actions only.
   - `.btn-ink` and `.btn-ink-outline`: on lime surfaces.
-  - Sizes `.btn-sm` (drawn smaller, with a 44px hit area from `::before`) and `.btn-lg`.
-- Inputs: 48px tall, `--raised` background, label above (14px/500), errors through `aria-invalid` plus a message tied with `aria-describedby`. Placeholders are hints, never labels.
-- Tables: text left, numbers right in tabular figures, light row separators.
+  - Sizes `.btn-sm` (drawn smaller, with a centred 44px-tall hit area from `::before`) and `.btn-lg`.
+- Inputs: 48px tall, `--raised` background, a 1.5px `--line-control` edge (3:1), label above (14px/500), errors through `aria-invalid` plus a message tied with `aria-describedby`. Placeholders are hints, never labels.
+- Tables: text left, numbers right in tabular figures, light row separators. A dry run's mode is a small mono line under the status chip, not a second chip.
 - Overlays: `Dialog` traps and returns focus. Menus and tips are floating layers with the one shadow.
 - Empty states:
-  - Workflows: the three-dot kind chain, one sentence and one primary button.
+  - Workflows: the three-dot kind chain, one sentence, one primary button, then the examples as borderless rows under an "Or start from an example" divider.
   - Lists: one muted line that says what will appear there.
+  - Not found: the address drawn as a node card with a red broken-cable dash into an empty dashed slot, one sentence, the way back as the primary link and Jobs or Workflows as the secondary.
+- No cards inside cards: a detail inside a card is a disclosure under a divider, not a box. Choices inside a form are a checklist (the checkbox shows the choice), not filled chips.
+- Pressed: a button moves down 1px while pressed (motion allowed only). Hover styles apply only under `@media (hover: hover)`.
 - Loading: `Loading` with `role="status"`, a spinner and a word. Working jobs get a turning arc. Planned jobs get a still hourglass.
 - Errors: `.alert-danger` and `.alert-warning` blocks, toasts in a polite region plus an alert region.
 - Focus: `:focus-visible` gets `--focus-ring` (2px bg gap, 2px `--accent-text`), and `--focus-ring-on-accent` on lime. Never `outline: none` without it.
@@ -137,6 +148,7 @@ Colours that are not tokens are named variables at the top of `styles.css`, with
   - Ports: 26px hit area.
   - States:
     - selected: 2.5px lime outline at 3px offset
+    - every card has an `aria-label` from its title, at every zoom level
     - dry run: dashed border
     - bypassed: hatch, plus a label
     - off path: faded
@@ -144,11 +156,11 @@ Colours that are not tokens are named variables at the top of `styles.css`, with
 
 ## Motion
 
-- Durations: 120 to 150ms for hover and toggles. 400ms to 600ms linear for progress fills. Loops are linear: spinner 0.8s, edge dash 0.6s, running border 1.6s.
-- Easing: ease-out for anything entering (target token `--ease-out: cubic-bezier(0.23, 1, 0.32, 1)`). Linear only for progress and loops.
+- Tokens (in `tokens.css`, not in the handoff): `--ease-out: cubic-bezier(0.23, 1, 0.32, 1)`, `--dur-fast` 120ms, `--dur-base` 160ms. Every UI transition uses them.
+- Progress fills are 400ms to 600ms linear. Loops are linear: spinner 0.8s, edge dash 0.6s, running border 1.6s.
 - Only transform, opacity, stroke-dashoffset and clip-path animate. Never layout properties.
 - Motion means something is happening: a job running, a path taken. Nothing pulses or loops at rest. The live dot is static.
-- Reduced motion: every loop has a still replacement (a solid accent border for the running node, a static dash for edges).
+- Reduced motion: `tokens.css` clamps every animation and transition to 0.01ms and one run, so end states are still reached. Every loop has a still replacement (a solid accent border for the running node, a static dash for edges).
 
 ## Iconography
 
@@ -174,9 +186,11 @@ Colours that are not tokens are named variables at the top of `styles.css`, with
 
 - Contrast:
   - Text, muted, faint, accent text, kind and verdict colours all pass AA on bg, surface and raised in both themes. The lowest pairs are faint on raised in dark (5.28) and kind-action on raised in light (4.78).
-  - Input edges do not yet reach 3:1 (see the audit).
-- There is a skip link, keyboard focus on every control, and 44px targets (`--target-min`).
-  - Exception: the React Flow zoom controls are 40px.
+  - Form control edges use `--line-control`, 3.3:1 or better on `--raised` in both themes.
+- There is a skip link, keyboard focus on every control (never under the top bar), and 44px targets (`--target-min`).
+  - Exceptions: the React Flow zoom controls are 40px. Text links outside a sentence get `.text-target` (24px or more). The canvas "+" and group toggle grow as the canvas zooms out, so they never drop below 24px on screen.
+- Headings: one h1 per page (the editor's is visually hidden), no skipped levels. A note's `# heading` on the canvas is a bold lead-in, not a heading.
+- Accessible names start with the visible label (WCAG 2.5.3).
 - Kinds and verdicts never rely on colour alone.
 - Forms use real labels, `aria-invalid` and `role="alert"`.
 
@@ -188,7 +202,7 @@ Colours that are not tokens are named variables at the top of `styles.css`, with
 
 ### Slop audit (source and rendered)
 
-- Date: 2026-11-20. Result: 7.5 / 10. The source was read, then every page was rendered: desktop 1440px in dark and light, phone 390px in dark, on a local instance with synthetic media.
+- Date: 2026-11-20 (before the fixes). Result: 7.5 / 10. The source was read, then every page was rendered: desktop 1440px in dark and light, phone 390px in dark, on a local instance with synthetic media.
 - Clean: no indigo or violet accent, no gradient text, no glassmorphism, no bounce easing, no decorative glows or haze, no pulsing dots, no stock or AI imagery, no card-grid boilerplate. The signature move is clear. No console errors, no horizontal scroll at 1440 or 390, no rendered text below AA in either theme. Lighthouse accessibility scores 100 on Jobs and the editor in both themes, but it misses the first and third rendered issues below.
 - The product pages (jobs, job page, run trace) read as most distinctive. The plugin catalog, 404 and settings read as the most generic.
 
@@ -244,7 +258,7 @@ Source issues (from reading `styles.css`), most important first:
 
 ### Refactoring UI diagnostic
 
-- Date: 2026-11-20. Score: 5 / 10 (4 of 8 checks pass; the score is round(passes / 8 x 10)).
+- Date: 2026-11-20 (before the fixes). Score: 5 / 10 (4 of 8 checks pass; the score is round(passes / 8 x 10)).
 
 | Check | Result | Evidence and fix |
 |---|---|---|
@@ -261,7 +275,34 @@ To reach 10/10:
 - fix the four failing rows: the nav-versus-primary weight, the spacing tokens, the help-text width, and the input edges
 - then rerun both audits
 
+### Fix status
+
+All of the issues above were fixed on 2026-11-20 on branch `jhadenfeldt/design-md`. Each change, and each place it departs from the handoff, is recorded in `docs/decisions.md` under "2026-11-20 Design audit fixes". The new guard tests are:
+- `styles/type-scale-css.test.ts`
+- `styles/spacing-radius-css.test.ts`
+- `styles/motion-controls-css.test.ts`
+- `styles/conventions-css.test.ts`
+
+The Refactoring UI checks that failed now pass:
+- **Blur:** the current nav item is a neutral row, so the primary button is the only lime block, and "Needs attention" leads the Jobs tiles.
+- **Spacing:** on tokens.
+- **Text width:** help text is capped at 70ch.
+- **Contrast:** control edges are 3:1.
+
+That makes the expected score 10 / 10, but it has not been re-audited yet.
+
+Still open:
+- The API tokens table is 820px wide inside a horizontally scrolling panel on phone.
+- The empty workflows state has two lime buttons ("New workflow" and "Add a trigger").
+- Native checkboxes and radios keep the browser's own edge.
+- The settings switch track keeps `--line-strong` (its knob carries the 3:1).
+- Not yet covered by any audit:
+  - the activity panel and info tips
+  - a real (non-dry) run
+  - a full keyboard pass on every page
+
 ## Changelog
 
+- 2026-11-20: fixed the audit findings (accessibility, canvas zoom, control edges and motion tokens, type and spacing scales, nested cards, plugin catalog rows, 404, Jobs tiles and status column, recycle page); the system sections describe the fixed state.
 - 2026-11-20: added the rendered audit (desktop dark and light, phone dark) and the Refactoring UI diagnostic.
 - 2026-11-20: first version. Documents the existing Patchbay system (no visual changes) and records the first slop and accessibility audit.
