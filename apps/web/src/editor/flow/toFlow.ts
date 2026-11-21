@@ -33,6 +33,15 @@ export const COLLAPSED_GROUP_SIZE = { width: 210, height: 60 } as const;
 export const VALUES_HANDLE = 'values';
 export const VALUE_LINK_HANDLE = 'value-link';
 
+/** A node's name: its own label, or (with no label, or an empty one) its catalogue title, else
+ *  its type. Never empty while the type is not. */
+function nodeName(
+  node: { label?: string | undefined; type: string },
+  catalog: Catalog | null,
+): string {
+  return node.label?.trim() ? node.label : (catalog?.byType.get(node.type)?.title ?? node.type);
+}
+
 /**
  * The values card and one dotted line per node that follows a value it holds (to the collapsed
  * group standing in for a hidden node). Lines are drawn only; they are never selected or deleted.
@@ -168,7 +177,7 @@ export function toFlow(
       selected: selectedNodes.has(instance.id),
       // React Flow's focusable wrapper is named by the card's title at every zoom level (the
       // icon-only tile shows no words).
-      ariaLabel: instance.label ?? catalog?.byType.get(instance.type)?.title ?? instance.type,
+      ariaLabel: nodeName(instance, catalog),
       data: {
         instance,
         def: catalog?.byType.get(instance.type) ?? null,
@@ -197,7 +206,7 @@ export function toFlow(
     if (hidden !== undefined) return groups.get(hidden)?.name ?? nodeId;
     const n = byId.get(nodeId);
     if (!n) return nodeId;
-    return n.label ?? catalog?.byType.get(n.type)?.title ?? n.type;
+    return nodeName(n, catalog);
   };
   /** "Edge from Video is, Yes, to Encode video": the port only when the node has several. */
   const edgeName = (e: WorkflowGraph['edges'][number]): string => {

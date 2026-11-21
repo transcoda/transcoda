@@ -91,6 +91,37 @@ describe('toFlow', () => {
     }
   });
 
+  it('names a card with an empty label by its catalogue title or type; a label stays the name', () => {
+    const g = grouped();
+    const titled = g.nodes[0];
+    const untitled = g.nodes[1];
+    if (!titled || !untitled) throw new Error('fixture has too few nodes');
+    const draft: WorkflowGraph = {
+      ...g,
+      nodes: g.nodes.map((n) =>
+        n.id === titled.id
+          ? { ...n, label: '' }
+          : n.id === untitled.id
+            ? { ...n, type: 'not-in-catalog', label: '  ' }
+            : n,
+      ),
+    };
+    const { nodes, edges } = toFlow(draft, catalogFixture, [], none);
+    const title = catalogFixture.byType.get(titled.type)?.title;
+    expect(title).toBeTruthy();
+    expect(flowNode(nodes, titled.id).ariaLabel).toBe(title);
+    expect(flowNode(nodes, untitled.id).ariaLabel).toBe('not-in-catalog');
+    for (const e of edges) expect(e.ariaLabel ?? 'x').not.toMatch(/from {2}|from ,|to $/);
+
+    const named = toFlow(
+      { ...g, nodes: g.nodes.map((n) => (n.id === titled.id ? { ...n, label: 'Intake' } : n)) },
+      catalogFixture,
+      [],
+      none,
+    );
+    expect(flowNode(named.nodes, titled.id).ariaLabel).toBe('Intake');
+  });
+
   it('converts grouped node positions to parent-relative and lists group nodes first', () => {
     const { nodes } = toFlow(grouped(), catalogFixture, [], { ...none, group: 'cleanup' });
     expect(nodes[0]?.id).toBe('cleanup');
