@@ -11223,8 +11223,20 @@ a.btn:hover {
   flex-direction: column;
   gap: var(--sp-1);
 }
+/* The explanation at body size; the path under it in small muted mono, then the sizes. */
+.recycle-explain {
+  margin: 0 0 var(--sp-1);
+  font-size: var(--fs-body);
+  line-height: 1.5;
+}
 .recycle-folder {
+  font-size: var(--fs-small);
+  color: var(--muted);
   overflow-wrap: anywhere;
+}
+.recycle-size {
+  font-size: var(--fs-small);
+  color: var(--faint);
 }
 .recycle-empty {
   color: var(--muted);
@@ -11535,6 +11547,7 @@ a.btn:hover {
 .about-backups-hint,
 .about-backups-help .disclosure-body,
 .recycle-note,
+.recycle-explain,
 .catalog-sources,
 .plugin-network-note,
 .picker-hint,
