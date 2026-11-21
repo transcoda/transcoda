@@ -2001,7 +2001,6 @@ a.nav-item.is-active {
   color: var(--muted);
 }
 
-
 .scope-chip:has(input:focus-visible) {
   box-shadow: var(--focus-ring);
 }
