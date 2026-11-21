@@ -30,3 +30,47 @@ export function openViewport(
   const centreY = graphFits ? bounds.y + bounds.height / 2 : anchor.y + anchor.height / 2;
   return { x: OPEN_PAD - anchor.x * zoom, y: pane.height / 2 - centreY * zoom, zoom };
 }
+
+/** A card or group as the canvas holds it: `x`/`y` relative to its parent group, if any. */
+export type OpenBox = {
+  id: string;
+  parentId?: string | undefined;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
+
+/**
+ * The rectangle around every shown card and group, in canvas coordinates: a group member's
+ * parent-relative position is made absolute through its parent chain, so a member that sits past
+ * its group's edge is still inside the first view. `null` when there is nothing to show.
+ */
+export function openBounds(boxes: readonly OpenBox[]): Rect | null {
+  if (boxes.length === 0) return null;
+  const byId = new Map(boxes.map((b) => [b.id, b] as const));
+  const absolute = (b: OpenBox): { x: number; y: number } => {
+    let { x, y } = b;
+    const seen = new Set([b.id]);
+    let parent = b.parentId !== undefined ? byId.get(b.parentId) : undefined;
+    while (parent && !seen.has(parent.id)) {
+      seen.add(parent.id);
+      x += parent.x;
+      y += parent.y;
+      parent = parent.parentId !== undefined ? byId.get(parent.parentId) : undefined;
+    }
+    return { x, y };
+  };
+  let minX = Number.POSITIVE_INFINITY;
+  let minY = Number.POSITIVE_INFINITY;
+  let maxX = Number.NEGATIVE_INFINITY;
+  let maxY = Number.NEGATIVE_INFINITY;
+  for (const b of boxes) {
+    const { x, y } = absolute(b);
+    minX = Math.min(minX, x);
+    minY = Math.min(minY, y);
+    maxX = Math.max(maxX, x + b.width);
+    maxY = Math.max(maxY, y + b.height);
+  }
+  return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+}

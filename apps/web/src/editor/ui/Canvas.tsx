@@ -37,7 +37,7 @@ import { Icon } from '../../components/Icon.tsx';
 import type { Catalog } from '../../hooks/useCatalog.ts';
 import { type FlowChangeResult, fromEdgeChanges, fromNodeChanges } from '../flow/fromFlow.ts';
 import { ARIA_LABELS, edgeTypes, nodeTypes } from '../flow/nodeTypes.ts';
-import { openViewport } from '../flow/openViewport.ts';
+import { type OpenBox, openBounds, openViewport } from '../flow/openViewport.ts';
 import { TcConnectionLine } from '../flow/TcConnectionLine.tsx';
 import { TcMiniMap } from '../flow/TcMiniMap.tsx';
 import { COLLAPSED_GROUP_SIZE, toFlow } from '../flow/toFlow.ts';
@@ -78,23 +78,30 @@ function OpenView({ graph, catalog }: { graph: WorkflowGraph; catalog: Catalog |
   const done = useRef(false);
   useLayoutEffect(() => {
     if (done.current || !ready || width === 0 || height === 0) return;
-    const shown = rf.getNodes().filter((n) => !n.hidden && n.parentId === undefined);
+    // Every shown card counts for the fit (group members too: one may sit past its group's
+    // edge); the anchor is only ever a top-level card.
+    const visible = rf.getNodes().filter((n) => !n.hidden);
+    const shown = visible.filter((n) => n.parentId === undefined);
     if (shown.length === 0) return;
     done.current = true;
+    const boxOf = (n: FlowNode): OpenBox => {
+      const measured = rf.getInternalNode(n.id)?.measured;
+      return {
+        id: n.id,
+        parentId: n.parentId,
+        ...n.position,
+        width: measured?.width ?? NODE_SIZE.width,
+        height: measured?.height ?? 0,
+      };
+    };
     const trigger = graph.nodes.find(
       (n) => n.type === SUBWORKFLOW_START_TYPE || catalog?.byType.get(n.type)?.kind === 'trigger',
     );
     const leftmost = shown.reduce((a, b) => (b.position.x < a.position.x ? b : a));
     const anchor = shown.find((n) => n.id === trigger?.id) ?? leftmost;
-    const internal = rf.getInternalNode(anchor.id);
-    const anchorBox = {
-      ...anchor.position,
-      width: internal?.measured.width ?? NODE_SIZE.width,
-      height: internal?.measured.height ?? 0,
-    };
-    void rf.setViewport(
-      openViewport(rf.getNodesBounds(shown), anchorBox, { width, height }, FIT_VIEW),
-    );
+    const bounds = openBounds(visible.map(boxOf));
+    if (!bounds) return;
+    void rf.setViewport(openViewport(bounds, boxOf(anchor), { width, height }, FIT_VIEW));
   }, [ready, width, height, rf, graph, catalog]);
   return null;
 }

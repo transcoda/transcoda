@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { openViewport, READABLE_ZOOM } from './openViewport.ts';
+import { openBounds, openViewport, READABLE_ZOOM } from './openViewport.ts';
 
 const rect = (x: number, y: number, width: number, height: number) => ({ x, y, width, height });
 const pane = { width: 1200, height: 800 };
@@ -38,5 +38,46 @@ describe('openViewport (the zoom and position a canvas opens at)', () => {
     const v = openViewport(rect(0, 0, 4000, 400), trigger, pane, { floor: 0.2 });
     expect(v.zoom).toBeGreaterThan(0.2);
     expect(v.zoom).toBeLessThan(READABLE_ZOOM);
+  });
+});
+
+describe('openBounds (the rectangle the first view fits)', () => {
+  it('is null for an empty canvas', () => {
+    expect(openBounds([])).toBeNull();
+  });
+
+  it('includes a group member that sits past its group, at its absolute position', () => {
+    const boxes = [
+      { id: 'trigger', x: 0, y: 0, width: 210, height: 120 },
+      { id: 'group', x: 300, y: 0, width: 400, height: 300 },
+      // Parent-relative: absolute x 300 + 500 = 800, right edge 1010, past the group's 700.
+      { id: 'member', parentId: 'group', x: 500, y: 250, width: 210, height: 120 },
+    ];
+    expect(openBounds(boxes)).toEqual({ x: 0, y: 0, width: 1010, height: 370 });
+  });
+
+  it('the whole graph fits at a readable zoom, so the far member is in the first view', () => {
+    const bounds = openBounds([
+      { id: 'trigger', x: 0, y: 0, width: 210, height: 120 },
+      { id: 'group', x: 300, y: 0, width: 400, height: 300 },
+      { id: 'member', parentId: 'group', x: 500, y: 250, width: 210, height: 120 },
+    ]);
+    if (!bounds) throw new Error('no bounds');
+    const v = openViewport(bounds, rect(0, 0, 210, 120), pane);
+    expect(v.zoom).toBeGreaterThanOrEqual(READABLE_ZOOM);
+    // The member's right and bottom edges land inside the pane.
+    expect(1010 * v.zoom + v.x).toBeLessThanOrEqual(pane.width);
+    expect(370 * v.zoom + v.y).toBeLessThanOrEqual(pane.height);
+  });
+
+  it('resolves nested parents and ignores a missing one', () => {
+    expect(
+      openBounds([
+        { id: 'outer', x: 100, y: 100, width: 50, height: 50 },
+        { id: 'inner', parentId: 'outer', x: 10, y: 10, width: 20, height: 20 },
+        { id: 'leaf', parentId: 'inner', x: 5, y: 5, width: 10, height: 10 },
+        { id: 'stray', parentId: 'gone', x: 0, y: 0, width: 10, height: 10 },
+      ]),
+    ).toEqual({ x: 0, y: 0, width: 150, height: 150 });
   });
 });
