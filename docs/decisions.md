@@ -2051,6 +2051,8 @@ Approved plan: `docs/plans/2026-10-21-dryrun-depends-on-size.md` (local).
 - Hairlines stay at 1px (chip padding, a 1px row gap, a -1px margin over a border). The hit-area `inset: -Npx` pseudo-elements size targets, not spacing, and are unchanged.
 - Radius: the 3, 4, 5, 8, 9, 10 and 14px radii went onto `--r-sm` (up to 9px), `--r-md` (10 to 14px) and `--r-lg`. Pills and circles are unchanged. 2px stays for tiny marks (swatches, port handles, the search highlight, key dots); the legend swatches went from 3 or 4px to 2px for that reason. The running-node halo keeps `calc(var(--r-md) + 3px)` so it stays concentric with its 3px inset.
 - Help and description paragraphs (field and setting hints, section notes, the About backups text, the recycle explanation, catalog sources, picker hints) stop at 70ch. Paths and file names are not capped. A test fails when a raw spacing length or radius comes back outside the documented exceptions.
+- The empty workflows state no longer holds three bordered example cards. The examples sit under a hairline with "Or start from an example" in it, as borderless rows (name, a chevron, one line) that fill with `--raised` on hover. The chevron is `--faint`, not lime: lime stays on "Add a trigger".
+- The 404 (and every not-found screen, through `NotFound`) is drawn in the empty state's language: the address as a node card with its output port, a red "into a broken node" dash, and an empty dashed slot where the next node would be. Real elements and CSS, hidden from screen readers. One sentence (the existing "This page does not exist, or it was deleted."), the way back as the primary link, and Jobs as the secondary one (Workflows when the way back already is Jobs). It keeps `role="alert"`.
 
 ## Follow-ups (2026-10-17)
 

@@ -45,7 +45,10 @@ export function EmptyWorkflows({
               onClick={() => onExample(ex)}
               disabled={busy}
             >
-              <strong>{ex.name}</strong>
+              <strong>
+                {ex.name}
+                <Icon name="chevron-right" size={14} strokeWidth={2.6} />
+              </strong>
               <span>{ex.summary}</span>
             </button>
           ))}

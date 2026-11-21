@@ -1650,13 +1650,25 @@ a.nav-item.is-active {
   border: 0;
 }
 
+/* "Or start from an example" sits on a hairline: the examples are part of the empty state, not
+   cards inside it. */
 .empty-examples legend {
   float: left;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
   width: 100%;
-  margin-bottom: var(--sp-3);
+  margin-bottom: var(--sp-1);
   font-size: var(--fs-small);
   font-weight: 600;
   color: var(--muted);
+}
+
+.empty-examples legend::before,
+.empty-examples legend::after {
+  content: "";
+  flex: 1;
+  border-top: 1px solid var(--line);
 }
 
 .empty-example-list {
@@ -1666,23 +1678,25 @@ a.nav-item.is-active {
   width: 100%;
 }
 
+/* An example is a borderless row of the empty state: name and one line, a fill on hover. */
 .empty-example {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-2);
-  padding: var(--sp-4);
+  gap: var(--sp-1);
+  padding: var(--sp-3);
+  border: 0;
   border-radius: var(--r-md);
-  border: 1px solid var(--line);
-  background: var(--bg);
+  background: transparent;
   color: var(--text);
   font: inherit;
   text-align: left;
   cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease-out);
 }
 
 @media (hover: hover) {
   .empty-example:hover:not(:disabled) {
-    border-color: var(--line-strong);
+    background: var(--raised);
   }
 }
 
@@ -1697,8 +1711,15 @@ a.nav-item.is-active {
 }
 
 .empty-example strong {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
   font-size: var(--fs-body);
   font-weight: 600;
+}
+
+.empty-example strong .icon {
+  color: var(--faint);
 }
 
 .empty-example span {
@@ -10788,21 +10809,105 @@ a.btn:hover {
   color: var(--muted);
 }
 
-/* The one not-found state (NotFound.tsx): an alert panel with a heading and a way back. */
-.not-found-panel {
+/* The one not-found state (NotFound.tsx), in the empty state's language: the address as a node
+   card whose output port has a broken cable (the red "into a broken node" dash) running into an
+   empty dashed slot. Real elements, no picture. */
+.not-found-state {
   display: flex;
-  gap: var(--sp-3);
-  align-items: flex-start;
-  max-width: 36rem;
-  padding: var(--sp-4);
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-4);
+  padding: 64px var(--sp-6);
+  border-radius: var(--r-lg);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  text-align: center;
 }
 .not-found-title {
-  font-size: var(--fs-h3);
-  margin: 0 0 var(--sp-2);
+  font-size: var(--fs-h1);
+  font-weight: 700;
+  letter-spacing: -0.01em;
 }
-.not-found-panel p {
-  margin: 0 0 var(--sp-3);
+.not-found-state p {
+  max-width: 420px;
+  font-size: var(--fs-body);
+  line-height: 1.5;
   color: var(--muted);
+}
+.not-found-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--sp-3);
+  margin-top: var(--sp-2);
+}
+.lost-chain {
+  display: flex;
+  align-items: center;
+  max-width: 100%;
+  margin-bottom: var(--sp-2);
+}
+.lost-node {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sp-1);
+  max-width: 240px;
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-md);
+  border: 1.5px solid var(--line-strong);
+  background: var(--raised);
+  text-align: left;
+}
+.lost-node-kind {
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+.lost-node-path {
+  max-width: 100%;
+  overflow: hidden;
+  font-family: var(--font-mono);
+  font-size: var(--fs-small);
+  color: var(--text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* The output jack, half over the card's edge, then the cable that reaches nothing. */
+.lost-port {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  margin-left: -8px;
+  border-radius: 50%;
+  border: 2px solid var(--muted);
+  background: var(--surface);
+}
+.lost-cable {
+  flex: none;
+  width: 72px;
+  border-top: 2.5px dashed var(--st-failed);
+}
+.lost-slot {
+  flex: none;
+  width: 56px;
+  height: 40px;
+  border-radius: var(--r-md);
+  border: 2px dashed var(--empty-link);
+}
+@media (max-width: 639px) {
+  .not-found-state {
+    padding: var(--sp-10) var(--sp-4);
+  }
+  .lost-node {
+    max-width: 180px;
+  }
+  .lost-cable {
+    width: 40px;
+  }
 }
 
 /* In the desktop editor the right column is the inspector (340 px) with its issues footer at the
