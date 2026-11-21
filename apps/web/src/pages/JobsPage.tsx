@@ -624,7 +624,8 @@ function ListState({
  * Queued, Failed and Needs attention are buttons that apply the filter of the same name, and the
  * active one is `aria-pressed` (one ring and a check). "Saved today" has no filter. Plain tiles, no
  * fills (convention 6); nothing saved and nothing queued are dimmed at zero, while zero failed and
- * zero needing attention are good news and stay bright.
+ * zero needing attention are good news and stay bright. "Needs attention" leads (first, wider, a
+ * larger figure): it is the one count that asks you to do something about a file.
  */
 function StatTiles({
   stats,
@@ -645,6 +646,13 @@ function StatTiles({
     zero: boolean;
     className?: string;
   }> = [
+    {
+      label: 'Needs attention',
+      filter: 'Needs attention',
+      value: problemCount === null ? '—' : num.format(problemCount),
+      zero: false,
+      className: 'is-lead',
+    },
     {
       label: 'Saved today',
       filter: null,
@@ -668,12 +676,6 @@ function StatTiles({
       label: 'Failed',
       filter: 'Failed',
       value: stats ? num.format(stats.failed) : '—',
-      zero: false,
-    },
-    {
-      label: 'Needs attention',
-      filter: 'Needs attention',
-      value: problemCount === null ? '—' : num.format(problemCount),
       zero: false,
     },
   ];

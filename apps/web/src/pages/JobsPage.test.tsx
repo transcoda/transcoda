@@ -621,12 +621,16 @@ describe('JobsPage', () => {
     const tiles = await screen.findByRole('list', { name: 'Today' });
     await waitFor(() =>
       expect([...tiles.querySelectorAll('.stat-tile')].map((t) => t.textContent)).toEqual([
+        'Needs attention3',
         'Saved today41.8 GB',
         'Queued37',
         'Failed4',
-        'Needs attention3',
       ]),
     );
+    // One figure leads: Needs attention, the count that asks for something to be done.
+    expect([...tiles.querySelectorAll('.stat-tile.is-lead')].map((t) => t.textContent)).toEqual([
+      'Needs attention3',
+    ]);
     // The saved tile is information only; the other three are buttons.
     expect(within(tiles).getAllByRole('button')).toHaveLength(3);
     const attention = within(tiles).getByRole('button', {
@@ -664,9 +668,9 @@ describe('JobsPage', () => {
         .getAllByRole('button')
         .map((b) => [b.getAttribute('aria-label'), b.getAttribute('aria-pressed')]),
     ).toEqual([
+      ['Needs attention: 3, show these jobs', 'false'],
       ['Queued: 37, show these jobs', 'true'],
       ['Failed: 4, show these jobs', 'false'],
-      ['Needs attention: 3, show these jobs', 'false'],
     ]);
     const checks = tiles.querySelectorAll('[data-icon="check"]');
     expect(checks).toHaveLength(1);
@@ -935,8 +939,9 @@ describe('JobsPage', () => {
     const dimmed = [...tiles.querySelectorAll('.stat-tile')].map((t) =>
       t.classList.contains('is-zero'),
     );
-    // Saved and Queued dim at 0; 0 failed and 0 needing attention are good news.
-    expect(dimmed).toEqual([true, true, false, false]);
+    // Needs attention leads. Saved and Queued dim at 0; 0 failed and 0 needing attention are good
+    // news.
+    expect(dimmed).toEqual([false, true, true, false]);
   });
 
   it('a day where files grew shows the growth plainly, not in the accent colour of a saving', async () => {
@@ -1003,10 +1008,10 @@ describe('JobsPage', () => {
     const tiles = await screen.findByRole('list', { name: 'Today' });
     await waitFor(() =>
       expect([...tiles.querySelectorAll('.stat-tile')].map((t) => t.textContent)).toEqual([
+        'Needs attention3',
         'Saved today41.8 GB',
         'Queued37',
         'Failed4',
-        'Needs attention3',
       ]),
     );
     expect(mocks.problems).toHaveBeenCalledWith({ limit: 1, problems: true });

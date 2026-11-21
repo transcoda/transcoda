@@ -6654,11 +6654,11 @@ a.btn:hover {
   width: 110px;
 }
 .job-col-workflow {
-  width: 170px;
+  width: 140px;
 }
-/* Fits "Nothing to do" and "Would keep original" on one line; longer states wrap. */
+/* Fits "Would replace · −74%" and "Would keep original" on one line; longer states wrap. */
 .job-col-status {
-  width: 180px;
+  width: 210px;
 }
 .job-col-result {
   width: 210px;
@@ -6710,7 +6710,7 @@ a.btn:hover {
    When rules, so they win on order as well as weight. */
 @container job-list (max-width: 1009px) {
   .job-table:not(.has-actions) {
-    min-width: 730px;
+    min-width: 760px;
   }
   .job-table:not(.has-actions) .job-optional {
     display: none;
@@ -6721,7 +6721,7 @@ a.btn:hover {
    the full sidebar. The Title keeps 200px. */
 @container job-list (max-width: 1159px) {
   .job-table.has-actions {
-    min-width: 710px;
+    min-width: 720px;
   }
   .job-table.has-actions .job-optional,
   .job-table.has-actions .job-when,
@@ -6729,7 +6729,7 @@ a.btn:hover {
     display: none;
   }
   .job-table.has-actions .job-col-result {
-    width: 180px;
+    width: 160px;
   }
 }
 /* Library and workflow: one line, the whole text on hover. */
@@ -6921,19 +6921,34 @@ a.btn:hover {
 /* Status: a long state ("Would replace if it saves ≥ 25%") wraps inside its column instead of
    running into Result. */
 .job-table .job-chips {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sp-1);
   max-width: 100%;
 }
 .job-table .job-chip {
   height: auto;
   min-height: 28px;
   max-width: 100%;
-  padding-block: var(--sp-1);
+  gap: var(--sp-1);
+  padding: var(--sp-1) var(--sp-2);
   line-height: 1.25;
   white-space: normal;
   overflow-wrap: anywhere;
 }
 .job-table .job-chip > svg {
   flex: none;
+}
+/* A dry run's "Dry run" / "Test encode" mark: in the table a small mono line under the state
+   chip (see .job-table .job-chips), not a second chip, so a dry-run row is no taller than any
+   other. */
+.job-table .badge-dry {
+  height: auto;
+  padding: 0 0 0 var(--sp-1);
+  gap: var(--sp-1);
+  border: 0;
+  background: none;
+  text-transform: uppercase;
 }
 /* Two buttons fit the 150 px column at the compact size; they wrap rather than overlap. */
 .job-table .job-actions {
@@ -7040,11 +7055,8 @@ a.btn:hover {
 .is-phone .jobs-head h1 {
   font-size: var(--fs-h1);
 }
-/* The phone's filters are one scrollable row of chips, not a wrapped block. */
-.is-phone .filter-chips {
-  flex-wrap: nowrap;
-  overflow-x: auto;
-}
+/* The phone's filters wrap onto as many rows as they need: a sideways-scrolling row hid the last
+   chips with nothing to say they were there. */
 .is-phone .filter-chip {
   flex: none;
 }
@@ -7223,6 +7235,15 @@ a.btn:hover {
 .stat-tile.is-zero .stat-value {
   color: var(--faint);
 }
+/* One figure leads: "Needs attention" (the count that asks for something to be done) is twice as
+   wide and has the larger figure, so the row is not four equal blocks. */
+.stat-tile.is-lead {
+  flex: 2;
+}
+.stat-tile.is-lead .stat-value {
+  font-size: var(--fs-h1);
+  line-height: 1.2;
+}
 /* "Saved all time" sits at the end of the Today row, apart from its list. */
 .stat-row {
   display: flex;
@@ -7238,9 +7259,16 @@ a.btn:hover {
 .is-phone .stat-row {
   flex-wrap: wrap;
 }
-/* Four tiles across 390px: 12px side padding keeps the longest micro label (ATTENTION) inside. */
+/* Phone: the lead tile has its own row and the other three share the next, so the longest micro
+   label (NEEDS ATTENTION) has the full width; 12px side padding keeps SAVED TODAY inside. */
+.is-phone .stat-row > .stat-tiles {
+  flex-wrap: wrap;
+}
 .is-phone .stat-tile {
   padding-inline: var(--sp-3);
+}
+.is-phone .stat-tile.is-lead {
+  flex-basis: 100%;
 }
 .is-phone .stat-row > .stat-tiles,
 .is-phone .stat-row > .stat-tile.is-alltime {
@@ -7267,10 +7295,13 @@ a.btn:hover {
 .is-phone .history-cards {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
+/* The four cards share a baseline: the header line (title, total and any legend) at the top, the
+   chart and its axis always the last line, pushed to the bottom of the stretched card. */
 .history-card {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
+  align-content: space-between;
   column-gap: var(--sp-2);
   min-width: 0;
   padding: var(--sp-2) var(--sp-3);
@@ -7295,6 +7326,7 @@ a.btn:hover {
   color: var(--faint);
 }
 .history-card .week-bars {
+  order: 2;
   flex: 1 1 100%;
   margin-top: var(--sp-2);
 }
@@ -7322,8 +7354,10 @@ a.btn:hover {
   font-size: var(--fs-micro);
   color: var(--muted);
 }
+/* "Files done" puts its legend on the header line, at the right, not under its chart. */
 .history-card > .history-legend {
-  flex: 1 1 100%;
+  order: 1;
+  margin-left: auto;
 }
 .history-legend i {
   display: inline-block;
@@ -7339,6 +7373,7 @@ a.btn:hover {
   margin: 0;
 }
 .encoder-gpu {
+  order: 1;
   flex: 1 1 100%;
   margin-top: var(--sp-1);
   font-size: var(--fs-micro);
@@ -7374,7 +7409,6 @@ a.btn:hover {
   justify-content: flex-start;
 }
 .is-phone .encoder-gpu {
-  order: 2;
   margin: 0;
 }
 /* Too narrow for one row: "Saved all time" under the tiles, the cards 2 × 2. After the base
@@ -7391,13 +7425,17 @@ a.btn:hover {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
-/* Too narrow for four tiles in a row: 2 × 2, so no label is cut. */
+/* Too narrow for four tiles in a row: the lead on its own row, the other three under it, so no
+   label is cut. */
 @container jobs-overview (max-width: 559px) {
   .stat-row > .stat-tiles {
     flex-wrap: wrap;
   }
   .stat-row > .stat-tiles > .stat-tile {
-    flex: 1 1 calc(50% - 4px);
+    flex: 1 1 0;
+  }
+  .stat-row > .stat-tiles > .stat-tile.is-lead {
+    flex-basis: 100%;
   }
 }
 .phone-section {
