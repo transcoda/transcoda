@@ -8254,10 +8254,11 @@ a.btn:hover {
   flex-direction: column;
   gap: var(--sp-3);
 }
+/* One line per stream and the container, as plain text in the card (no boxes inside it). */
 .plan-other-list {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--sp-3);
+  gap: var(--sp-2) var(--sp-6);
   font-size: var(--fs-ui);
 }
 .plan-other-item {
@@ -8265,9 +8266,6 @@ a.btn:hover {
   flex-wrap: wrap;
   align-items: center;
   gap: var(--sp-2);
-  padding: var(--sp-3) var(--sp-4);
-  border-radius: var(--r-md);
-  background: var(--raised);
 }
 .plan-actions {
   display: flex;
@@ -9249,17 +9247,15 @@ a.btn:hover {
 .step-tiles {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
-  gap: var(--sp-2);
+  gap: var(--sp-3) var(--sp-6);
   font-size: var(--fs-small);
 }
 
+/* Before, after and pixel format: label over value, apart by space, no boxes inside the card. */
 .step-tile {
   display: flex;
   flex-direction: column;
   gap: var(--sp-1);
-  padding: var(--sp-3) var(--sp-3);
-  border-radius: var(--r-md);
-  background: var(--raised);
   overflow-wrap: anywhere;
 }
 
@@ -9270,19 +9266,20 @@ a.btn:hover {
   text-transform: uppercase;
 }
 
+/* Kept, found and dropped languages: one line of plain items, a dot between them, no fills. */
 .step-chips {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--sp-2);
+  gap: var(--sp-1) var(--sp-2);
   padding: 0;
   list-style: none;
   font-size: var(--fs-small);
 }
 
-.step-chips li {
-  padding: var(--sp-1) var(--sp-3);
-  border-radius: var(--r-sm);
-  background: var(--raised);
+.step-chips li + li::before {
+  content: "·";
+  margin-right: var(--sp-2);
+  color: var(--faint);
 }
 
 .step-chips li.is-quiet {
@@ -9415,6 +9412,7 @@ a.btn:hover {
 
 .job-result .ffmpeg-raw {
   margin-top: var(--sp-2);
+  padding-top: var(--sp-1);
 }
 
 .job-result-warnings {
@@ -9714,8 +9712,8 @@ a.btn:hover {
 }
 
 .ffmpeg-raw {
-  border-radius: var(--r-md);
-  background: var(--bg);
+  /* Part of the card it sits in (the result, the notes), not a box inside it: a divider above. */
+  border-top: 1px solid var(--line);
 }
 
 .ffmpeg-raw > summary {
@@ -9723,7 +9721,7 @@ a.btn:hover {
   align-items: center;
   gap: var(--sp-2);
   min-height: var(--target-min);
-  padding: 0 var(--sp-4);
+  padding: 0;
   border-radius: var(--r-md);
   font-size: var(--fs-ui);
   font-weight: 600;
@@ -9756,7 +9754,7 @@ a.btn:hover {
   display: flex;
   flex-direction: column;
   gap: var(--sp-2);
-  padding: 0 var(--sp-4) var(--sp-4);
+  padding: 0 0 var(--sp-2);
 }
 
 /* The command inside the raw output is part of it, not a panel of its own. */
