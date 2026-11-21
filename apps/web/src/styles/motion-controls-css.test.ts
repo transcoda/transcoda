@@ -12,6 +12,39 @@ function rule(selector: string): string {
   return css.match(new RegExp(`(?:^|\\n)\\s*${escaped}\\s*\\{([^}]*)\\}`))?.[1] ?? '';
 }
 
+/** The progress fills: the only rules whose transition may run at a linear pace. */
+const PROGRESS = ['.activity-ring-value', '.tc-node .tc-node-fill'];
+
+/** Every `transition` declaration with the selector list of the rule that holds it, at any depth
+ *  (a rule's body holds no braces, so an at-rule is never taken for a selector). */
+function transitionsOf(source: string): { selectors: string[]; value: string }[] {
+  return [...source.matchAll(/([^{}]+)\{([^{}]*)\}/g)].flatMap((m) => {
+    const selectors = (m[1] ?? '').split(',').map((x) => x.trim());
+    return [...(m[2] ?? '').matchAll(/(?<![\w-])transition:\s*([^;]+);/g)].map((t) => ({
+      selectors,
+      value: (t[1] ?? '').trim().replace(/\s+/g, ' '),
+    }));
+  });
+}
+
+/** Transitions off the motion tokens; linear is allowed only on a rule of progress fills alone. */
+function transitionProblems(source: string): string[] {
+  const bad: string[] = [];
+  for (const { selectors, value } of transitionsOf(source)) {
+    if (value === 'none') continue;
+    const progress = selectors.every((s) => PROGRESS.includes(s));
+    const ok = value
+      .split(',')
+      .every(
+        (part) =>
+          /var\(--dur-(fast|base)\) var\(--ease-out\)/.test(part) ||
+          (progress && /^[\w-]+ [\d.]+m?s linear$/.test(part.trim())),
+      );
+    if (!ok) bad.push(`${selectors.join(', ')} { transition: ${value} }`);
+  }
+  return bad;
+}
+
 describe('form control edges', () => {
   it('every form control edge uses --line-control', () => {
     for (const sel of [
@@ -45,16 +78,29 @@ describe('motion', () => {
   });
 
   it('every UI transition uses the motion tokens; only progress fills stay linear', () => {
-    const transitions = [...css.matchAll(/transition:\s*([^;]+);/g)].map((m) =>
-      (m[1] ?? '').trim(),
+    expect(transitionProblems(css)).toEqual([]);
+    // The check is not vacuous: it sees transitions, including both progress fills.
+    const seen = transitionsOf(css);
+    expect(seen.length).toBeGreaterThan(5);
+    for (const sel of PROGRESS)
+      expect(
+        seen.some((t) => t.selectors.includes(sel)),
+        sel,
+      ).toBe(true);
+  });
+
+  it('the linear exception holds only for the progress fills', () => {
+    expect(transitionProblems('.scope-chip { transition: background-color 2s linear; }')).toEqual([
+      '.scope-chip { transition: background-color 2s linear }',
+    ]);
+    expect(
+      transitionProblems(
+        '.tc-node .tc-node-fill, .scope-chip { transition: clip-path 1s linear; }',
+      ),
+    ).toHaveLength(1);
+    expect(transitionProblems('.activity-ring-value { transition: opacity 1s linear; }')).toEqual(
+      [],
     );
-    expect(transitions.length).toBeGreaterThan(5);
-    for (const t of transitions) {
-      if (t === 'none' || / linear$/.test(t)) continue;
-      for (const part of t.split(',')) {
-        expect(part, t).toMatch(/var\(--dur-(fast|base)\) var\(--ease-out\)/);
-      }
-    }
   });
 
   it('every looping animation has a still state under reduced motion', () => {

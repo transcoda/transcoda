@@ -2,11 +2,16 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-const css = readFileSync(resolve(__dirname, '../styles.css'), 'utf8');
+// Comments dropped, so a rule's selector list is only selectors and prose is never read as CSS.
+const css = readFileSync(resolve(__dirname, '../styles.css'), 'utf8').replace(
+  /\/\*[\s\S]*?\*\//g,
+  '',
+);
 
+// A declaration ends at its `;`, or at the rule's closing brace when it is the last one.
 const SPACING =
-  /(?<![\w-])((?:padding|margin|gap|row-gap|column-gap)(?:-[a-z]+)*)\s*:\s*([^;{}]+);/g;
-const RADIUS = /(?<![\w-])border-radius\s*:\s*([^;{}]+);/g;
+  /(?<![\w-])((?:padding|margin|gap|row-gap|column-gap)(?:-[a-z]+)*)\s*:\s*([^;{}]+)(?:;|(?=\}))/g;
+const RADIUS = /(?<![\w-])border-radius\s*:\s*([^;{}]+)(?:;|(?=\}))/g;
 
 // Spacing values that stay raw, with the reason (also described at the top of styles.css):
 //  - 1px: hairline offsets (chip padding, a 1px row gap, a -1px margin that cancels a border).
@@ -29,6 +34,35 @@ const SPACING_OK = new Set([
 
 // Radii that stay raw: 2px marks (swatches, handles, a search highlight), pills and circles.
 const RADIUS_OK = new Set(['2px', '50%', '0', 'inherit']);
+
+/** The values of a border-radius, one per corner and either side of a `/`, split outside
+ *  parentheses so `calc(var(--r-lg) - 2px)` stays one value. */
+function radiusValues(value: string): string[] {
+  const out: string[] = [];
+  let depth = 0;
+  let current = '';
+  for (const ch of value) {
+    if (ch === '(') depth++;
+    if (ch === ')') depth--;
+    if (depth === 0 && (ch === '/' || /\s/.test(ch))) {
+      if (current) out.push(current);
+      current = '';
+    } else current += ch;
+  }
+  if (current) out.push(current);
+  return out;
+}
+
+const radiusOk = (v: string) =>
+  v.startsWith('var(--r-') || v.startsWith('calc(var(--r-') || RADIUS_OK.has(v);
+
+/** The declarations of every rule whose selector list holds `selector` as one entry. A rule's
+ *  body holds no braces, so a match never reaches into the next rule. */
+function rulesFor(selector: string): string[] {
+  return [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+    .filter((m) => (m[1] ?? '').split(',').some((x) => x.trim() === selector))
+    .map((m) => m[2] ?? '');
+}
 
 function rawLengths(value: string): string[] {
   const stripped = value.replace(/var\([^)]*\)/g, '').replace(/(calc|max|min|clamp)\([^)]*\)/g, '');
@@ -55,10 +89,19 @@ describe('spacing and radius scale', () => {
   it('uses --r-* tokens for every border-radius, apart from the documented exceptions', () => {
     const raw = [...css.matchAll(RADIUS)]
       .map((m) => (m[1] ?? '').trim())
-      .filter(
-        (v) => !v.startsWith('var(--r-') && !v.startsWith('calc(var(--r-') && !RADIUS_OK.has(v),
-      );
+      .filter((v) => !radiusValues(v).every(radiusOk));
     expect(raw).toEqual([]);
+  });
+
+  it('checks every value of a border-radius and a last declaration without a semicolon', () => {
+    expect(radiusValues('var(--r-sm) 23px')).toEqual(['var(--r-sm)', '23px']);
+    expect(radiusValues('var(--r-md) / 9px')).toEqual(['var(--r-md)', '9px']);
+    expect(radiusValues('calc(var(--r-lg) - 2px) 0')).toEqual(['calc(var(--r-lg) - 2px)', '0']);
+    expect(radiusValues('var(--r-sm) 23px').every(radiusOk)).toBe(false);
+    expect([...'.a { gap: 3px }'.matchAll(SPACING)].map((m) => m[2]?.trim())).toEqual(['3px']);
+    expect([...'.a { border-radius: 5px }'.matchAll(RADIUS)].map((m) => m[1]?.trim())).toEqual([
+      '5px',
+    ]);
   });
 
   it('defines the 20px and 40px steps tokens.css lacks', () => {
@@ -66,8 +109,12 @@ describe('spacing and radius scale', () => {
     expect(css).toMatch(/--sp-10:\s*40px/);
   });
 
-  it('caps help text at 70ch', () => {
-    expect(css).toMatch(/\.about-backups-hint,[\s\S]*?max-width: 70ch;/);
-    expect(css).toMatch(/\.recycle-note,[\s\S]*?max-width: 70ch;/);
+  it('caps help text at 70ch, in the rule that holds each selector', () => {
+    for (const sel of ['.about-backups-hint', '.recycle-note']) {
+      expect(
+        rulesFor(sel).some((body) => /max-width:\s*70ch/.test(body)),
+        sel,
+      ).toBe(true);
+    }
   });
 });
