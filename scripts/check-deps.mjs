@@ -3,9 +3,10 @@
 // - Third-party dependencies of shared and sdk are limited to THIRD_PARTY (zod only);
 //   packages without a THIRD_PARTY entry are unrestricted.
 // - shared/src may import no @transcoda/* package; sdk/src only @transcoda/shared.
+// - No package's src reaches into another package with a relative import (../../server/src/...).
 // Exports checkDeps(root) for tests; the CLI runs only when executed directly.
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const ALLOWED = {
@@ -78,6 +79,43 @@ export function checkDeps(root) {
               errors.push(`${short}: ${file.slice(root.length + 1)} imports ${m[1]}`);
             }
           }
+        }
+      }
+    }
+  }
+  errors.push(...crossPackageRelativeImports(root));
+  return errors;
+}
+
+const SOURCE_FILE = /\.(?:[cm]?[jt]s|tsx)$/;
+const RELATIVE_SPECIFIER = /(?:\bfrom\s+|\bimport\s*\(\s*|^\s*import\s+)['"](\.\.?\/[^'"]+)['"]/gm;
+
+// A relative import that resolves into another workspace package skips the dependency direction
+// above (and the package's public entry point): import it as @transcoda/<name> instead.
+function crossPackageRelativeImports(root) {
+  const errors = [];
+  const packageDirs = [];
+  for (const group of ['packages', 'apps']) {
+    const groupDir = join(root, group);
+    if (!existsSync(groupDir)) continue;
+    for (const dirName of readdirSync(groupDir)) {
+      const dir = join(groupDir, dirName);
+      if (existsSync(join(dir, 'package.json'))) packageDirs.push(dir);
+    }
+  }
+  const owner = (path) => packageDirs.find((dir) => path === dir || path.startsWith(dir + sep));
+  for (const dir of packageDirs) {
+    const srcDir = join(dir, 'src');
+    if (!existsSync(srcDir)) continue;
+    for (const file of walk(srcDir)) {
+      if (!SOURCE_FILE.test(file)) continue;
+      const text = readFileSync(file, 'utf8');
+      for (const m of text.matchAll(RELATIVE_SPECIFIER)) {
+        const target = owner(resolve(dirname(file), m[1]));
+        if (target && target !== dir) {
+          errors.push(
+            `${relative(root, file)} imports ${m[1]}, a relative path into ${relative(root, target)}: import that package by its @transcoda/ name instead`,
+          );
         }
       }
     }
