@@ -8,8 +8,11 @@ import {
   isFinalState,
   type JobState,
   type JsonValue,
+  type NodeProblem,
+  RENDER_TYPE,
   SUBWORKFLOW_END_TYPE,
   SUBWORKFLOW_START_TYPE,
+  TRACE_CANCELED,
   type TraceChanges,
   type TraceEntry,
   type WorkflowGraph,
@@ -32,6 +35,8 @@ export interface TraceSource {
    * no event yet, and the last traced node stands in while the job is active.
    */
   currentNode: CurrentNode | null | undefined;
+  /** `result.nodeProblems`: the job's problems and warnings tied to a node (absent: none). */
+  nodeProblems?: readonly NodeProblem[];
 }
 
 const FAILED = 'failed:';
@@ -208,11 +213,25 @@ function undecidedElse(
   return out;
 }
 
+/** The node problems of `nodeId` at `path`, problems before warnings (each in the job's order). */
+function problemsOf(
+  all: readonly NodeProblem[],
+  path: readonly string[],
+  nodeId: string,
+): NodeProblem[] {
+  const own = all.filter((p) => p.nodeId === nodeId && samePath(p.workflowPath, path));
+  return [
+    ...own.filter((p) => p.severity === 'problem'),
+    ...own.filter((p) => p.severity !== 'problem'),
+  ];
+}
+
 /**
  * The overlay for the graph at `path` (Run-node ids from the top level down; [] for the job's
  * own workflow). Nodes the walk reached are `done` (`current` for the node the job is at, `failed`
- * when their last entry failed); nodes never reached are `pending` while the job is active and
- * `untaken` once it is final. Data nodes are `done` once evaluated.
+ * when their last entry failed, `cancelled` when it says the job was canceled there); nodes never
+ * reached are `pending` while the job is active and `untaken` once it is final. Data nodes are
+ * `done` once evaluated. A node with problems or warnings of its own carries them (`problems`).
  */
 export function buildTraceOverlay(
   graph: WorkflowGraph,
@@ -235,10 +254,13 @@ export function buildTraceOverlay(
     const isData = entry?.phase === 'data';
     let status: TraceNodeData['status'];
     if (entry?.reason.startsWith(FAILED)) status = 'failed';
+    else if (entry?.reason.startsWith(TRACE_CANCELED) && final) status = 'cancelled';
     else if (current === n.id) status = 'current';
     else if (isData || (onPath.has(n.id) && entry)) status = 'done';
     else status = final && !undecided.has(n.id) ? 'untaken' : 'pending';
-    const reached = status === 'done' || status === 'current' || status === 'failed';
+    const reached =
+      status === 'done' || status === 'current' || status === 'failed' || status === 'cancelled';
+    const problems = problemsOf(source.nodeProblems ?? [], path, n.id);
     nodes.set(n.id, {
       status,
       reason: reached ? (entry?.reason ?? null) : null,
@@ -247,7 +269,31 @@ export function buildTraceOverlay(
       attempt: entry?.attempt ?? 1,
       retried: found?.retried ?? false,
       ...(reached && entry?.source === 'plugin' ? { plugin: true } : {}),
+      ...(problems.length > 0 ? { problems } : {}),
     });
+  }
+
+  // A job that failed or was canceled while a node of this level was at work (an encode killed
+  // partway): the walk's later steps were only planned, so they read not taken, and so do the
+  // edges out of the stopped node and after it.
+  const stopped = new Set<string>();
+  if (source.jobState === 'failed' || source.jobState === 'cancelled') {
+    const level = source.steps
+      .filter((st) => samePath(st.workflowPath, path))
+      .map((st) => st.nodeId);
+    const at = level.findIndex((id) => {
+      const st = nodes.get(id)?.status;
+      return st === 'failed' || st === 'cancelled';
+    });
+    if (at >= 0) {
+      for (const id of level.slice(at)) stopped.add(id);
+      for (const id of level.slice(at + 1)) {
+        const t = nodes.get(id);
+        if (t && t.status === 'done') {
+          nodes.set(id, { ...t, status: 'untaken', reason: null, port: null, findings: {} });
+        }
+      }
+    }
   }
 
   const edges: TraceOverlay['edges'] = new Map();
@@ -262,9 +308,9 @@ export function buildTraceOverlay(
       });
       continue;
     }
-    const isTaken = taken.has(e.id);
+    const isTaken = taken.has(e.id) && !stopped.has(e.from.node);
     const from = nodes.get(e.from.node)?.status;
-    const leftOther = from === 'done' || from === 'failed' || final;
+    const leftOther = from === 'done' || from === 'failed' || from === 'cancelled' || final;
     const open = undecided.has(e.to.node);
     edges.set(e.id, { taken: isTaken, untaken: !isTaken && leftOther && !open, value: null });
   }
@@ -450,13 +496,9 @@ export function nodeTitle(
 /** The node types that encode, in the order one stands for the encode of a job. */
 const ENCODE_TYPES = ['core:encode-video', 'core:encode-audio', 'core:remux'] as const;
 
-/**
- * The node that stands for a job's encode on its walk: Encode video, else Encode audio, else
- * Remux (the last one of that type the file passed, not bypassed); null when the walk has none.
- * While ffmpeg runs (encoding, verifying, replacing) the engine reports the last *built* node,
- * which is often a Run sub-workflow behind the encode; the page lights this node instead.
- */
-export function encodeNode(
+/** The last node on the walk of the first of `types` it has (not bypassed); null without one. */
+function walkNodeOf(
+  types: readonly string[],
   steps: readonly WalkStep[],
   graph: WorkflowGraph,
   children: ReadonlyMap<string, WorkflowGraph | null | undefined>,
@@ -465,9 +507,45 @@ export function encodeNode(
     const node = graphAt(s.workflowPath, graph, children)?.nodes.find((n) => n.id === s.nodeId);
     return node && !node.bypassed ? [{ s, type: node.type }] : [];
   });
-  for (const type of ENCODE_TYPES) {
+  for (const type of types) {
     const hit = typed.filter((t) => t.type === type).at(-1);
     if (hit) return { workflowPath: [...hit.s.workflowPath], nodeId: hit.s.nodeId };
   }
   return null;
+}
+
+/**
+ * The node that stands for a job's encode on its walk: Encode video, else Encode audio, else
+ * Remux (the last one of that type the file passed, not bypassed); null when the walk has none.
+ */
+export function encodeNode(
+  steps: readonly WalkStep[],
+  graph: WorkflowGraph,
+  children: ReadonlyMap<string, WorkflowGraph | null | undefined>,
+): CurrentNode | null {
+  return walkNodeOf(ENCODE_TYPES, steps, graph, children);
+}
+
+/**
+ * The node lit while a job executes (encoding, verifying, replacing): the node at work, which is
+ * the node the engine traces a failure or cancel on. The engine reports it: the Render while
+ * ffmpeg encodes and verifies, then each finish step (Replace original while replacing). Before a
+ * report arrives (the page opened mid-encode) it is the Render on the walk, or Replace original
+ * while replacing. A walk without a Render (a workflow from before it) has no node at work; the
+ * engine reports its last built node then, and the node that stands for the encode is lit.
+ */
+export function executingNode(
+  state: JobState,
+  steps: readonly WalkStep[],
+  graph: WorkflowGraph,
+  children: ReadonlyMap<string, WorkflowGraph | null | undefined>,
+  reported: CurrentNode | null | undefined,
+): CurrentNode | null {
+  const render = walkNodeOf([RENDER_TYPE], steps, graph, children);
+  if (render === null) return encodeNode(steps, graph, children) ?? reported ?? null;
+  if (reported) return reported;
+  if (state === 'replacing') {
+    return walkNodeOf(['core:replace-original'], steps, graph, children) ?? render;
+  }
+  return render;
 }

@@ -48,6 +48,7 @@ const BADGE_ICON: Record<Badge, IconName> = {
   yes: 'check',
   no: 'cross',
   failed: 'cross',
+  canceled: 'x-circle',
   'not-run': 'minus',
 };
 

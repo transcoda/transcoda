@@ -1,4 +1,4 @@
-import type { Issue, WorkflowGraph } from '@transcoda/shared';
+import type { Issue, NodeProblem, WorkflowGraph } from '@transcoda/shared';
 
 /**
  * Server issues → what the canvas draws (design N6). Message-driven and tolerant of codes this
@@ -183,6 +183,23 @@ export function nodeStateFor(nodeId: string, issues: Issue[], type?: string): No
     state.border = best.look.border;
   }
   return state;
+}
+
+/**
+ * The job trace: a node's own problems and warnings from the job (`result.nodeProblems`, problems
+ * first) as its badge, in the editor's language. Amber either way, as the job page's result lists
+ * them (the job still ended, "needs attention"); the word and glyph tell them apart: "problem"
+ * with the alert glyph, "warning" with "!". A badge the node's issues give wins.
+ */
+export function withJobProblems(
+  state: NodeState,
+  problems: readonly NodeProblem[] | undefined,
+): NodeState {
+  const worst = problems?.[0];
+  if (worst === undefined || state.word !== null) return state;
+  return worst.severity === 'problem'
+    ? { ...state, badge: 'generic-error', word: 'problem', border: 'amber' }
+    : { ...state, badge: 'generic-warning', word: 'warning', border: 'amber' };
 }
 
 const EDGE_CODES: ReadonlySet<string> = new Set([
