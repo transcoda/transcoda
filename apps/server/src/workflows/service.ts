@@ -344,7 +344,7 @@ export class WorkflowService {
     for (const { workflow, version, active } of this.index().byId.values()) {
       const ref = { id: workflow.id, name: workflow.name };
       const activeRow = workflow.activeVersion === null ? null : (active ?? version);
-      const entries: Array<[StoredVersion, number, boolean]> = [
+      const entries: [StoredVersion, number, boolean][] = [
         [version, workflow.currentVersion, activeRow === version],
       ];
       if (active && workflow.activeVersion !== null)

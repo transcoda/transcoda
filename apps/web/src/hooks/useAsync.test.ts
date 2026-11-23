@@ -1,6 +1,8 @@
-import { act, renderHook, waitFor } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { act, cleanup, renderHook, waitFor } from '@testing-library/react';
+import { afterEach, describe, expect, it } from 'vitest';
 import { useAsync } from './useAsync.ts';
+
+afterEach(cleanup);
 
 function deferred<T>() {
   let resolve!: (v: T) => void;

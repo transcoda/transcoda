@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { test } from 'node:test';
+import { it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import {
   ALLOWED,
@@ -59,7 +59,7 @@ const byId = (entries: Entry[], id: string): Entry => {
   return found;
 };
 
-test('licenceAllowed: SPDX expressions against the allow-list', () => {
+it('licenceAllowed: SPDX expressions against the allow-list', () => {
   const table: [string, boolean][] = [
     ['MIT', true],
     ['(MIT OR CC0-1.0)', true],
@@ -83,7 +83,7 @@ test('licenceAllowed: SPDX expressions against the allow-list', () => {
   for (const id of ALLOWED) assert.equal(licenceAllowed(id), true, id);
 });
 
-test('collect skips @transcoda/*, finds LICENCE.md case-insensitively, appends NOTICE', () => {
+it('collect skips @transcoda/*, finds LICENCE.md case-insensitively, appends NOTICE', () => {
   const entries = collect(sources());
   assert.equal(
     entries.some((e) => e.name.startsWith('@transcoda/')),
@@ -99,7 +99,7 @@ test('collect skips @transcoda/*, finds LICENCE.md case-insensitively, appends N
   assert.equal(byId(entries, 'pkg-d@3.0.0').text, null);
 });
 
-test('collect applies overrides: a hand text, a corrected licence, an accepted exception', () => {
+it('collect applies overrides: a hand text, a corrected licence, an accepted exception', () => {
   const entries = collect(sources(), {
     licencesDir: join(fixtures, 'overrides'),
     overrides: {
@@ -113,7 +113,7 @@ test('collect applies overrides: a hand text, a corrected licence, an accepted e
   assert.deepEqual(problems(entries), ["pkg-c@0.1.0: license 'GPL-3.0-only' is not allowed"]);
 });
 
-test('render dedups identical texts to one key', () => {
+it('render dedups identical texts to one key', () => {
   const parsed = JSON.parse(render(fixtureEntries()).json) as {
     packages: { name: string; textKey: string }[];
     texts: Record<string, string>;
@@ -128,7 +128,7 @@ test('render dedups identical texts to one key', () => {
   assert.match(keyOf('pkg-a') ?? '', /^sha256:[0-9a-f]{64}$/);
 });
 
-test('render is byte-identical on two runs, sorted, and carries no local path', () => {
+it('render is byte-identical on two runs, sorted, and carries no local path', () => {
   const first = render(fixtureEntries());
   const second = render(fixtureEntries().reverse());
   assert.equal(first.json, second.json);
@@ -144,7 +144,7 @@ test('render is byte-identical on two runs, sorted, and carries no local path', 
   );
 });
 
-test('render matches the shared fixture (the shape system.licences serves)', () => {
+it('render matches the shared fixture (the shape system.licences serves)', () => {
   // Compared parsed: Biome formats the committed fixture; byte stability is the test above.
   const expected: unknown = JSON.parse(
     readFileSync(join(fixtures, 'expected-third-party.json'), 'utf8'),
@@ -152,7 +152,7 @@ test('render matches the shared fixture (the shape system.licences serves)', () 
   assert.deepEqual(JSON.parse(render(fixtureEntries()).json), expected);
 });
 
-test('the notices file names Transcoda licence, then each component with its full text', () => {
+it('the notices file names Transcoda licence, then each component with its full text', () => {
   const { notices } = render(fixtureEntries());
   assert.match(notices, /^Transcoda: third-party notices\n/);
   assert.match(notices, /GPL-3\.0-only/);
@@ -161,7 +161,7 @@ test('the notices file names Transcoda licence, then each component with its ful
   assert.match(notices, /Hand-supplied licence text for pkg-d/);
 });
 
-test('imageEntries reads both ARGs from the real Dockerfile', () => {
+it('imageEntries reads both ARGs from the real Dockerfile', () => {
   const entries = imageEntries(realDockerfile, handTexts);
   const node = entries.find((e) => e.name === 'Node.js');
   const ffmpeg = entries.find((e) => e.name === 'jellyfin-ffmpeg');
@@ -187,7 +187,7 @@ test('imageEntries reads both ARGs from the real Dockerfile', () => {
   );
 });
 
-test('imageEntries fails loudly when an ARG is renamed', () => {
+it('imageEntries fails loudly when an ARG is renamed', () => {
   assert.throws(
     () =>
       imageEntries(realDockerfile.replace('ARG JELLYFIN_FFMPEG_VERSION', 'ARG FFMPEG'), handTexts),
@@ -199,7 +199,7 @@ test('imageEntries fails loudly when an ARG is renamed', () => {
   );
 });
 
-test('problems names a package without text and a licence outside the list; image entries are exempt', () => {
+it('problems names a package without text and a licence outside the list; image entries are exempt', () => {
   const entries = collect(sources());
   const gpl: Entry = {
     name: 'bad',
@@ -217,7 +217,7 @@ test('problems names a package without text and a licence outside the list; imag
   assert.throws(() => render(entries), /pkg-d@3\.0\.0: no license text found/);
 });
 
-test('the real overrides file has a reason for every entry and its texts exist', () => {
+it('the real overrides file has a reason for every entry and its texts exist', () => {
   const overrides = readOverrides();
   for (const [key, o] of Object.entries(overrides)) {
     assert.ok(o.reason.length > 10, key);

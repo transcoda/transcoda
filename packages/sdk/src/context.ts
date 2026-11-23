@@ -78,7 +78,7 @@ function trimSlash(p: string): string {
   return p.slice(0, end);
 }
 
-function mapPrefix(original: string, pairs: Array<[from: string, to: string]>): string {
+function mapPrefix(original: string, pairs: [from: string, to: string][]): string {
   const path = trimSlash(original);
   let best: [string, string] | null = null;
   for (const pair of pairs) {

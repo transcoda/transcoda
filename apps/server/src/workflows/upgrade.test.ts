@@ -429,7 +429,7 @@ describe('plugin nodes (remote definitions)', () => {
   });
 
   it('applyPluginUpgrades migrates through the host, writes typeVersion and the returned settings, and notes the behaviour step', async () => {
-    const calls: Array<[string, number, unknown]> = [];
+    const calls: [string, number, unknown][] = [];
     const plan = await applyPluginUpgrades(graph(1), registry(), async (t, from, s) => {
       calls.push([t, from, s]);
       return { value: 'a' };

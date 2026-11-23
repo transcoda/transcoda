@@ -1,6 +1,6 @@
 import type { Library, WorkflowSummary } from '@transcoda/contract';
 import { runHoursSummary } from '@transcoda/shared';
-import { type FormEvent, type ReactNode, useId, useRef, useState } from 'react';
+import { type ReactNode, type SubmitEvent, useId, useRef, useState } from 'react';
 import { Link } from 'wouter';
 import { api, isDefinedError, safe } from '../api/client.ts';
 import { describeError } from '../api/errors.ts';
@@ -225,7 +225,7 @@ function LibraryDialog({
     return found;
   }
 
-  async function onSubmit(e: FormEvent) {
+  async function onSubmit(e: SubmitEvent) {
     e.preventDefault();
     if (pending) return;
     setFailure(null);

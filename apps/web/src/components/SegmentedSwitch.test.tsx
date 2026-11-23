@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { SegmentedSwitch } from './SegmentedSwitch';
+import { SegmentedSwitch } from './SegmentedSwitch.tsx';
 
 const options = [
   { id: 'cards', label: 'Cards' },

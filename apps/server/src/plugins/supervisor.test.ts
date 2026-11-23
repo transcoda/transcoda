@@ -656,7 +656,7 @@ describe('PluginSupervisor verify before every start', () => {
       [{ capPrm: '0000000000000020' }, 'capPrm expected 0000000000000000, got 0000000000000020'],
       [{ capAmb: '0000000000000040' }, 'capAmb expected 0000000000000000, got 0000000000000040'],
       [{ noNewPrivs: 0 }, 'noNewPrivs expected 1, got 0'],
-    ] as Array<[Partial<ProcessIdentity>, string]>)(
+    ] as [Partial<ProcessIdentity>, string][])(
       'a host with %j is stopped, never restarted',
       async (over, detail) => {
         const { supervisor, children } = setup({}, () => {}, {

@@ -174,6 +174,11 @@ describe('PosterStore', () => {
   });
 
   describe('refuses without building', () => {
+    afterEach(async () => {
+      expect(calls).toHaveLength(0);
+      expect(await readdir(dir).catch(() => [])).toEqual([]);
+    });
+
     it('a path outside the library root', async () => {
       const outside = join(base, 'elsewhere.jpg');
       await writeFile(outside, JPEG);
@@ -211,11 +216,6 @@ describe('PosterStore', () => {
       const p = join(lib, 'Sherlock Jr. (1924)', 'poster.jpg');
       await writeFile(p, '#EXTM3U\n#EXTINF:-1,x\nhttp://example.invalid/a.ts\n');
       expect(await store().thumbnail(p, lib)).toBeNull();
-    });
-
-    afterEach(async () => {
-      expect(calls).toHaveLength(0);
-      expect(await readdir(dir).catch(() => [])).toEqual([]);
     });
   });
 

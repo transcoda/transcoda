@@ -283,7 +283,7 @@ function setup(
     nodes?: ReturnType<typeof createCoreRegistry>['list'] extends () => infer R ? R : never;
     log?: { info(m: unknown): void; warn(m: unknown): void; error(m: unknown): void };
   } = {},
-): TestApp & { events: Array<Record<string, unknown>>; blocklistFile: string } {
+): TestApp & { events: Record<string, unknown>[]; blocklistFile: string } {
   const blocklistFile = join(blocklistDir, `blocklist-${++blocklists}.json`);
   writeFileSync(blocklistFile, EMPTY_BLOCKLIST);
   const app = createTestApp({
@@ -310,7 +310,7 @@ function setup(
       ...(over.pluginsDir ? { pluginsDir: over.pluginsDir } : {}),
     },
   });
-  const events: Array<Record<string, unknown>> = [];
+  const events: Record<string, unknown>[] = [];
   const publish = app.deps.engine.events.publish.bind(app.deps.engine.events);
   vi.spyOn(app.deps.engine.events, 'publish').mockImplementation((e) => {
     events.push(e as unknown as Record<string, unknown>);
@@ -1936,7 +1936,7 @@ describe('catalog', () => {
 });
 
 describe('background update check', () => {
-  const updatesChanged = (t: { events: Array<Record<string, unknown>> }, name: string) =>
+  const updatesChanged = (t: { events: Record<string, unknown>[] }, name: string) =>
     t.events.filter((e) => e.type === 'plugins.changed' && e.name === name);
 
   it('finds an update without the catalog being opened and publishes plugins.changed once', async () => {

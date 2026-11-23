@@ -1,7 +1,9 @@
-import { fireEvent, render } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
-import { job } from '../test/fixtures/jobs';
-import { Poster } from './Poster';
+import { cleanup, fireEvent, render } from '@testing-library/react';
+import { afterEach, describe, expect, it } from 'vitest';
+import { job } from '../test/fixtures/jobs.ts';
+import { Poster } from './Poster.tsx';
+
+afterEach(cleanup);
 
 const withPoster = (poster: boolean, id = 'j-1') => ({
   id,

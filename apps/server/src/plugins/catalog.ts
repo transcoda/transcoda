@@ -1,7 +1,6 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { PLUGIN_NAME_PATTERN, PluginNetworkSchema } from '@transcoda/shared';
 import semver from 'semver';
 import { z } from 'zod';

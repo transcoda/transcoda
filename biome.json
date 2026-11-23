@@ -23,5 +23,74 @@
   "markdown": { "formatter": { "enabled": false } },
   "yaml": { "formatter": { "enabled": false } },
   "linter": { "rules": { "preset": "recommended" } },
-  "assist": { "actions": { "source": { "organizeImports": "on" } } }
+  "assist": { "actions": { "source": { "organizeImports": "on" } } },
+  "plugins": [
+    {
+      "path": "./scripts/biome/utc-dates.grit",
+      "includes": ["apps/server/src/**", "packages/*/src/**", "!**/*.test.ts"]
+    },
+    {
+      "path": "./scripts/biome/test-cleanup.grit",
+      "includes": ["apps/web/src/**/*.test.tsx", "apps/web/src/**/*.test.ts"]
+    }
+  ],
+  "overrides": [
+    {
+      "includes": ["apps/**", "packages/**", "scripts/**"],
+      "linter": {
+        "rules": {
+          "correctness": { "useImportExtensions": "error" },
+          "nursery": { "noFloatingPromises": "error", "useAwaitThenable": "error" },
+          "style": {
+            "noDefaultExport": "error",
+            "noNonNullAssertion": "error",
+            "useConsistentArrayType": "error",
+            "useConsistentTestIt": "error",
+            "useTestHooksOnTop": "error"
+          },
+          "suspicious": {
+            "noDeprecatedImports": "error",
+            "noExplicitAny": "error",
+            "noFocusedTests": "error",
+            "noImportCycles": "error",
+            "noSkippedTests": "error"
+          }
+        }
+      }
+    },
+    {
+      "includes": ["apps/*/src/**", "packages/*/src/**"],
+      "linter": { "rules": { "suspicious": { "noConsole": "error" } } }
+    },
+    {
+      "includes": [
+        "apps/server/**",
+        "packages/**",
+        "scripts/**",
+        "!apps/server/src/db/migrations/**"
+      ],
+      "linter": {
+        "rules": {
+          "style": {
+            "useFilenamingConvention": {
+              "level": "error",
+              "options": { "filenameCases": ["kebab-case"] }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": [
+        "**/*.config.ts",
+        "apps/server/src/plugins/fixtures/**",
+        "apps/server/src/plugins/testing/global-setup.ts"
+      ],
+      "linter": { "rules": { "style": { "noDefaultExport": "off" } } }
+    },
+    {
+      "includes": ["apps/server/src/logger.ts"],
+      "linter": { "rules": { "suspicious": { "noConsole": "off" } } }
+    }
+  ]
 }

@@ -129,7 +129,7 @@ export function OutcomeChip({
 const num = new Intl.NumberFormat('en-US');
 
 /** The rest of a plan-only dry run's outcomes, in the summary's words; each only when it happened. */
-const SUMMARY_REST: ReadonlyArray<[OutcomeKey, string]> = [
+const SUMMARY_REST: readonly [OutcomeKey, string][] = [
   ['kept_original', 'would keep original'],
   ['skipped', 'skipped'],
   ['failed', 'failed'],

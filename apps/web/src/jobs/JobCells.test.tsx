@@ -1,7 +1,9 @@
-import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
-import { fx } from '../test/fixtures/jobs';
-import { ResultCell, TitleSub } from './JobCells';
+import { cleanup, render, screen } from '@testing-library/react';
+import { afterEach, describe, expect, it } from 'vitest';
+import { fx } from '../test/fixtures/jobs.ts';
+import { ResultCell, TitleSub } from './JobCells.tsx';
+
+afterEach(cleanup);
 
 describe('ResultCell', () => {
   it('shows the sizes and the change for a replaced job', () => {

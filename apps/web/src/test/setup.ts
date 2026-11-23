@@ -1,20 +1,26 @@
 // jsdom polyfills for every web test (vite.config.ts `test.setupFiles`). Each one is guarded so a
 // future jsdom that implements the API wins.
 
-import * as webStreams from 'node:stream/web';
+import {
+  ReadableStream,
+  TextDecoderStream,
+  TextEncoderStream,
+  TransformStream,
+  WritableStream,
+} from 'node:stream/web';
 import { configure } from '@testing-library/react';
 import { vi } from 'vitest';
 
 // The vmThreads pool runs each file in a VM context whose jsdom global lacks the Web Streams
 // classes Node has; @orpc/client needs TransformStream. Lend Node's where they are missing.
-for (const name of [
-  'ReadableStream',
-  'WritableStream',
-  'TransformStream',
-  'TextEncoderStream',
-  'TextDecoderStream',
-] as const) {
-  if (!(name in globalThis)) Object.assign(globalThis, { [name]: webStreams[name] });
+for (const [name, impl] of Object.entries({
+  ReadableStream,
+  WritableStream,
+  TransformStream,
+  TextEncoderStream,
+  TextDecoderStream,
+})) {
+  if (!(name in globalThis)) Object.assign(globalThis, { [name]: impl });
 }
 
 // `pnpm check` runs every workspace's tests in parallel, so a jsdom worker can get a fraction of a

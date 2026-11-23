@@ -1,0 +1,30 @@
+language js
+
+// Server, shared and contract code keeps time in UTC (ISO strings from toISOString()).
+// Local-time Date methods depend on the server's TZ and are only right where a decision says so.
+`$date.$method($args)` where {
+  $method <: or {
+    `getFullYear`,
+    `getMonth`,
+    `getDate`,
+    `getDay`,
+    `getHours`,
+    `getMinutes`,
+    `getSeconds`,
+    `getMilliseconds`,
+    `getTimezoneOffset`,
+    `setFullYear`,
+    `setMonth`,
+    `setDate`,
+    `setHours`,
+    `setMinutes`,
+    `setSeconds`,
+    `setMilliseconds`,
+    `toLocaleString`,
+    `toLocaleDateString`,
+    `toLocaleTimeString`,
+    `toDateString`,
+    `toTimeString`
+  },
+  register_diagnostic(span=$method, message="Local-time Date method in server or package code. Keep times in UTC: use getUTC*/setUTC* or toISOString(). Where local time is intended, add a biome-ignore with the reason.", severity="error")
+}

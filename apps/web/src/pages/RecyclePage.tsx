@@ -315,6 +315,7 @@ function EmptyFolder({ library, onChanged }: { library: Library; onChanged(): vo
   const [confirm, setConfirm] = useState(false);
   const [busy, setBusy] = useState(false);
   const newest = library.entries.reduce(
+    // biome-ignore lint/complexity/useMathMinMax: ISO date strings; Math.max would coerce them to NaN.
     (max, e) => (e.recycledAt > max ? e.recycledAt : max),
     library.entries[0]?.recycledAt ?? '',
   );

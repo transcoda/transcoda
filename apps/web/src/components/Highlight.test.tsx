@@ -1,6 +1,8 @@
-import { render } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { cleanup, render } from '@testing-library/react';
+import { afterEach, describe, expect, it } from 'vitest';
 import { Highlight } from './Highlight.tsx';
+
+afterEach(cleanup);
 
 const marks = (text: string, query: string) =>
   [...render(<Highlight text={text} query={query} />).container.querySelectorAll('mark')].map(

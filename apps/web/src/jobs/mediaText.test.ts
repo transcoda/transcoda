@@ -1,7 +1,7 @@
 import type { JobMedia } from '@transcoda/contract';
 import { describe, expect, it } from 'vitest';
-import { job } from '../test/fixtures/jobs';
-import { episodeCode, jobTitle, mediaSub, resultLines } from './mediaText';
+import { job } from '../test/fixtures/jobs.ts';
+import { episodeCode, jobTitle, mediaSub, resultLines } from './mediaText.ts';
 
 const media = (o: Partial<JobMedia>): JobMedia => ({
   kind: 'unknown',
@@ -102,6 +102,7 @@ describe('resultLines', () => {
     expect(resultLines(job({ state: 'queued' }))).toBeNull();
     expect(resultLines(finished(1000, 500, { dryRun: true }))).toBeNull();
     const j = finished(1000, 500);
-    expect(resultLines({ ...j, result: { ...j.result!, restored: true } })).toBeNull();
+    if (!j.result) throw new Error('finished() gives the job a result');
+    expect(resultLines({ ...j, result: { ...j.result, restored: true } })).toBeNull();
   });
 });

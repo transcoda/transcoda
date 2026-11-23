@@ -303,7 +303,7 @@ describe('workflow read tools', () => {
     );
     expect(res.structuredContent).toMatchObject({ active: { version: 2, runnable: true } });
     const listed = await client.callTool({ name: 'list_workflows', arguments: {} });
-    const brief = (listed.structuredContent as { workflows: Array<Record<string, unknown>> })
+    const brief = (listed.structuredContent as { workflows: Record<string, unknown>[] })
       .workflows[0];
     expect(brief?.active).toEqual({ version: 2, runnable: true });
     expect(brief).not.toHaveProperty('mode');
