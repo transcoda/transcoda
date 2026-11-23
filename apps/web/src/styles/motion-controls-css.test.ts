@@ -2,6 +2,8 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { commaValues, declsOf } from './css-source';
+import { LINEAR_PROGRESS } from './design-exceptions';
 
 const tokens = readFileSync(join(__dirname, 'tokens.css'), 'utf8');
 const css = readFileSync(join(__dirname, '../styles.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
@@ -13,34 +15,34 @@ function rule(selector: string): string {
 }
 
 /** The progress fills: the only rules whose transition may run at a linear pace. */
-const PROGRESS = ['.activity-ring-value', '.tc-node .tc-node-fill'];
+const PROGRESS = Object.keys(LINEAR_PROGRESS);
 
-/** Every `transition` declaration with the selector list of the rule that holds it, at any depth
- *  (a rule's body holds no braces, so an at-rule is never taken for a selector). */
-function transitionsOf(source: string): { selectors: string[]; value: string }[] {
-  return [...source.matchAll(/([^{}]+)\{([^{}]*)\}/g)].flatMap((m) => {
-    const selectors = (m[1] ?? '').split(',').map((x) => x.trim());
-    return [...(m[2] ?? '').matchAll(/(?<![\w-])transition:\s*([^;]+);/g)].map((t) => ({
-      selectors,
-      value: (t[1] ?? '').trim().replace(/\s+/g, ' '),
-    }));
-  });
+/** Every transition declaration (the shorthand and its timing longhands) with the selector list
+ *  of the rule that holds it, at any depth. */
+function transitionsOf(source: string): { selectors: string[]; prop: string; value: string }[] {
+  return declsOf(source)
+    .filter((d) => /^transition(-duration|-timing-function)?$/.test(d.prop))
+    .map((d) => ({ selectors: d.selectors, prop: d.prop, value: d.value }));
 }
 
-/** Transitions off the motion tokens; linear is allowed only on a rule of progress fills alone. */
+/** Transitions off the motion tokens; linear is allowed only on a rule of progress fills alone,
+ *  at 400ms to 600ms (DESIGN.md › Motion). */
 function transitionProblems(source: string): string[] {
   const bad: string[] = [];
-  for (const { selectors, value } of transitionsOf(source)) {
+  for (const { selectors, prop, value } of transitionsOf(source)) {
     if (value === 'none') continue;
-    const progress = selectors.every((s) => PROGRESS.includes(s));
-    const ok = value
-      .split(',')
-      .every(
-        (part) =>
-          /var\(--dur-(fast|base)\) var\(--ease-out\)/.test(part) ||
-          (progress && /^[\w-]+ [\d.]+m?s linear$/.test(part.trim())),
-      );
-    if (!ok) bad.push(`${selectors.join(', ')} { transition: ${value} }`);
+    const progress = selectors.length > 0 && selectors.every((s) => PROGRESS.includes(s));
+    const linearOk = (ms: number) => progress && ms >= 400 && ms <= 600;
+    const ms = (t: string) =>
+      t.endsWith('ms') ? Number.parseFloat(t) : Number.parseFloat(t) * 1000;
+    const ok = commaValues(value).every((part) => {
+      if (prop === 'transition-duration') return /^var\(--dur-(fast|base)\)$/.test(part);
+      if (prop === 'transition-timing-function') return part === 'var(--ease-out)';
+      if (/var\(--dur-(fast|base)\) var\(--ease-out\)/.test(part)) return true;
+      const linear = /^[\w-]+ ([\d.]+m?s) linear$/.exec(part);
+      return linear !== null && linearOk(ms(linear[1] ?? ''));
+    });
+    if (!ok) bad.push(`${selectors.join(', ')} { ${prop}: ${value} }`);
   }
   return bad;
 }
@@ -78,7 +80,10 @@ describe('motion', () => {
   });
 
   it('every UI transition uses the motion tokens; only progress fills stay linear', () => {
-    expect(transitionProblems(css)).toEqual([]);
+    expect(
+      transitionProblems(css),
+      'DESIGN.md › Motion: transitions use --dur-fast/--dur-base and --ease-out; linear only on the progress fills (styles/design-exceptions.ts LINEAR_PROGRESS)',
+    ).toEqual([]);
     // The check is not vacuous: it sees transitions, including both progress fills.
     const seen = transitionsOf(css);
     expect(seen.length).toBeGreaterThan(5);
@@ -98,9 +103,22 @@ describe('motion', () => {
         '.tc-node .tc-node-fill, .scope-chip { transition: clip-path 1s linear; }',
       ),
     ).toHaveLength(1);
-    expect(transitionProblems('.activity-ring-value { transition: opacity 1s linear; }')).toEqual(
-      [],
-    );
+    expect(
+      transitionProblems('.activity-ring-value { transition: opacity 500ms linear; }'),
+    ).toEqual([]);
+    // Progress fills run 400ms to 600ms.
+    expect(
+      transitionProblems('.activity-ring-value { transition: opacity 2s linear }'),
+    ).toHaveLength(1);
+    // A last declaration without a semicolon, and the timing longhands.
+    expect(transitionProblems('.a { transition: opacity 1s ease }')).toHaveLength(1);
+    expect(transitionProblems('.a { transition-duration: 300ms }')).toHaveLength(1);
+    expect(transitionProblems('.a { transition-timing-function: linear }')).toHaveLength(1);
+    expect(
+      transitionProblems(
+        '@media (hover: hover) { .a { transition: color var(--dur-fast) var(--ease-out) } }',
+      ),
+    ).toEqual([]);
   });
 
   it('every looping animation has a still state under reduced motion', () => {

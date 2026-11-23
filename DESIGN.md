@@ -1,6 +1,6 @@
 # DESIGN.md - Transcoda web UI ("Patchbay")
 
-This file explains the Transcoda web UI's design system: what it is for, the rules it follows and why. The values themselves live in `apps/web/src/styles/tokens.css`. That file comes from the Patchbay handoff (see `docs/decisions.md`, "Task 24"), plus three additions listed in `docs/decisions.md` under "2026-11-20 Design audit fixes": `--line-control`, the motion tokens and the reduced-motion rule. If this file and `tokens.css` disagree on a value, `tokens.css` is right and this file needs updating.
+This file explains the Transcoda web UI's design system: what it is for, the rules it follows and why. The values themselves live in `apps/web/src/styles/tokens.css`. That file comes from the Patchbay handoff (see `docs/decisions.md`, "Task 24"), plus three additions listed in `docs/decisions.md` under "2026-11-20 Design audit fixes": `--line-control`, the motion tokens and the reduced-motion rule. If this file and `tokens.css` disagree on a value, `tokens.css` is right and this file needs updating. Tests in `apps/web/src/styles/` hold `styles.css` to the rules here that a machine can check, and this file's quoted values to the stylesheet; their few exceptions, each with its reason, are in `apps/web/src/styles/design-exceptions.ts`.
 
 ## Context
 
@@ -121,7 +121,7 @@ Colours that are not tokens are named variables at the top of `styles.css`, with
   - Phone: up to 639px.
   - Auth layout splits at 900px.
   - Editor compact below 1024px, with the inspector as a sheet.
-  - Container queries on the job list (1143px, 993px) and the jobs overview (699px, 559px).
+  - Container queries on the job list (1159px, 1009px) and the jobs overview (699px, 559px).
 
 ## Components and states
 

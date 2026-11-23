@@ -18,10 +18,47 @@
       "!pnpm-lock.yaml"
     ]
   },
-  "formatter": { "indentStyle": "space", "lineWidth": 100 },
-  "javascript": { "formatter": { "quoteStyle": "single" } },
-  "markdown": { "formatter": { "enabled": false } },
-  "yaml": { "formatter": { "enabled": false } },
-  "linter": { "rules": { "preset": "recommended" } },
-  "assist": { "actions": { "source": { "organizeImports": "on" } } }
+  "formatter": {
+    "indentStyle": "space",
+    "lineWidth": 100
+  },
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "single"
+    }
+  },
+  "markdown": {
+    "formatter": {
+      "enabled": false
+    }
+  },
+  "yaml": {
+    "formatter": {
+      "enabled": false
+    }
+  },
+  "linter": {
+    "rules": {
+      "preset": "recommended"
+    }
+  },
+  "assist": {
+    "actions": {
+      "source": {
+        "organizeImports": "on"
+      }
+    }
+  },
+  "overrides": [
+    {
+      "includes": ["apps/web/src/**/*.css"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noHexColors": "error"
+          }
+        }
+      }
+    }
+  ]
 }
