@@ -140,6 +140,16 @@ describe('accessibility: focus and target size', () => {
   });
 });
 
+describe('the canvas colour scheme (React Flow 13)', () => {
+  it("the canvas keeps the app's colour scheme; the box-select rectangles keep React Flow's dark one", () => {
+    // forceColorMode="dark" sets color-scheme: dark on .react-flow (in React Flow's @layer xyflow);
+    // the cards' selects, inputs and buttons follow the app's theme as with React Flow 12.
+    expect(rulesFor('.canvas .react-flow')).toMatch(/color-scheme:\s*inherit/);
+    expect(rulesFor('.canvas .react-flow__selection')).toMatch(/color-scheme:\s*dark/);
+    expect(rulesFor('.canvas .react-flow__nodesselection-rect')).toMatch(/color-scheme:\s*dark/);
+  });
+});
+
 describe('Jobs stat tiles on a phone', () => {
   it('a filtering tile stays unpadded so its button covers the whole tile', () => {
     expect(rulesFor('.stat-tile.is-button')).toMatch(/padding:\s*0/);

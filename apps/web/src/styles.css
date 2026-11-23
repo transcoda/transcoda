@@ -1512,6 +1512,16 @@ a.nav-item.is-active {
   --xy-controls-button-color-hover: var(--text);
   --xy-controls-button-border-color: transparent;
   --xy-attribution-background-color: transparent;
+  /* React Flow's forceColorMode="dark" also sets color-scheme: dark here; the canvas keeps the
+     app's, so the cards' selects, inputs and buttons match the theme. */
+  color-scheme: inherit;
+}
+
+/* The box-select rectangles keep React Flow's dark colours (its light-dark() defaults) in either
+   theme. */
+.canvas .react-flow__selection,
+.canvas .react-flow__nodesselection-rect {
+  color-scheme: dark;
 }
 
 .canvas .react-flow__controls {

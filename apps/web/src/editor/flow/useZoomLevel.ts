@@ -1,9 +1,9 @@
-import { type ReactFlowState, useStore } from '@xyflow/react';
+import { useViewportStore, type ViewportStore } from '@xyflow/react';
 
 /** N9: ≥ 0.75 the full card; 0.40–0.75 icon + name with on-node controls as summary; < 0.40 a circle with the icon. */
 export type ZoomLevel = 'full' | 'compact' | 'icon';
 
-const levelOf = (s: ReactFlowState): ZoomLevel => {
+const levelOf = (s: ViewportStore): ZoomLevel => {
   const zoom = s.transform[2];
   if (zoom >= 0.75) return 'full';
   return zoom >= 0.4 ? 'compact' : 'icon';
@@ -11,7 +11,7 @@ const levelOf = (s: ReactFlowState): ZoomLevel => {
 
 /** The canvas's detail level; re-renders only when the level changes, not on every zoom step. */
 export function useZoomLevel(): ZoomLevel {
-  return useStore(levelOf);
+  return useViewportStore(levelOf);
 }
 
 /** On-screen size (px) a counter-scaled icon aims for: the icon tile's glyph, the compact eyebrow's. */
@@ -42,5 +42,5 @@ export function iconScale(zoom: number, level: ZoomLevel, trace = false): number
 
 /** The icon enlargement for the canvas's current zoom (a number, so the store compares by value). */
 export function useIconScale(trace = false): number {
-  return useStore((s: ReactFlowState) => iconScale(s.transform[2], levelOf(s), trace));
+  return useViewportStore((s) => iconScale(s.transform[2], levelOf(s), trace));
 }

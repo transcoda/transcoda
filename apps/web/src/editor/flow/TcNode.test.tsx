@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, screen, within } from '@testing-library/react';
 import type { NodeInfo, WorkflowSummary } from '@transcoda/contract';
 import type { Issue, NodeInstance } from '@transcoda/shared';
-import { type Edge, type NodeProps, Position, useStoreApi } from '@xyflow/react';
+import { type Edge, type NodeProps, Position, useReactFlowStoreApi } from '@xyflow/react';
 import { useEffect } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { PortSpec } from '../../hooks/useCatalog.ts';
@@ -77,12 +77,12 @@ function DragFrom({
   handleId: string;
   type: 'source' | 'target';
 }) {
-  const store = useStoreApi();
+  const store = useReactFlowStoreApi();
   useEffect(() => {
-    const fromNode = store.getState().nodeLookup.get(nodeId);
+    const fromNode = store.nodesStore.getState().nodeLookup.get(nodeId);
     if (!fromNode) throw new Error(`no node ${nodeId}`);
     const position = type === 'source' ? Position.Right : Position.Left;
-    store.setState({
+    store.connectionStore.setState({
       connection: {
         inProgress: true,
         isValid: null,

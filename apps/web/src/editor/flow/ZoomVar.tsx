@@ -1,7 +1,12 @@
-import { type ReactFlowState, useStore } from '@xyflow/react';
+import {
+  type ReactFlowState,
+  useOptionsStore,
+  useViewportStore,
+  type ViewportStore,
+} from '@xyflow/react';
 import { useLayoutEffect } from 'react';
 
-const zoomOf = (s: ReactFlowState): number => s.transform[2];
+const zoomOf = (s: ViewportStore): number => s.transform[2];
 const domOf = (s: ReactFlowState): HTMLDivElement | null => s.domNode;
 
 /**
@@ -10,8 +15,8 @@ const domOf = (s: ReactFlowState): HTMLDivElement | null => s.domNode;
  * canvas is zoomed out: see `--tc-hit` in styles.css. Renders nothing.
  */
 export function ZoomVar() {
-  const zoom = useStore(zoomOf);
-  const dom = useStore(domOf);
+  const zoom = useViewportStore(zoomOf);
+  const dom = useOptionsStore(domOf);
   useLayoutEffect(() => {
     dom?.style.setProperty('--tc-zoom', String(zoom));
   }, [dom, zoom]);

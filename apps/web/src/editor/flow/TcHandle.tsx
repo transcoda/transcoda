@@ -1,9 +1,10 @@
 import { branchPortLabel, branchWord } from '@transcoda/shared';
-import { Handle, Position, type ReactFlowState } from '@xyflow/react';
+import { Handle, Position } from '@xyflow/react';
 import { Icon } from '../../components/Icon.tsx';
 import type { PortSpec } from '../../hooks/useCatalog.ts';
 import type { Fit, HandleRef } from './connectionFit.ts';
 import type { TcNodeData } from './types.ts';
+import type { FlowState } from './useFlowState.ts';
 
 /**
  * Whether a node's file outputs read their own names: true when it shows more than one file
@@ -54,7 +55,7 @@ export function branchClass(port: PortSpec): 'is-branch-pass' | 'is-branch-else'
  * (`null` for an unknown node); a dragged data input is occupied when an edge already ends on it
  * (a file input never is: it takes several).
  */
-export function dragFromOf(s: ReactFlowState): HandleRef | null {
+export function dragFromOf(s: Pick<FlowState, 'connection' | 'edges'>): HandleRef | null {
   const c = s.connection;
   if (!c.inProgress) return null;
   const { nodeId } = c.fromHandle;

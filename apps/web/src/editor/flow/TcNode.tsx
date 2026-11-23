@@ -3,10 +3,10 @@ import { portShown, RUN_SUBWORKFLOW_TYPE, SUBWORKFLOW_START_TYPE } from '@transc
 import {
   Handle,
   type NodeProps,
+  type NodesStore,
   Position,
-  type ReactFlowState,
   useNodeConnections,
-  useStore,
+  useNodesStore,
 } from '@xyflow/react';
 import { type CSSProperties, useCallback, useMemo } from 'react';
 import { KIND_WORD } from '../../components/Chips.tsx';
@@ -34,6 +34,7 @@ import {
 import { TcSelectionToolbar, TcToolbar } from './TcToolbar.tsx';
 import { VALUE_LINK_HANDLE } from './toFlow.ts';
 import type { TcNode as TcNodeType, TraceNodeData } from './types.ts';
+import { type FlowState, useFlowState } from './useFlowState.ts';
 import { useIconScale, useZoomLevel } from './useZoomLevel.ts';
 
 /** The card's colour class: its kind, Start/End as trigger/finish, `kind-unknown` without a def. */
@@ -67,7 +68,7 @@ function Badge({ state, glyphOnly = false }: { state: NodeState; glyphOnly?: boo
 const noop = (): void => {};
 
 /** The selected cards' ids in store order, newline-joined (a string, so the store compares by value). */
-function selectedCardIds(s: ReactFlowState): string {
+function selectedCardIds(s: NodesStore): string {
   const ids: string[] = [];
   for (const n of s.nodes) if (n.selected && n.type === 'tc-node') ids.push(n.id);
   return ids.join('\n');
@@ -87,7 +88,7 @@ type FitOf = (direction: 'in' | 'out', portId: string) => Fit;
  * N5 while a connection is dragged: each handle's fit, newline-joined in `refs` order (a string,
  * so the store compares by value and the card re-renders only when a fit changes); '' otherwise.
  */
-function fitsKey(s: ReactFlowState, refs: readonly HandleRef[]): string {
+function fitsKey(s: Pick<FlowState, 'connection' | 'edges'>, refs: readonly HandleRef[]): string {
   const from = dragFromOf(s);
   return from ? refs.map((h) => connectionFit(from, h)).join('\n') : '';
 }
@@ -267,8 +268,8 @@ export function TcNode({ id, data, selected }: NodeProps<TcNodeType>) {
   const connectedIn = new Set(incoming.map((c) => c.targetHandle ?? ''));
   const connectedOut = new Set(outgoing.map((c) => c.sourceHandle ?? ''));
   // Only a selected card looks at the rest of the selection (cheap for the unselected ones).
-  const selectedCards = useStore(
-    useCallback((s: ReactFlowState) => (selected ? selectedCardIds(s) : ''), [selected]),
+  const selectedCards = useNodesStore(
+    useCallback((s: NodesStore) => (selected ? selectedCardIds(s) : ''), [selected]),
   );
   const selection = selectedCards === '' ? [] : selectedCards.split('\n');
   const hasOnNode = useMemo(() => def !== null && onNodeControlKeys(def).length > 0, [def]);
@@ -329,7 +330,7 @@ export function TcNode({ id, data, selected }: NodeProps<TcNodeType>) {
     occupied: direction === 'in' && p.type !== 'file' && connectedIn.has(p.id),
   });
   const handleRefs = [...inputs.map((p) => refOf('in', p)), ...outputs.map((p) => refOf('out', p))];
-  const fitKey = useStore((s) => fitsKey(s, handleRefs));
+  const fitKey = useFlowState(['connection', 'edges'], (s) => fitsKey(s, handleRefs));
   const fits = fitKey === '' ? [] : (fitKey.split('\n') as Fit[]);
   const fitOf: FitOf = (direction, portId) =>
     fits[handleRefs.findIndex((h) => h.direction === direction && h.portId === portId)] ?? null;

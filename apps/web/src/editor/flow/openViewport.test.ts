@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { openBounds, openViewport, READABLE_ZOOM } from './openViewport.ts';
+import {
+  fitPadding,
+  fitPaddingPx,
+  openBounds,
+  openViewport,
+  READABLE_ZOOM,
+} from './openViewport.ts';
 
 const rect = (x: number, y: number, width: number, height: number) => ({ x, y, width, height });
 const pane = { width: 1200, height: 800 };
@@ -38,6 +44,27 @@ describe('openViewport (the zoom and position a canvas opens at)', () => {
     const v = openViewport(rect(0, 0, 4000, 400), trigger, pane, { floor: 0.2 });
     expect(v.zoom).toBeGreaterThan(0.2);
     expect(v.zoom).toBeLessThan(READABLE_ZOOM);
+  });
+});
+
+describe('fit padding (React Flow 12 read a plain number as a share of the pane, 13 as pixels)', () => {
+  it('fitPaddingPx is the per-side room React Flow 12 left: the graph gets 1 / (1 + p) of the pane', () => {
+    expect(fitPaddingPx(0.2, 1200, 800)).toEqual({ x: 100, y: 66 });
+    expect(fitPaddingPx(0.25, 1000, 800)).toEqual({ x: 100, y: 80 });
+    expect(fitPaddingPx(0, 1200, 800)).toEqual({ x: 0, y: 0 });
+  });
+
+  it('fitPadding is the same share as a percentage per side', () => {
+    expect(fitPadding(0.2)).toMatch(/^8\.33+\d*%$/);
+    expect(Number.parseFloat(fitPadding(0.1))).toBeCloseTo(4.545, 3);
+    expect(Number.parseFloat(fitPadding(0.2)) * 12).toBeCloseTo(100, 6);
+  });
+
+  it('openViewport fits as React Flow 12 did: 0.2 leaves 100 px each side of a 1200 px pane', () => {
+    // 1000 px of room for a 900 px wide graph (not the whole 1200 px).
+    const v = openViewport(rect(0, 0, 900, 400), trigger, pane, { maxZoom: 2 });
+    expect(v.zoom).toBeCloseTo(1000 / 900, 10);
+    expect(v.x).toBeCloseTo(100, 6);
   });
 });
 
