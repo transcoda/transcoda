@@ -1,5 +1,5 @@
 import type { WalkStep } from '@transcoda/contract';
-import type { WorkflowGraph } from '@transcoda/shared';
+import { RENDER_TYPE, type WorkflowGraph } from '@transcoda/shared';
 import { describe, expect, it } from 'vitest';
 import { catalogFixture } from '../../test/fixtures/catalog.ts';
 import {
@@ -17,6 +17,7 @@ import {
   currentNodeOf,
   decisions,
   encodeNode,
+  executingNode,
   runTitle,
   type TraceSource,
 } from './traceOverlay.ts';
@@ -168,6 +169,61 @@ describe('buildTraceOverlay', () => {
     expect(edge(o, 'vi-run-a')).toMatchObject({ taken: false, untaken: true });
     expect(status(o, 'run-a')).toBe('untaken');
   });
+
+  it('a node the job failed on while it ran (an encode killed partway): failed with the reason, the nodes after it not taken', () => {
+    const trace = [
+      ...TRACE.slice(0, 9),
+      entry(10, 'sg', 'finish', 'pass', 'at least 10% smaller'),
+      entry(11, 'ro-a', 'finish', 'file', 'replace the original'),
+      entry(12, 'ca', 'finish', null, 'failed: encode: ffmpeg was killed (signal SIGKILL)'),
+    ];
+    // The walk planned sg and ro-a after ca (they have entries): they still did not run.
+    const o = buildTraceOverlay(
+      traceMain(),
+      { trace, steps: PATH, jobState: 'failed', currentNode: null },
+      [],
+    );
+    expect(o.nodes.get('ca')).toMatchObject({
+      status: 'failed',
+      reason: 'failed: encode: ffmpeg was killed (signal SIGKILL)',
+    });
+    expect(o.nodes.get('sg')).toMatchObject({ status: 'untaken', reason: null });
+    expect(status(o, 'ro-a')).toBe('untaken');
+    expect(status(o, 'vi')).toBe('done');
+    expect(edge(o, 'ca-sg')).toMatchObject({ taken: false, untaken: true });
+    expect(edge(o, 'vi-run-a')?.taken).toBe(true);
+  });
+
+  it('a node the job was canceled at reads cancelled once the job settled', () => {
+    const trace = [
+      ...TRACE.slice(0, 9),
+      entry(10, 'ca', 'finish', null, 'canceled: the job was canceled during this step'),
+    ];
+    const at = (jobState: TraceSource['jobState']) =>
+      buildTraceOverlay(traceMain(), { trace, steps: PATH, jobState, currentNode: null }, []);
+    expect(at('cancelled').nodes.get('ca')).toMatchObject({
+      status: 'cancelled',
+      reason: 'canceled: the job was canceled during this step',
+    });
+    expect(status(at('cancelled'), 'sg')).toBe('untaken');
+  });
+
+  it("carries a node's own problems and warnings (problems first), at its level only; none without", () => {
+    const nodeProblems = [
+      { workflowPath: [], nodeId: 'ro-a', severity: 'warning' as const, message: 'notify failed' },
+      { workflowPath: [], nodeId: 'ro-a', severity: 'problem' as const, message: 'rescan failed' },
+      { workflowPath: ['run-a'], nodeId: 'keep', severity: 'warning' as const, message: 'inner' },
+    ];
+    const source = { ...done, nodeProblems };
+    const top = buildTraceOverlay(traceMain(), source, []);
+    expect(top.nodes.get('ro-a')?.problems).toEqual([nodeProblems[1], nodeProblems[0]]);
+    expect(top.nodes.get('sg')?.problems).toBeUndefined();
+    const child = buildTraceOverlay(traceSub(), source, ['run-a']);
+    expect(child.nodes.get('keep')?.problems).toEqual([nodeProblems[2]]);
+    // An older job (no node problems): no node carries any.
+    const old = buildTraceOverlay(traceMain(), done, []);
+    expect([...old.nodes.values()].some((n) => n.problems !== undefined)).toBe(false);
+  });
 });
 
 describe('decisions', () => {
@@ -256,6 +312,56 @@ describe('encodeNode', () => {
     const ev = graph.nodes.find((n) => n.id === 'ev');
     if (ev) ev.bypassed = true;
     expect(encodeNode(ELSE_PATH, graph, children)).toBeNull();
+  });
+});
+
+describe('executingNode (the node lit while the job executes is the one a failure lands on)', () => {
+  const children = new Map([['run-b', traceSub()]]);
+  // The else walk with a Render after the encode, as the engine traces a failure on it.
+  const withRender = (): WorkflowGraph => {
+    const g = traceMain();
+    return {
+      ...g,
+      nodes: [
+        ...g.nodes,
+        {
+          id: 'render-1',
+          type: RENDER_TYPE,
+          typeVersion: 1,
+          settings: {},
+          position: { x: 0, y: 0 },
+        },
+      ],
+    };
+  };
+  const at = ELSE_PATH.findIndex((s) => s.nodeId === 'ro-b');
+  const path: WalkStep[] = [
+    ...ELSE_PATH.slice(0, at),
+    { workflowPath: [], nodeId: 'render-1', port: 'done' },
+    ...ELSE_PATH.slice(at),
+  ];
+
+  it('is the Render while encoding and verifying, not Encode video', () => {
+    for (const state of ['encoding', 'verifying'] as const) {
+      expect(executingNode(state, path, withRender(), children, undefined)).toEqual({
+        workflowPath: [],
+        nodeId: 'render-1',
+      });
+    }
+  });
+
+  it("follows the engine's report (each finish step), else Replace original while replacing", () => {
+    const ro = { workflowPath: [], nodeId: 'ro-b' };
+    expect(executingNode('verifying', path, withRender(), children, ro)).toEqual(ro);
+    expect(executingNode('replacing', path, withRender(), children, null)).toEqual(ro);
+  });
+
+  it('lights the encode node on a walk without a Render (a workflow from before it)', () => {
+    const built = { workflowPath: ['run-b'], nodeId: 'rt' };
+    expect(executingNode('encoding', ELSE_PATH, traceMain(), children, built)).toEqual({
+      workflowPath: [],
+      nodeId: 'ev',
+    });
   });
 });
 

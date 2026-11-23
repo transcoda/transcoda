@@ -2,6 +2,7 @@ import {
   JobPlanSchema,
   JobStateSchema,
   LaneSchema,
+  NodeProblemSchema,
   ProbeStreamSchema,
   ProbeSummarySchema,
   TraceEntrySchema,
@@ -157,6 +158,12 @@ export const JobResultSchema = z.object({
   warnings: z.array(z.string()),
   /** Problems after the write, separate from `warnings`. */
   problems: z.array(z.string()),
+  /**
+   * The problems and warnings above that belong to one node (a webhook that did not send, a
+   * plugin finish step that failed), with that node; the job page badges it. Empty for results
+   * from before they were tied to nodes.
+   */
+  nodeProblems: z.array(NodeProblemSchema).default([]),
   /**
    * The original was kept because the source is damaged (decode errors the source reproduces);
    * the job state is `kept_original`. Steps behind Render's Damaged have run (real jobs only).

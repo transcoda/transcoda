@@ -156,6 +156,20 @@ export interface DamagedBranch {
   path: PathStep[];
 }
 
+/** The node a finish action came from (core actions are tagged by the walk, plugin ones carry it). */
+export interface ActionNode {
+  nodeId: string;
+  workflowPath: string[];
+}
+
+/** Where `action` came from; null for an action built before the walk tagged them. */
+export function actionNode(action: AnyFinishAction): ActionNode | null {
+  const a = action as Partial<ActionNode>;
+  return typeof a.nodeId === 'string' && Array.isArray(a.workflowPath)
+    ? { nodeId: a.nodeId, workflowPath: [...a.workflowPath] }
+    : null;
+}
+
 export type WalkResult =
   | {
       kind: 'built';
@@ -908,7 +922,10 @@ class Walker {
             });
           }
         } else {
-          actions.push(...result.actions);
+          // Tagged with their node, so a step that goes wrong later is told on that node.
+          for (const action of result.actions) {
+            actions.push({ ...action, nodeId, workflowPath: [...path] } as AnyFinishAction);
+          }
         }
         this.finished.set(dataKey(path, nodeId), actions.slice(firstAction));
       } else {

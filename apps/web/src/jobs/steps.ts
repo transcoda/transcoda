@@ -5,6 +5,7 @@
 import type {
   JobState,
   JsonValue,
+  NodeProblem,
   ProbeSummary,
   TraceChanges,
   WorkflowGraph,
@@ -17,6 +18,7 @@ import {
   isPicture,
   RENDER_DAMAGED_PORT,
   RENDER_TYPE,
+  TRACE_CANCELED,
 } from '@transcoda/shared';
 import type { Decision } from '../editor/trace/traceOverlay.ts';
 import { fmtKbps } from '../lib/rate.ts';
@@ -31,6 +33,7 @@ export type Badge =
   | 'yes'
   | 'no'
   | 'failed'
+  | 'canceled'
   | 'not-run';
 
 /** An unmet precondition or a warning on a step, with where to fix it when there is a place. */
@@ -71,6 +74,8 @@ export interface StepContext {
   sourceDamaged?: boolean;
   /** The workflow's nodes on a Damaged side (`damagedSideOf`), top level only. */
   damagedSide?: ReadonlySet<string>;
+  /** `result.nodeProblems`: the last attempt's problems and warnings, each on its node's step. */
+  nodeProblems?: readonly NodeProblem[];
 }
 
 /**
@@ -125,8 +130,12 @@ interface Around {
   failedAt: number | null;
   /** This step's index. */
   at: number;
+  /** The step belongs to an attempt before the last one. */
+  earlier?: boolean;
   /** A step replaces the original (the size gate's pass leads to it). */
   replaces: boolean;
+  /** The job's problems and warnings on this step's node (its last attempt only). */
+  problems: readonly NodeProblem[];
 }
 
 /**
@@ -668,14 +677,18 @@ function notRun(d: Decision, ctx: StepContext, around: Around): string | null {
   if (onDamagedSide(d, ctx) && !ctx.sourceDamaged && !ctx.dryRun && isFinalState(ctx.state)) {
     return 'the source was not damaged';
   }
-  if (!isFinalState(ctx.state) || d.plugin) return null;
+  if (!isFinalState(ctx.state)) return null;
   // A step before the failing one ran (a write, then a later step failed); a failure that is not
   // on the trace (ffmpeg, verify, the server) came after the build, before any finish step ran.
+  // A plugin step after the failing one never ran either.
   if (ctx.state === 'failed' && (around.failedAt === null || around.at > around.failedAt)) {
-    return 'the job failed first';
+    if (!d.plugin || around.failedAt !== null) return 'the job failed first';
   }
   if (ctx.state === 'failed') return null;
-  if (ctx.state === 'cancelled') return 'the job was canceled first';
+  // A canceled job wrote nothing (a cancel after the write ends it done), so no plugin step ran
+  // in the canceled attempt. An earlier attempt's steps are not the cancel's.
+  if (ctx.state === 'cancelled' && !around.earlier) return 'the job was canceled first';
+  if (d.plugin) return null;
   // A dry run's write steps never run: its sentence says what they would do.
   if (!ctx.dryRun && d.type !== null && WRITES.has(d.type)) {
     if (ctx.state === 'kept_original') return 'the original was kept';
@@ -715,7 +728,12 @@ function sizeGate(d: Decision, ctx: StepContext, past: boolean, around: Around):
   return `Keeps the result only if it is at least ${min}% smaller`;
 }
 
-function finishStep(d: Decision, ctx: StepContext, past: boolean): string {
+function finishStep(
+  d: Decision,
+  ctx: StepContext,
+  past: boolean,
+  problems: readonly NodeProblem[] = [],
+): string {
   const s = d.settings;
   switch (d.type) {
     case 'core:replace-original': {
@@ -751,11 +769,36 @@ function finishStep(d: Decision, ctx: StepContext, past: boolean): string {
             : 'Copies';
       return `${verb} the result to ${root}`;
     }
-    case 'core:notify-webhook':
-      return `${ctx.dryRun ? 'Would send' : past ? 'Sent' : 'Sends'} a ${str(s.method) ?? 'POST'} request to the webhook`;
+    case 'core:notify-webhook': {
+      const method = str(s.method) ?? 'POST';
+      // A real run whose request failed says so, as its warning does (the engine words it
+      // "notify <url> failed: <why>" or "notify <url> answered <status>").
+      const sent = past && !ctx.dryRun ? notifyOutcome(problems) : null;
+      if (sent?.failed !== undefined) {
+        return `Didn't send the ${method} request to the webhook: ${sent.failed}`;
+      }
+      if (sent?.status !== undefined) {
+        return `Sent a ${method} request to the webhook, but it answered ${sent.status}`;
+      }
+      return `${ctx.dryRun ? 'Would send' : past ? 'Sent' : 'Sends'} a ${method} request to the webhook`;
+    }
     default:
       return reasonSentence(d);
   }
+}
+
+/** What the engine's notify warning on the step says went wrong; null when it sent. */
+function notifyOutcome(
+  problems: readonly NodeProblem[],
+): { failed?: string; status?: string } | null {
+  for (const p of problems) {
+    if (!p.message.startsWith('notify ')) continue;
+    const failed = p.message.indexOf(' failed: ');
+    if (failed >= 0) return { failed: p.message.slice(failed + ' failed: '.length) };
+    const status = /\sanswered (\d+)$/.exec(p.message)?.[1];
+    if (status !== undefined) return { status };
+  }
+  return null;
 }
 
 function step(d: Decision, ctx: StepContext, around: Around): Step {
@@ -766,7 +809,16 @@ function step(d: Decision, ctx: StepContext, around: Around): Step {
       ...base,
       badge: 'failed',
       quiet: false,
-      sentence: capital(d.reason.slice(FAILED.length).trim()),
+      // The engine's raw error text, as it wrote it (never re-cased: "ffmpeg", not "Ffmpeg").
+      sentence: `Failed: ${d.reason.slice(FAILED.length).trim()}`,
+    };
+  }
+  if (d.reason.startsWith(TRACE_CANCELED)) {
+    return {
+      ...base,
+      badge: 'canceled',
+      quiet: false,
+      sentence: capital(d.reason.slice(TRACE_CANCELED.length).trim()),
     };
   }
   if (d.reason === 'bypassed' || d.reason.startsWith('bypassed (')) {
@@ -813,7 +865,12 @@ function step(d: Decision, ctx: StepContext, around: Around): Step {
     if (onDamagedSide(d, ctx)) {
       // A real run's damaged source ran the Damaged side; otherwise it only would if damaged.
       if (ctx.sourceDamaged && !ctx.dryRun && isFinalState(ctx.state)) {
-        return { ...base, badge: 'finish', quiet: false, sentence: finishStep(d, ctx, true) };
+        return {
+          ...base,
+          badge: 'finish',
+          quiet: false,
+          sentence: finishStep(d, ctx, true, around.problems),
+        };
       }
       const what = finishStep(d, ctx, false);
       const sentence = ctx.sourceDamaged ? what : `If the source is damaged: ${what}`;
@@ -838,7 +895,12 @@ function step(d: Decision, ctx: StepContext, around: Around): Step {
         sentence: sizeGate(d, ctx, measured, around),
       };
     }
-    return { ...base, badge: 'finish', quiet: false, sentence: finishStep(d, ctx, past) };
+    return {
+      ...base,
+      badge: 'finish',
+      quiet: false,
+      sentence: finishStep(d, ctx, past, around.problems),
+    };
   }
   if (d.reason === 'no-op') {
     return { ...base, badge: 'same', quiet: true, sentence: 'Does nothing to the file' };
@@ -861,10 +923,15 @@ function step(d: Decision, ctx: StepContext, around: Around): Step {
   };
 }
 
-/** The entry that speaks for a node in its attempt: a failure, else a gate's decision, else the last. */
+/**
+ * The entry that speaks for a node in its attempt: a failure, else a cancel there, else a gate's
+ * decision, else the last.
+ */
 function speaksFor(a: Decision, b: Decision): Decision {
   if (a.reason.startsWith(FAILED)) return a;
   if (b.reason.startsWith(FAILED)) return b;
+  if (a.reason.startsWith(TRACE_CANCELED)) return a;
+  if (b.reason.startsWith(TRACE_CANCELED)) return b;
   if (a.branch !== null && b.branch === null) return a;
   return b;
 }
@@ -890,7 +957,23 @@ export function steps(items: readonly Decision[], ctx: StepContext): Step[] {
   const lastAttempt = Math.max(0, ...list.map((d) => d.attempt));
   const failed = list.findIndex((d) => d.attempt === lastAttempt && d.reason.startsWith(FAILED));
   const replaces = list.some((d) => d.type === 'core:replace-original' && !d.untaken);
-  return list.map((d, at) => step(d, ctx, { at, failedAt: failed >= 0 ? failed : null, replaces }));
+  return list.map((d, at) => {
+    // The job's problems and warnings on this node (they belong to its last attempt).
+    const own = (ctx.nodeProblems ?? []).filter(
+      (p) =>
+        d.attempt === lastAttempt &&
+        p.nodeId === d.nodeId &&
+        p.workflowPath.join('/') === d.workflowPath.join('/'),
+    );
+    const failedAt = failed >= 0 ? failed : null;
+    const earlier = d.attempt < lastAttempt;
+    const s = step(d, ctx, { at, failedAt, replaces, problems: own, earlier });
+    if (own.length === 0) return s;
+    const notes = own.map((p) => ({
+      text: `${p.severity === 'problem' ? 'Problem' : 'Warning'}: ${p.message}`,
+    }));
+    return { ...s, notes: [...notes, ...s.notes] };
+  });
 }
 
 /** The header's counts: steps that change the file, steps that do not (or did not run), notes. */
@@ -944,6 +1027,8 @@ export function badgeWord(badge: Badge, past: boolean): string {
       return 'No';
     case 'failed':
       return 'Failed';
+    case 'canceled':
+      return 'Canceled';
     case 'not-run':
       return "Didn't run";
   }

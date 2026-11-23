@@ -157,7 +157,7 @@ describe('JobSteps', () => {
     const { section } = show();
     expect(within(section).getByRole('heading', { level: 3, name: 'Retry' })).toBeTruthy();
     const retry = within(section).getByRole('list', { name: 'Retry' });
-    expect(within(retry).getByText('No hevc encoder is available')).toBeTruthy();
+    expect(within(retry).getByText('Failed: no hevc encoder is available')).toBeTruthy();
     expect(within(retry).getByText('Failed')).toBeTruthy();
   });
 

@@ -19,6 +19,7 @@ const DONE: NonNullable<JobDetail['result']> = {
   replacedTo: 'recycle',
   sourceDamaged: false,
   warnings: [],
+  nodeProblems: [],
   problems: [],
 };
 

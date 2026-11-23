@@ -25,11 +25,13 @@ import {
   type JobState,
   type JsonValue,
   type Lane,
+  type NodeProblem,
   normalizeLanguage,
   RENDER_DAMAGED_PORT,
   RENDER_DONE_PORT,
   RENDER_TYPE,
   sameLanguage,
+  TRACE_CANCELED,
   type TraceEntry,
   type WorkflowGraph,
 } from '@transcoda/shared';
@@ -132,6 +134,8 @@ import { removeOrigCopy, settleReplaceNow } from './sweep.ts';
 import type { TestOutputStore } from './test-outputs.ts';
 import { confirmSourceDamage, type VerifyFailure, verifyOutput } from './verify.ts';
 import {
+  type ActionNode,
+  actionNode,
   type DamagedBranch,
   type DecidedPath,
   type GateBranch,
@@ -242,6 +246,11 @@ interface Prepared {
   extraInputFiles: Map<number, string>;
   /** The last action node of the build: the job's node while it encodes and verifies. */
   lastBuildNode: CurrentNode | null;
+  /**
+   * The node whose work is under way in execute: the Render while the job encodes and verifies,
+   * then each finish step in turn; null between them. A failure or cancel is told on it.
+   */
+  runningNode: ActionNode | null;
   args: string[];
   command: string;
   /** The encode slot execute got (null: the quick lane, or before execute). */
@@ -556,6 +565,8 @@ export class Pipeline implements JobExecutor {
   private readonly checkResults = new Map<string, CheckSourceResult>();
   /** The content hash of each running real job's source, until its result is recorded. */
   private readonly sourceHashes = new Map<string, string>();
+  /** Per job, the warnings and problems of this attempt that belong to a node (`noteNode`). */
+  private readonly nodeProblems = new Map<string, NodeProblem[]>();
 
   constructor(private readonly deps: PipelineDeps) {
     this.settleMinutes = deps.settleMinutes ?? SETTLE_MINUTES;
@@ -567,6 +578,8 @@ export class Pipeline implements JobExecutor {
     job: JobRow,
     ctl: JobControl,
   ): Promise<{ lane: Lane; fit: SlotFit } | { final: true } | ExecuteOutcome> {
+    // A new attempt (or a requeue) starts without the last one's node problems.
+    this.nodeProblems.delete(job.id);
     try {
       return await this.runPrepare(job, ctl);
     } catch (err) {
@@ -916,6 +929,7 @@ export class Pipeline implements JobExecutor {
       coverFiles,
       extraInputFiles,
       lastBuildNode,
+      runningNode: null,
       args,
       command,
       slot: null,
@@ -1027,6 +1041,7 @@ export class Pipeline implements JobExecutor {
     const p = this.prepared.get(job.id);
     this.prepared.delete(job.id);
     this.gpuWarnings.delete(job.id);
+    this.nodeProblems.delete(job.id);
     await this.removeTemp(job.id);
     if (p) this.recordResult(job, p.fp, { ...resultOf(p), outcome: 'cancelled', logPath: null });
     this.sourceHashes.delete(job.id);
@@ -1057,6 +1072,7 @@ export class Pipeline implements JobExecutor {
     if (f.retry && row.attempt === 1 && !hasReplaceJournal(this.deps.db, job.id)) {
       return { requeue: { reason: f.reason, attempt: 2 } };
     }
+    this.traceStopped(row, ctl, p, `failed: ${f.reason}`);
     this.finish(
       row,
       ctl,
@@ -1077,7 +1093,12 @@ export class Pipeline implements JobExecutor {
     // Each attempt has its own log, truncated at the start (a requeue reuses the attempt's).
     await fs.truncate(p.logPath);
     this.stopIfAborted(ctl);
-    ctl.setCurrentNode(p.lastBuildNode);
+    // Copying sidecars, extracting covers, encoding and verifying are the Render's work: it is the
+    // node reported as current (the page lights it) and the one a failure or cancel is traced on.
+    // A walk without a Render (a workflow from before it) has its encoding node in that role.
+    p.runningNode =
+      p.renderNodeId === null ? p.lastBuildNode : { nodeId: p.renderNodeId, workflowPath: [] };
+    ctl.setCurrentNode(p.runningNode);
     job = this.update(job, ctl, { state: 'encoding', progress: null });
 
     // Sidecars are copied (open handle checked, no symlink, size capped) before anything reads them.
@@ -1157,9 +1178,10 @@ export class Pipeline implements JobExecutor {
       ...(this.deps.exec ? { exec: this.deps.exec } : {}),
     });
     this.stopIfAborted(ctl);
-    p.warnings.push(...verified.warnings);
+    for (const w of verified.warnings) this.renderWarn(job, p, w);
     if (verified.ok) {
       p.outputProbe = verified.probe;
+      p.runningNode = null;
       if (p.renderNodeId !== null) {
         this.traceFinish(job, ctl, {
           nodeId: p.renderNodeId,
@@ -1218,6 +1240,15 @@ export class Pipeline implements JobExecutor {
         problems.push(stoppedBefore(ctl));
         break;
       }
+      const at = actionNode(action);
+      p.runningNode = at;
+      // Each finish step is current while it works, as the node its failure is traced on.
+      if (at !== null && !ctl.signal.aborted) ctl.setCurrentNode(at);
+      /** A problem after the write, told on this step's node too. */
+      const problem = (text: string): void => {
+        problems.push(text);
+        this.noteNode(job, at, 'problem', text);
+      };
       let failure: Failure | null = null;
       try {
         if (action.kind === 'size-gate') {
@@ -1234,7 +1265,7 @@ export class Pipeline implements JobExecutor {
               });
               return this.keepOriginal(job, ctl, p, why, extra, afterBytes);
             }
-            problems.push(`size gate after a write: ${why}`);
+            problem(`size gate after a write: ${why}`);
           } else if (gate) {
             this.traceGatePass(job, ctl, gate, saving, action.minSavingPercent);
           }
@@ -1251,9 +1282,9 @@ export class Pipeline implements JobExecutor {
             state.dest = p.realPath;
             state.mode = 'replaced';
             state.lateCancel ||= r.lateCancel;
-            if (r.problem) problems.push(r.problem);
+            if (r.problem) problem(r.problem);
             markWritten();
-            problems.push(...(await this.recycleSidecarsAfterReplace(job, p, r)));
+            for (const text of await this.recycleSidecarsAfterReplace(job, p, r)) problem(text);
             await this.afterReplace(job, ctl, p, state);
           }
         } else if (action.kind === 'move-copy') {
@@ -1269,7 +1300,7 @@ export class Pipeline implements JobExecutor {
             problems.push('a finish node that is not a plugin returned a plugin action');
           } else if (finishPhaseRank(action.phase) < lastPluginRank) {
             // Validation (FINISH_ORDER) forbids this; checked again so it is never silent.
-            problems.push(
+            problem(
               `${action.description}: skipped, its phase ${action.phase} is earlier than a phase that already ran`,
             );
           } else if (!wrote()) {
@@ -1291,9 +1322,10 @@ export class Pipeline implements JobExecutor {
       }
       if (failure !== null) {
         if (!wrote()) return fail(failure);
-        problems.push(failure.reason);
+        problem(failure.reason);
       }
     }
+    p.runningNode = null;
     if (p.written === null) {
       // Unreachable: a path without replace or move-copy ends before the finish actions.
       return this.keepOriginal(job, ctl, p, NEVER_WRITES, [], afterBytes);
@@ -1540,7 +1572,9 @@ export class Pipeline implements JobExecutor {
             p.cpuDecode = true;
             p.args = args;
             p.command = renderCommandLine(config.ffmpegPath, args);
-            p.warnings.push(
+            this.renderWarn(
+              job,
+              p,
               `the Intel GPU encode failed (${cause ?? why}); retried with the source decoded on the CPU`,
             );
             this.deps.log.warn({
@@ -1558,7 +1592,11 @@ export class Pipeline implements JobExecutor {
           p.args = args;
           p.command = renderCommandLine(config.ffmpegPath, args);
           p.softwareFallback = true;
-          p.warnings.push(`the GPU encode failed (${cause ?? why}); encoded in software instead`);
+          this.renderWarn(
+            job,
+            p,
+            `the GPU encode failed (${cause ?? why}); encoded in software instead`,
+          );
           this.deps.log.warn({ msg: 'GPU encode failed, retrying in software', job: job.id });
           const row = job.encodedOn === null ? job : this.update(job, ctl, { encodedOn: null });
           return this.encode(row, ctl, p);
@@ -1574,7 +1612,7 @@ export class Pipeline implements JobExecutor {
       return fail(retryable('encode', cause ? `${why}: ${cause}` : why));
     }
     if (leading > 0) {
-      p.warnings.push(`ignored ${leading} decoder error(s) before the first output frame`);
+      this.renderWarn(job, p, `ignored ${leading} decoder error(s) before the first output frame`);
     }
     if (outputErrors.length > 0) {
       const lines = outputErrors.slice(0, MAX_ERROR_LINES);
@@ -1641,7 +1679,9 @@ export class Pipeline implements JobExecutor {
         );
       }
       if (exact === null && tag !== null && off(tag)) {
-        p.warnings.push(
+        this.renderWarn(
+          job,
+          p,
           `encode wrote ${frames} video frames; the source tag NUMBER_OF_FRAMES says ${tag}`,
         );
       }
@@ -1729,7 +1769,6 @@ export class Pipeline implements JobExecutor {
       const folder = check.library.recycleFolder ?? defaultRecycleFolder(root);
       recycleFolder = isAbsolute(folder) ? folder : resolve(root, folder);
     }
-    ctl.setCurrentNode(null);
     job = this.update(job, ctl, { state: 'replacing', progress: null });
     const result = await replaceOriginalFile(
       {
@@ -1939,11 +1978,51 @@ export class Pipeline implements JobExecutor {
         body,
         signal: AbortSignal.timeout(NOTIFY_TIMEOUT_MS),
       });
-      if (!res.ok) p.warnings.push(`notify ${where} answered ${res.status}`);
+      if (!res.ok)
+        this.warnNode(job, p, actionNode(action), `notify ${where} answered ${res.status}`);
     } catch (err) {
       const why = message(err).split(action.url).join(where);
-      p.warnings.push(`notify ${where} failed: ${why}`);
+      this.warnNode(job, p, actionNode(action), `notify ${where} failed: ${why}`);
     }
+  }
+
+  /**
+   * Records a warning or problem that belongs to `at`'s node with the job's result, where the job
+   * page shows it as that node's badge (it is in the result's warnings or problems too).
+   */
+  private noteNode(
+    job: JobRow,
+    at: ActionNode | null,
+    severity: NodeProblem['severity'],
+    text: string,
+  ): void {
+    if (at === null) return;
+    const list = this.nodeProblems.get(job.id) ?? [];
+    list.push({ workflowPath: [...at.workflowPath], nodeId: at.nodeId, severity, message: text });
+    this.nodeProblems.set(job.id, list);
+  }
+
+  /** A job warning that belongs to `at`'s node. */
+  private warnNode(job: JobRow, p: StepFile, at: ActionNode | null, text: string): void {
+    p.warnings.push(text);
+    this.noteNode(job, at, 'warning', text);
+  }
+
+  /** A warning from the Render's work (encode, verify): told on the node at work, the Render. */
+  private renderWarn(job: JobRow, p: Prepared, text: string): void {
+    this.warnNode(job, p, p.runningNode, text);
+  }
+
+  /**
+   * The job ended (failed, canceled) while `p.runningNode` was at work: its trace says so with
+   * `reason` (`failed: …`, `canceled: …`), so that node reads failed or canceled instead of done,
+   * and the steps after it did not run.
+   */
+  private traceStopped(job: JobRow, ctl: JobControl, p: Prepared, reason: string): void {
+    const at = p.runningNode;
+    if (at === null) return;
+    p.runningNode = null;
+    this.traceFinish(job, ctl, { ...at, source: 'core', port: null, reason });
   }
 
   /** Adds a size-gate entry to the job's trace (the branch it took, or that it depends). */
@@ -2029,6 +2108,7 @@ export class Pipeline implements JobExecutor {
     return this.runNoWriteSteps(job, ctl, p, gate.elseActions, g.afterBytes, g.why, {
       gate: { savedPercent: Math.round(g.saving * 10) / 10, minSavingPercent: g.minSavingPercent },
       where: 'the size gate\u2019s No branch',
+      owner: p,
     });
   }
 
@@ -2050,14 +2130,16 @@ export class Pipeline implements JobExecutor {
     return this.runNoWriteSteps(job, ctl, p, branch.actions, p.fp.sizeBytes, SOURCE_DAMAGED, {
       damage,
       where: 'Render\u2019s Damaged',
+      owner: p,
     });
   }
 
   /**
    * Runs the steps of a side branch where nothing may write (a gate's `else`, Render's Damaged):
    * notifications (outcome `kept_original` with `why`) and plugin steps, in order. A step that
-   * fails or is cut short by a stop is a warning: the original is kept either way. Returns the
-   * warnings for the job.
+   * fails or is cut short by a stop is a warning: the original is kept either way. Each step is
+   * the current node while it works, and `owner`'s node at work (what a failure is traced on).
+   * Returns the warnings for the job.
    */
   private async runNoWriteSteps(
     job: JobRow,
@@ -2066,7 +2148,7 @@ export class Pipeline implements JobExecutor {
     actions: AnyFinishAction[],
     afterBytes: number,
     why: string,
-    side: StepExtra & { where: string },
+    { owner, ...side }: StepExtra & { where: string; owner?: Prepared },
   ): Promise<string[]> {
     const out: string[] = [];
     const kept: Written = {
@@ -2079,6 +2161,9 @@ export class Pipeline implements JobExecutor {
     };
     let lastRank = -1;
     for (const action of actions) {
+      const at = actionNode(action);
+      if (owner) owner.runningNode = at;
+      if (at !== null && !ctl.signal.aborted) ctl.setCurrentNode(at);
       try {
         if (action.kind === 'notify') {
           await this.notify(job, p, action, afterBytes, null, {
@@ -2107,6 +2192,7 @@ export class Pipeline implements JobExecutor {
         break;
       }
     }
+    if (owner) owner.runningNode = null;
     // A required plugin step's failure is a problem on a written job; here it is a warning.
     return [...out, ...kept.problems];
   }
@@ -2321,6 +2407,7 @@ export class Pipeline implements JobExecutor {
   }
 
   private async cancelled(job: JobRow, ctl: JobControl, p: Prepared): Promise<void> {
+    this.traceStopped(job, ctl, p, `${TRACE_CANCELED} the job was canceled during this step`);
     await this.removeTemp(job.id);
     this.finish(job, ctl, 'cancelled', { warnings: p.warnings }, resultOf(p));
   }
@@ -2400,11 +2487,18 @@ export class Pipeline implements JobExecutor {
         lane: null,
         progress: null,
       });
-      if (r.fp)
-        this.recordResult(updated, r.fp, { ...r, outcome: state, warnings: o.warnings ?? [] });
+      if (r.fp) {
+        this.recordResult(updated, r.fp, {
+          ...r,
+          outcome: state,
+          warnings: o.warnings ?? [],
+          nodeProblems: this.nodeProblems.get(job.id) ?? [],
+        });
+      }
       return updated;
     })();
     this.sourceHashes.delete(job.id);
+    this.nodeProblems.delete(job.id);
     ctl.changed(row);
     this.events().publish({ type: 'run.changed', runId: job.runId });
     // Hooks after the row is written; never for a dry run, a cancel or a skip.
@@ -2592,8 +2686,10 @@ export class Pipeline implements JobExecutor {
       });
     } else if (action.required) {
       w.problems.push(result.message);
+      // On a side branch (nothing written) the caller reports it as a warning.
+      this.noteNode(job, action, w.mode === 'kept' ? 'warning' : 'problem', result.message);
     } else {
-      p.warnings.push(`${action.description}: ${result.message}`);
+      this.warnNode(job, p, action, `${action.description}: ${result.message}`);
     }
     // The step's own answer on the job (C2), as the job page and get_job show it. The plugin
     // process has already redacted it with the plugin's secrets (`redactResult`), like the log line.
@@ -2632,6 +2728,7 @@ export class Pipeline implements JobExecutor {
         logPath: r.logPath ?? null,
         warnings: r.warnings ?? [],
         problems: r.problems ?? [],
+        nodeProblems: r.nodeProblems ?? [],
         // Only an outcome that stands on the verified output keeps its probe: a failed or
         // cancelled job threw that output away.
         outputProbe: OUTPUT_OUTCOMES.has(r.outcome) ? (r.outputProbe ?? null) : null,
@@ -2773,6 +2870,8 @@ type ResultInput = {
   logPath: string | null;
   warnings: string[];
   problems: string[];
+  /** The warnings and problems that belong to one node (filled in by `finish`). */
+  nodeProblems: NodeProblem[];
   /** The verified output's probe as the job page reads it (a JobProbe: no raw JSON). */
   outputProbe: JsonValue | null;
   /** The original was kept because the source is damaged ("Damaged source"). */

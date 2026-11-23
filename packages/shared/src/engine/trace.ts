@@ -93,3 +93,19 @@ export const TraceEntrySchema = z.object({
   endedAt: z.iso.datetime(),
 });
 export type TraceEntry = z.infer<typeof TraceEntrySchema>;
+
+/**
+ * What the job recorded against one node besides its trace: a `problem` (after the write, the job
+ * is still done) or a `warning`, worded as in the result's problems and warnings (a webhook that
+ * did not send, a plugin finish step that failed). The job page shows it as the node's badge.
+ */
+export const NodeProblemSchema = z.object({
+  workflowPath: z.array(IdSchema),
+  nodeId: IdSchema,
+  severity: z.enum(['problem', 'warning']),
+  message: z.string(),
+});
+export type NodeProblem = z.infer<typeof NodeProblemSchema>;
+
+/** A trace reason that says the job was canceled while the node ran (`canceled: …`). */
+export const TRACE_CANCELED = 'canceled:';

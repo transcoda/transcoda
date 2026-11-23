@@ -46,13 +46,27 @@ export function kindClassOf(def: NodeInfo | null): string {
   return `kind-${def.kind}`;
 }
 
-/** `glyphOnly`: the icon tile (zoom level "icon") keeps the glyph; the word is in its name. */
-function Badge({ state, glyphOnly = false }: { state: NodeState; glyphOnly?: boolean }) {
+/**
+ * `glyphOnly`: the icon tile (zoom level "icon") keeps the glyph; the word is in its name. `title`:
+ * the job trace's problem text, as a tooltip (the card's name and its problem row say it too).
+ */
+function Badge({
+  state,
+  glyphOnly = false,
+  title,
+}: {
+  state: NodeState;
+  glyphOnly?: boolean;
+  title?: string | undefined;
+}) {
   if (state.word === null) return null;
   // A word without a badge kind (NODE_OUTDATED reported as an error) reads as an error.
   const glyph = state.badge === null ? 'alert' : BADGE_ICON[state.badge];
   return (
-    <span className={`tc-badge tone-${state.border ?? 'red'}${glyphOnly ? ' is-glyph' : ''}`}>
+    <span
+      className={`tc-badge tone-${state.border ?? 'red'}${glyphOnly ? ' is-glyph' : ''}`}
+      title={title}
+    >
       {glyph === '!' ? (
         <span className="tc-badge-bang" aria-hidden="true">
           !
@@ -197,6 +211,7 @@ function BranchType({ type }: { type: 'file' | 'data' }) {
 const TRACE_WORD: Record<TraceNodeData['status'], string | null> = {
   current: 'running',
   failed: 'failed',
+  cancelled: 'canceled',
   untaken: 'not taken',
   done: null,
   pending: null,
@@ -250,6 +265,23 @@ function TraceRow({
 }
 
 /**
+ * Trace view: the job's problems and warnings on this node, one line each, worded "Problem: …" or
+ * "Warning: …" (never colour alone). Drawn only: the card's name says the same to screen readers.
+ */
+function TraceProblems({ problems }: { problems: NonNullable<TraceNodeData['problems']> }) {
+  return (
+    <div className="tc-node-row tc-trace-problems" aria-hidden="true">
+      {problems.map((p, i) => (
+        // biome-ignore lint/suspicious/noArrayIndexKey: a fixed list, rebuilt whole from the job.
+        <span key={i} className={`tc-trace-problem is-${p.severity}`} title={p.message}>
+          {`${p.severity === 'problem' ? 'Problem' : 'Warning'}: ${p.message}`}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+/**
  * A node card (screen 05): kind header, port rows (N2) with handles (N4/N5), the on-node row
  * (N12, `OnNodeRow`), the state badge and border (N6) and the selection toolbar (N8; with two or
  * more cards selected, the first one draws the selection's toolbar). Read-only canvases get no
@@ -292,7 +324,12 @@ export function TcNode({ id, data, selected }: NodeProps<TcNodeType>) {
         ? runWord
         : TRACE_WORD[trace.status]
       : null;
-  const stateWords = [state.word, instance.bypassed ? 'skipped here' : null, traceWord].filter(
+  // The job's problems on this node: the badge's tooltip says what they say; the card's name gives
+  // each its own word (the badge shows only the worst).
+  const problemText = trace?.problems?.map((p) => p.message).join('; ');
+  const problemWords = trace?.problems?.map((p) => `${p.severity}: ${p.message}`).join('; ');
+  const stateWord = problemWords || state.word;
+  const stateWords = [stateWord, instance.bypassed ? 'skipped here' : null, traceWord].filter(
     Boolean,
   );
   const stateSuffix = stateWords.length ? `, ${stateWords.join(', ')}` : '';
@@ -307,6 +344,7 @@ export function TcNode({ id, data, selected }: NodeProps<TcNodeType>) {
   if (trace?.paused) classes.push('is-paused');
   if (trace?.status === 'untaken') classes.push('is-untaken');
   if (trace?.status === 'failed') classes.push('is-failed');
+  if (trace?.status === 'cancelled') classes.push('is-cancelled');
   const reached = trace !== undefined && trace.status !== 'pending' && trace.status !== 'untaken';
 
   // An unknown node still gets a handle per connected port, so the edges into it draw (red
@@ -442,7 +480,7 @@ export function TcNode({ id, data, selected }: NodeProps<TcNodeType>) {
         )}
         {toolbar}
         {valueHandle}
-        <Badge state={state} glyphOnly />
+        <Badge state={state} glyphOnly title={problemText} />
         <span className="tc-node-icon">{icon}</span>
         {handles(inputs, 'in', connectedIn)}
         {handles(outputs, 'out', connectedOut)}
@@ -484,6 +522,7 @@ export function TcNode({ id, data, selected }: NodeProps<TcNodeType>) {
         <OnNodeSubworkflow summary={run} zoom={zoom} plain onFocus={noop} />
       )}
       {reached && trace && <TraceRow id={id} title={title} trace={trace} ghost={ghost} />}
+      {trace?.problems && <TraceProblems problems={trace.problems} />}
     </>
   );
 
@@ -503,7 +542,7 @@ export function TcNode({ id, data, selected }: NodeProps<TcNodeType>) {
       )}
       {toolbar}
       {valueHandle}
-      <Badge state={state} />
+      <Badge state={state} title={problemText} />
       {body(false)}
       {!hasTraceRow && zoom === 'full' && (
         <div className="tc-node-row">

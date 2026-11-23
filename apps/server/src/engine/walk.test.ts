@@ -738,11 +738,12 @@ describe('walk', () => {
       expect(ids(result.path)).toEqual(['in', 'a', 'ro', 'l', 'm', 'n']);
       expect(result.path.find((s) => s.nodeId === 'ro')?.port).toBe('file');
       expect(result.path.find((s) => s.nodeId === 'l')?.port).toBeNull();
+      const at = (nodeId: string) => ({ nodeId, workflowPath: [] });
       expect(result.actions).toEqual([
-        { kind: 'replace', recycleFolder: null },
-        { kind: 'plugin', description: 'test:lib', required: false },
-        { kind: 'plugin', description: 'test:media', required: false },
-        { kind: 'plugin', description: 'test:note', required: false },
+        { kind: 'replace', recycleFolder: null, ...at('ro') },
+        { kind: 'plugin', description: 'test:lib', required: false, ...at('l') },
+        { kind: 'plugin', description: 'test:media', required: false, ...at('m') },
+        { kind: 'plugin', description: 'test:note', required: false, ...at('n') },
       ]);
       expectCovered(result.path, trace);
     });
@@ -935,10 +936,11 @@ describe('walk', () => {
     );
     const result = await walk(deps, input(graph));
     if (result.kind !== 'built') throw new Error(JSON.stringify(result));
+    // Each core action carries the node it came from (a later failure is told on that node).
     expect(result.actions).toEqual([
-      { kind: 'size-gate', minSavingPercent: 15 },
-      { kind: 'replace', recycleFolder: null },
-      { kind: 'size-gate', minSavingPercent: 30 },
+      { kind: 'size-gate', minSavingPercent: 15, nodeId: 'f', workflowPath: [] },
+      { kind: 'replace', recycleFolder: null, nodeId: 'ro', workflowPath: [] },
+      { kind: 'size-gate', minSavingPercent: 30, nodeId: 'f2', workflowPath: [] },
     ]);
   });
 
@@ -983,7 +985,15 @@ describe('walk', () => {
         {
           nodeId: 'sg',
           actionIndex: 0,
-          elseActions: [{ kind: 'notify', url: 'https://example.test/h', method: 'POST' }],
+          elseActions: [
+            {
+              kind: 'notify',
+              url: 'https://example.test/h',
+              method: 'POST',
+              nodeId: 'nw',
+              workflowPath: [],
+            },
+          ],
           elsePath: [{ workflowPath: [], nodeId: 'nw', port: 'file' }],
         },
       ]);
@@ -1044,8 +1054,20 @@ describe('walk', () => {
           nodeId: 'sg',
           actionIndex: 0,
           elseActions: [
-            { kind: 'plugin', description: 'test:media', required: false },
-            { kind: 'plugin', description: 'test:note', required: false },
+            {
+              kind: 'plugin',
+              description: 'test:media',
+              required: false,
+              nodeId: 'em',
+              workflowPath: [],
+            },
+            {
+              kind: 'plugin',
+              description: 'test:note',
+              required: false,
+              nodeId: 'en',
+              workflowPath: [],
+            },
           ],
           elsePath: [
             { workflowPath: [], nodeId: 'em', port: null },
@@ -1120,8 +1142,20 @@ describe('walk', () => {
         nodeId: 'r',
         actionIndex: 0,
         actions: [
-          { kind: 'plugin', description: 'test:lib', required: false },
-          { kind: 'notify', url: 'https://example.test/h', method: 'POST' },
+          {
+            kind: 'plugin',
+            description: 'test:lib',
+            required: false,
+            nodeId: 'dl',
+            workflowPath: [],
+          },
+          {
+            kind: 'notify',
+            url: 'https://example.test/h',
+            method: 'POST',
+            nodeId: 'd1',
+            workflowPath: [],
+          },
         ],
         path: [
           { workflowPath: [], nodeId: 'dl', port: null },
@@ -1180,6 +1214,8 @@ describe('walk', () => {
       expect(result.actions[result.damaged?.actionIndex ?? -1]).toEqual({
         kind: 'render',
         qualityCheck: true,
+        nodeId: 'r',
+        workflowPath: [],
       });
     });
   });
@@ -1237,7 +1273,7 @@ describe('walk', () => {
       const result = await walk(deps, input(graph));
       if (result.kind !== 'built') throw new Error(JSON.stringify(result));
       expect(result.actions).toEqual([
-        { kind: 'replace', recycleFolder: null },
+        { kind: 'replace', recycleFolder: null, nodeId: 'ro', workflowPath: [] },
         {
           kind: 'plugin',
           description: 'tell room b',
