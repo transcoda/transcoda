@@ -1122,6 +1122,16 @@ describe('pipeline', () => {
       expect(warnings(id)).toEqual([
         'the GPU encode failed (hevc_nvenc: OpenEncodeSessionEx failed: unsupported device (2)); encoded in software instead',
       ]);
+      // The Render's work fell back: the warning is told on the Render's node too.
+      expect(findJobResult(t.db, id)?.nodeProblems).toEqual([
+        {
+          workflowPath: [],
+          nodeId: 'render-1',
+          severity: 'warning',
+          message:
+            'the GPU encode failed (hevc_nvenc: OpenEncodeSessionEx failed: unsupported device (2)); encoded in software instead',
+        },
+      ]);
     });
 
     it('the same job on gpu:0 encodes with NVENC on GPU 0', async () => {
@@ -1357,7 +1367,43 @@ describe('pipeline', () => {
       [2, 6],
       [2, 7],
       [2, 8],
+      [2, 9],
     ]);
+    // The retried attempt 1 says nothing; the final failure is told on the Render, whose work
+    // (encode and verify) failed.
+    expect(trace.filter((e) => e.reason.startsWith('failed:'))).toEqual([
+      expect.objectContaining({ attempt: 2, nodeId: 'render-1', workflowPath: [] }),
+    ]);
+    expect(trace.at(-1)?.reason).toBe(`failed: ${job.reason}`);
+  });
+
+  it('an encode that crashes partway fails the job and its Render: the trace says failed with the reason, Replace never ran', async () => {
+    const wf = workflow(
+      line(node('in', 'core:input-manual'), toH264(), node('ro', 'core:replace-original')),
+    );
+    const id = await queue(file(), wf);
+    await t.deps.engine.start();
+    for (const n of [1, 2]) {
+      await until(`spawn ${n}`, () => spawner.calls.length === n);
+      // Killed mid-encode: some output written, then ffmpeg exits non-zero.
+      await spawner.complete({ bytes: 300, code: 137, stderr: ['Killed'] });
+    }
+    const job = await settled(id);
+    expect(job).toMatchObject({ state: 'failed', failureCode: 'encode', attempt: 2 });
+    const trace = listTrace(t.db, id).filter((e) => e.attempt === 2);
+    const failed = trace.filter((e) => e.reason.startsWith('failed:'));
+    expect(failed).toEqual([
+      expect.objectContaining({
+        nodeId: 'render-1',
+        workflowPath: [],
+        phase: 'finish',
+        port: null,
+        reason: `failed: ${job.reason}`,
+      }),
+    ]);
+    // Replace's only entry is the walk's plan; nothing says it ran.
+    expect(trace.filter((e) => e.nodeId === 'ro').map((e) => e.reason)).toHaveLength(1);
+    expect((await stat(file())).size).toBe(1000);
   });
 
   it('fingerprint change before replace → requeued once, then failed "file changed during processing"', async () => {
@@ -1398,6 +1444,12 @@ describe('pipeline', () => {
     expect(spawner.signals).toEqual(['SIGKILL']);
     expect(await listAll(transcodeDir)).toEqual([]);
     expect(findJobResult(t.db, id)?.outcome).toBe('cancelled');
+    // The Render was at work: its trace says canceled (not failed, not done).
+    expect(listTrace(t.db, id).at(-1)).toMatchObject({
+      nodeId: 'render-1',
+      reason: 'canceled: the job was canceled during this step',
+    });
+    expect(listTrace(t.db, id).some((e) => e.reason.startsWith('failed:'))).toBe(false);
 
     // Cancelled while the replacement is being written beside the original: too late.
     await t.deps.engine.stop();
@@ -1738,6 +1790,22 @@ describe('pipeline', () => {
     expect(findJobResult(t.db, id)?.warnings).toEqual([
       'notify https://hooks.example.com/… failed: fetch failed for https://hooks.example.com/…',
     ]);
+    // The warning is tied to the webhook's node (the job page badges it); the job detail has it.
+    const nodeProblems = [
+      {
+        workflowPath: [],
+        nodeId: 'nw',
+        severity: 'warning',
+        message:
+          'notify https://hooks.example.com/… failed: fetch failed for https://hooks.example.com/…',
+      },
+    ];
+    expect(findJobResult(t.db, id)?.nodeProblems).toEqual(nodeProblems);
+    expect(t.deps.engine.jobDetail(id)?.result?.nodeProblems).toEqual(nodeProblems);
+    // It did not fail the node: no failed entry on its trace.
+    expect(
+      listTrace(t.db, id).filter((e) => e.nodeId === 'nw' && e.reason.startsWith('failed:')),
+    ).toEqual([]);
     const stored = JSON.stringify([
       t.db.prepare('SELECT * FROM jobs').all(),
       t.db.prepare('SELECT * FROM job_results').all(),
@@ -3267,14 +3335,14 @@ describe('pipeline: fix round (review)', () => {
     expect(spawner.calls).toEqual([]);
   });
 
-  it('minor: currentNode is the last build node while encoding and verifying, null while replacing', async () => {
+  it('currentNode is the node at work, the one a failure is traced on: Render while encoding and verifying, Replace original while replacing', async () => {
     const id = await queue(file(), encodeAnd(replaceNode()));
     await runOnce(id);
     const at = (state: JobState) =>
       published.find((e) => e.type === 'job.changed' && e.jobId === id && e.state === state);
-    expect(at('encoding')).toMatchObject({ currentNode: { workflowPath: [], nodeId: 'ev' } });
-    expect(at('verifying')).toMatchObject({ currentNode: { nodeId: 'ev' } });
-    expect(at('replacing')).toMatchObject({ currentNode: null });
+    expect(at('encoding')).toMatchObject({ currentNode: { workflowPath: [], nodeId: 'render-1' } });
+    expect(at('verifying')).toMatchObject({ currentNode: { nodeId: 'render-1' } });
+    expect(at('replacing')).toMatchObject({ currentNode: { workflowPath: [], nodeId: 'ro' } });
   });
 
   it('verify progress: each check is published while verifying, filling by checks done', async () => {
@@ -3996,6 +4064,39 @@ describe('pipeline: plugin finish steps and hooks', () => {
     const job = await runOnce(id, 900);
     expect(job.state).toBe('kept_original');
     expect(findJobResult(t.db, id)?.warnings).toEqual(['room is closed']);
+    // Nothing was written: on its node it is a warning too.
+    expect(findJobResult(t.db, id)?.nodeProblems).toEqual([
+      { workflowPath: [], nodeId: 'pe', severity: 'warning', message: 'room is closed' },
+    ]);
+  });
+
+  it('else: a notify step behind a failing gate is the current node while it sends, not the gate', async () => {
+    let id = '';
+    /** The job's current node as last published when the webhook is sent. */
+    let atSend: string | undefined;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        const last = published.filter((e) => e.type === 'job.changed' && e.jobId === id).at(-1);
+        atSend = last?.type === 'job.changed' ? last.currentNode?.nodeId : undefined;
+        return new Response(null, { status: 204 });
+      }),
+    );
+    const wf = workflow(
+      gated(
+        50,
+        [replaceNode()],
+        [
+          node('ne', 'core:notify-webhook', {
+            url: 'https://hooks.example.com/kept',
+            method: 'POST',
+          }),
+        ],
+      ),
+    );
+    id = await queue(file(), wf);
+    expect(await runOnce(id, 900)).toMatchObject({ state: 'kept_original' });
+    expect(atSend).toBe('ne');
   });
 
   it('pass: the context a plugin step gets has no gate', async () => {
@@ -4279,6 +4380,10 @@ describe('pipeline: plugin finish steps and hooks', () => {
       reason: 'finished with a problem: room b did not answer',
     });
     expect(findJobResult(t.db, id)?.problems).toEqual(['room b did not answer']);
+    // Told on the step's node too: the job page badges it.
+    expect(findJobResult(t.db, id)?.nodeProblems).toEqual([
+      { workflowPath: [], nodeId: 'pn', severity: 'problem', message: 'room b did not answer' },
+    ]);
     expect((await stat(file())).size).toBe(600);
     const last = published.filter((e) => e.type === 'job.changed' && e.jobId === id).at(-1);
     expect(last).toMatchObject({ state: 'done', problems: ['room b did not answer'] });
@@ -4292,6 +4397,14 @@ describe('pipeline: plugin finish steps and hooks', () => {
     expect(findJobResult(t.db, id)).toMatchObject({
       problems: [],
       warnings: ['tell room b: room b did not answer'],
+      nodeProblems: [
+        {
+          workflowPath: [],
+          nodeId: 'pn',
+          severity: 'warning',
+          message: 'tell room b: room b did not answer',
+        },
+      ],
     });
   });
 
@@ -4786,6 +4899,15 @@ describe('core:embed-sidecar-subtitles in the pipeline', () => {
     expect(job.reason).toMatch(
       /^finished with a problem: subtitle file a\.de\.srt could not be recycled: /,
     );
+    // Replace original's work left it: the problem is badged on that node.
+    expect(findJobResult(t.db, id)?.nodeProblems).toEqual([
+      {
+        workflowPath: [],
+        nodeId: 'ro',
+        severity: 'problem',
+        message: expect.stringMatching(/^subtitle file a\.de\.srt could not be recycled: /),
+      },
+    ]);
   });
 });
 

@@ -184,6 +184,7 @@ export function jobDetail(over: Partial<JobDetail> = {}): JobDetail {
       replacedTo: 'recycle',
       sourceDamaged: false,
       warnings: [],
+      nodeProblems: [],
       problems: [],
     },
     probe: null,

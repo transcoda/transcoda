@@ -379,6 +379,7 @@ describe('JobPage', () => {
           replacedTo: null,
           sourceDamaged: false,
           warnings: [],
+          nodeProblems: [],
           problems: [],
         },
       }),

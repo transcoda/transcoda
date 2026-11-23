@@ -322,7 +322,7 @@ describe('job tools', () => {
     expect(out.truncated).toBe(true);
   });
 
-  it('get_job on a real failed job names no failing node for an ffmpeg failure and titles the path from graph labels', async () => {
+  it('get_job on a real failed job names the Render as the failing node for an ffmpeg failure and titles the path from graph labels', async () => {
     const { id: wf } = t.deps.workflows.create({ name: 'Encode', kind: 'workflow' }, 'u');
     t.deps.workflows.save(
       {
@@ -380,8 +380,8 @@ describe('job tools', () => {
       path: { nodeId: string; title: string }[];
     };
     expect(report.state).toBe('failed');
-    // ffmpeg fails after the walk and no trace entry records it: no node is named.
-    expect(report.failingNode).toBeNull();
+    // ffmpeg fails after the walk, while the Render is at work: the engine records it there.
+    expect(report.failingNode).toMatchObject({ title: 'Render', reason: 'ffmpeg exited 1' });
     expect(report.path.map((p) => p.title)).toEqual([
       'Manual input',
       'Make it small',
@@ -389,9 +389,7 @@ describe('job tools', () => {
       'Swap in result',
     ]);
     expect(text(res)).toMatch(/^Job \S+: failed — ffmpeg exited 1\n/);
-    expect(text(res)).toContain(
-      'Failed during the ffmpeg encode, not at a workflow node: ffmpeg exited 1',
-    );
-    expect(text(res)).not.toContain('Failing node');
+    expect(text(res)).toMatch(/Failing node: Render \(\S+\) — ffmpeg exited 1/);
+    expect(text(res)).not.toContain('not at a workflow node');
   });
 });

@@ -5,7 +5,14 @@ import type { WorkflowGraph } from '@transcoda/shared';
 import { useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { catalogFixture } from '../../test/fixtures/catalog.ts';
-import { PATH, RUNNING_TRACE, TRACE, traceMain, traceSub } from '../../test/fixtures/trace.ts';
+import {
+  entry,
+  PATH,
+  RUNNING_TRACE,
+  TRACE,
+  traceMain,
+  traceSub,
+} from '../../test/fixtures/trace.ts';
 import { READABLE_ZOOM } from '../flow/openViewport.ts';
 import { fitTrace, type NodeRef, refitTrace, TraceCanvas } from './TraceCanvas.tsx';
 import type { TraceSource } from './traceOverlay.ts';
@@ -220,6 +227,88 @@ describe('TraceCanvas', () => {
       source: { trace: TRACE, steps: PATH, jobState: 'done', currentNode: undefined },
     });
     expect(container.querySelector('.react-flow__attribution')).toBeNull();
+  });
+
+  it("badges a node with the job's warning, as the editor badges an issue: word, tooltip, name and a visible line", async () => {
+    const message = 'notify https://hooks.example/… failed: fetch failed';
+    const { container } = await show({
+      source: {
+        trace: TRACE,
+        steps: PATH,
+        jobState: 'done',
+        currentNode: undefined,
+        nodeProblems: [{ workflowPath: [], nodeId: 'ro-a', severity: 'warning', message }],
+      },
+    });
+    const ro = card('ro-a');
+    const badge = ro.querySelector('.tc-badge');
+    expect(badge?.textContent).toContain('warning');
+    expect(badge?.classList.contains('tone-amber')).toBe(true);
+    expect(badge?.getAttribute('title')).toBe(message);
+    // Said in words, not by colour: in the card's name, and drawn as a line under its reason.
+    expect(ro.getAttribute('aria-label')).toContain(`warning: ${message}`);
+    expect(within(ro).getByText(`Warning: ${message}`)).toBeTruthy();
+    // Only that node, and a problem is not a broken wire into it.
+    expect(card('sg').querySelector('.tc-badge')).toBeNull();
+    expect(container.querySelectorAll('.edge-broken')).toHaveLength(0);
+  });
+
+  it('words a problem "problem" (a job without node problems badges nothing)', async () => {
+    await show({
+      source: {
+        trace: TRACE,
+        steps: PATH,
+        jobState: 'done',
+        currentNode: undefined,
+        nodeProblems: [
+          { workflowPath: [], nodeId: 'ro-a', severity: 'problem', message: 'rescan failed' },
+        ],
+      },
+    });
+    expect(card('ro-a').querySelector('.tc-badge')?.textContent).toContain('problem');
+    expect(within(card('ro-a')).getByText('Problem: rescan failed')).toBeTruthy();
+    cleanup();
+    // Mixed: the badge shows the worst, and the name says each message's own word.
+    await show({
+      source: {
+        trace: TRACE,
+        steps: PATH,
+        jobState: 'done',
+        currentNode: undefined,
+        nodeProblems: [
+          { workflowPath: [], nodeId: 'ro-a', severity: 'problem', message: 'rescan failed' },
+          { workflowPath: [], nodeId: 'ro-a', severity: 'warning', message: 'notify failed' },
+        ],
+      },
+    });
+    expect(card('ro-a').querySelector('.tc-badge')?.textContent).toContain('problem');
+    expect(card('ro-a').getAttribute('aria-label')).toContain(
+      'problem: rescan failed; warning: notify failed',
+    );
+    cleanup();
+    await show({ source: { trace: TRACE, steps: PATH, jobState: 'done', currentNode: undefined } });
+    expect(document.querySelectorAll('.tc-badge')).toHaveLength(0);
+  });
+
+  it('a node the job failed or was canceled at says so in its name and row', async () => {
+    const at = (reason: string, jobState: TraceSource['jobState']) =>
+      show({
+        source: {
+          trace: [...TRACE.slice(0, 9), entry(12, 'ca', 'finish', null, reason)],
+          steps: PATH.slice(0, 9),
+          jobState,
+          currentNode: null,
+        },
+      });
+    await at('failed: encode: ffmpeg was killed', 'failed');
+    expect(card('ca').classList.contains('is-failed')).toBe(true);
+    expect(card('ca').getAttribute('aria-label')).toMatch(/, failed$/);
+    expect(within(card('ca')).getByText('failed: encode: ffmpeg was killed')).toBeTruthy();
+    cleanup();
+    await at('canceled: the job was canceled during this step', 'cancelled');
+    expect(card('ca').classList.contains('is-cancelled')).toBe(true);
+    expect(card('ca').getAttribute('aria-label')).toMatch(/, canceled$/);
+    expect(card('sg').classList.contains('is-untaken')).toBe(true);
   });
 
   it('hides the port labels and handles from screen readers (the cards say what each node did)', async () => {

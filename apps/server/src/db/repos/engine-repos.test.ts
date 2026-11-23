@@ -97,6 +97,7 @@ function result(jobId: string, extra: Partial<JobResultRow> = {}): JobResultRow 
     logPath: null,
     warnings: [],
     problems: [],
+    nodeProblems: [],
     outputProbe: null,
     sourceDamaged: false,
     outputFingerprint: null,
@@ -615,9 +616,22 @@ describe('jobs', () => {
     job('b');
     job('c');
     insertJobResult(db, result('a', { outcome: 'failed', createdAt: at(1).toISOString() }));
-    insertJobResult(db, result('b', { outcome: 'done', createdAt: at(2).toISOString() }));
+    const nodeProblems = [
+      {
+        workflowPath: [],
+        nodeId: 'nw',
+        severity: 'warning' as const,
+        message: 'notify https://hooks.example/… failed: fetch failed',
+      },
+    ];
+    insertJobResult(
+      db,
+      result('b', { outcome: 'done', createdAt: at(2).toISOString(), nodeProblems }),
+    );
     insertJobResult(db, result('c', { outcome: 'dry_run', createdAt: at(3).toISOString() }));
-    expect(findJobResult(db, 'b')).toEqual(result('b', { createdAt: at(2).toISOString() }));
+    expect(findJobResult(db, 'b')).toEqual(
+      result('b', { createdAt: at(2).toISOString(), nodeProblems }),
+    );
     expect(recentRatios(db, 'w1', 20)).toEqual([0.6]);
   });
 
