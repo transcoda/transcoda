@@ -2,6 +2,7 @@ import type { ProbeStream, ProbeSummary, TraceChanges, WorkflowGraph } from '@tr
 import { describe, expect, it } from 'vitest';
 import type { Decision } from '../editor/trace/traceOverlay.ts';
 import {
+  badgeWord,
   damagedSideOf,
   didText,
   type StepContext,
@@ -589,9 +590,137 @@ describe('steps: one sentence and a badge per node', () => {
     );
     expect(list.map((s) => s.sentence)).toEqual([
       "Replaced the original, which is now in this library's recycle folder",
-      '/out is not writable',
+      'Failed: /out is not writable',
       "Didn't run: the job failed first",
     ]);
+  });
+
+  it('an encode killed partway: Render (planned, then failed) reads Failed with the reason; the steps after it did not run', () => {
+    const fin = (key: string, nodeId: string, title: string, type: string, reason = '') =>
+      d({ key, nodeId, title, kind: 'finish', type, phase: 'finish', reason, port: null });
+    const list = steps(
+      [
+        fin('3', 'render-1', 'Render', 'core:render', 'render'),
+        fin('4', 'ro', 'Replace original', 'core:replace-original'),
+        fin('5', 'render-1', 'Render', 'core:render', 'failed: encode: ffmpeg was killed'),
+      ],
+      { ...DONE, state: 'failed' },
+    );
+    expect(list.map((s) => [s.decision.nodeId, s.badge, s.sentence])).toEqual([
+      ['render-1', 'failed', 'Failed: encode: ffmpeg was killed'],
+      ['ro', 'not-run', "Didn't run: the job failed first"],
+    ]);
+    // A plugin step after it never ran either (its planned entry is all it has).
+    const plugin = d({
+      key: '6',
+      nodeId: 'note',
+      title: 'Note',
+      kind: 'finish',
+      phase: 'finish',
+      reason: 'queued',
+      plugin: true,
+      port: null,
+    });
+    const withPlugin = steps(
+      [fin('3', 'render-1', 'Render', 'core:render', 'failed: encode: ffmpeg was killed'), plugin],
+      { ...DONE, state: 'failed' },
+    );
+    expect(withPlugin[1]?.sentence).toBe("Didn't run: the job failed first");
+  });
+
+  it('canceled during the encode: Render reads Canceled, the steps after it did not run', () => {
+    const fin = (key: string, nodeId: string, title: string, type: string, reason = '') =>
+      d({ key, nodeId, title, kind: 'finish', type, phase: 'finish', reason, port: null });
+    const list = steps(
+      [
+        fin('3', 'render-1', 'Render', 'core:render', 'render'),
+        fin('4', 'ro', 'Replace original', 'core:replace-original'),
+        fin(
+          '5',
+          'render-1',
+          'Render',
+          'core:render',
+          'canceled: the job was canceled during this step',
+        ),
+      ],
+      { ...DONE, state: 'cancelled' },
+    );
+    expect(list.map((s) => [s.badge, s.sentence])).toEqual([
+      ['canceled', 'The job was canceled during this step'],
+      ['not-run', "Didn't run: the job was canceled first"],
+    ]);
+    expect(badgeWord('canceled', true)).toBe('Canceled');
+  });
+
+  it("a cancel says only the canceled attempt's steps did not run: an earlier attempt's plugin step ran", () => {
+    const note = (attempt: number, key: string, reason: string) =>
+      d({
+        key,
+        attempt,
+        nodeId: 'note',
+        title: 'Note',
+        kind: 'finish',
+        phase: 'finish',
+        reason,
+        plugin: true,
+        port: null,
+      });
+    const list = steps([note(1, '1', 'noted'), note(2, '2', 'queued')], {
+      ...DONE,
+      state: 'cancelled',
+    });
+    expect(list.map((s) => [s.decision.attempt, s.badge === 'not-run'])).toEqual([
+      [1, false],
+      [2, true],
+    ]);
+    expect(list[1]?.sentence).toBe("Didn't run: the job was canceled first");
+  });
+
+  it("lists the job's problems and warnings on their node's step (last attempt only)", () => {
+    const nw = (attempt: number, key: string) =>
+      d({
+        key,
+        attempt,
+        nodeId: 'nw',
+        title: 'Notify webhook',
+        kind: 'finish',
+        type: 'core:notify-webhook',
+        phase: 'finish',
+        settings: { method: 'POST' },
+      });
+    const message = 'notify https://hooks.example/… failed: fetch failed';
+    const list = steps([nw(1, '1'), nw(2, '2')], {
+      ...DONE,
+      nodeProblems: [{ workflowPath: [], nodeId: 'nw', severity: 'warning', message }],
+    });
+    expect(list.map((s) => s.notes.map((n) => n.text))).toEqual([[], [`Warning: ${message}`]]);
+  });
+
+  it('a notify that could not send says it did not send; one the webhook refused says what it answered', () => {
+    const nw = d({
+      key: '1',
+      nodeId: 'nw',
+      title: 'Notify webhook',
+      kind: 'finish',
+      type: 'core:notify-webhook',
+      phase: 'finish',
+      settings: { method: 'POST' },
+    });
+    const said = (message: string | null) =>
+      one(nw, {
+        ...DONE,
+        nodeProblems:
+          message === null
+            ? []
+            : [{ workflowPath: [], nodeId: 'nw', severity: 'warning', message }],
+      }).sentence;
+    expect(said('notify https://hooks.example/… failed: fetch failed')).toBe(
+      "Didn't send the POST request to the webhook: fetch failed",
+    );
+    expect(said('notify https://hooks.example/… answered 500')).toBe(
+      'Sent a POST request to the webhook, but it answered 500',
+    );
+    expect(said(null)).toBe('Sent a POST request to the webhook');
   });
 
   it('Encode video after an earlier step converted the video says so', () => {
@@ -703,7 +832,17 @@ describe('steps: one sentence and a badge per node', () => {
         reason: 'failed: no hevc encoder is available',
       }),
     );
-    expect(failed.sentence).toBe('No hevc encoder is available');
+    expect(failed.sentence).toBe('Failed: no hevc encoder is available');
+    // Raw error text keeps its case.
+    const killed = one(
+      d({
+        key: '9',
+        nodeId: 'ev',
+        title: 'Encode video',
+        reason: 'failed: ffmpeg killed by SIGKILL',
+      }),
+    );
+    expect(killed.sentence).toBe('Failed: ffmpeg killed by SIGKILL');
     expect(failed.badge).toBe('failed');
     const bypassed = one(
       d({ key: '9', nodeId: 'ev', title: 'Encode video', reason: 'bypassed' }),

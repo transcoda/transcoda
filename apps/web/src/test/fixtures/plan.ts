@@ -198,6 +198,7 @@ export function mapleLaneResult(over: Partial<JobResult> = {}): JobResult {
     replacedTo: null,
     sourceDamaged: false,
     warnings: [],
+    nodeProblems: [],
     problems: [],
     ...over,
   };

@@ -8527,6 +8527,30 @@ a.btn:hover {
   color: var(--danger-text);
 }
 
+/* Canceled while it ran: a dashed neutral ring (the job's canceled chip is neutral too); the
+   word "canceled" is in its row and its name. */
+.tc-node.is-cancelled {
+  outline: 2px dashed var(--line-strong);
+  outline-offset: 2px;
+}
+
+/* The job's problems and warnings on the node, one line each under its reason, in the amber the
+   job's result lists them in. */
+.tc-node-row.tc-trace-problems {
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--sp-1);
+  height: auto;
+  padding-block: 0 var(--sp-3);
+  color: var(--st-dry);
+}
+
+.tc-trace-problem {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
 .tc-trace-reason {
   flex: 1;
   min-width: 0;

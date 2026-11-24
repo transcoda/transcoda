@@ -266,6 +266,7 @@ describe('JobPage: Process again', () => {
           replacedTo: null,
           sourceDamaged: false,
           warnings: [],
+          nodeProblems: [],
           problems: [],
         },
       });
