@@ -44,7 +44,7 @@ export function FilePath({ path }: { path: string }) {
           onClick={() => setOpen(!open)}
         >
           <span className="file-path-chevron" aria-hidden="true">
-            <Icon name="chevron-right" size={14} strokeWidth={2.4} />
+            <Icon name="chevron-right" size={14} />
           </span>
           {open ? 'Hide full path' : 'Show full path'}
         </button>

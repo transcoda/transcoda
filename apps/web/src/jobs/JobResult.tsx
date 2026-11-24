@@ -147,7 +147,7 @@ export function JobResult({
         Result
       </h2>
       <span className="job-result-icon" aria-hidden="true">
-        <Icon name={RESULT_ICON[verdict]} size={15} strokeWidth={2.8} />
+        <Icon name={RESULT_ICON[verdict]} size={15} />
       </span>
       <p className="job-result-head">{headline}</p>
       {text && <p className="job-result-text">{text}</p>}

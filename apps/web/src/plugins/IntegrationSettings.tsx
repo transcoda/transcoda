@@ -95,7 +95,7 @@ function TestResult({ result, effect }: { result: PluginTestOutput; effect: stri
       role="status"
       className={result.ok ? 'plugin-test-result is-ok' : 'plugin-test-result is-fail'}
     >
-      <Icon name={result.ok ? 'check' : 'cross'} size={16} strokeWidth={2.4} round />
+      <Icon name={result.ok ? 'check' : 'cross'} size={16} round />
       <div>
         <span className="plugin-test-line">
           <span>{text.message}</span>
@@ -303,7 +303,7 @@ export function IntegrationSettings({
   if (loadError) {
     return withActions(
       <div className="alert alert-danger" role="alert">
-        <Icon name="cross" strokeWidth={2.4} round />
+        <Icon name="cross" round />
         <span>{`Could not load the settings: ${loadError}`}</span>
       </div>,
     );
@@ -385,7 +385,7 @@ export function IntegrationSettings({
       ) : null}
       {formError ? (
         <div className="alert alert-danger" role="alert">
-          <Icon name="cross" strokeWidth={2.4} round />
+          <Icon name="cross" round />
           <span>{formError}</span>
         </div>
       ) : null}
@@ -395,7 +395,7 @@ export function IntegrationSettings({
         <div
           className={lastTest.result.ok ? 'plugin-test-result is-ok' : 'plugin-test-result is-fail'}
         >
-          <Icon name={lastTest.result.ok ? 'check' : 'cross'} size={16} strokeWidth={2.4} round />
+          <Icon name={lastTest.result.ok ? 'check' : 'cross'} size={16} round />
           <div>
             <span>{testSentence(lastTest, new Date())}</span>
             {!lastTest.result.ok && effect ? (

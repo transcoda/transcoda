@@ -30,7 +30,7 @@ export function EmptyWorkflows({
       </p>
       <div className="empty-actions" aria-busy={busy}>
         <button type="button" className="btn btn-primary" onClick={onAddTrigger} disabled={busy}>
-          <Icon name="plus" size={16} strokeWidth={2.6} />
+          <Icon name="plus" size={16} />
           Add a trigger
         </button>
       </div>
@@ -47,7 +47,7 @@ export function EmptyWorkflows({
             >
               <strong>
                 {ex.name}
-                <Icon name="chevron-right" size={14} strokeWidth={2.6} />
+                <Icon name="chevron-right" size={14} />
               </strong>
               <span>{ex.summary}</span>
             </button>

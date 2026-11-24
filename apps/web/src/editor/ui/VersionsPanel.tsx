@@ -141,7 +141,7 @@ export function VersionsPanel({
           Versions
         </h2>
         <button type="button" className="panel-close" aria-label="Close versions" onClick={onClose}>
-          <Icon name="cross" size={16} strokeWidth={2.4} />
+          <Icon name="cross" size={16} />
         </button>
       </div>
       {load.status === 'loading' && <Loading inline />}

@@ -51,7 +51,7 @@ export function Disclosure({
         onClick={() => set(!open)}
       >
         <span className="disclosure-chevron" aria-hidden="true">
-          <Icon name="chevron-right" size={16} strokeWidth={2.4} />
+          <Icon name="chevron-right" size={16} />
         </span>
         <span className="disclosure-title">{title}</span>
         {meta ? <span className="disclosure-meta">{meta}</span> : null}

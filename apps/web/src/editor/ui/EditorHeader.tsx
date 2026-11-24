@@ -205,7 +205,7 @@ function OverflowMenu({
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
       >
-        <Icon name="more" size={18} strokeWidth={2.4} round />
+        <Icon name="more" size={18} round />
       </button>
       {open && (
         <div
@@ -392,10 +392,10 @@ export function EditorHeader({
         title={pill.tone === 'danger' ? activeIssue : undefined}
         onClick={() => onOpenVersions?.()}
       >
-        {pill.tone === 'active' && <Icon name="check" size={12} strokeWidth={2.4} />}
-        {pill.tone === 'danger' && <Icon name="alert" size={12} strokeWidth={2.4} />}
+        {pill.tone === 'active' && <Icon name="check" size={12} />}
+        {pill.tone === 'danger' && <Icon name="alert" size={12} />}
         {pill.text}
-        <Icon name="chevron-down" size={12} strokeWidth={2.4} />
+        <Icon name="chevron-down" size={12} />
       </button>
       {versionsPanel}
     </div>
@@ -452,7 +452,7 @@ export function EditorHeader({
               disabled={!canUndo}
               onClick={onUndo}
             >
-              <Icon name="undo" size={16} strokeWidth={2.4} />
+              <Icon name="undo" size={16} />
             </button>
             <button
               type="button"
@@ -462,7 +462,7 @@ export function EditorHeader({
               disabled={!canRedo}
               onClick={onRedo}
             >
-              <Icon name="redo" size={16} strokeWidth={2.4} />
+              <Icon name="redo" size={16} />
             </button>
           </div>
         )}
@@ -475,7 +475,7 @@ export function EditorHeader({
             {...(tryReason ? { 'aria-describedby': tryReasonId } : {})}
             onClick={() => onTry?.()}
           >
-            <Icon name="eye" size={15} strokeWidth={2.4} />
+            <Icon name="eye" size={15} />
             {tryLabel(dirty)}
           </button>
         )}

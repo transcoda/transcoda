@@ -51,7 +51,7 @@ function useDebounced<T>(value: T, ms: number): T {
 function LoadError({ what, onRetry, error }: { what: string; onRetry(): void; error: unknown }) {
   return (
     <div className="alert alert-danger" role="alert">
-      <Icon name="cross" strokeWidth={2.4} round />
+      <Icon name="cross" round />
       <span>{`Could not load ${what}: ${describeError(error).message}`}</span>
       <button type="button" className="btn btn-ghost btn-sm" onClick={onRetry}>
         Try again
@@ -154,7 +154,7 @@ function FilesBody({
     if (files.error) {
       return (
         <div className="alert alert-danger" role="alert">
-          <Icon name="cross" strokeWidth={2.4} round />
+          <Icon name="cross" round />
           <span>{`Could not load the files: ${describeError(files.error).message}`}</span>
           <button type="button" className="btn btn-ghost btn-sm" onClick={files.reload}>
             Try again
@@ -252,7 +252,7 @@ export function LibraryPage() {
       return (
         <div className="page">
           <div className="alert alert-danger" role="alert">
-            <Icon name="cross" strokeWidth={2.4} round />
+            <Icon name="cross" round />
             <span>{`Could not load the library: ${failure.message}`}</span>
             <button type="button" className="btn btn-ghost btn-sm" onClick={library.reload}>
               Try again
@@ -363,7 +363,7 @@ export function LibraryPage() {
             Search this library
           </label>
           <span className="plugins-search-icon" aria-hidden="true">
-            <Icon name="search" size={16} strokeWidth={2.4} />
+            <Icon name="search" size={16} />
           </span>
           <input
             id={searchId}

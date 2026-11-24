@@ -70,7 +70,7 @@ describe('JobStateChip', () => {
     expect(chip.textContent).toBe('Damaged source');
     expect(chip.classList.contains('is-damaged')).toBe(true);
     expect(chip.classList.contains('is-failed')).toBe(false);
-    const alert = render(<Icon name="alert" size={13} strokeWidth={2.6} />);
+    const alert = render(<Icon name="alert" size={13} />);
     expect(chip.querySelector('svg')?.innerHTML).toBe(
       alert.container.querySelector('svg')?.innerHTML,
     );

@@ -25,7 +25,7 @@ export function StatusChip({
 }) {
   return (
     <span className={`chip chip-${tone}`} title={title}>
-      {icon ? <Icon name={icon} size={13} strokeWidth={2.6} /> : null}
+      {icon ? <Icon name={icon} size={13} /> : null}
       {children}
       {srText ? (
         <span className="sr-only" id={srId}>

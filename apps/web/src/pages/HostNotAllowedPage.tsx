@@ -12,7 +12,7 @@ export function HostNotAllowedPage({ host }: { host: string }) {
           <h1>Host name not allowed</h1>
         </div>
         <div className="alert alert-danger" role="alert">
-          <Icon name="cross" strokeWidth={2.4} round />
+          <Icon name="cross" round />
           <span>
             This host name isn't allowed: <span className="mono">{name}</span>. Add it to{' '}
             <span className="mono">TRANSCODA_ALLOWED_HOSTS</span>.

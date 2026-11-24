@@ -164,8 +164,8 @@ Colours that are not tokens are named variables at the top of `styles.css`, with
 
 ## Iconography
 
-- `components/Icon.tsx`: inline SVG on a 24 unit grid, `currentColor` stroke 2.2 (2.6 on the primary add), default size 18 (16 in buttons), rect corners rx 2.
-- Source: lucide path data (ISC) plus icons drawn in the handoff, all re-stroked to 2.2.
+- `components/Icon.tsx`: inline SVG on a 24 unit grid, `currentColor` stroke 2.4 at every size (`ICON_STROKE`; `Icon` takes no stroke width), default size 18 (16 in buttons), rect corners rx 2.
+- Source: lucide path data (ISC) plus icons drawn in the handoff, all stroked at 2.4.
 - Kind icons: play (trigger), git-branch (condition), wand (action), flag (finish), database (data).
 - Icons are `aria-hidden`; meaning sits in the adjacent text or the button's accessible name.
 

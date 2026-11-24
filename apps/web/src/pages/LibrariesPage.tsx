@@ -92,7 +92,7 @@ function NonDefaultNotes({ library }: { library: Library }) {
 function ErrorAlert({ children }: { children: string }) {
   return (
     <div className="alert alert-danger" role="alert">
-      <Icon name="cross" strokeWidth={2.4} round />
+      <Icon name="cross" round />
       <span>{children}</span>
     </div>
   );
@@ -632,7 +632,7 @@ export function LibrariesPage() {
             className="btn btn-primary"
             onClick={() => openForm(null)}
           >
-            <Icon name="plus" size={16} strokeWidth={2.6} />
+            <Icon name="plus" size={16} />
             New library
           </button>
         </div>
@@ -640,7 +640,7 @@ export function LibrariesPage() {
 
       {libraries.error ? (
         <div className="alert alert-danger" role="alert">
-          <Icon name="cross" strokeWidth={2.4} round />
+          <Icon name="cross" round />
           <span>Could not load the libraries: {describeError(libraries.error).message}</span>
           <button type="button" className="btn btn-ghost btn-sm" onClick={libraries.reload}>
             Try again
@@ -663,7 +663,7 @@ export function LibrariesPage() {
             files, and you can scan it or dry-run a workflow on it from this page.
           </p>
           <button type="button" className="btn btn-primary" onClick={() => openForm(null)}>
-            <Icon name="plus" size={16} strokeWidth={2.6} />
+            <Icon name="plus" size={16} />
             Add a library
           </button>
         </section>

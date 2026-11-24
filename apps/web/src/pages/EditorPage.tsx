@@ -1084,7 +1084,7 @@ function Editor({
                 )}
                 {hiddenUrl !== null && (
                   <div role="alert" className="canvas-banner is-danger">
-                    <Icon name="alert" size={16} strokeWidth={2.4} round />
+                    <Icon name="alert" size={16} round />
                     <span>{hiddenUrlText(hiddenUrl, state.draft, catalog)}</span>
                     {hiddenUrl
                       .filter((nodeId) => state.draft.nodes.some((n) => n.id === nodeId))
@@ -1169,7 +1169,7 @@ function Editor({
                       aria-label="Close inspector"
                       onClick={() => onSelect(NO_SELECTION)}
                     >
-                      <Icon name="cross" size={16} strokeWidth={2.4} />
+                      <Icon name="cross" size={16} />
                     </button>
                   </div>
                 )}

@@ -151,7 +151,7 @@ export function ListboxSelect({
               onClick={() => pick(i)}
             >
               <span className="listbox-option-check">
-                {o.value === value ? <Icon name="check" size={16} strokeWidth={2.6} /> : null}
+                {o.value === value ? <Icon name="check" size={16} /> : null}
               </span>
               {o.label}
             </div>

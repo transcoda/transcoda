@@ -290,7 +290,7 @@ export function PluginRow({
               onClick={() => setOpen((o) => !o)}
             >
               Settings
-              <Icon name={open ? 'chevron-up' : 'chevron-down'} size={12} strokeWidth={2.6} />
+              <Icon name={open ? 'chevron-up' : 'chevron-down'} size={12} />
             </button>
           </div>
         </div>
@@ -299,7 +299,7 @@ export function PluginRow({
         </div>
         {plugin.blocked ? (
           <div className="alert alert-danger plugin-row-alert" role="alert">
-            <Icon name="cross" strokeWidth={2.4} round />
+            <Icon name="cross" round />
             <span>
               {blockedText(plugin.blocked)}
               {webLink(plugin.blocked.url) ? (
@@ -319,7 +319,7 @@ export function PluginRow({
         ) : null}
         {error ? (
           <div className="alert alert-danger plugin-row-alert" role="alert">
-            <Icon name="cross" strokeWidth={2.4} round />
+            <Icon name="cross" round />
             <span>{error}</span>
           </div>
         ) : null}

@@ -255,15 +255,16 @@ export function isIconName(name: string): name is IconName {
   return Object.hasOwn(PATHS, name);
 }
 
+/** DESIGN.md › Iconography: every icon is stroked at 2.4 on its 24-unit grid, at every size. */
+export const ICON_STROKE = 2.4;
+
 export function Icon({
   name,
   size = 18,
-  strokeWidth = 2.2,
   round = false,
 }: {
   name: IconName;
   size?: number;
-  strokeWidth?: number;
   /** Round line caps (the alert icons in the design use them; nav icons do not). */
   round?: boolean;
 }) {
@@ -274,7 +275,7 @@ export function Icon({
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth={strokeWidth}
+      strokeWidth={ICON_STROKE}
       strokeLinecap={round ? 'round' : undefined}
       aria-hidden="true"
       className="icon"

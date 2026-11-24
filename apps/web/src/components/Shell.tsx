@@ -245,7 +245,7 @@ export function Shell({
     <>
       {error ? (
         <span className="topbar-error" role="alert">
-          <Icon name="cross" size={14} strokeWidth={2.6} round />
+          <Icon name="cross" size={14} round />
           {error}
         </span>
       ) : null}
@@ -282,7 +282,7 @@ export function Shell({
             aria-controls={MAIN_NAV_ID}
             onClick={() => setMenuOpen((o) => !o)}
           >
-            <Icon name="menu" strokeWidth={2.4} />
+            <Icon name="menu" />
           </button>
         ) : (
           <div className="topbar-end">

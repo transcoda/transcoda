@@ -213,7 +213,7 @@ function FilesCards({
         return (
           <Link key={f.jobId} href={`/jobs/${f.jobId}`} className="phone-finished">
             <span className={`phone-finished-icon is-${verdict}`}>
-              <Icon name={VERDICT_ICON[outcomeVerdict(outcome)]} size={16} strokeWidth={2.6} />
+              <Icon name={VERDICT_ICON[outcomeVerdict(outcome)]} size={16} />
             </span>
             <span className="phone-finished-text">
               <b>

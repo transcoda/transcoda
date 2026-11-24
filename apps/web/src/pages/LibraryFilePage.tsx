@@ -125,7 +125,7 @@ function FileJobs({ id, fileId, head }: { id: string; fileId: string; head: Libr
       )}
       {error ? (
         <div className="alert alert-danger" role="alert">
-          <Icon name="cross" strokeWidth={2.4} round />
+          <Icon name="cross" round />
           <span>{`Could not load older jobs: ${describeError(error).message}`}</span>
         </div>
       ) : null}
@@ -178,7 +178,7 @@ export function LibraryFilePage() {
       return (
         <div className="page">
           <div className="alert alert-danger" role="alert">
-            <Icon name="cross" strokeWidth={2.4} round />
+            <Icon name="cross" round />
             <span>{`Could not load the file: ${failure.message}`}</span>
             <button type="button" className="btn btn-ghost btn-sm" onClick={detail.reload}>
               Try again
@@ -248,7 +248,7 @@ export function LibraryFilePage() {
             )}
             {file.gone || !library.error || library.data ? null : (
               <div className="alert alert-danger" role="alert">
-                <Icon name="cross" strokeWidth={2.4} round />
+                <Icon name="cross" round />
                 <span>{`Could not load the library: ${describeError(library.error).message}`}</span>
                 <button type="button" className="btn btn-ghost btn-sm" onClick={library.reload}>
                   Try again

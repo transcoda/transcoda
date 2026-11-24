@@ -72,7 +72,7 @@ function Badge({
           !
         </span>
       ) : (
-        glyph && <Icon name={glyph} size={12} strokeWidth={2.6} round />
+        glyph && <Icon name={glyph} size={12} round />
       )}
       {glyphOnly ? null : state.word}
     </span>
@@ -389,7 +389,7 @@ export function TcNode({ id, data, selected }: NodeProps<TcNodeType>) {
   const icon = def ? (
     <NodeIcon name={def.icon} kind={def.kind} size={iconSize} />
   ) : (
-    <Icon name="plug-off" size={iconSize} strokeWidth={2.6} round />
+    <Icon name="plug-off" size={iconSize} round />
   );
   // Where a shared value's dotted line ends; not a port (nothing connects to it).
   const valueHandle = instance.links ? (

@@ -246,7 +246,7 @@ export function ActivateDialog({
       {errors ? (
         <div className="activate-refused">
           <p className="activate-refused-title">
-            <Icon name="alert" size={16} strokeWidth={2.4} round />
+            <Icon name="alert" size={16} round />
             Can't activate: {n === 1 ? '1 error' : `${n} errors`}
           </p>
           <ul>
@@ -294,7 +294,7 @@ export function ActivateDialog({
           )}
           {libraryBlock !== null ? (
             <p className="activate-library-refused" role="alert">
-              <Icon name="alert" size={16} strokeWidth={2.4} round />
+              <Icon name="alert" size={16} round />
               <span>{libraryBlock}</span>
             </p>
           ) : binding?.kind === 'library' ? (
@@ -317,7 +317,7 @@ export function ActivateDialog({
       )}
       {failed && (
         <div className="alert alert-danger" role="alert">
-          <Icon name="cross" strokeWidth={2.4} round />
+          <Icon name="cross" round />
           <span>{ACTIVATE_FAILED}</span>
         </div>
       )}
