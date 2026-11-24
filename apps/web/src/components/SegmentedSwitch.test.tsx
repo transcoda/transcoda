@@ -7,8 +7,9 @@ const options = [
   { id: 'table', label: 'Table', count: 3 },
 ] as const;
 
+afterEach(cleanup);
+
 describe('SegmentedSwitch', () => {
-  afterEach(cleanup);
   it('moves the choice and focus with ArrowRight', () => {
     const onChange = vi.fn();
     render(<SegmentedSwitch label="View" value="cards" options={options} onChange={onChange} />);

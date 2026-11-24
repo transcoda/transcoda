@@ -2098,10 +2098,15 @@ Rules the code already followed almost everywhere are now checked, so they stay 
 - No `any` and no non-null `!`: these were warnings and are now errors. One `!` was left, in a test.
 - No deprecated imports (`noDeprecatedImports`): React 19's `FormEvent` became `SubmitEvent` in seven submit handlers.
 - Server, package and script file names are kebab-case. Migrations keep `NNNN_snake_case.ts`. Web file names are mixed (PascalCase components, camelCase and kebab-case modules), so they are not checked yet (`useFilenamingConvention`).
-- Custom GritQL rule `scripts/biome/utc-dates.grit`: no local-time `Date` methods (`getHours`, `toLocaleString`, ...) in server or package code, because times are UTC. The two places that mean local time (backup file names, the day in an "already processed" reason) have a `biome-ignore lint/plugin/utc-dates` with the reason.
-- Custom GritQL rule `scripts/biome/test-cleanup.grit`: a web test file that imports `render` or `renderHook` has an `afterEach` that calls `cleanup`. Web tests run without vitest globals, so Testing Library cannot clean up by itself. Six files leaked their DOM between tests and now clean up.
+- Custom GritQL rule `scripts/biome/utc-dates.grit`: no local-time `Date` methods (`getHours`, `toLocaleDateString`, ...) in server or package code, because times are UTC. The two places that mean local time (backup file names, the day in an "already processed" reason) have a `biome-ignore lint/plugin/utc-dates` with the reason.
+  - GritQL has no types. Methods that exist only on `Date` are flagged on any receiver.
+  - `toLocaleString` also exists on numbers. It is flagged only on `new Date(...)`, or on a receiver whose name reads as a date: `d`, or a name containing `Date`, `Time`, `Now`, `When` or `Day`, or ending in `At`.
+  - So `count.toLocaleString()` passes. The trade-off: a date held under another name (`stamp.toLocaleString()`) slips through, and a number named like a date (`runTime.toLocaleString()`) needs a suppression. Server code has no `toLocaleString` call today.
+- Custom GritQL rule `scripts/biome/test-cleanup.grit`: a web test file that imports `render` or `renderHook` has a top-level `afterEach` that calls `cleanup`. Web tests run without vitest globals, so Testing Library cannot clean up by itself.
+  - One inside a `describe` covers only that block, so it does not count.
+  - Six files leaked their DOM between tests and now clean up. One more moved its `afterEach(cleanup)` out of its `describe`.
 - Guard test `apps/server/src/db/migration-conventions.test.ts`: migration files are named `NNNN_snake_case.ts` and numbered 1..N without gaps. Each one is registered in `migrations/index.ts` in order, with a matching `version` and `name`, and has its own test. 1–4 and 12 have no test and are allowlisted there; the list may only shrink.
-- `pnpm check-deps` also refuses a relative import from one workspace package into another (`../../server/src/...`), which would get around the dependency direction.
+- `pnpm check-deps` also refuses a relative import from one workspace package into another (`../../server/src/...`), which would get around the dependency direction. It reads the specifiers with a small tokenizer, so the same text inside a comment, a string, a template literal or a regex is not an import. TypeScript 7 has no JS parser API, and the script has no dependencies. Across all 942 source files, the tokenizer finds the same imports as a statement-level regex.
 - Biome's remaining warnings are only `noDescendingSpecificity` in `styles.css`. Once those are fixed, `biome check --error-on-warnings` can make every warning fail CI.
 
 ## Follow-ups (2026-10-17)

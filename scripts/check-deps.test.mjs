@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { it } from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { checkDeps } from './check-deps.mjs';
+import { checkDeps, importSpecifiers } from './check-deps.mjs';
 
 const repoRoot = join(fileURLToPath(import.meta.url), '..', '..');
 
@@ -60,11 +60,43 @@ it('no package reaches into another one with a relative import', () => {
   pkg('apps/web', '@transcoda/web', {
     'ok.ts': "import { b } from './b.ts';\nimport x from '../../../examples/x.json';\n",
     'b.ts': 'export const b = 1;\n',
+    // The same text in a comment, a string, a template literal or a regex is not an import.
+    'comment.ts': [
+      "// Example: import { a } from '../../server/src/a.ts';",
+      "/* import('../../server/src/a.ts') */",
+      'export const c = 1;',
+      '',
+    ].join('\n'),
+    'string.ts': [
+      `export const s = "import { a } from '../../server/src/a.ts';";`,
+      "export const t = `import { a } from '../../server/src/a.ts'`;",
+      "export const r = /from '..\\/..\\/server'/;",
+      '',
+    ].join('\n'),
   });
   assert.deepEqual(checkDeps(root), []);
-  writeFileSync(join(root, 'apps/web/src/bad.ts'), "import { a } from '../../server/src/a.ts';\n");
+  writeFileSync(
+    join(root, 'apps/web/src/bad.ts'),
+    "import { a } from '../../server/src/a.ts';\nexport const l = () => import('../../server/src/a.ts');\n",
+  );
+  const errors = checkDeps(root);
+  assert.equal(errors.length, 2);
   assert.match(
-    checkDeps(root).join('\n'),
+    errors.join('\n'),
     /apps\/web\/src\/bad\.ts imports \.\.\/\.\.\/server\/src\/a\.ts, a relative path into apps\/server/,
   );
+});
+
+it('importSpecifiers reads statements, not comments, strings or regexes', () => {
+  const text = [
+    "import a from './a.ts';",
+    "import './side.css';",
+    "export { b } from './b.ts';",
+    "const x = 1 / 2; // from './not.ts'",
+    "const re = /'/; const s = 'import(\"./nope.ts\")';",
+    // biome-ignore lint/suspicious/noTemplateCurlyInString: source text with a template literal.
+    'const t = `${"x"}from \'./tpl.ts\'`;',
+    "const lazy = await import('./lazy.ts');",
+  ].join('\n');
+  assert.deepEqual(importSpecifiers(text), ['./a.ts', './side.css', './b.ts', './lazy.ts']);
 });
