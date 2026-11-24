@@ -7,6 +7,8 @@
    Documented exceptions (checked by styles/type-scale-css.test.ts): the auth hero tagline
    (64px, 40px on phone) is a display glyph size of its own, and .markdown code is 0.92em of its
    surrounding text. */
+/* biome-ignore-start lint/style/noHexColors: the named colours and their light values are the one
+   place hex is allowed (DESIGN.md › Color); rules use them through var(). */
 :root {
   --fs-micro: 11px; /* mono caps micro labels; 12px on phone */
   --fs-ui: 14px; /* controls, labels, dense rows */
@@ -52,6 +54,8 @@
   /* Dry-run plan (screen 06): a dropped default's row, the tiles' divider. */
   --plan-drop-row: #221f22;
   --plan-tile-sep: rgb(23 22 26 / 0.25);
+  /* Test encode (screen 06): the letterbox behind a video, black in both themes. */
+  --video-bg: #000;
   color-scheme: dark;
 }
 
@@ -95,6 +99,7 @@
     --finish-text: #0b6e57;
     --plan-drop-row: #f1eee6;
     --plan-tile-sep: rgb(255 255 255 / 0.35);
+    --video-bg: #000;
     color-scheme: light;
   }
 }
@@ -128,8 +133,10 @@
   --finish-text: #0b6e57;
   --plan-drop-row: #f1eee6;
   --plan-tile-sep: rgb(255 255 255 / 0.35);
+  --video-bg: #000;
   color-scheme: light;
 }
+/* biome-ignore-end lint/style/noHexColors: end of the named colours */
 
 *,
 *::before,
@@ -9662,7 +9669,7 @@ a.btn:hover {
   width: 100%;
   max-height: 70vh;
   border-radius: var(--r-md);
-  background: #000;
+  background: var(--video-bg);
 }
 
 .command-block {
