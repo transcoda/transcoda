@@ -1,6 +1,7 @@
-import { NodeToolbar, Position, type ReactFlowState, useStore } from '@xyflow/react';
+import { NodeToolbar, Position } from '@xyflow/react';
 import type { KeyboardEvent } from 'react';
 import { Icon } from '../../components/Icon.tsx';
+import { type FlowState, useFlowState } from './useFlowState.ts';
 
 /** The toolbar's drawn size (Try this node + three icon buttons; 34 px tall + padding) and gaps. */
 const BAR_WIDTH = 300;
@@ -31,7 +32,7 @@ export function toolbarPlacement(
 
 /** The placement for `nodeId` as one string, so the store re-renders the toolbar only on a change. */
 function placementKey(nodeId: string) {
-  return (s: ReactFlowState): string => {
+  return (s: FlowState): string => {
     const n = s.nodeLookup.get(nodeId);
     if (!n || s.width === 0) return 'top/center';
     const [tx, ty, zoom] = s.transform;
@@ -44,7 +45,7 @@ function placementKey(nodeId: string) {
 }
 
 function usePlacement(nodeId: string): Placement {
-  const key = useStore(placementKey(nodeId));
+  const key = useFlowState(['nodes', 'viewport'], placementKey(nodeId));
   const [position, align] = key.split('/') as [Position, Placement['align']];
   return { position, align };
 }

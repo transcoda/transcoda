@@ -91,6 +91,10 @@
     {
       "includes": ["apps/server/src/logger.ts"],
       "linter": { "rules": { "suspicious": { "noConsole": "off" } } }
+    },
+    {
+      "includes": ["apps/web/src/**/*.css"],
+      "linter": { "rules": { "style": { "noHexColors": "error" } } }
     }
   ]
 }

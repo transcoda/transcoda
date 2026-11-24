@@ -8,7 +8,12 @@ import {
   shortId,
   type WorkflowGraph,
 } from '@transcoda/shared';
-import { getViewportForBounds, ReactFlowProvider, useReactFlow, useStoreApi } from '@xyflow/react';
+import {
+  getViewportForBounds,
+  ReactFlowProvider,
+  useReactFlow,
+  useReactFlowStoreApi,
+} from '@xyflow/react';
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { Link, useLocation, useParams, useSearch } from 'wouter';
 import { api, isDefinedError, safe } from '../api/client.ts';
@@ -18,6 +23,7 @@ import { Loading } from '../components/Loading.tsx';
 import { NotFound } from '../components/NotFound.tsx';
 import { useToast } from '../components/Toast.tsx';
 import { type EditorActions, EditorActionsContext } from '../editor/flow/actions-context.ts';
+import { fitPaddingPx } from '../editor/flow/openViewport.ts';
 import { SubworkflowsContext } from '../editor/flow/subworkflows-context.ts';
 import { TRY_BLOCKED } from '../editor/flow/TcToolbar.tsx';
 import { withViewCollapse } from '../editor/flow/toFlow.ts';
@@ -208,7 +214,7 @@ function Editor({
 }) {
   const toast = useToast();
   const rf = useReactFlow();
-  const store = useStoreApi();
+  const store = useReactFlowStoreApi();
   const { catalog, error: catalogError, reload: reloadCatalog } = useCatalog();
   const { libraries } = useLibraries();
   const narrow = useNarrow();
@@ -790,7 +796,7 @@ function Editor({
       const { draft, catalog: cat, editable: canEdit } = latest.current;
       if (!draft || !cat || !canEdit) return;
       // A connection dragged with the mouse wins over the key.
-      if (store.getState().connection.inProgress) return;
+      if (store.connectionStore.getState().connection.inProgress) return;
       const port = freeOutputs(draft, nodeId, cat)[0];
       if (!port) {
         refuse('This node has no free output');
@@ -889,7 +895,8 @@ function Editor({
       };
       // Direct viewport math: React Flow's fitView is queued until the next node update.
       const centreOn = (ids: string[]) => {
-        const { width, height, minZoom } = store.getState();
+        const { width, height } = store.viewportStore.getState();
+        const { minZoom } = store.optionsStore.getState();
         if (ids.length === 0 || width === 0 || height === 0) return;
         // Fit into the part of the canvas the banners and bottom controls leave clear.
         const wrapTop = canvasRef.current?.getBoundingClientRect().top ?? 0;
@@ -897,13 +904,14 @@ function Editor({
         const insetTop = box ? box.top - wrapTop : 0;
         const clearHeight = box ? box.bottom - box.top : height;
         const bounds = rf.getNodesBounds(ids);
+        const fitHeight = clearHeight > 0 ? clearHeight : height;
         const viewport = getViewportForBounds(
           bounds,
           width,
-          clearHeight > 0 ? clearHeight : height,
+          fitHeight,
           minZoom,
           FIT_VIEW.maxZoom,
-          0.4,
+          fitPaddingPx(0.4, width, fitHeight),
         );
         void rf.setViewport({ ...viewport, y: viewport.y + insetTop }, { duration: 200 });
       };
