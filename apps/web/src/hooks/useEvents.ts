@@ -33,6 +33,7 @@ function callEach<T>(listeners: Iterable<Listener<T>>, value: T): void {
     try {
       fn(value);
     } catch (error) {
+      // biome-ignore lint/suspicious/noConsole: the web app has no logger; the browser console is where this belongs.
       console.error('event listener failed', error);
     }
   }
@@ -154,7 +155,6 @@ export function useEvents(onEvent: (e: EngineEvent) => void, deps: unknown[]): v
   const bus = useContext(EventsContext);
   const ref = useRef(onEvent);
   ref.current = onEvent;
-  // biome-ignore lint/correctness/useExhaustiveDependencies: deps are caller-supplied
   useEffect(() => bus.onEvent((e) => ref.current(e)), [bus, ...deps]);
 }
 

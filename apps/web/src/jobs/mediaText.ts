@@ -2,7 +2,7 @@
 // under it, and the two-line size result.
 
 import type { Job, JobMedia } from '@transcoda/contract';
-import { fmtBytes } from '../lib/bytes';
+import { fmtBytes } from '../lib/bytes.ts';
 
 const pad2 = (n: number) => String(n).padStart(2, '0');
 

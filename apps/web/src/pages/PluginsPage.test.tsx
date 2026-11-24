@@ -143,7 +143,7 @@ function installFailed(reason: string) {
 }
 
 /** The official catalog with these entries (each based on the fixture's example entry). */
-function catalogWith(...entries: Array<Record<string, unknown>>) {
+function catalogWith(...entries: Record<string, unknown>[]) {
   const out = catalogOutput();
   const c = out.catalogs[0];
   const base = c?.plugins[0];

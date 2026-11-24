@@ -243,7 +243,7 @@ const ALREADY = /^already ([a-z_]+)(?: by v(\d+))? on ([^\s;]+)(?:; (.+))?$/;
 const DEMUXER_PREFIX = /^\[[^\]]* @ 0x[0-9a-f]+\]\s*/i;
 
 /** ffprobe's own messages, said as what they mean for the file. */
-const PROBE_WORDS: ReadonlyArray<[RegExp, string]> = [
+const PROBE_WORDS: readonly [RegExp, string][] = [
   [/^invalid data found when processing input$/i, 'ffprobe found invalid data in the file'],
   [/^no such file or directory$/i, 'the file is no longer there'],
   [/^permission denied$/i, "Transcoda isn't allowed to read the file"],

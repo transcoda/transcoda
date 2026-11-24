@@ -2,10 +2,12 @@
 // tokens, and icons from components/Icon.tsx. Exceptions: styles/design-exceptions.ts.
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
-import { render } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
-import { Icon } from './components/Icon';
-import { COLOUR_LITERAL_FILES_OK, SVG_FILES_OK } from './styles/design-exceptions';
+import { cleanup, render } from '@testing-library/react';
+import { afterEach, describe, expect, it } from 'vitest';
+import { Icon } from './components/Icon.tsx';
+import { COLOUR_LITERAL_FILES_OK, SVG_FILES_OK } from './styles/design-exceptions.ts';
+
+afterEach(cleanup);
 
 function* sourceFiles(dir: string): Generator<string> {
   for (const entry of readdirSync(dir)) {

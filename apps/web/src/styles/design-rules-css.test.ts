@@ -13,7 +13,7 @@ import {
   spaceValues,
   stylesCss,
   where,
-} from './css-source';
+} from './css-source.ts';
 import {
   CAPS_OK,
   CH_WIDTH_OK,
@@ -25,7 +25,7 @@ import {
   TRANSITION_PROPERTY_OK,
   UNGATED_HOVER,
   Z_LAYERS,
-} from './design-exceptions';
+} from './design-exceptions.ts';
 
 /** The blocks that define the theme's colours: tokens and named variables live here. */
 const THEME_BLOCKS = [

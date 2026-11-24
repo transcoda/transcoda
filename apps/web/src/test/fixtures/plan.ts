@@ -8,7 +8,7 @@ import type { JobPlan, ProbeStream } from '@transcoda/shared';
 
 type PlanStream = JobPlan['streams'][number];
 
-const AUDIO: Array<[lang: string, keep: boolean, defaultBefore: boolean, defaultAfter: boolean]> = [
+const AUDIO: [lang: string, keep: boolean, defaultBefore: boolean, defaultAfter: boolean][] = [
   ['tur', false, true, false],
   ['fra', false, false, false],
   ['eng', true, false, true],
@@ -36,7 +36,7 @@ const SURROUND = new Set([0, 2]);
 /** Languages of the dropped subtitles: none of the kept ones. */
 const DROPPED_SUBS = ['tur', 'fra', 'spa', 'ita', 'por', 'pol', 'nld', 'swe', 'dan', 'nor'];
 
-const SUBS: Array<[lang: string, keep: boolean, forced: boolean]> = Array.from(
+const SUBS: [lang: string, keep: boolean, forced: boolean][] = Array.from(
   { length: 21 },
   (_, i): [string, boolean, boolean] => {
     if (i === 1) return ['eng', true, false];

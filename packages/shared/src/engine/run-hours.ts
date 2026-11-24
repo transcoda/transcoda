@@ -94,9 +94,9 @@ export function nextClosing(rh: RunHours, at: Date, timeZone: string): Date | nu
  * Painted hours as `[start, end)` ranges (end up to 24). With `wrap`, a range that reaches
  * midnight joins the one starting at 00:00 (an every-day strip: 22–07 is one night).
  */
-export function hourRanges(hours: number[], wrap: boolean): Array<[number, number]> {
+export function hourRanges(hours: number[], wrap: boolean): [number, number][] {
   const on = new Set(hours);
-  const out: Array<[number, number]> = [];
+  const out: [number, number][] = [];
   for (let h = 0; h < 24; h += 1) {
     if (!on.has(h)) continue;
     const last = out.at(-1);

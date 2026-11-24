@@ -34,7 +34,7 @@ export interface ScriptedResponse {
 
 export type FakePluginContext = PluginContext & {
   calls: PluginFetchInput[];
-  logs: Array<[LogLevel, string]>;
+  logs: [LogLevel, string][];
 };
 
 /**
@@ -56,7 +56,7 @@ export function fakePluginContext(
 ): FakePluginContext {
   const pending = [...(opts.responses ?? [])];
   const calls: PluginFetchInput[] = [];
-  const logs: Array<[LogLevel, string]> = [];
+  const logs: [LogLevel, string][] = [];
   return {
     settings: opts.settings ?? {},
     async fetch(input): Promise<PluginFetchResponse> {

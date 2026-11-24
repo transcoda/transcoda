@@ -615,8 +615,8 @@ describe('conversion notes read back (the job page parses them)', () => {
 
   it('reads an unclosed note in linear time (CodeQL js/polynomial-redos)', () => {
     const started = performance.now();
-    expect(parseConversion('convert !→! ((' + 'convert !→! (('.repeat(50_000), 'video')).toBeNull();
-    expect(parseConversion('convert a→b (' + 'x'.repeat(50_000), 'video')).toBeNull();
+    expect(parseConversion(`convert !→! ((${'convert !→! (('.repeat(50_000)}`, 'video')).toBeNull();
+    expect(parseConversion(`convert a→b (${'x'.repeat(50_000)}`, 'video')).toBeNull();
     expect(performance.now() - started).toBeLessThan(500);
   });
 });

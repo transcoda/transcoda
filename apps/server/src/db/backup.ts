@@ -29,6 +29,7 @@ export function backupDirOf(configDir: string): string {
 
 function stamp(now: Date): string {
   const p = (n: number, w = 2) => String(n).padStart(w, '0');
+  // biome-ignore lint/plugin/utc-dates: backup file names are in local time (decisions.md, Task 8).
   return `${p(now.getFullYear(), 4)}${p(now.getMonth() + 1)}${p(now.getDate())}-${p(now.getHours())}${p(now.getMinutes())}${p(now.getSeconds())}`;
 }
 

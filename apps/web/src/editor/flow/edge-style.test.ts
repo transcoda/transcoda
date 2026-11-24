@@ -14,7 +14,7 @@ describe('edgeStyle and edgeWord', () => {
   });
 
   it('names every style but plain file flow with a meaning word', () => {
-    const words: Array<[EdgeStyle, string | null]> = [
+    const words: [EdgeStyle, string | null][] = [
       ['edge-broken', 'leads to a broken node'],
       ['edge-data', 'data'],
       ['edge-path', 'path taken'],

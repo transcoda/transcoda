@@ -1,7 +1,7 @@
 // DESIGN.md › Spacing, radius, shadow: spacing and radius come from the token scale.
 import { describe, expect, it } from 'vitest';
-import { declsOf, rulesFor, spaceValues, stylesCss, where } from './css-source';
-import { RADIUS_OK, SPACING_OK } from './design-exceptions';
+import { declsOf, rulesFor, spaceValues, stylesCss, where } from './css-source.ts';
+import { RADIUS_OK, SPACING_OK } from './design-exceptions.ts';
 
 const SPACING_PROP = /^(?:padding|margin|gap|row-gap|column-gap)(?:-[a-z]+)*$/;
 const RADIUS_PROP = /^border(?:-[a-z]+)*-radius$/;

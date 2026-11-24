@@ -1,0 +1,21 @@
+language js
+
+// Web tests run without vitest globals, so Testing Library cannot register its own cleanup:
+// a file that renders must unmount after each test, or the DOM of one test leaks into the next.
+// The afterEach must be top-level (not inside a describe or any other function), so it covers
+// every test in the file, not only those of one describe block.
+`import { $imports } from '@testing-library/react'` as $import where {
+  $imports <: contains or {
+    `render`,
+    `renderHook`
+  },
+  $program <: not contains bubble `afterEach($hook)` as $call where {
+    $hook <: contains `cleanup`,
+    $call <: not within or {
+      JsArrowFunctionExpression(),
+      JsFunctionExpression(),
+      JsFunctionDeclaration()
+    }
+  },
+  register_diagnostic(span=$import, message="A web test that renders must clean up after every test: add a top-level afterEach(cleanup) (cleanup from '@testing-library/react'); one inside a describe covers only that block.", severity="error")
+}

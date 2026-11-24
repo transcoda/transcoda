@@ -30,7 +30,7 @@ describe('list_plugins', () => {
     expect(text(res)).toBe(
       'example 0.1.0 — running, nodes: example:extension-is, example:note, example:fixed-language',
     );
-    const plugins = (res.structuredContent as { plugins: Array<Record<string, unknown>> }).plugins;
+    const plugins = (res.structuredContent as { plugins: Record<string, unknown>[] }).plugins;
     expect(plugins).toHaveLength(1);
     expect(plugins[0]).toMatchObject({ name: 'example', state: 'running', enabled: true });
     expect(plugins[0]).not.toHaveProperty('settings');
@@ -61,7 +61,7 @@ describe('list_plugins', () => {
     expect(text(res)).toBe(
       'example 0.1.0 — stopped (blocklisted: Exfiltrates tokens), nodes: example:extension-is, example:note, example:fixed-language, BLOCKLISTED: Exfiltrates tokens',
     );
-    const plugins = (res.structuredContent as { plugins: Array<Record<string, unknown>> }).plugins;
+    const plugins = (res.structuredContent as { plugins: Record<string, unknown>[] }).plugins;
     expect(plugins[0]?.blocked).toEqual(blocked);
     const { tools } = await client.listTools();
     expect(tools.find((x) => x.name === 'list_plugins')?.description).toContain(

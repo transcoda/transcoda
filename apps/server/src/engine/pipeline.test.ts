@@ -4689,6 +4689,7 @@ describe('pipeline: a real plugin host', () => {
   /** The example plugin whose condition takes `ms` to decide (a window to kill it in). */
   async function slowDecidePlugin(ms: number): Promise<string> {
     const code = readFileSync(fixturePluginPath('example'), 'utf8').replace(
+      // biome-ignore lint/suspicious/noTemplateCurlyInString: the bundled plugin's source text, matched literally.
       'await ctx.plugin.log("debug", `checking ${ctx.file.path}`);',
       `await ctx.plugin.log('debug', 'checking');\n\tawait new Promise((r) => setTimeout(r, ${ms}));`,
     );

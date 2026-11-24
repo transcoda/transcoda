@@ -331,7 +331,7 @@ export function probeFailure(err: unknown, path: string): string {
 }
 
 /** ffprobe's own last message, said as what it means for the file. */
-const PROBE_MEANING: ReadonlyArray<[RegExp, string]> = [
+const PROBE_MEANING: readonly [RegExp, string][] = [
   [/^invalid data found when processing input$/i, "it isn't a valid video file"],
   [/^no such file or directory$/i, 'it is no longer there'],
   [/^permission denied$/i, "Transcoda isn't allowed to read it"],

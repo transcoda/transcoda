@@ -1,4 +1,4 @@
-import { type FormEvent, useId, useState } from 'react';
+import { type SubmitEvent, useId, useState } from 'react';
 import { api, safe } from '../api/client.ts';
 import { describeError } from '../api/errors.ts';
 import { DisabledReason, RequiredMark } from '../components/Form.tsx';
@@ -25,7 +25,7 @@ function AddCatalogForm({ onAdded }: { onAdded(out: PluginCatalogOutput): void }
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
-  async function submit(e: FormEvent) {
+  async function submit(e: SubmitEvent) {
     e.preventDefault();
     if (pending) return;
     if (url.trim() === '') return;

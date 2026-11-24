@@ -332,7 +332,7 @@ export function listVersions(db: Database, id: string): VersionInfo[] {
       `SELECT workflow_id, version, note, created_by, created_at
        FROM workflow_versions WHERE workflow_id = ? ORDER BY version DESC`,
     )
-    .all(id) as Array<Omit<DbVersion, 'graph' | 'format_version'>>;
+    .all(id) as Omit<DbVersion, 'graph' | 'format_version'>[];
   return rows.map((r) => ({
     workflowId: r.workflow_id,
     version: r.version,

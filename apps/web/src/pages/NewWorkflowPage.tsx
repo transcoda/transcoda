@@ -1,5 +1,5 @@
 import type { WorkflowKind } from '@transcoda/shared';
-import { type FormEvent, useId, useState } from 'react';
+import { type SubmitEvent, useId, useState } from 'react';
 import { Link, useLocation, useSearch } from 'wouter';
 import { api, safe } from '../api/client.ts';
 import { RequiredMark } from '../components/Form.tsx';
@@ -29,7 +29,7 @@ export function NewWorkflowPage() {
   const [pending, setPending] = useState(false);
   const id = useId();
 
-  async function onSubmit(e: FormEvent) {
+  async function onSubmit(e: SubmitEvent) {
     e.preventDefault();
     setError(null);
     const trimmed = name.trim();

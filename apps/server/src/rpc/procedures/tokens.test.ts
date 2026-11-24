@@ -21,7 +21,7 @@ describe('tokens procedures', () => {
     expect(res.status).toBe(200);
     const text = await res.text();
     expect(text).not.toContain(created.token);
-    const list = JSON.parse(text) as Array<Record<string, unknown>>;
+    const list = JSON.parse(text) as Record<string, unknown>[];
     expect(list).toHaveLength(1);
     expect(list[0]).toMatchObject({
       id: created.id,

@@ -1,8 +1,8 @@
-import { act, renderHook } from '@testing-library/react';
+import { act, cleanup, renderHook } from '@testing-library/react';
 import type { WorkflowSummary } from '@transcoda/contract';
 import type { Issue } from '@transcoda/shared';
 import { useReducer } from 'react';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { catalogFixture as catalog } from '../../test/fixtures/catalog.ts';
 import { chainMainReplace } from '../../test/fixtures/graphs.ts';
 import {
@@ -13,6 +13,8 @@ import {
 } from './editor-state.ts';
 import { addNode, moveNodes, setLabel, setSettings } from './graph-ops.ts';
 import { tidyUp } from './layout.ts';
+
+afterEach(cleanup);
 
 const summary: WorkflowSummary = {
   id: 'wf1',

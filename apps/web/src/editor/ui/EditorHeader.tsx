@@ -1,9 +1,9 @@
 import type { WorkflowSummary } from '@transcoda/contract';
 import {
-  type FormEvent,
   type KeyboardEvent,
   type ReactNode,
   type RefObject,
+  type SubmitEvent,
   useEffect,
   useId,
   useRef,
@@ -109,7 +109,7 @@ function NoteDialog({
     if (open) setNote('');
   }, [open]);
 
-  function onSubmit(e: FormEvent) {
+  function onSubmit(e: SubmitEvent) {
     e.preventDefault();
     onSave(note.trim());
   }

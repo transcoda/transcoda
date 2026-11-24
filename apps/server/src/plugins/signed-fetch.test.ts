@@ -45,7 +45,7 @@ describe('fetchSigned', () => {
 
   async function serve(files: Record<string, { status?: number; body: string }>) {
     const paths: string[] = [];
-    const conditional: Array<[string, string | undefined]> = [];
+    const conditional: [string, string | undefined][] = [];
     const server = createServer((req, res) => {
       paths.push(req.url ?? '');
       conditional.push([req.url ?? '', req.headers['if-none-match']]);
@@ -81,7 +81,7 @@ describe('fetchSigned', () => {
 
   it('never sends the document conditional headers with the .sig request, but keeps the others', async () => {
     const s = await serve({ '/d.json': { body: doc }, '/d.json.sig': { body: sigFor(doc) } });
-    const seen: Array<Record<string, string | string[] | undefined>> = [];
+    const seen: Record<string, string | string[] | undefined>[] = [];
     const spy = ((u: string | URL | Request, i?: RequestInit) => {
       seen.push(Object.fromEntries(new Headers(i?.headers).entries()));
       return fetch(u, i);

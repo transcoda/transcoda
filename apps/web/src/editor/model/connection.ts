@@ -145,7 +145,7 @@ const SIZE_GATE_TYPE = 'core:size-gate';
 const SIZE_GATE_ELSE_PORT = 'else';
 /** The core write nodes (validate.ts WRITE_TYPES); both also declare the 'write' phase. */
 const WRITE_TYPES: ReadonlySet<string> = new Set(['core:replace-original', 'core:move-copy']);
-const WRITING_PHASES: ReadonlyArray<FinishPhase> = ['gate', 'write'];
+const WRITING_PHASES: readonly FinishPhase[] = ['gate', 'write'];
 
 /**
  * What may follow output `port` of node `nodeId`, mirroring validate.ts `checkPaths`
@@ -219,7 +219,7 @@ export function compatibleTargets(
   graphKind: WorkflowKind,
   rule: NextRule = { kind: 'any' },
 ): NodeInfo[] {
-  const excluded: ReadonlyArray<NodeInfo['kind']> =
+  const excluded: readonly NodeInfo['kind'][] =
     graphKind === 'subworkflow' ? ['trigger', 'finish'] : ['subworkflow-io'];
   return catalog.nodes.filter(
     (n) =>

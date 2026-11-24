@@ -147,7 +147,7 @@ describe('workflow contract scenario: Otter & Finch', () => {
     });
     const bump = got.graph.nodes.find((n) => n.id === 'bump');
     expect(bump).toMatchObject({ typeVersion: 2, settings: { level: 1, label: '' } });
-    const versions = await json<{ versions: Array<Record<string, unknown>> }>(
+    const versions = await json<{ versions: Record<string, unknown>[] }>(
       await send(t2, 'GET', `/workflows/${mainId}/versions`, { headers: asSession(s, false) }),
     );
     expect(versions.versions).toContainEqual(

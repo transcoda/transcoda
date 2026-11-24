@@ -91,7 +91,7 @@ describe('nodes procedures', () => {
     const s = await login(t);
     const res = await send(t, 'GET', '/nodes', { headers: asSession(s, false) });
     expect(res.status).toBe(200);
-    const body = await json<{ nodes: Array<Record<string, unknown>> }>(res);
+    const body = await json<{ nodes: Record<string, unknown>[] }>(res);
     const keep = body.nodes.find((n) => n.type === 'core:keep-languages');
     expect(keep).toMatchObject({
       settingsSchema: { properties: { languages: { default: ['en'] } } },
