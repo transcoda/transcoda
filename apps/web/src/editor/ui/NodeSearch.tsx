@@ -229,7 +229,7 @@ function OpenSearch({
               }}
             >
               {workflow ? (
-                <Icon name="subworkflow" size={14} strokeWidth={2.6} round />
+                <Icon name="subworkflow" size={14} round />
               ) : (
                 <NodeIcon name={def.icon} kind={def.kind} size={14} />
               )}

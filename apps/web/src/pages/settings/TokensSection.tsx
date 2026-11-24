@@ -138,7 +138,7 @@ export function TokensSection() {
 
       {error ? (
         <div className="alert alert-danger" role="alert">
-          <Icon name="cross" strokeWidth={2.4} round />
+          <Icon name="cross" round />
           <span>{error}</span>
         </div>
       ) : null}
@@ -150,7 +150,7 @@ export function TokensSection() {
       {created ? (
         <section className="reveal" aria-labelledby={`${id}-new`}>
           <div className="reveal-head">
-            <Icon name="check" size={20} strokeWidth={2.4} />
+            <Icon name="check" size={20} />
             <h3 id={`${id}-new`}>“{created.name}” created</h3>
             <span className="reveal-warn">Copy it now. It won't be shown again.</span>
           </div>
@@ -261,7 +261,7 @@ export function TokensSection() {
 
       {loadError ? (
         <div className="alert alert-danger" role="alert">
-          <Icon name="cross" strokeWidth={2.4} round />
+          <Icon name="cross" round />
           <span>Could not load tokens</span>
         </div>
       ) : loading && !data ? (
@@ -329,7 +329,7 @@ export function TokensSection() {
                     <td className="token-action">
                       {t.revokedAt ? (
                         <span className="revoked-tag">
-                          <Icon name="cross" size={12} strokeWidth={2.6} />
+                          <Icon name="cross" size={12} />
                           <When iso={t.revokedAt}>{`Revoked ${fmtDayMonth(t.revokedAt)}`}</When>
                         </span>
                       ) : (

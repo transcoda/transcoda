@@ -54,7 +54,7 @@ export function NewWorkflowPage() {
       <form className="panel new-wf-form" onSubmit={onSubmit}>
         {error ? (
           <div className="alert alert-danger" role="alert">
-            <Icon name="cross" strokeWidth={2.4} round />
+            <Icon name="cross" round />
             <span>{error}</span>
           </div>
         ) : null}

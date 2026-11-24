@@ -17,7 +17,7 @@ export function TcValues({ data }: NodeProps<TcValuesNode>) {
     // biome-ignore lint/a11y/useSemanticElements: a card, not a form fieldset.
     <div role="group" aria-label="Shared values" className="tc-values" data-testid="tc-values">
       <div className="tc-values-head">
-        <Icon name="link" size={14} strokeWidth={2.4} round />
+        <Icon name="link" size={14} round />
         Shared values
       </div>
       {entries.length === 0 ? (

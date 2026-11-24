@@ -83,7 +83,7 @@ export function RecyclePage() {
 
       {error && !goneLibrary ? (
         <div className="alert alert-danger" role="alert">
-          <Icon name="cross" strokeWidth={2.4} round />
+          <Icon name="cross" round />
           <span>Could not load the recycle folder: {describeError(error).message}</span>
           <button type="button" className="btn btn-ghost btn-sm" onClick={reload}>
             Try again

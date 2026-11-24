@@ -77,7 +77,7 @@ export function UpdateDialog({
     >
       {dropped.length > 0 ? (
         <div id={note('dropped')} className="alert alert-danger update-block" role="note">
-          <Icon name="cross" strokeWidth={2.4} round />
+          <Icon name="cross" round />
           <div>
             <p>{`These workflows' active versions use a node version ${name} ${version} no longer provides. They stop running after the update until you activate a version without it:`}</p>
             <ul className="update-list" aria-label="Workflows that would stop running">
@@ -90,7 +90,7 @@ export function UpdateDialog({
       ) : null}
       {held.length > 0 ? (
         <div id={note('held')} className="alert alert-danger update-block" role="note">
-          <Icon name="cross" strokeWidth={2.4} round />
+          <Icon name="cross" round />
           <div>
             <p>{`${name} ${version} changes the behavior of nodes in these workflows' active versions. They stop running after the update until you review and activate the new version written for them:`}</p>
             <ul className="update-list" aria-label="Workflows held for review">

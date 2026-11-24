@@ -2109,6 +2109,13 @@ Rules the code already followed almost everywhere are now checked, so they stay 
 - `pnpm check-deps` also refuses a relative import from one workspace package into another (`../../server/src/...`), which would get around the dependency direction. It reads the specifiers with a small tokenizer, so the same text inside a comment, a string, a template literal or a regex is not an import. TypeScript 7 has no JS parser API, and the script has no dependencies. Across all 942 source files, the tokenizer finds the same imports as a statement-level regex.
 - Biome's remaining warnings are only `noDescendingSpecificity` in `styles.css`. Once those are fixed, `biome check --error-on-warnings` can make every warning fail CI.
 
+## 2026-11-24 One icon stroke
+
+- Every icon is stroked at 2.4, at every size. DESIGN.md said 2.2 (2.6 on the primary add), but the code used 2.4 in 60 places and 2.6, 2.8 or 3 in about 40 more, chosen per call site with no rule. 2.4 was the common one, so it became the rule.
+- `Icon` no longer takes a stroke width: it draws `ICON_STROKE` (2.4), so a different stroke cannot come back without the type check failing. Small icons (9 to 13px) that used 2.8 or 3 read a little lighter; larger ones that used 2.2 a little heavier.
+- Strokes that are not icons keep their own widths: edges, charts, the activity ring, the legend and the logo.
+- The DESIGN.md sync test checks the quoted stroke against `ICON_STROKE`.
+
 ## Follow-ups (2026-10-17)
 
 - **mp4 video default normalization.** `normalizeDefaults` treats video like subtitle when the output container is mp4: extra default video flags are cleared and the first kept non-cover video is flagged when none is (note `mp4 cannot have no default video`). The mp4 muxer enables a video track that was told "not default", which verify would report as a stream mismatch. Matroska passes the flag through, so mkv output is unchanged; cover pictures are never touched.

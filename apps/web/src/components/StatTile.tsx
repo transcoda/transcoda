@@ -33,7 +33,7 @@ export function StatTile({
   const inner = (
     <>
       <span className="stat-label">
-        {pressed ? <Icon name="check" size={12} strokeWidth={3} /> : null}
+        {pressed ? <Icon name="check" size={12} /> : null}
         {label}
       </span>
       <span className="stat-value">{value}</span>

@@ -514,7 +514,7 @@ function HistoryCard({
     return (
       <Link href={`/jobs/${job.id}`} className="phone-finished">
         <span className={`phone-finished-icon is-${verdictOf(job)}`}>
-          <Icon name={VERDICT_ICON[verdictOf(job)]} size={16} strokeWidth={2.6} />
+          <Icon name={VERDICT_ICON[verdictOf(job)]} size={16} />
         </span>
         <span className="phone-finished-text">
           <b>{jobTitle(job)}</b>
@@ -895,7 +895,7 @@ export function JobsPage() {
             {finished.map((job) => (
               <Link key={job.id} href={`/jobs/${job.id}`} className="phone-finished">
                 <span className={`phone-finished-icon is-${verdictOf(job)}`}>
-                  <Icon name={VERDICT_ICON[verdictOf(job)]} size={16} strokeWidth={2.6} />
+                  <Icon name={VERDICT_ICON[verdictOf(job)]} size={16} />
                 </span>
                 <span className="phone-finished-text">
                   <b>{jobTitle(job)}</b>

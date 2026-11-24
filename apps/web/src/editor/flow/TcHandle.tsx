@@ -130,7 +130,7 @@ export function TcHandle({
           }}
         >
           <span className="tc-plus-dot">
-            <Icon name="plus" size={12} strokeWidth={3} />
+            <Icon name="plus" size={12} />
           </span>
         </button>
       )}

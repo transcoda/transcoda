@@ -111,7 +111,7 @@ export function CredentialsForm(props: CredentialsFormProps) {
                 }}
               />
             </div>
-            {lengthOk ? <Icon name="check" size={14} strokeWidth={2.6} /> : null}
+            {lengthOk ? <Icon name="check" size={14} /> : null}
             <span>
               {lengthOk
                 ? `${props.minPasswordLength} characters minimum, met`
@@ -122,16 +122,12 @@ export function CredentialsForm(props: CredentialsFormProps) {
       </div>
       {shortError ? (
         <div className="alert alert-danger" role="alert">
-          <Icon name="cross" strokeWidth={2.4} round />
+          <Icon name="cross" round />
           <span>{shortError}</span>
         </div>
       ) : props.error ? (
         <div className={`alert alert-${tone}`} role="alert">
-          <Icon
-            name={tone === 'warning' ? 'clock' : 'cross'}
-            strokeWidth={tone === 'warning' ? 2.2 : 2.4}
-            round
-          />
+          <Icon name={tone === 'warning' ? 'clock' : 'cross'} round />
           <span>{props.error}</span>
         </div>
       ) : null}

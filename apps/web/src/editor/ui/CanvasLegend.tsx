@@ -80,7 +80,7 @@ export function CanvasLegend() {
         }}
       >
         <button type="button" className="panel-close" aria-label="Close key" onClick={close}>
-          <Icon name="cross" size={16} strokeWidth={2.4} />
+          <Icon name="cross" size={16} />
         </button>
         <Row label="Lines">
           <Line kind="file">file flow</Line>
@@ -105,7 +105,7 @@ export function CanvasLegend() {
           <Item swatch="is-running">running (moving border)</Item>
           <span className="legend-item">
             <span className="legend-badge is-missing" aria-hidden="true">
-              <Icon name="plug-off" size={10} strokeWidth={2.8} />
+              <Icon name="plug-off" size={10} />
             </span>
             <span>plugin missing</span>
           </span>
@@ -117,7 +117,7 @@ export function CanvasLegend() {
           </span>
           <span className="legend-item">
             <span className="legend-badge is-unavailable" aria-hidden="true">
-              <Icon name="lock" size={9} strokeWidth={2.8} />
+              <Icon name="lock" size={9} />
             </span>
             <span>not on this server</span>
           </span>

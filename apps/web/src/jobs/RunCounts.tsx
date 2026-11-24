@@ -117,7 +117,7 @@ export function OutcomeChip({
   return (
     <span className="job-chips">
       <span className={`job-chip is-${verdict}`}>
-        <Icon name={VERDICT_ICON[OUTCOME_VERDICT[outcome]]} size={13} strokeWidth={2.6} />
+        <Icon name={VERDICT_ICON[OUTCOME_VERDICT[outcome]]} size={13} />
         {estimate ? `${text} · ${estimate}` : text}
       </span>
       {badge ? <DryRunBadge testEncode={testEncode} /> : null}

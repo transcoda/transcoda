@@ -151,7 +151,7 @@ export function PathMappingsField({
                 role="status"
                 className={result.ok ? 'plugin-test-result is-ok' : 'plugin-test-result is-fail'}
               >
-                <Icon name={result.ok ? 'check' : 'cross'} size={16} strokeWidth={2.4} round />
+                <Icon name={result.ok ? 'check' : 'cross'} size={16} round />
                 <span className="plugin-test-line">{result.message}</span>
               </div>
             ) : null}
@@ -163,7 +163,7 @@ export function PathMappingsField({
         className="btn btn-secondary btn-sm plugin-mappings-add"
         onClick={() => write([...rows, { remote: '', local: '' }])}
       >
-        <Icon name="plus" size={14} strokeWidth={2.6} />
+        <Icon name="plus" size={14} />
         Add mapping
       </button>
       {issue ? (

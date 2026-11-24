@@ -23,7 +23,7 @@ export function Banner({
 }) {
   return (
     <div role="status" aria-live={live ? undefined : 'off'} className={`canvas-banner is-${tone}`}>
-      <Icon name={tone === 'info' ? 'info' : 'alert'} size={16} strokeWidth={2.4} round />
+      <Icon name={tone === 'info' ? 'info' : 'alert'} size={16} round />
       {children}
     </div>
   );

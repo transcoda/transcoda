@@ -81,12 +81,12 @@ describe('DESIGN.md › Iconography', () => {
     for (const f of Object.keys(SVG_FILES_OK)) expect(drawing, f).toContain(f);
   });
 
-  it('draws icons on a 24-unit grid in currentColor, stroke 2.2, size 18, hidden from screen readers', () => {
+  it('draws icons on a 24-unit grid in currentColor, stroke 2.4, size 18, hidden from screen readers', () => {
     const { container } = render(<Icon name="play" />);
     const svg = container.querySelector('svg');
     expect(svg?.getAttribute('viewBox')).toBe('0 0 24 24');
     expect(svg?.getAttribute('stroke')).toBe('currentColor');
-    expect(svg?.getAttribute('stroke-width')).toBe('2.2');
+    expect(svg?.getAttribute('stroke-width')).toBe('2.4');
     expect(svg?.getAttribute('width')).toBe('18');
     expect(svg?.getAttribute('aria-hidden')).toBe('true');
   });

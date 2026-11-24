@@ -26,7 +26,7 @@ function ProblemBadge({ problem }: { problem: GroupProblem }) {
           !
         </span>
       ) : (
-        glyph && <Icon name={glyph} size={12} strokeWidth={2.6} round />
+        glyph && <Icon name={glyph} size={12} round />
       )}
       {problem.word}
     </span>
@@ -58,7 +58,7 @@ export function TcGroup({ id, data, selected }: NodeProps<TcGroupNode>) {
       }}
     >
       <span className="tc-group-toggle-chip">
-        <Icon name={collapsed ? 'chevron-down' : 'chevron-up'} size={12} strokeWidth={2.6} />
+        <Icon name={collapsed ? 'chevron-down' : 'chevron-up'} size={12} />
       </span>
     </button>
   );

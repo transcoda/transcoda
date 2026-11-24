@@ -170,7 +170,7 @@ function CatalogStatus({
     <div className="plugins-source">
       {official ? (
         <span className="plugins-source-item plugins-source-official" title={official.catalogUrl}>
-          <Icon name="check" size={13} strokeWidth={2.6} />
+          <Icon name="check" size={13} />
           Official catalog
         </span>
       ) : null}
@@ -234,7 +234,7 @@ function NeedCard({
   return (
     <section className="plugins-need" aria-labelledby={`${id}-title`}>
       <span className="plugins-need-icon" aria-hidden="true">
-        <Icon name="plug" size={20} strokeWidth={2.2} />
+        <Icon name="plug" size={20} />
       </span>
       <div className="plugins-need-text">
         <h2 id={`${id}-title`}>
@@ -398,7 +398,7 @@ export function PluginsPage() {
             Search plugins
           </label>
           <span className="plugins-search-icon" aria-hidden="true">
-            <Icon name="search" size={16} strokeWidth={2.4} />
+            <Icon name="search" size={16} />
           </span>
           <input
             id={searchId}
@@ -425,7 +425,7 @@ export function PluginsPage() {
 
       {state.pluginsError && !plugins ? (
         <div className="alert alert-danger" role="alert">
-          <Icon name="cross" strokeWidth={2.4} round />
+          <Icon name="cross" round />
           <span>{`Could not load the plugins: ${describeError(state.pluginsError).message}`}</span>
           <button type="button" className="btn btn-ghost btn-sm" onClick={state.reload}>
             Try again
@@ -438,7 +438,7 @@ export function PluginsPage() {
           role="alert"
           title={describeError(state.checkError ?? state.catalogError).message}
         >
-          <Icon name="cross" strokeWidth={2.4} round />
+          <Icon name="cross" round />
           <span>{CATALOG_UNAVAILABLE}</span>
           <button
             type="button"
@@ -454,7 +454,7 @@ export function PluginsPage() {
         .filter((c) => c.error)
         .map((c) => (
           <div key={c.catalogUrl} className="alert alert-danger" role="alert" title={c.error ?? ''}>
-            <Icon name="cross" strokeWidth={2.4} round />
+            <Icon name="cross" round />
             <span>
               {CATALOG_UNREADABLE}
               {c.official ? null : (

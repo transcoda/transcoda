@@ -101,11 +101,11 @@ export function RowMenu({
       >
         {look ? (
           <>
-            <Icon name={look.icon} size={14} strokeWidth={2.4} round />
+            <Icon name={look.icon} size={14} round />
             {look.text}
           </>
         ) : (
-          <Icon name="more" strokeWidth={3} round />
+          <Icon name="more" round />
         )}
       </button>
       {open ? (

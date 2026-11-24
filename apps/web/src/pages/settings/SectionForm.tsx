@@ -143,7 +143,7 @@ export function SectionStatus({ loaded, error }: { loaded: boolean; error: unkno
   if (error) {
     return (
       <div className="alert alert-danger" role="alert">
-        <Icon name="cross" strokeWidth={2.4} round />
+        <Icon name="cross" round />
         <span>{`Could not load the settings: ${describeError(error).message}`}</span>
       </div>
     );
@@ -166,7 +166,7 @@ export function FormError({ message }: { message: string | null }) {
   if (!message) return null;
   return (
     <div className="alert alert-danger" role="alert">
-      <Icon name="cross" strokeWidth={2.4} round />
+      <Icon name="cross" round />
       <span>{message}</span>
     </div>
   );

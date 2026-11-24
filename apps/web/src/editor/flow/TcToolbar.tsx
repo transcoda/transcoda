@@ -107,7 +107,7 @@ export function TcToolbar({
           title={canTry ? undefined : TRY_BLOCKED}
           onClick={onTry}
         >
-          <Icon name="eye" size={11} strokeWidth={2.6} />
+          <Icon name="eye" size={11} />
           Try this node
         </button>
         <button

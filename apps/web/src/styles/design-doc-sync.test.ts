@@ -4,6 +4,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { ICON_STROKE } from '../components/Icon.tsx';
 import { declsOf, stylesCss, tokensCss } from './css-source.ts';
 import { CONTAINER_WIDTHS } from './design-exceptions.ts';
 
@@ -92,6 +93,11 @@ describe('DESIGN.md matches the stylesheet', () => {
         `${MISMATCH}: --kind-${kind}`,
       ).toBe(lightHex);
     }
+  });
+
+  it('icon stroke', () => {
+    const stroke = /`currentColor` stroke ([\d.]+)/.exec(design)?.[1];
+    expect(stroke, `${MISMATCH}: the icon stroke`).toBe(String(ICON_STROKE));
   });
 
   it('container query widths', () => {

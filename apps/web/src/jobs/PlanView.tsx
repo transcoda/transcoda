@@ -61,8 +61,7 @@ function DefaultCell({ s }: { s: PlanStream }) {
   if (s.action === 'drop' && before) {
     return (
       <span className="plan-default">
-        <b className="plan-default-was">Yes</b>{' '}
-        <Icon name="chevron-right" size={14} strokeWidth={2.6} />{' '}
+        <b className="plan-default-was">Yes</b> <Icon name="chevron-right" size={14} />{' '}
         <span className="muted">Gone</span>
       </span>
     );
@@ -72,8 +71,7 @@ function DefaultCell({ s }: { s: PlanStream }) {
   const why = s.action === 'drop' ? null : defaultWhy(s.note);
   return (
     <span className="plan-default">
-      <span className="muted">{yesNo(before)}</span>{' '}
-      <Icon name="chevron-right" size={14} strokeWidth={2.6} />{' '}
+      <span className="muted">{yesNo(before)}</span> <Icon name="chevron-right" size={14} />{' '}
       <b className={after ? 'plan-default-now' : undefined}>{yesNo(after)}</b>
       {why && <span className="plan-default-why">{why}</span>}
     </span>
@@ -84,7 +82,7 @@ function ResultChip({ action }: { action: PlanStream['action'] }) {
   const r = RESULT[action];
   return (
     <span className={`plan-result plan-result-${action}`}>
-      <Icon name={r.icon} size={13} strokeWidth={2.8} />
+      <Icon name={r.icon} size={13} />
       {r.word}
     </span>
   );
@@ -172,7 +170,7 @@ function LanguageTable({
                 <td colSpan={4} className="plan-drop-cell">
                   <details className="plan-drops">
                     <summary>
-                      <Icon name="chevron-right" size={14} strokeWidth={2.6} />
+                      <Icon name="chevron-right" size={14} />
                       <span>{line}</span>
                     </summary>
                     <div className="plan-drop-list">
@@ -252,7 +250,7 @@ function SidecarTable({ plan }: { plan: JobPlan }) {
                   </td>
                   <td className="plan-cell plan-cell-result" data-label="Result">
                     <span className={`plan-result plan-result-${r.cls}`}>
-                      <Icon name={r.icon} size={13} strokeWidth={2.8} />
+                      <Icon name={r.icon} size={13} />
                       {r.word}
                     </span>
                   </td>

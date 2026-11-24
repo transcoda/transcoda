@@ -112,7 +112,7 @@ export function Dialog({
         <>
           {showClose && (
             <button type="button" className="dialog-close" aria-label="Close" onClick={onClose}>
-              <Icon name="cross" size={16} strokeWidth={2.4} />
+              <Icon name="cross" size={16} />
             </button>
           )}
           <h2 id={titleId} className="dialog-title">

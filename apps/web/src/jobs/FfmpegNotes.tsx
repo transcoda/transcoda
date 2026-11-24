@@ -161,7 +161,7 @@ export function RawOutput({
       }}
     >
       <summary>
-        <Icon name="chevron-right" size={12} strokeWidth={2.6} />
+        <Icon name="chevron-right" size={12} />
         {rawLabel(parts)}
         {log ? (
           <span className="ffmpeg-raw-count">{`${logLineCount(log).toLocaleString('en')} ${

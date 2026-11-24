@@ -243,7 +243,7 @@ export function Palette({
             <PaletteButton
               key={workflow.id}
               item={{ kind: 'subworkflow', workflow }}
-              icon={<Icon name="subworkflow" size={14} strokeWidth={2.6} round />}
+              icon={<Icon name="subworkflow" size={14} round />}
               title={workflow.name}
               reason={null}
               disabled={readOnly}
@@ -258,7 +258,7 @@ export function Palette({
           {showNote && (
             <PaletteButton
               item={{ kind: 'note' }}
-              icon={<Icon name="note" size={14} strokeWidth={2.4} round />}
+              icon={<Icon name="note" size={14} round />}
               title={NOTE_TITLE}
               reason={null}
               disabled={readOnly}
@@ -268,7 +268,7 @@ export function Palette({
           {showValues && (
             <PaletteButton
               item={{ kind: 'values' }}
-              icon={<Icon name="link" size={14} strokeWidth={2.4} round />}
+              icon={<Icon name="link" size={14} round />}
               title={VALUES_TITLE}
               reason={hasValues ? 'already on the canvas' : null}
               disabled={readOnly || hasValues}

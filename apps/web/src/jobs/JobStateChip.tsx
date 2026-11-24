@@ -42,7 +42,7 @@ export function DryRunBadge({ testEncode = false }: { testEncode?: boolean }) {
 export function PausedChip() {
   return (
     <span className="job-chip is-paused">
-      <Icon name="pause" size={13} strokeWidth={2.6} />
+      <Icon name="pause" size={13} />
       Paused
     </span>
   );
@@ -63,11 +63,7 @@ export function JobStateChip({ job, frozen = false }: { job: Job; frozen?: boole
   return (
     <span className="job-chips">
       <span className={`job-chip is-${verdict}${working ? ' is-working' : ''}`}>
-        <Icon
-          name={planned ? 'state-planned' : VERDICT_ICON[verdict]}
-          size={13}
-          strokeWidth={2.6}
-        />
+        <Icon name={planned ? 'state-planned' : VERDICT_ICON[verdict]} size={13} />
         {[stateWord(job), estimateTag(job)].filter(Boolean).join(' · ')}
       </span>
       {job.dryRun ? <DryRunBadge testEncode={job.testEncode === true} /> : null}

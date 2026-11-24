@@ -20,7 +20,5 @@ export function NodeIcon({
   kind: NodeKind;
   size?: number;
 }) {
-  return (
-    <Icon name={isIconName(name) ? name : KIND_ICON[kind]} size={size} strokeWidth={2.6} round />
-  );
+  return <Icon name={isIconName(name) ? name : KIND_ICON[kind]} size={size} round />;
 }

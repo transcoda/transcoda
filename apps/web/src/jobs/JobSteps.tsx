@@ -140,7 +140,7 @@ function Row({
   return (
     <li className={`job-step depth-${Math.min(d.depth, 3)}${step.quiet ? ' is-quiet' : ''}`}>
       <span className={`job-step-icon kind-${kind}`} aria-hidden="true">
-        {KIND_ICON[kind] ? <Icon name={KIND_ICON[kind]} size={14} strokeWidth={2.4} /> : null}
+        {KIND_ICON[kind] ? <Icon name={KIND_ICON[kind]} size={14} /> : null}
       </span>
       <div className="job-step-body">
         <div className="job-step-row">
@@ -167,7 +167,7 @@ function Row({
           </button>
           {step.badge && (
             <span className={`step-badge is-${step.badge}`}>
-              <Icon name={BADGE_ICON[step.badge]} size={11} strokeWidth={2.8} />
+              <Icon name={BADGE_ICON[step.badge]} size={11} />
               {badgeWord(step.badge, past)}
             </span>
           )}
@@ -180,7 +180,7 @@ function Row({
               aria-label={`Details for ${d.title}`}
               onClick={() => setOpen((v) => !v)}
             >
-              <Icon name={open ? 'chevron-down' : 'chevron-right'} size={14} strokeWidth={2.6} />
+              <Icon name={open ? 'chevron-down' : 'chevron-right'} size={14} />
             </button>
           ) : (
             <span className="job-step-more" aria-hidden="true" />

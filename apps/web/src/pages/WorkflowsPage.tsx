@@ -377,7 +377,7 @@ function DeleteDialog({
       )}
       {error ? (
         <div className="alert alert-danger" role="alert">
-          <Icon name="cross" strokeWidth={2.4} round />
+          <Icon name="cross" round />
           <span>{error}</span>
           <button type="button" className="btn btn-ghost btn-sm" onClick={onConfirm}>
             Try again
@@ -650,7 +650,7 @@ export function WorkflowsPage() {
         </div>
         <div className="page-actions">
           <Link href="/workflows/new?kind=workflow" className="btn btn-primary">
-            <Icon name="plus" size={16} strokeWidth={2.6} />
+            <Icon name="plus" size={16} />
             New workflow
           </Link>
           {workflows && workflows.length > 0 ? (
@@ -677,7 +677,7 @@ export function WorkflowsPage() {
 
       {error ? (
         <div className="alert alert-danger" role="alert">
-          <Icon name="cross" strokeWidth={2.4} round />
+          <Icon name="cross" round />
           <span>Could not load the workflows: {describeError(error).message}</span>
           <button type="button" className="btn btn-ghost btn-sm" onClick={reload}>
             Try again
