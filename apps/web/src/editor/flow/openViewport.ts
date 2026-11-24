@@ -8,14 +8,32 @@ import { getViewportForBounds, type Rect, type Viewport } from '@xyflow/react';
  */
 export const READABLE_ZOOM = 0.75;
 
+/**
+ * A fit padding as React Flow 12 read a plain number `p`: the graph gets 1 / (1 + p) of the pane,
+ * half the rest on each side (0.2 leaves 8.3 % per side). React Flow 13 reads a plain number as
+ * pixels, so the canvases pass this percentage to `fitView` to keep the fit they had.
+ */
+export function fitPadding(p: number): `${number}%` {
+  return `${(50 * p) / (1 + p)}%`;
+}
+
+/**
+ * The same padding in whole pixels for a `width` x `height` pane, rounded as React Flow 12
+ * rounded it: for `getViewportForBounds`, where the pane size is known.
+ */
+export function fitPaddingPx(p: number, width: number, height: number): { x: number; y: number } {
+  const side = (length: number) => Math.floor((length - length / (1 + p)) * 0.5);
+  return { x: side(width), y: side(height) };
+}
+
 /** Space (screen px) kept between the pane's left edge and the trigger when the graph is cut. */
 const OPEN_PAD = 48;
 
 /**
- * The viewport a canvas opens at: the whole graph (`fit`, at most `maxZoom`, with `padding`)
- * when that is at `floor` or above; otherwise `floor`, with the trigger (`anchor`) `OPEN_PAD` in
- * from the left so the flow reads on to the right. Vertically the graph is centred when it fits
- * at that zoom, else the trigger is.
+ * The viewport a canvas opens at: the whole graph (`fit`, at most `maxZoom`, with `padding` read
+ * as in `fitPadding`) when that is at `floor` or above; otherwise `floor`, with the trigger
+ * (`anchor`) `OPEN_PAD` in from the left so the flow reads on to the right. Vertically the graph
+ * is centred when it fits at that zoom, else the trigger is.
  */
 export function openViewport(
   bounds: Rect,
@@ -23,7 +41,14 @@ export function openViewport(
   pane: { width: number; height: number },
   { maxZoom = 1, padding = 0.2, floor = READABLE_ZOOM } = {},
 ): Viewport {
-  const fit = getViewportForBounds(bounds, pane.width, pane.height, 0, maxZoom, padding);
+  const fit = getViewportForBounds(
+    bounds,
+    pane.width,
+    pane.height,
+    0,
+    maxZoom,
+    fitPaddingPx(padding, pane.width, pane.height),
+  );
   if (fit.zoom >= floor) return fit;
   const zoom = floor;
   const graphFits = bounds.height * zoom <= pane.height - 2 * OPEN_PAD;

@@ -1,4 +1,4 @@
-import { MiniMap, type MiniMapNodeProps, type Node, useStore } from '@xyflow/react';
+import { MiniMap, type MiniMapNodeProps, type Node, useNodesStore } from '@xyflow/react';
 import { kindClassOf } from './TcNode.tsx';
 import type { TcGroupNode, TcNode } from './types.ts';
 
@@ -54,7 +54,7 @@ const MAP_SIZE = { width: 150, height: 100 };
 /** N11: the overview keeps each node's kind colour, so a broken or unready node stands out. */
 export function TcMiniMap() {
   // A string, so the minimap re-renders only when the count changes.
-  const label = useStore((s) => minimapLabel(s.nodes));
+  const label = useNodesStore((s) => minimapLabel(s.nodes));
   return (
     <MiniMap
       className="tc-minimap"

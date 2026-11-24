@@ -4,14 +4,14 @@ import {
   BackgroundVariant,
   Controls,
   getNodesBounds,
-  type NodeChange,
+  type NodeChangeset,
   ReactFlow,
   ReactFlowProvider,
-  type ReactFlowState,
   useNodesInitialized,
   useReactFlow,
-  useStore,
+  useViewportStore,
   type Viewport,
+  type ViewportStore,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -23,7 +23,7 @@ import { READABLE_ZOOM } from '../flow/openViewport.ts';
 import { toFlow, withViewCollapse } from '../flow/toFlow.ts';
 import type { TcFlowEdge, TcFlowNode, TraceOverlay } from '../flow/types.ts';
 import { ZoomVar } from '../flow/ZoomVar.tsx';
-import { MIN_ZOOM } from '../ui/Canvas.tsx';
+import { CONTROLS_FIT_VIEW, MIN_ZOOM } from '../ui/Canvas.tsx';
 import { TraceActionsContext } from './trace-context.ts';
 import { spreadCards, spreadMembers } from './traceLayout.ts';
 import { buildTraceOverlay, pathKey, type TraceSource } from './traceOverlay.ts';
@@ -98,7 +98,7 @@ export function refitTrace(
     : next;
 }
 
-const paneWidth = (s: ReactFlowState) => s.width;
+const paneWidth = (s: ViewportStore) => s.width;
 
 /**
  * The first fit, once the cards are measured and spread (`laidOut`), and the pane has a size (a
@@ -120,7 +120,7 @@ function FitOnce({
 }) {
   const flow = useReactFlow();
   const ready = useNodesInitialized();
-  const width = useStore(paneWidth);
+  const width = useViewportStore(paneWidth);
   const fitted = useRef<Fit | null>(null);
   useEffect(() => {
     if (!ready || !laidOut || width === 0) return;
@@ -255,7 +255,7 @@ export function TraceCanvas({
       laidOut: withSizes.every((n) => n.hidden || n.measured !== undefined),
     };
   }, [derived.nodes, tick]);
-  const onNodesChange = useCallback((changes: NodeChange<FlowNode>[]) => {
+  const onNodesChange = useCallback((changes: NodeChangeset<FlowNode>) => {
     let changed = false;
     for (const c of changes) {
       if (c.type === 'dimensions' && c.dimensions) {
@@ -327,7 +327,10 @@ export function TraceCanvas({
                 zoomOnDoubleClick={!phone}
                 minZoom={MIN_ZOOM}
                 ariaLabelConfig={ARIA_LABELS}
-                colorMode="dark"
+                // The editor canvas's React Flow settings (see Canvas.tsx).
+                forceColorMode="dark"
+                elevateEdgesOnSelect={false}
+                paneDragThreshold={0}
                 // No attribution link on the job page (React Flow is MIT licensed).
                 proOptions={{ hideAttribution: true }}
               >
@@ -343,6 +346,7 @@ export function TraceCanvas({
                   position="bottom-right"
                   orientation="horizontal"
                   showInteractive={false}
+                  fitViewOptions={CONTROLS_FIT_VIEW}
                 />
                 {/* A phone cannot pan the graph (a drag scrolls the page), so it fits whole at any zoom. */}
                 <FitOnce

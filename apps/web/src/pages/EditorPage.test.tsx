@@ -1,5 +1,13 @@
 import { ORPCError } from '@orpc/client';
-import { act, cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
+import {
+  act,
+  cleanup,
+  createEvent,
+  fireEvent,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import type { WorkflowDetail, WorkflowSummary } from '@transcoda/contract';
 import type { Issue, WorkflowGraph } from '@transcoda/shared';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -1404,8 +1412,11 @@ describe('EditorPage on-node settings, groups and bypass (Task 14)', () => {
       };
       fireEvent.dragStart(item, { dataTransfer });
       const pane = container.querySelector('.react-flow') as HTMLElement;
-      fireEvent.dragOver(pane, { dataTransfer, clientX: 300, clientY: 200 });
-      fireEvent.drop(pane, { dataTransfer, clientX: 300, clientY: 200 });
+      fireEvent.dragOver(pane, { dataTransfer });
+      // jsdom has no DragEvent, so the drop's pointer position is set on the event by hand.
+      const drop = createEvent.drop(pane, { dataTransfer });
+      Object.defineProperties(drop, { clientX: { value: 300 }, clientY: { value: 200 } });
+      fireEvent(pane, drop);
       expect(await screen.findByRole('group', { name: /^Action Run sub-workflow/ })).toBeTruthy();
 
       fireEvent.click(screen.getByRole('button', { name: 'Save v4' }));
@@ -1413,6 +1424,8 @@ describe('EditorPage on-node settings, groups and bypass (Task 14)', () => {
       const [arg] = mocks.save.mock.calls[0] ?? [];
       const run = (arg.graph as WorkflowGraph).nodes.find((n) => n.type === 'core:run-subworkflow');
       expect(run?.settings).toEqual({ subworkflowId: 'sub-lang', version: 2, overrides: {} });
+      // Placed where it was dropped (a real position, not NaN).
+      expect(Number.isFinite(run?.position.x) && Number.isFinite(run?.position.y)).toBe(true);
     });
 
     it('EditorPage: "c" offers named sub-workflows; picking one adds a connected Run node pinned to its current version', async () => {

@@ -5,22 +5,21 @@ import {
   type WorkflowGraph,
 } from '@transcoda/shared';
 import {
-  applyNodeChanges,
   Background,
   BackgroundVariant,
   type Connection,
   ControlButton,
   Controls,
   type Edge,
-  type EdgeChange,
+  type EdgeChangeset,
   type FinalConnectionState,
-  type NodeChange,
+  type NodeChangeset,
   ReactFlow,
-  type ReactFlowState,
   useNodesInitialized,
   useReactFlow,
-  useStore,
+  useViewportStore,
   type Viewport,
+  type ViewportStore,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import {
@@ -37,7 +36,7 @@ import { Icon } from '../../components/Icon.tsx';
 import type { Catalog } from '../../hooks/useCatalog.ts';
 import { type FlowChangeResult, fromEdgeChanges, fromNodeChanges } from '../flow/fromFlow.ts';
 import { ARIA_LABELS, edgeTypes, nodeTypes } from '../flow/nodeTypes.ts';
-import { type OpenBox, openBounds, openViewport } from '../flow/openViewport.ts';
+import { fitPadding, type OpenBox, openBounds, openViewport } from '../flow/openViewport.ts';
 import { TcConnectionLine } from '../flow/TcConnectionLine.tsx';
 import { TcMiniMap } from '../flow/TcMiniMap.tsx';
 import { COLLAPSED_GROUP_SIZE, toFlow } from '../flow/toFlow.ts';
@@ -58,11 +57,17 @@ export type ApplyOptions = { coalesce?: 'move' | 'settings'; key?: string };
 /** Zoom-out limit: below 0.4 the cards become icon tiles (N9), so it must be reachable. */
 export const MIN_ZOOM = 0.1;
 
-/** A small graph is fitted at 100 %, never blown up. */
-export const FIT_VIEW = { maxZoom: 1, padding: 0.2 };
+/** The room a fit leaves around the graph, as a share of the pane (see `fitPadding`). */
+const FIT_PADDING = 0.2;
 
-const paneWidth = (s: ReactFlowState) => s.width;
-const paneHeight = (s: ReactFlowState) => s.height;
+/** A small graph is fitted at 100 %, never blown up. */
+export const FIT_VIEW = { maxZoom: 1, padding: fitPadding(FIT_PADDING) };
+
+/** "Fit view" in the zoom controls: React Flow 12's default room around the graph (0.1). */
+export const CONTROLS_FIT_VIEW = { padding: fitPadding(0.1) };
+
+const paneWidth = (s: ViewportStore) => s.width;
+const paneHeight = (s: ViewportStore) => s.height;
 
 /**
  * The first view of a loaded graph, once its cards are measured and the pane has a size: the
@@ -73,8 +78,8 @@ const paneHeight = (s: ReactFlowState) => s.height;
 function OpenView({ graph, catalog }: { graph: WorkflowGraph; catalog: Catalog | null }) {
   const rf = useReactFlow<FlowNode, TcFlowEdge>();
   const ready = useNodesInitialized();
-  const width = useStore(paneWidth);
-  const height = useStore(paneHeight);
+  const width = useViewportStore(paneWidth);
+  const height = useViewportStore(paneHeight);
   const done = useRef(false);
   useLayoutEffect(() => {
     if (done.current || !ready || width === 0 || height === 0) return;
@@ -101,7 +106,14 @@ function OpenView({ graph, catalog }: { graph: WorkflowGraph; catalog: Catalog |
     const anchor = shown.find((n) => n.id === trigger?.id) ?? leftmost;
     const bounds = openBounds(visible.map(boxOf));
     if (!bounds) return;
-    void rf.setViewport(openViewport(bounds, boxOf(anchor), { width, height }, FIT_VIEW));
+    void rf.setViewport(
+      openViewport(
+        bounds,
+        boxOf(anchor),
+        { width, height },
+        { maxZoom: FIT_VIEW.maxZoom, padding: FIT_PADDING },
+      ),
+    );
   }, [ready, width, height, rf, graph, catalog]);
   return null;
 }
@@ -260,9 +272,10 @@ export function Canvas({
   );
 
   const onNodesChange = useCallback(
-    (changes: NodeChange<FlowNode>[]) => {
+    (changeset: NodeChangeset<FlowNode>) => {
+      const changes = changeset.toArray();
       const before = shown.current;
-      const after = applyNodeChanges(changes, before);
+      const after = changeset.applyTo(before);
       for (const c of changes) {
         if (c.type === 'dimensions' && c.dimensions) measured.current.set(c.id, c.dimensions);
       }
@@ -287,8 +300,8 @@ export function Canvas({
   );
 
   const onEdgesChange = useCallback(
-    (changes: EdgeChange<TcFlowEdge>[]) => {
-      run(fromEdgeChanges(changes, latest.current.derived.edges), 'edges', '');
+    (changes: EdgeChangeset<TcFlowEdge>) => {
+      run(fromEdgeChanges(changes.toArray(), latest.current.derived.edges), 'edges', '');
     },
     [run],
   );
@@ -457,7 +470,12 @@ export function Canvas({
         {...(onMoveEnd ? { onMoveEnd } : {})}
         fitViewOptions={FIT_VIEW}
         ariaLabelConfig={ARIA_LABELS}
-        colorMode="dark"
+        // The canvas keeps React Flow's dark palette in either app theme (see `.canvas .react-flow`).
+        forceColorMode="dark"
+        // React Flow 12's defaults: a selected edge stays in its layer, and any pane drag
+        // (however short) pans instead of clicking.
+        elevateEdgesOnSelect={false}
+        paneDragThreshold={0}
         // React Flow is MIT; the credit stays on Settings → About → Open-source licences.
         proOptions={PRO_OPTIONS}
       >
@@ -471,7 +489,12 @@ export function Canvas({
           color="var(--canvas-dot)"
           bgColor="var(--surface)"
         />
-        <Controls position="bottom-right" orientation="horizontal" showInteractive={false}>
+        <Controls
+          position="bottom-right"
+          orientation="horizontal"
+          showInteractive={false}
+          fitViewOptions={CONTROLS_FIT_VIEW}
+        >
           <ControlButton
             aria-label="Tidy up"
             title="Tidy up: line the nodes up left to right"

@@ -3,5 +3,9 @@
   "wouter": {
     "reason": "The npm package ships no licence file; its package.json and repository say Unlicense.",
     "text": "Unlicense.txt"
+  },
+  "react-compiler-runtime": {
+    "reason": "The npm package (a React Flow 13 dependency) ships no licence file; its package.json says MIT and it lives in the facebook/react repository, whose MIT licence this is.",
+    "text": "react-MIT.txt"
   }
 }
