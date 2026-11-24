@@ -18,6 +18,9 @@ export interface Decl {
   /** The at-rules around it, outermost first, as `@media (hover: hover)`. */
   atRules: string[];
   line: number;
+  /** Its place in the source, counted over every declaration: a later declaration wins a tie
+   *  of specificity. */
+  order: number;
 }
 
 export interface CssRule {
@@ -35,6 +38,7 @@ export function rulesOf(source: string): CssRule[] {
   const hit = cache.get(source);
   if (hit) return hit;
   const out: CssRule[] = [];
+  let order = 0;
   const visit = (container: Root | Rule | AtRule, atRules: string[]) => {
     const selectors =
       container.type === 'rule'
@@ -53,6 +57,7 @@ export function rulesOf(source: string): CssRule[] {
           selectors,
           atRules: here,
           line: node.source?.start?.line ?? 0,
+          order: order++,
         });
       } else if (node.type === 'rule' || node.type === 'atrule') visit(node, here);
     }

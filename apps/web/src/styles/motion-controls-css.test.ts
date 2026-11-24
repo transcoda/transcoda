@@ -2,7 +2,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { commaValues, declsOf } from './css-source';
+import { commaValues, declsOf, spaceValues } from './css-source';
 import { LINEAR_PROGRESS } from './design-exceptions';
 
 const tokens = readFileSync(join(__dirname, 'tokens.css'), 'utf8');
@@ -25,22 +25,55 @@ function transitionsOf(source: string): { selectors: string[]; prop: string; val
     .map((d) => ({ selectors: d.selectors, prop: d.prop, value: d.value }));
 }
 
-/** Transitions off the motion tokens; linear is allowed only on a rule of progress fills alone,
- *  at 400ms to 600ms (DESIGN.md › Motion). */
+const DURATION_TOKEN = /^var\(--dur-(fast|base)\)$/;
+const TIME = /^[\d.]+m?s$/;
+const EASING =
+  /^(var\(--ease-[\w-]+\)|linear|ease(-in|-out|-in-out)?|step-(start|end)|(cubic-bezier|steps|linear)\(.*\))$/;
+
+/** One layer of a transition shorthand, read by position: the first time is the duration and
+ *  the second the delay (CSS Transitions › transition). A token counts as a time. */
+function transitionLayer(layer: string): {
+  property?: string;
+  duration?: string;
+  delay?: string;
+  easing?: string;
+  unknown: string[];
+} {
+  const out: ReturnType<typeof transitionLayer> = { unknown: [] };
+  for (const part of spaceValues(layer)) {
+    const isTime = TIME.test(part) || /^var\(--dur-[\w-]+\)$/.test(part);
+    if (isTime && out.duration === undefined) out.duration = part;
+    else if (isTime && out.delay === undefined) out.delay = part;
+    else if (EASING.test(part) && out.easing === undefined) out.easing = part;
+    else if (/^[a-z-]+$/.test(part) && out.property === undefined) out.property = part;
+    else out.unknown.push(part);
+  }
+  return out;
+}
+
+const ms = (t: string) => (t.endsWith('ms') ? Number.parseFloat(t) : Number.parseFloat(t) * 1000);
+
+/** Transitions off the motion tokens: every layer's duration is --dur-fast or --dur-base and
+ *  its easing --ease-out, with no delay. Linear is allowed only on a rule of progress fills
+ *  alone, at 400ms to 600ms (DESIGN.md › Motion). */
 function transitionProblems(source: string): string[] {
   const bad: string[] = [];
   for (const { selectors, prop, value } of transitionsOf(source)) {
     if (value === 'none') continue;
     const progress = selectors.length > 0 && selectors.every((s) => PROGRESS.includes(s));
-    const linearOk = (ms: number) => progress && ms >= 400 && ms <= 600;
-    const ms = (t: string) =>
-      t.endsWith('ms') ? Number.parseFloat(t) : Number.parseFloat(t) * 1000;
     const ok = commaValues(value).every((part) => {
-      if (prop === 'transition-duration') return /^var\(--dur-(fast|base)\)$/.test(part);
+      if (prop === 'transition-duration') return DURATION_TOKEN.test(part);
       if (prop === 'transition-timing-function') return part === 'var(--ease-out)';
-      if (/var\(--dur-(fast|base)\) var\(--ease-out\)/.test(part)) return true;
-      const linear = /^[\w-]+ ([\d.]+m?s) linear$/.exec(part);
-      return linear !== null && linearOk(ms(linear[1] ?? ''));
+      const { duration = '', delay, easing, unknown } = transitionLayer(part);
+      if (unknown.length > 0 || delay !== undefined) return false;
+      if (DURATION_TOKEN.test(duration) && easing === 'var(--ease-out)') return true;
+      return (
+        progress &&
+        easing === 'linear' &&
+        TIME.test(duration) &&
+        ms(duration) >= 400 &&
+        ms(duration) <= 600
+      );
     });
     if (!ok) bad.push(`${selectors.join(', ')} { ${prop}: ${value} }`);
   }
@@ -114,6 +147,23 @@ describe('motion', () => {
     expect(transitionProblems('.a { transition: opacity 1s ease }')).toHaveLength(1);
     expect(transitionProblems('.a { transition-duration: 300ms }')).toHaveLength(1);
     expect(transitionProblems('.a { transition-timing-function: linear }')).toHaveLength(1);
+    // The shorthand is read by position: the first time is the duration, the second the delay.
+    expect(
+      transitionProblems('.a { transition: opacity 10s var(--dur-fast) var(--ease-out) }'),
+    ).toHaveLength(1);
+    expect(
+      transitionProblems(
+        '.a { transition: transform var(--dur-fast) var(--ease-out), opacity 10s var(--dur-fast) var(--ease-out) }',
+      ),
+    ).toHaveLength(1);
+    expect(
+      transitionProblems('.a { transition: opacity var(--ease-out) var(--dur-base) }'),
+    ).toEqual([]);
+    expect(
+      transitionProblems(
+        '.a { transition: transform var(--dur-fast) var(--ease-out), opacity var(--dur-fast) var(--ease-out) }',
+      ),
+    ).toEqual([]);
     expect(
       transitionProblems(
         '@media (hover: hover) { .a { transition: color var(--dur-fast) var(--ease-out) } }',

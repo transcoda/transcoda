@@ -16,7 +16,12 @@ function noteProblems(name: string, text: string): string[] {
   const parsed = parseNote(text) as { errors?: string[]; text?: string };
   const errors = (parsed.errors ?? []).map((e) => `.changes/${name}: ${e}`);
   const body = parsed.text ?? '';
-  if (/\b(?=[0-9a-f]*\d)(?=[0-9a-f]*[a-f])[0-9a-f]{7,40}\b/.test(body)) {
+  // A hash with digits and letters anywhere, or any hex word after "commit" or "sha" (so an
+  // all-letter abbreviation such as deadbeef counts there, but ordinary words do not).
+  if (
+    /\b(?=[0-9a-f]*\d)(?=[0-9a-f]*[a-f])[0-9a-f]{7,40}\b/.test(body) ||
+    /\b(?:commit|sha)\s*:?\s+[0-9a-f]{7,40}\b/i.test(body)
+  ) {
     errors.push(`.changes/${name}: no commit hashes in a note`);
   }
   if (/(?<![\w&])#\d+\b/.test(body))
@@ -39,6 +44,10 @@ describe('.changes/', () => {
     expect(problems, '.changes/README.md › Format').toEqual([]);
     expect(noteProblems('x.md', '---\ntype: changed\n---\nSomething.\n')).toHaveLength(1);
     expect(noteProblems('x.md', '---\ntype: fixed\n---\nFixed in 3f9c2a7e.\n')).toHaveLength(1);
+    expect(noteProblems('x.md', '---\ntype: fixed\n---\nFixed commit deadbeef.\n')).toHaveLength(1);
+    expect(
+      noteProblems('x.md', '---\ntype: fixed\n---\nA faded decade of accessed files.\n'),
+    ).toEqual([]);
     expect(noteProblems('x.md', '---\ntype: fixed\n---\nFixed (#123).\n')).toHaveLength(1);
     expect(noteProblems('x.md', '---\ntype: fixed\n---\nKeeps 1080p files.\n')).toEqual([]);
   });

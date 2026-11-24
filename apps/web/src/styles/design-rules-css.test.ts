@@ -7,6 +7,7 @@ import { describe, expect, it } from 'vitest';
 import {
   type CssRule,
   commaValues,
+  type Decl,
   declsOf,
   rulesOf,
   spaceValues,
@@ -112,6 +113,28 @@ const isFocus = (s: string) => /:focus(-visible|-within)?\b/.test(s);
 const RING = /var\(--focus-ring(-on-accent)?\)/;
 const OUTLINE_RING = /^2px solid var\(--accent-text\)$/;
 
+/** Whether `holder` keeps the ring of an element matched by `selector`: the same selector, a
+ *  part of it (`sel .dot`, `sel > .card`), or its holder in the same context
+ *  (`.a input:focus-visible` is held by `.a:has(input:focus-visible)`, never by
+ *  `.b:has(input:focus-visible)`). */
+function holdsRing(selector: string, holder: string): boolean {
+  if (holder === selector || holder.startsWith(`${selector} `)) return true;
+  const m = /^(.*[^\s>+~])\s*([>+~])?\s+([^\s>+~]+)$|^(.*[^\s>+~])\s*([>+~])\s*([^\s>+~]+)$/.exec(
+    selector,
+  );
+  if (!m) return false;
+  const context = m[1] ?? m[4] ?? '';
+  const combinator = m[2] ?? m[5];
+  const last = m[3] ?? m[6] ?? '';
+  const has = `${context}:has(${combinator ? `${combinator} ` : ''}${last})`;
+  return holder === has || holder.startsWith(`${has} `);
+}
+
+const removesOutline = (d: Decl) =>
+  (d.prop === 'outline' && /^(none|0)$/.test(d.value)) ||
+  (d.prop === 'outline-style' && d.value === 'none') ||
+  (d.prop === 'outline-width' && /^0(px)?$/.test(d.value));
+
 function focusProblems(source: string): string[] {
   const rules = rulesOf(source);
   const ringOf = (r: CssRule) =>
@@ -120,35 +143,35 @@ function focusProblems(source: string): string[] {
         (d.prop === 'box-shadow' && RING.test(d.value)) ||
         (d.prop === 'outline' && OUTLINE_RING.test(d.value)),
     );
+  const ringRules = rules.filter(ringOf);
+  const held = (selector: string) =>
+    ringRules.some((r) => r.selectors.some((x) => holdsRing(selector, x)));
   const bad: string[] = [];
   for (const rule of rules) {
-    const focus = rule.selectors.filter(isFocus);
-    if (focus.length === 0) continue;
-    for (const d of rule.decls) {
-      // A focus style draws the ring token: --focus-ring, or --focus-ring-on-accent on lime.
-      if (d.prop === 'box-shadow' && d.value !== 'none' && !RING.test(d.value)) bad.push(where(d));
-      if (d.prop === 'outline' && !/^(none|0)$/.test(d.value) && !OUTLINE_RING.test(d.value)) {
-        bad.push(where(d));
+    if (rule.selectors.some(isFocus)) {
+      for (const d of rule.decls) {
+        // A focus style draws the ring token: --focus-ring, or --focus-ring-on-accent on lime.
+        if (d.prop === 'box-shadow' && d.value !== 'none' && !RING.test(d.value)) {
+          bad.push(where(d));
+        }
+        if (d.prop === 'outline' && !/^(none|0)$/.test(d.value) && !OUTLINE_RING.test(d.value)) {
+          bad.push(where(d));
+        }
       }
     }
-    // Taking the ring away (outline: none, box-shadow: none) needs a ring drawn instead: in the
-    // same rule, or on a part of it (`sel .dot`, `sel > .card`), or on its holder (`:has(sel)`).
-    const removes = rule.decls.some(
-      (d) =>
-        (d.prop === 'outline' && /^(none|0)$/.test(d.value)) ||
-        (d.prop === 'box-shadow' && d.value === 'none'),
-    );
-    if (!removes || ringOf(rule)) continue;
-    for (const s of focus) {
-      const last = lastCompound(s);
-      const held = rules.some(
-        (r) =>
-          ringOf(r) &&
-          r.selectors.some(
-            (x) => x !== s && (x.startsWith(`${s} `) || x.includes(`:has(${last})`)),
-          ),
-      );
-      if (!held) bad.push(`${s} (styles.css:${rule.line})`);
+    // Taking the ring away needs a ring drawn instead: in the same rule, or by a rule that applies
+    // to the focused element. An outline reset outside a focus selector (`.a { outline: none }`)
+    // also holds while the element has focus, so it needs a ring on `.a:focus-visible` (or
+    // `:focus`), a part of it or its holder.
+    if (ringOf(rule)) continue;
+    const outlineReset = rule.decls.some(removesOutline);
+    const shadowReset = rule.decls.some((d) => d.prop === 'box-shadow' && d.value === 'none');
+    for (const s of rule.selectors) {
+      if (isFocus(s)) {
+        if ((outlineReset || shadowReset) && !held(s)) bad.push(`${s} (styles.css:${rule.line})`);
+      } else if (outlineReset && !held(`${s}:focus-visible`) && !held(`${s}:focus`)) {
+        bad.push(`${s} (styles.css:${rule.line}): an outline reset with no focus ring`);
+      }
     }
   }
   return bad;
@@ -207,16 +230,18 @@ const REDUCE = '@media (prefers-reduced-motion: reduce)';
 
 function loopProblems(source: string): string[] {
   const decls = declsOf(source);
-  const stilled = new Set(
-    decls
-      .filter((d) => d.prop === 'animation' && d.value === 'none' && d.atRules.includes(REDUCE))
-      .flatMap((d) => d.selectors),
+  // A reduced-motion reset stills a loop only when it comes after it for the same selector: the
+  // specificity is equal, so the later declaration wins.
+  const resets = decls.filter(
+    (d) => /^animation(-name)?$/.test(d.prop) && d.value === 'none' && d.atRules.includes(REDUCE),
   );
+  const stilled = (loop: Decl, selector: string) =>
+    resets.some((r) => r.order > loop.order && r.selectors.includes(selector));
   const bad: string[] = [];
   for (const d of decls) {
     if (!/^animation(-iteration-count)?$/.test(d.prop) || !/\binfinite\b/.test(d.value)) continue;
     if (!/\blinear\b/.test(d.value)) bad.push(`${where(d)}: a loop is linear`);
-    const still = d.atRules.includes(NO_PREFERENCE) || d.selectors.every((s) => stilled.has(s));
+    const still = d.atRules.includes(NO_PREFERENCE) || d.selectors.every((s) => stilled(d, s));
     if (!still) bad.push(`${where(d)}: a loop needs a still state under reduced motion`);
   }
   return bad;
@@ -369,6 +394,14 @@ describe('DESIGN.md › Components and states', () => {
       'DESIGN.md › Components and states › Focus: :focus-visible gets --focus-ring (--focus-ring-on-accent on lime); never outline: none without it',
     ).toEqual([]);
     expect(focusProblems('.a:focus-visible { outline: none }')).toHaveLength(1);
+    // An outline reset outside a focus selector holds on focus too: it needs a ring there.
+    expect(focusProblems('.a { outline: none }')).toHaveLength(1);
+    expect(
+      focusProblems('.a { outline: 0 } .b:focus-visible { box-shadow: var(--focus-ring) }'),
+    ).toHaveLength(1);
+    expect(
+      focusProblems('.a { outline: none } .a:focus-visible { box-shadow: var(--focus-ring) }'),
+    ).toEqual([]);
     expect(
       focusProblems(
         '.a:focus-visible { outline: none } .a:focus-visible .dot { box-shadow: var(--focus-ring) }',
@@ -379,6 +412,12 @@ describe('DESIGN.md › Components and states', () => {
         '.a input:focus-visible { box-shadow: none } .a:has(input:focus-visible) { box-shadow: var(--focus-ring) }',
       ),
     ).toEqual([]);
+    // A holder in another context does not keep the ring of the input inside `.a`.
+    expect(
+      focusProblems(
+        '.a input:focus-visible { outline: none } .b:has(input:focus-visible) { box-shadow: var(--focus-ring) }',
+      ),
+    ).toHaveLength(1);
     expect(focusProblems('.a:focus-visible { box-shadow: 0 0 0 3px var(--accent) }')).toHaveLength(
       1,
     );
@@ -431,6 +470,12 @@ describe('DESIGN.md › Motion', () => {
         '.a { animation: spin 1s linear infinite } @media (prefers-reduced-motion: reduce) { .a { animation: none } }',
       ),
     ).toEqual([]);
+    // A reset before the loop loses to it: same selector, and the later declaration wins.
+    expect(
+      loopProblems(
+        '@media (prefers-reduced-motion: reduce) { .a { animation: none } } .a { animation: spin 1s linear infinite }',
+      ),
+    ).toHaveLength(1);
     expect(
       loopProblems(
         '@media (prefers-reduced-motion: no-preference) { .a { animation: spin 1s ease infinite } }',
