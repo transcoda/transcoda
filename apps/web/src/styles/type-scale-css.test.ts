@@ -1,7 +1,7 @@
 // DESIGN.md › Typography: every font-size is a --fs-* token.
 import { describe, expect, it } from 'vitest';
-import { declsOf, stylesCss, where } from './css-source';
-import { FONT_SIZE_OK } from './design-exceptions';
+import { declsOf, stylesCss, where } from './css-source.ts';
+import { FONT_SIZE_OK } from './design-exceptions.ts';
 
 function sizeProblems(source: string): string[] {
   return declsOf(source)

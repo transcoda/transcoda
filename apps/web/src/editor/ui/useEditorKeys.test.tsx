@@ -42,7 +42,6 @@ function Harness(props: {
     <div>
       <input aria-label="Name" />
       <button type="button">Other</button>
-      {/* biome-ignore lint/a11y/useSemanticElements: stands in for a custom switch control. */}
       <div role="switch" aria-checked="false" aria-label="Mode" tabIndex={0} />
       <div className="react-flow">
         {/* biome-ignore lint/a11y/noNoninteractiveTabindex: stands in for a React Flow node. */}

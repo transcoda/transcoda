@@ -47,7 +47,7 @@ export interface HostHandle {
   send(msg: unknown): void;
   /** The next host message (of `type`/one of `type` when given; others are kept for later). */
   next<T extends HostMessage['type']>(type: T): Promise<Extract<HostMessage, { type: T }>>;
-  next(type?: Array<HostMessage['type']>): Promise<HostMessage>;
+  next(type?: HostMessage['type'][]): Promise<HostMessage>;
   /** How many messages of `type` have arrived and are not yet taken by `next`. */
   queued(type: HostMessage['type']): number;
   /** Resolves when the process has exited. */
@@ -107,7 +107,7 @@ export function startHost(opts: SpawnOptions): HostHandle {
   const handle: HostHandle = {
     child,
     send: (msg) => child.send(msg as never),
-    async next(type?: HostMessage['type'] | Array<HostMessage['type']>): Promise<never> {
+    async next(type?: HostMessage['type'] | HostMessage['type'][]): Promise<never> {
       const deadline = Date.now() + NEXT_TIMEOUT_MS;
       for (;;) {
         const at = queue.findIndex((m) => type === undefined || [type].flat().includes(m.type));

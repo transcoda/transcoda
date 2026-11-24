@@ -1,6 +1,6 @@
 import type { ApiToken } from '@transcoda/contract';
 import { TOKEN_SCOPES, type TokenScope } from '@transcoda/shared';
-import { type FormEvent, useId, useRef, useState } from 'react';
+import { type SubmitEvent, useId, useRef, useState } from 'react';
 import { api, safe } from '../../api/client.ts';
 import { DisabledReason, RequiredMark } from '../../components/Form.tsx';
 import { Icon } from '../../components/Icon.tsx';
@@ -78,7 +78,7 @@ export function TokensSection() {
     setExpires('');
   }
 
-  async function onCreate(e: FormEvent) {
+  async function onCreate(e: SubmitEvent) {
     e.preventDefault();
     setError(null);
     if (!name.trim()) {

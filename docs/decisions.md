@@ -2084,6 +2084,31 @@ Approved plan: `docs/plans/2026-10-21-dryrun-depends-on-size.md` (local).
 - Two departures from "caps are for mono labels" stay, listed as known in the exceptions file: the sans "Group" / "Note" / "Card" eyebrow in the group and values inspectors, and the sans "Now" inside a dry-run plan tile's figure. Changing them would change how they look.
 - Biome's one a11y rule outside the recommended set, `noNoninteractiveElementInteractions`, stays off: it flags the key handlers on toolbars, menus and lists that forward Escape and arrow keys, and an image's `onError`.
 
+## 2026-11-23 Code consistency checks
+
+Rules the code already followed almost everywhere are now checked, so they stay that way. All are errors; the Biome ones live in one `overrides` block and one `plugins` list in `biome.json`.
+
+- Relative imports name the file's extension (`./x.ts`). Nine web imports had none (`useImportExtensions`).
+- No default exports. Exempt: tool config files (`*.config.ts`), plugin fixtures (the plugin format is a default export) and vitest's `globalSetup` (`noDefaultExport`).
+- No `console` in app and package source. The server logs through `logger.ts`, the one exempt file; the web app's event bus has a reasoned suppression, since it has no logger (`noConsole`).
+- No floating promises and no `await` on a value that is not a promise. There were none of the first and two of the second (`noFloatingPromises`, `useAwaitThenable`; both nursery rules, pinned by the exact Biome version).
+- No import cycles (`noImportCycles`). There were none.
+- `T[]`, not `Array<T>` (`useConsistentArrayType`). 41 were changed; `[]` was the common form.
+- Tests use `it`, keep hooks above the tests, and are never committed with `.only` or `.skip`. `skipIf` stays allowed (`useConsistentTestIt`, `useTestHooksOnTop`, `noFocusedTests`, `noSkippedTests`).
+- No `any` and no non-null `!`: these were warnings and are now errors. One `!` was left, in a test.
+- No deprecated imports (`noDeprecatedImports`): React 19's `FormEvent` became `SubmitEvent` in seven submit handlers.
+- Server, package and script file names are kebab-case. Migrations keep `NNNN_snake_case.ts`. Web file names are mixed (PascalCase components, camelCase and kebab-case modules), so they are not checked yet (`useFilenamingConvention`).
+- Custom GritQL rule `scripts/biome/utc-dates.grit`: no local-time `Date` methods (`getHours`, `toLocaleDateString`, ...) in server or package code, because times are UTC. The two places that mean local time (backup file names, the day in an "already processed" reason) have a `biome-ignore lint/plugin/utc-dates` with the reason.
+  - GritQL has no types. Methods that exist only on `Date` are flagged on any receiver.
+  - `toLocaleString` also exists on numbers. It is flagged only on `new Date(...)`, or on a receiver whose name reads as a date: `d`, or a name containing `Date`, `Time`, `Now`, `When` or `Day`, or ending in `At`.
+  - So `count.toLocaleString()` passes. The trade-off: a date held under another name (`stamp.toLocaleString()`) slips through, and a number named like a date (`runTime.toLocaleString()`) needs a suppression. Server code has no `toLocaleString` call today.
+- Custom GritQL rule `scripts/biome/test-cleanup.grit`: a web test file that imports `render` or `renderHook` has a top-level `afterEach` that calls `cleanup`. Web tests run without vitest globals, so Testing Library cannot clean up by itself.
+  - One inside a `describe` covers only that block, so it does not count.
+  - Six files leaked their DOM between tests and now clean up. One more moved its `afterEach(cleanup)` out of its `describe`.
+- Guard test `apps/server/src/db/migration-conventions.test.ts`: migration files are named `NNNN_snake_case.ts` and numbered 1..N without gaps. Each one is registered in `migrations/index.ts` in order, with a matching `version` and `name`, and has its own test. 1–4 and 12 have no test and are allowlisted there; the list may only shrink.
+- `pnpm check-deps` also refuses a relative import from one workspace package into another (`../../server/src/...`), which would get around the dependency direction. It reads the specifiers with a small tokenizer, so the same text inside a comment, a string, a template literal or a regex is not an import. TypeScript 7 has no JS parser API, and the script has no dependencies. Across all 942 source files, the tokenizer finds the same imports as a statement-level regex.
+- Biome's remaining warnings are only `noDescendingSpecificity` in `styles.css`. Once those are fixed, `biome check --error-on-warnings` can make every warning fail CI.
+
 ## 2026-11-24 One icon stroke
 
 - Every icon is stroked at 2.4, at every size. DESIGN.md said 2.2 (2.6 on the primary add), but the code used 2.4 in 60 places and 2.6, 2.8 or 3 in about 40 more, chosen per call site with no rule. 2.4 was the common one, so it became the rule.

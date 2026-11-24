@@ -1,5 +1,5 @@
 import type { Library, LibraryBrowseOutput } from '@transcoda/contract';
-import { type FormEvent, type ReactNode, useEffect, useId, useState } from 'react';
+import { type ReactNode, type SubmitEvent, useEffect, useId, useState } from 'react';
 import { api, isDefinedError, safe } from '../api/client.ts';
 import { describeError } from '../api/errors.ts';
 import { Dialog } from '../components/Dialog.tsx';
@@ -142,7 +142,7 @@ export function FilePicker({
     else setListPickError(`Can't use ${fromList}: ${refused}`);
   }
 
-  function onSubmit(e: FormEvent) {
+  function onSubmit(e: SubmitEvent) {
     e.preventDefault();
     const target = typed.trim();
     if (target !== '') void pick(target);

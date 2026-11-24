@@ -101,7 +101,7 @@ function app(db?: TestApp['db']): TestApp {
  */
 async function until(what: string, pred: () => boolean): Promise<void> {
   const deadline = Date.now() + UNTIL_MS;
-  while (!(await pred())) {
+  while (!pred()) {
     if (Date.now() > deadline) throw new Error(`timed out waiting for ${what}`);
     await new Promise((r) => setTimeout(r, 5));
   }

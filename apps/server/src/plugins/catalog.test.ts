@@ -399,7 +399,7 @@ describe('CatalogClient', () => {
       let phase: 'first' | 'skew' | 'heals' = 'first';
       const bad = `${good} `;
       const bodies: string[] = [];
-      const inm: Array<[string, string | undefined]> = [];
+      const inm: [string, string | undefined][] = [];
       const s = await serve((_h, res) => res.end(good));
       servers.push(s.server);
       s.server.removeAllListeners('request');

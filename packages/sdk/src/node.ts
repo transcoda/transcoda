@@ -189,7 +189,7 @@ export type SettingsParseResult =
   | { ok: true; value: Record<string, JsonValue> }
   | { ok: false; issues: Array<{ path: string; message: string; missing: boolean }> };
 
-function valueAt(root: JsonValue, path: ReadonlyArray<PropertyKey>): unknown {
+function valueAt(root: JsonValue, path: readonly PropertyKey[]): unknown {
   let current: unknown = root;
   for (const key of path) {
     if (current === null || typeof current !== 'object') return undefined;

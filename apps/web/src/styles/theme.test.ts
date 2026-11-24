@@ -77,7 +77,7 @@ const TEXT_ON_SURFACES = [
   'st-kept-text',
   'st-skipped-text',
 ];
-const PAIRS: Array<[string, string]> = [
+const PAIRS: [string, string][] = [
   ['on-accent', 'accent'],
   ['st-replaced-ink', 'st-replaced'],
   ['st-kept-ink', 'st-kept'],

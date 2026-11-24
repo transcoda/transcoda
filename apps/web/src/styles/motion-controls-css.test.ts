@@ -2,8 +2,8 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { commaValues, declsOf, spaceValues } from './css-source';
-import { LINEAR_PROGRESS } from './design-exceptions';
+import { commaValues, declsOf, spaceValues } from './css-source.ts';
+import { LINEAR_PROGRESS } from './design-exceptions.ts';
 
 const tokens = readFileSync(join(__dirname, 'tokens.css'), 'utf8');
 const css = readFileSync(join(__dirname, '../styles.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');

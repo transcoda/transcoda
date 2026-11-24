@@ -1,14 +1,15 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { SegmentedSwitch } from './SegmentedSwitch';
+import { SegmentedSwitch } from './SegmentedSwitch.tsx';
 
 const options = [
   { id: 'cards', label: 'Cards' },
   { id: 'table', label: 'Table', count: 3 },
 ] as const;
 
+afterEach(cleanup);
+
 describe('SegmentedSwitch', () => {
-  afterEach(cleanup);
   it('moves the choice and focus with ArrowRight', () => {
     const onChange = vi.fn();
     render(<SegmentedSwitch label="View" value="cards" options={options} onChange={onChange} />);

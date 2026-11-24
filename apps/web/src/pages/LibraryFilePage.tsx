@@ -26,8 +26,6 @@ import { JobHistoryTable } from './JobsPage.tsx';
 /** Jobs per request; "Show older jobs" asks for the page after the ones on screen. */
 const JOBS_PAGE = 50;
 
-type File = LibraryFileDetail['file'];
-
 /** `Libraries › <Library> › <Show> › Season N`; a movie has the library only. */
 function fileCrumbs(libraryId: string, detail: LibraryFileDetail, showTitle: string): Crumb[] {
   const base = `/libraries/${encodeURIComponent(libraryId)}`;

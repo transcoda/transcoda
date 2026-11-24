@@ -18,47 +18,83 @@
       "!pnpm-lock.yaml"
     ]
   },
-  "formatter": {
-    "indentStyle": "space",
-    "lineWidth": 100
-  },
-  "javascript": {
-    "formatter": {
-      "quoteStyle": "single"
+  "formatter": { "indentStyle": "space", "lineWidth": 100 },
+  "javascript": { "formatter": { "quoteStyle": "single" } },
+  "markdown": { "formatter": { "enabled": false } },
+  "yaml": { "formatter": { "enabled": false } },
+  "linter": { "rules": { "preset": "recommended" } },
+  "assist": { "actions": { "source": { "organizeImports": "on" } } },
+  "plugins": [
+    {
+      "path": "./scripts/biome/utc-dates.grit",
+      "includes": ["apps/server/src/**", "packages/*/src/**", "!**/*.test.ts"]
+    },
+    {
+      "path": "./scripts/biome/test-cleanup.grit",
+      "includes": ["apps/web/src/**/*.test.tsx", "apps/web/src/**/*.test.ts"]
     }
-  },
-  "markdown": {
-    "formatter": {
-      "enabled": false
-    }
-  },
-  "yaml": {
-    "formatter": {
-      "enabled": false
-    }
-  },
-  "linter": {
-    "rules": {
-      "preset": "recommended"
-    }
-  },
-  "assist": {
-    "actions": {
-      "source": {
-        "organizeImports": "on"
-      }
-    }
-  },
+  ],
   "overrides": [
     {
-      "includes": ["apps/web/src/**/*.css"],
+      "includes": ["apps/**", "packages/**", "scripts/**"],
       "linter": {
         "rules": {
+          "correctness": { "useImportExtensions": "error" },
+          "nursery": { "noFloatingPromises": "error", "useAwaitThenable": "error" },
           "style": {
-            "noHexColors": "error"
+            "noDefaultExport": "error",
+            "noNonNullAssertion": "error",
+            "useConsistentArrayType": "error",
+            "useConsistentTestIt": "error",
+            "useTestHooksOnTop": "error"
+          },
+          "suspicious": {
+            "noDeprecatedImports": "error",
+            "noExplicitAny": "error",
+            "noFocusedTests": "error",
+            "noImportCycles": "error",
+            "noSkippedTests": "error"
           }
         }
       }
+    },
+    {
+      "includes": ["apps/*/src/**", "packages/*/src/**"],
+      "linter": { "rules": { "suspicious": { "noConsole": "error" } } }
+    },
+    {
+      "includes": [
+        "apps/server/**",
+        "packages/**",
+        "scripts/**",
+        "!apps/server/src/db/migrations/**"
+      ],
+      "linter": {
+        "rules": {
+          "style": {
+            "useFilenamingConvention": {
+              "level": "error",
+              "options": { "filenameCases": ["kebab-case"] }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": [
+        "**/*.config.ts",
+        "apps/server/src/plugins/fixtures/**",
+        "apps/server/src/plugins/testing/global-setup.ts"
+      ],
+      "linter": { "rules": { "style": { "noDefaultExport": "off" } } }
+    },
+    {
+      "includes": ["apps/server/src/logger.ts"],
+      "linter": { "rules": { "suspicious": { "noConsole": "off" } } }
+    },
+    {
+      "includes": ["apps/web/src/**/*.css"],
+      "linter": { "rules": { "style": { "noHexColors": "error" } } }
     }
   ]
 }

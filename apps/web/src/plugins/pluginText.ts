@@ -241,7 +241,7 @@ export function testSentence(
  */
 export function testEffect(
   title: string,
-  nodes: ReadonlyArray<Pick<NodeInfo, 'kind' | 'finishPhase'>>,
+  nodes: readonly Pick<NodeInfo, 'kind' | 'finishPhase'>[],
 ): string {
   const phases = new Set(nodes.map((n) => (n.kind === 'finish' ? n.finishPhase : null)));
   const only = phases.size === 1 ? [...phases][0] : null;

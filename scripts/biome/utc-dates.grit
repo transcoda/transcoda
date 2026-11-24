@@ -1,0 +1,42 @@
+language js
+
+// Server, shared and contract code keeps time in UTC (ISO strings from toISOString()).
+// Local-time Date methods depend on the server's TZ and are only right where a decision says so.
+// GritQL has no types. The methods in the first list exist only on Date, so any receiver counts.
+// toLocaleString also exists on numbers, so it counts only on `new Date(...)` or on a name that
+// reads as a date (d, *Date*, *Time*, *At, *Now*, *When*, *Day*): `count.toLocaleString()` passes.
+or {
+  `$date.$method($args)` where {
+    $method <: or {
+      `getFullYear`,
+      `getMonth`,
+      `getDate`,
+      `getDay`,
+      `getHours`,
+      `getMinutes`,
+      `getSeconds`,
+      `getMilliseconds`,
+      `getTimezoneOffset`,
+      `setFullYear`,
+      `setMonth`,
+      `setDate`,
+      `setHours`,
+      `setMinutes`,
+      `setSeconds`,
+      `setMilliseconds`,
+      `toLocaleDateString`,
+      `toLocaleTimeString`,
+      `toDateString`,
+      `toTimeString`
+    },
+    register_diagnostic(span=$method, message="Local-time Date method in server or package code. Keep times in UTC: use getUTC*/setUTC* or toISOString(). Where local time is intended, add a biome-ignore with the reason.", severity="error")
+  },
+  `$date.toLocaleString($args)` as $call where {
+    $date <: or {
+      `new Date()`,
+      `new Date($_)`,
+      r"^(?:.*\.)?(?:d|[a-z]*(?:[Dd]ate|[Tt]ime|At|[Nn]ow|[Ww]hen|[Dd]ay)[A-Za-z0-9]*)$"
+    },
+    register_diagnostic(span=$call, message="Local-time Date method in server or package code. Keep times in UTC: use toISOString(). Where local time is intended, add a biome-ignore with the reason.", severity="error")
+  }
+}

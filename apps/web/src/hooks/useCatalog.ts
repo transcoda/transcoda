@@ -13,7 +13,7 @@ export interface Catalog {
   nodes: NodeInfo[];
   byType: ReadonlyMap<string, NodeInfo>;
   /** Kinds present in the catalogue, in palette order (subworkflow-io excluded). */
-  kinds: ReadonlyArray<NodeKind>;
+  kinds: readonly NodeKind[];
   portType(type: string, portId: string): PortType | null;
 }
 

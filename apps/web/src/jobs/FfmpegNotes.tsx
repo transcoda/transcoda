@@ -38,7 +38,6 @@ export function useJobLog(id: string, state: JobDetail['state'] | null) {
       setLog(out.log);
     }
   }, [id]);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: `state` is the trigger to read again.
   useEffect(() => {
     if (state !== null) void load();
   }, [load, state]);

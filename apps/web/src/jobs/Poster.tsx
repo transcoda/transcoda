@@ -2,7 +2,7 @@
 
 import type { Job } from '@transcoda/contract';
 import { useState } from 'react';
-import { Icon } from '../components/Icon';
+import { Icon } from '../components/Icon.tsx';
 
 /**
  * `of: 'show'`: the show's own poster the job's media names (a show card); when it fails to load,

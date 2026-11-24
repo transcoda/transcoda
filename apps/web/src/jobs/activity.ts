@@ -96,7 +96,7 @@ const NO_CHILDREN: ReadonlyMap<string, WorkflowGraph> = new Map();
 const NO_NAMES: ReadonlyMap<string, string> = new Map();
 
 /** While ffmpeg runs or a finish step writes, the node at work stands for the step (as on the job page). */
-const FFMPEG_STATES: ReadonlyArray<Job['state']> = ['encoding', 'verifying', 'replacing'];
+const FFMPEG_STATES: readonly Job['state'][] = ['encoding', 'verifying', 'replacing'];
 
 /**
  * A running job's step line for the popover: the node title when known (encoding/verifying/replacing →

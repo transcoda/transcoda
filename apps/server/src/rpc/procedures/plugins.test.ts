@@ -129,7 +129,7 @@ afterEach(async () => {
 const mapping = { local: '/tmp', remote: '/x' };
 
 /** Every plugins procedure except `list`, with a valid request each. */
-const SESSION_ONLY: Array<[string, 'GET' | 'POST' | 'PUT' | 'DELETE', string, unknown?]> = [
+const SESSION_ONLY: [string, 'GET' | 'POST' | 'PUT' | 'DELETE', string, unknown?][] = [
   ['get', 'GET', '/plugins/example'],
   ['catalog', 'GET', '/plugins/catalog'],
   ['install', 'POST', '/plugins', { name: 'x', version: '1.0.0', catalogUrl: 'https://c.test/i' }],
@@ -210,7 +210,7 @@ describe('plugins REST: list', () => {
     expect(res.status).toBe(200);
     const raw = await res.text();
     const body = JSON.parse(raw) as {
-      plugins: Array<Record<string, unknown>>;
+      plugins: Record<string, unknown>[];
       missing: unknown[];
     };
     expect(body.plugins.map((p) => p.name)).toEqual(['example', 'secrets']);

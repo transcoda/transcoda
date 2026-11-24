@@ -25,7 +25,7 @@ function on(code: string, extra: Partial<Issue> = {}): Issue {
 
 describe('missingPluginOf', () => {
   it('names the plugin of a namespaced type; null for core and un-namespaced types', () => {
-    const cases: Array<[string, string | null]> = [
+    const cases: [string, string | null][] = [
       ['jellyfin:refresh', 'jellyfin'],
       ['acme:frobnicate', 'acme'],
       ['test:unavailable', 'test'],
@@ -84,7 +84,7 @@ describe('nodeStateFor with the node type (N6, question 2)', () => {
 
 describe('nodeStateFor', () => {
   it('maps the known codes to badge, word and border per the spec table', () => {
-    const cases: Array<[Issue, Partial<NodeState>]> = [
+    const cases: [Issue, Partial<NodeState>][] = [
       [
         on('UNKNOWN_NODE_TYPE'),
         { badge: 'unknown-node', word: 'unknown node', border: 'red', dim: null },

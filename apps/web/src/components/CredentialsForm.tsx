@@ -1,4 +1,4 @@
-import { type FormEvent, type ReactNode, useEffect, useId, useRef, useState } from 'react';
+import { type ReactNode, type SubmitEvent, useEffect, useId, useRef, useState } from 'react';
 import { Icon } from './Icon.tsx';
 
 export interface CredentialsFormProps {
@@ -43,7 +43,7 @@ export function CredentialsForm(props: CredentialsFormProps) {
   const passwordInvalid = Boolean(props.passwordInvalid) || tooShort;
   const tone = props.errorTone ?? 'danger';
 
-  async function handleSubmit(e: FormEvent) {
+  async function handleSubmit(e: SubmitEvent) {
     e.preventDefault();
     // A password under the minimum would only come back as a generic failure: say why here.
     if (showHint && password.length < props.minPasswordLength) {
