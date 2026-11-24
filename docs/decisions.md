@@ -2062,6 +2062,26 @@ Approved plan: `docs/plans/2026-10-21-dryrun-depends-on-size.md` (local).
 - Jobs Status column: a dry run is one chip line. "Dry run" / "Test encode" is a small mono caps line under the state chip in the table, not a second dashed chip, and the column is 210px (Workflow gave up 30px; names ellipsize) so "Would replace · −74%" fits on one line; the table chip's side padding is 8px. Elsewhere (job page, phone) the badge stays a chip. The narrow-window minimums moved with it (760px, and 720px with Actions) so the Title keeps 240px and 200px.
 - On a phone the Jobs filter chips wrap onto more rows instead of scrolling sideways: the row cut the last chip off with nothing to say there was more. Wrapping needs no scroll cue and hides nothing.
 
+## 2026-11-23 Code consistency checks
+
+Rules the code already followed almost everywhere are now checked, so they stay that way. All are errors; the Biome ones live in one `overrides` block and one `plugins` list in `biome.json`.
+
+- Relative imports name the file's extension (`./x.ts`). Nine web imports had none (`useImportExtensions`).
+- No default exports. Exempt: tool config files (`*.config.ts`), plugin fixtures (the plugin format is a default export) and vitest's `globalSetup` (`noDefaultExport`).
+- No `console` in app and package source. The server logs through `logger.ts`, the one exempt file; the web app's event bus has a reasoned suppression, since it has no logger (`noConsole`).
+- No floating promises and no `await` on a value that is not a promise. There were none of the first and two of the second (`noFloatingPromises`, `useAwaitThenable`; both nursery rules, pinned by the exact Biome version).
+- No import cycles (`noImportCycles`). There were none.
+- `T[]`, not `Array<T>` (`useConsistentArrayType`). 41 were changed; `[]` was the common form.
+- Tests use `it`, keep hooks above the tests, and are never committed with `.only` or `.skip`. `skipIf` stays allowed (`useConsistentTestIt`, `useTestHooksOnTop`, `noFocusedTests`, `noSkippedTests`).
+- No `any` and no non-null `!`: these were warnings and are now errors. One `!` was left, in a test.
+- No deprecated imports (`noDeprecatedImports`): React 19's `FormEvent` became `SubmitEvent` in seven submit handlers.
+- Server, package and script file names are kebab-case. Migrations keep `NNNN_snake_case.ts`. Web file names are mixed (PascalCase components, camelCase and kebab-case modules), so they are not checked yet (`useFilenamingConvention`).
+- Custom GritQL rule `scripts/biome/utc-dates.grit`: no local-time `Date` methods (`getHours`, `toLocaleString`, ...) in server or package code, because times are UTC. The two places that mean local time (backup file names, the day in an "already processed" reason) have a `biome-ignore lint/plugin/utc-dates` with the reason.
+- Custom GritQL rule `scripts/biome/test-cleanup.grit`: a web test file that imports `render` or `renderHook` has an `afterEach` that calls `cleanup`. Web tests run without vitest globals, so Testing Library cannot clean up by itself. Six files leaked their DOM between tests and now clean up.
+- Guard test `apps/server/src/db/migration-conventions.test.ts`: migration files are named `NNNN_snake_case.ts` and numbered 1..N without gaps. Each one is registered in `migrations/index.ts` in order, with a matching `version` and `name`, and has its own test. 1–4 and 12 have no test and are allowlisted there; the list may only shrink.
+- `pnpm check-deps` also refuses a relative import from one workspace package into another (`../../server/src/...`), which would get around the dependency direction.
+- Biome's remaining warnings are only `noDescendingSpecificity` in `styles.css`. Once those are fixed, `biome check --error-on-warnings` can make every warning fail CI.
+
 ## Follow-ups (2026-10-17)
 
 - **mp4 video default normalization.** `normalizeDefaults` treats video like subtitle when the output container is mp4: extra default video flags are cleared and the first kept non-cover video is flagged when none is (note `mp4 cannot have no default video`). The mp4 muxer enables a video track that was told "not default", which verify would report as a stream mismatch. Matroska passes the flag through, so mkv output is unchanged; cover pictures are never touched.
