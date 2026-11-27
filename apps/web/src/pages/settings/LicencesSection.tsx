@@ -2,8 +2,8 @@ import type { ThirdPartyPackage } from '@transcoda/contract';
 import { useEffect, useId, useState } from 'react';
 import { api } from '../../api/client.ts';
 import { Loading } from '../../components/Loading.tsx';
-import { useAsync } from '../../hooks/useAsync.ts';
-import { filterLicences } from './licenceSearch.ts';
+import { useAsync } from '../../hooks/use-async.ts';
+import { filterLicences } from './licence-search.ts';
 
 const PROJECT_LICENCE = 'https://github.com/transcoda/transcoda/blob/main/LICENSE';
 /** The status line and the list follow the search once typing pauses this long. */

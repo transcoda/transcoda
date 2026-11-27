@@ -5,7 +5,7 @@ import { describeError } from '../api/errors.ts';
 import { Icon } from '../components/Icon.tsx';
 import { useToast } from '../components/Toast.tsx';
 import { fmtBytes } from '../lib/bytes.ts';
-import { previewNotes } from './previewCodecs.ts';
+import { previewNotes } from './preview-codecs.ts';
 
 type PanelJob = Pick<JobDetail, 'id' | 'testEncode' | 'testOutput' | 'testOutputNote'> &
   Partial<Pick<JobDetail, 'plan'>>;

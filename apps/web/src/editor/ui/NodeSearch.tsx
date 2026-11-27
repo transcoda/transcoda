@@ -6,7 +6,7 @@ import { Dialog } from '../../components/Dialog.tsx';
 import { Highlight } from '../../components/Highlight.tsx';
 import { Icon } from '../../components/Icon.tsx';
 import { NodeIcon } from '../../components/NodeIcon.tsx';
-import type { Catalog, PortType } from '../../hooks/useCatalog.ts';
+import type { Catalog, PortType } from '../../hooks/use-catalog.ts';
 import { compatibleTargets, type NextRule } from '../model/connection.ts';
 import { matchesQuery, PluginMark, unavailableReason } from './Palette.tsx';
 

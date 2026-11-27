@@ -8,9 +8,9 @@ import {
   executingNode,
   nodeTitle,
   runTitle,
-} from '../editor/trace/traceOverlay.ts';
-import type { Catalog } from '../hooks/useCatalog.ts';
-import { detailLine, fmtTimeLeft, isWaitingForLane, type Job, percentOf } from './jobText.ts';
+} from '../editor/trace/trace-overlay.ts';
+import type { Catalog } from '../hooks/use-catalog.ts';
+import { detailLine, fmtTimeLeft, isWaitingForLane, type Job, percentOf } from './job-text.ts';
 
 export interface ActivityInput {
   /** RUNNING_JOB_STATES jobs (probing … replacing, planned jobs waiting for their lane included). */

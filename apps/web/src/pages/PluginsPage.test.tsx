@@ -29,16 +29,16 @@ vi.mock('../api/client.ts', async () => {
 });
 
 import type { PluginSummary } from '@transcoda/contract';
-import { resetCatalogCache } from '../hooks/useCatalog.ts';
-import { EventsProvider } from '../hooks/useEvents.ts';
-import { REFETCH_COALESCE_MS } from '../hooks/useRefetchOn.ts';
+import { resetCatalogCache } from '../hooks/use-catalog.ts';
+import { EventsProvider } from '../hooks/use-events.ts';
+import { REFETCH_COALESCE_MS } from '../hooks/use-refetch-on.ts';
 import {
   CUSTOM_CATALOG_WARNING,
   NETWORK_NONE,
   NETWORK_NOTE,
   NETWORK_UNLISTED,
-} from '../plugins/pluginText.ts';
-import { fakeEventSource } from '../test/fakeEventStream.ts';
+} from '../plugins/plugin-text.ts';
+import { fakeEventSource } from '../test/fake-event-stream.ts';
 import { catalogOutput, plugin, pluginDetail, serviceDetail } from '../test/fixtures/plugins.ts';
 import { renderAt } from '../test/render.tsx';
 import { PluginsPage, updateAllSummary } from './PluginsPage.tsx';

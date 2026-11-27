@@ -12,7 +12,7 @@ import { AuthContext } from '../../auth/AuthProvider.tsx';
 import { Dialog } from '../../components/Dialog.tsx';
 import { Icon } from '../../components/Icon.tsx';
 import { useToast } from '../../components/Toast.tsx';
-import { useCatalog } from '../../hooks/useCatalog.ts';
+import { useCatalog } from '../../hooks/use-catalog.ts';
 import { fmtAgo } from '../../lib/time.ts';
 import { changeLines, diffVersions } from '../model/version-diff.ts';
 import { activatedByText, activateLabel, versionLine } from '../model/version-text.ts';

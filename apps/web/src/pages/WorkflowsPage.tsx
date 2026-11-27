@@ -14,11 +14,11 @@ import { ActivateDialog } from '../editor/ui/ActivateDialog.tsx';
 import { ActivationPill } from '../editor/ui/ActivationControl.tsx';
 import { MISSING_LIBRARY } from '../editor/ui/fields/LibrarySelect.tsx';
 import { BUNDLED_EXAMPLES, type BundledExample } from '../examples/bundled.ts';
-import { createFromGraph } from '../examples/createExample.ts';
-import { useWorkflows } from '../hooks/useWorkflows.ts';
-import { runBlocked, useRunOnFile } from '../jobs/useRunOnFile.tsx';
-import { useTryOnFile } from '../jobs/useTryOnFile.ts';
-import { usePageTitle } from '../lib/pageTitle.ts';
+import { createFromGraph } from '../examples/create-example.ts';
+import { useWorkflows } from '../hooks/use-workflows.ts';
+import { runBlocked, useRunOnFile } from '../jobs/use-run-on-file.tsx';
+import { useTryOnFile } from '../jobs/use-try-on-file.ts';
+import { usePageTitle } from '../lib/page-title.ts';
 import { fmtAgoShort } from '../lib/time.ts';
 
 const CANT_RUN_TITLE = "This version can't run; open the workflow to see why";

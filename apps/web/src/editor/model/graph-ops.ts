@@ -14,7 +14,7 @@ import {
   valueNamed,
   type WorkflowGraph,
 } from '@transcoda/shared';
-import type { Catalog } from '../../hooks/useCatalog.ts';
+import type { Catalog } from '../../hooks/use-catalog.ts';
 import { checkConnection } from './connection.ts';
 import { removeValuesCard, setValue, VALUES_CARD_ID } from './notes-values.ts';
 import { defaultSettings, isRedactedUrl } from './schema-fields.ts';

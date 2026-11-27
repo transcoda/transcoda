@@ -6,8 +6,8 @@ import { Icon } from '../components/Icon.tsx';
 import { useToast } from '../components/Toast.tsx';
 import { fmtAgo } from '../lib/time.ts';
 import { pluginFailure } from './errors.ts';
-import { CUSTOM_CATALOG_WARNING, provenanceSignature } from './pluginText.ts';
-import type { CatalogView, PluginCatalogOutput } from './usePlugins.ts';
+import { CUSTOM_CATALOG_WARNING, provenanceSignature } from './plugin-text.ts';
+import type { CatalogView, PluginCatalogOutput } from './use-plugins.ts';
 
 /** Plain words for a catalog that did not load; the raw reason stays in the alert's tooltip. */
 export const CATALOG_UNREADABLE =

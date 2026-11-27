@@ -1,4 +1,4 @@
-import { useStreamStatus } from '../hooks/useEvents.ts';
+import { useStreamStatus } from '../hooks/use-events.ts';
 
 /** The stream indicator of screens 04/07/08: "Live" (capitals by its class) with a lime dot, or a muted "reconnecting…". */
 export function LiveDot() {

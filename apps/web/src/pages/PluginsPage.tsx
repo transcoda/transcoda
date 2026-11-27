@@ -12,8 +12,8 @@ import { Icon } from '../components/Icon.tsx';
 import { Loading } from '../components/Loading.tsx';
 import { SegmentedSwitch } from '../components/SegmentedSwitch.tsx';
 import { useToast } from '../components/Toast.tsx';
-import { useCatalog } from '../hooks/useCatalog.ts';
-import { usePageTitle } from '../lib/pageTitle.ts';
+import { useCatalog } from '../hooks/use-catalog.ts';
+import { usePageTitle } from '../lib/page-title.ts';
 import { fmtStamp } from '../lib/time.ts';
 import {
   BLOCKLIST_UNAVAILABLE,
@@ -31,8 +31,8 @@ import { pluginFailure } from '../plugins/errors.ts';
 import { type Entry, InstallDialog, type Target } from '../plugins/InstallDialog.tsx';
 import { PluginRow } from '../plugins/PluginRow.tsx';
 import type { NodeChip } from '../plugins/PluginTile.tsx';
-import { testEffect, updateHosts, updateNeedsLook } from '../plugins/pluginText.ts';
-import { type CatalogView, usePlugins } from '../plugins/usePlugins.ts';
+import { testEffect, updateHosts, updateNeedsLook } from '../plugins/plugin-text.ts';
+import { type CatalogView, usePlugins } from '../plugins/use-plugins.ts';
 
 type Show = 'all' | 'installed' | 'updates';
 

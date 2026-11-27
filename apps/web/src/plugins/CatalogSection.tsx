@@ -9,8 +9,8 @@ import {
   nodeNameOf,
   PURPOSE_GROUPS,
   type PurposeGroup,
-} from './pluginGroups.ts';
-import type { CatalogView } from './usePlugins.ts';
+} from './plugin-groups.ts';
+import type { CatalogView } from './use-plugins.ts';
 
 /** Semver order of two versions (build metadata ignored); negative when `a` is older. */
 export function compareVersions(a: string, b: string): number {

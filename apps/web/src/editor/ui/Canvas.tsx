@@ -33,13 +33,13 @@ import {
   useState,
 } from 'react';
 import { Icon } from '../../components/Icon.tsx';
-import type { Catalog } from '../../hooks/useCatalog.ts';
-import { type FlowChangeResult, fromEdgeChanges, fromNodeChanges } from '../flow/fromFlow.ts';
-import { ARIA_LABELS, edgeTypes, nodeTypes } from '../flow/nodeTypes.ts';
-import { fitPadding, type OpenBox, openBounds, openViewport } from '../flow/openViewport.ts';
+import type { Catalog } from '../../hooks/use-catalog.ts';
+import { type FlowChangeResult, fromEdgeChanges, fromNodeChanges } from '../flow/from-flow.ts';
+import { ARIA_LABELS, edgeTypes, nodeTypes } from '../flow/node-types.ts';
+import { fitPadding, type OpenBox, openBounds, openViewport } from '../flow/open-viewport.ts';
 import { TcConnectionLine } from '../flow/TcConnectionLine.tsx';
 import { TcMiniMap } from '../flow/TcMiniMap.tsx';
-import { COLLAPSED_GROUP_SIZE, toFlow } from '../flow/toFlow.ts';
+import { COLLAPSED_GROUP_SIZE, toFlow } from '../flow/to-flow.ts';
 import type { TcFlowEdge, TcFlowNode } from '../flow/types.ts';
 import { ZoomVar } from '../flow/ZoomVar.tsx';
 import { checkConnection } from '../model/connection.ts';
