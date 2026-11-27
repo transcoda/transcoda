@@ -97,7 +97,7 @@ import { finishRunContext, jobUrl } from './plugin-context.ts';
 import { jobProbeOf, probeFile, probeLog, probeReason } from './probe.ts';
 import type { ProcessSpawner } from './process.ts';
 import type { ProgressSample } from './progress.ts';
-import { toJobProgress, toVerifyProgress, type VerifyProgress } from './progress.ts';
+import { toJobProgress, toVerifyProgress, type VerifyProgress, withFrameTime } from './progress.ts';
 import { defaultRecycleFolder } from './recycle.ts';
 import {
   coverExtractArgs,
@@ -1159,7 +1159,7 @@ export class Pipeline implements JobExecutor {
     const onVerifyProgress = (v: VerifyProgress): void => {
       if (ctl.signal.aborted) return;
       const t = this.deps.now().getTime();
-      if (v.stage === 'full-decode' && v.sample.outTimeSeconds > 0) {
+      if (v.stage === 'full-decode' && (v.sample.outTimeSeconds ?? 0) > 0) {
         if (t - lastVerifyWrite < PROGRESS_INTERVAL_MS) return;
       }
       lastVerifyWrite = t;
@@ -1473,6 +1473,12 @@ export class Pipeline implements JobExecutor {
     let last: ProgressSample | null = null;
     let lastWrite = Number.NEGATIVE_INFINITY;
     let framesOut = false;
+    // `frame=` counts the first video stream ffmpeg writes (see withFrameTime).
+    const firstVideo = outputOrder(p.model).find(
+      (s) => s.type === 'video' && !isMkvCover(p.model, s),
+    );
+    const frameRate =
+      p.probe.streams.find((s) => s.index === firstVideo?.sourceIndex)?.frameRate ?? null;
     let leading = 0;
     const sourceErrors: { line: string; at: number }[] = [];
     const demuxerErrors: { line: string; at: number }[] = [];
@@ -1490,12 +1496,13 @@ export class Pipeline implements JobExecutor {
       onProgress: (s) => {
         last = s;
         guard?.sample(s);
-        if ((s.frames ?? 0) > 0 || s.outTimeSeconds > 0) framesOut = true;
+        if ((s.frames ?? 0) > 0 || (s.outTimeSeconds ?? 0) > 0) framesOut = true;
         if (ctl.signal.aborted) return;
         const t = this.deps.now().getTime();
         if (t - lastWrite < PROGRESS_INTERVAL_MS) return;
         lastWrite = t;
-        this.update(job, ctl, { progress: toJobProgress(s, p.probe.durationSeconds) });
+        const shown = withFrameTime(s, frameRate);
+        this.update(job, ctl, { progress: toJobProgress(shown, p.probe.durationSeconds) });
       },
       onStderrLine: (line) => {
         const side = classifyErrorLine(line, sourceCodecs, encoders);

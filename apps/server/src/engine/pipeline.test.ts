@@ -111,6 +111,7 @@ function ffprobeJson(p: ProbeResult): unknown {
       index: s.index,
       codec_type: s.type,
       codec_name: s.codec,
+      ...(s.frameRate ? { avg_frame_rate: `${s.frameRate}/1` } : {}),
       disposition: {
         default: s.default ? 1 : 0,
         forced: s.forced ? 1 : 0,
@@ -1239,6 +1240,29 @@ describe('pipeline', () => {
     ]);
     const maps = (result?.command ?? '').match(/-map \S+/g);
     expect(maps).toEqual(['-map 0:0', '-map 0:1']);
+  });
+
+  it('an encode whose ffmpeg reports no out time (ffmpeg 8, a copied image track) shows progress by its frames', async () => {
+    sourceProbe = {
+      ...sourceProbe,
+      streams: sourceProbe.streams.map((s) => (s.type === 'video' ? { ...s, frameRate: 24 } : s)),
+    };
+    const wf = workflow(
+      line(node('in', 'core:input-manual'), toH264(), node('ro', 'core:replace-original')),
+    );
+    const id = await queue(file(), wf);
+    await t.deps.engine.start();
+    await until('spawn', () => spawner.calls.length === 1);
+    spawner.emitProgress({
+      outTimeSeconds: null,
+      speed: 2,
+      fps: 48,
+      sizeBytes: 300,
+      frames: 720,
+    });
+    expect(row(id).progress).toMatchObject({ percent: 50, outTimeSeconds: 30, etaSeconds: 15 });
+    await spawner.complete({ bytes: 600 });
+    expect((await settled(id)).state).toBe('done');
   });
 
   it('full run: queued→probing→deciding→building→encoding→verifying→replacing→done; before/after bytes; recycle has the original; trace complete', async () => {

@@ -2,7 +2,13 @@
 import type { JobProgress } from '../db/repos/jobs.ts';
 
 export interface ProgressSample {
-  outTimeSeconds: number;
+  /**
+   * How far the output is, or null when ffmpeg reports no out time (`N/A`). ffmpeg 8 reports the
+   * earliest stream's time and N/A while any stream has no timestamp yet: a copied image track
+   * (one packet, no dts in Matroska) keeps it N/A for the whole encode. ffmpeg 9 reports the
+   * furthest stream's time.
+   */
+  outTimeSeconds: number | null;
   speed: number | null;
   fps: number | null;
   sizeBytes: number | null;
@@ -26,9 +32,9 @@ function clock(value: string | undefined): number | null {
 }
 
 /**
- * One `-progress` block: key=value lines ending with `progress=continue|end`. Null when the block
- * is incomplete or carries no out time yet (ffmpeg writes `N/A` before the first frame).
- * `out_time_ms` is in microseconds too (an ffmpeg quirk).
+ * One `-progress` block: key=value lines ending with `progress=continue|end`, or null when it is
+ * incomplete. A block without an out time (`N/A`) is still a sample: ffmpeg is writing output
+ * (its size and frame count say how much). `out_time_ms` is in microseconds too (an ffmpeg quirk).
  */
 export function parseProgressBlock(lines: string[]): ProgressSample | null {
   const kv = new Map<string, string>();
@@ -40,11 +46,10 @@ export function parseProgressBlock(lines: string[]): ProgressSample | null {
   if (state !== 'continue' && state !== 'end') return null;
   const us = num(kv.get('out_time_us')) ?? num(kv.get('out_time_ms'));
   const seconds = us !== null ? us / 1_000_000 : clock(kv.get('out_time'));
-  if (seconds === null) return null;
   const size = num(kv.get('total_size'));
   const frames = num(kv.get('frame'));
   return {
-    outTimeSeconds: Math.max(0, seconds),
+    outTimeSeconds: seconds === null ? null : Math.max(0, seconds),
     speed: num(kv.get('speed')),
     fps: num(kv.get('fps')),
     sizeBytes: size !== null && size >= 0 ? Math.round(size) : null,
@@ -55,13 +60,28 @@ export function parseProgressBlock(lines: string[]): ProgressSample | null {
 const round1 = (n: number): number => Math.round(n * 10) / 10;
 
 /**
+ * The sample with its out time at least as far as its video frames reach at `frameRate` (the first
+ * video stream's, which `frame=` counts): ffmpeg 8 reports the earliest stream's time, so a copied
+ * image track holds it at its one packet (or N/A) while the film is encoded. For display only.
+ */
+export function withFrameTime(sample: ProgressSample, frameRate: number | null): ProgressSample {
+  const frames = sample.frames ?? 0;
+  if (frameRate === null || !(frameRate > 0) || frames <= 0) return sample;
+  const byFrames = frames / frameRate;
+  const out = sample.outTimeSeconds;
+  return out !== null && out >= byFrames ? sample : { ...sample, outTimeSeconds: byFrames };
+}
+
+/**
  * Job progress from a sample: percent = min(100, out/duration × 100) to one decimal (null without
- * a positive duration); eta = (duration − out) / speed to one decimal, never negative (null
- * without a positive speed or duration).
+ * a positive duration or an out time); eta = (duration − out) / speed to one decimal, never
+ * negative (null without a positive speed, a duration or an out time).
  */
 export function toJobProgress(sample: ProgressSample, durationSeconds: number): JobProgress {
-  const hasDuration = Number.isFinite(durationSeconds) && durationSeconds > 0;
-  const { outTimeSeconds, speed } = sample;
+  const hasDuration =
+    Number.isFinite(durationSeconds) && durationSeconds > 0 && sample.outTimeSeconds !== null;
+  const outTimeSeconds = sample.outTimeSeconds ?? 0;
+  const { speed } = sample;
   return {
     percent: hasDuration ? Math.min(100, round1((outTimeSeconds / durationSeconds) * 100)) : null,
     outTimeSeconds,
@@ -77,7 +97,7 @@ export function toJobProgress(sample: ProgressSample, durationSeconds: number): 
 
 /**
  * A reader for `-progress pipe:1` arriving in chunks (split anywhere): calls `onSample` once per
- * complete block that carries an out time.
+ * complete block.
  */
 export function progressReader(onSample: (s: ProgressSample) => void): (chunk: string) => void {
   let rest = '';

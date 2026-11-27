@@ -19,7 +19,7 @@ function clock() {
   };
 }
 
-const sample = (outTimeSeconds: number, sizeBytes: number | null) => ({
+const sample = (outTimeSeconds: number | null, sizeBytes: number | null) => ({
   outTimeSeconds,
   sizeBytes,
   speed: null,
@@ -52,6 +52,21 @@ describe('OutputStallGuard', () => {
     g.sample(sample(6, 2000));
     g.sample(sample(4, null));
     c.advance(MIN);
+    expect(g.stalled()).toBe(true);
+  });
+
+  it('a growing size counts without an out time (ffmpeg 8 with a copied image track)', () => {
+    const c = clock();
+    const g = new OutputStallGuard(10 * MIN, c.now);
+    g.sample(sample(null, 5784));
+    expect(g.started()).toBe(true);
+    for (let i = 1; i <= 6; i += 1) {
+      c.advance(9 * MIN);
+      g.sample(sample(null, 5784 + i * 1_000_000));
+      expect(g.stalled()).toBe(false);
+    }
+    c.advance(10 * MIN);
+    g.sample(sample(null, 5784 + 6 * 1_000_000));
     expect(g.stalled()).toBe(true);
   });
 
