@@ -1,5 +1,5 @@
 {
-  "extends": "../../tsconfig.base.json",
+  "extends": "@transcoda/dev-config/tsconfig.base.json",
   "compilerOptions": {
     "composite": true,
     "emitDeclarationOnly": true,

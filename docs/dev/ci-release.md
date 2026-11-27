@@ -4,15 +4,17 @@ The rules in force today for `.github/workflows/`, `docker/`, `renovate.json`, `
 
 ## On a pull request
 
-- **CI** (`ci.yml`): job `check` runs `pnpm install --frozen-lockfile`, `pnpm check` (typecheck, Biome with `--error-on-warnings`, knip, `check-deps`, `check-licences`, Vitest), `pnpm build`, and `docker/entrypoint.test.sh` in the image's Node base. Job `e2e` runs the browser and screenshot tests through `scripts/e2e-docker.sh`, the same script as `pnpm e2e:docker`.
+- **CI** (`ci.yml`): job `check` runs `pnpm install --frozen-lockfile`, `pnpm check` (typecheck, Biome with `--error-on-warnings`, knip, `check-deps`, `check-licences`, `check-file-size`, Vitest), `pnpm build`, and `docker/entrypoint.test.sh` in the image's Node base. Job `file-size` runs the org's `file-size` action: no source file over 1200 lines, and on a pull request no new or raised entry in `.github/file-size-allowlist.json` ([conventions.md](conventions.md#file-size)). Job `e2e` runs the browser and screenshot tests through `scripts/e2e-docker.sh`, the same script as `pnpm e2e:docker`.
 - **Real ffmpeg** (`real-ffmpeg.yml`, job `real-ffmpeg`): only on pull requests that touch the engine, its capabilities, the core nodes, the fixture generator or the Dockerfiles that pin ffmpeg (the `paths` list in the file). It runs `pnpm test:docker`: the unit tests in the e2e container with the fixtures, so the real-ffmpeg tests that `check` skips run against jellyfin-ffmpeg. Not a required check, since it doesn't run on every pull request.
 - **PR title** (`pr-title.yml`, job `pr-title`) and **Release note** (`release-note.yml`, job `release-note`) call the shared actions in the org's `.github` repository.
+- **Screenshots** (`screenshots.yml`, job `screenshots`): a pull request that changes `apps/web/src/` (tests and `src/test/` aside), `apps/web/index.html` or `apps/web/public/` needs an image in its description, or the `no screenshots needed` label when nothing visible changed. It runs again when the description or the labels change.
 - The `main` ruleset requires the `check`, `release-note` and `pr-title` checks, one approving review (code owner review on), and allows squash merges only. `e2e` runs on every pull request but is not a required check.
 - The script is named `check`, not `ci`: `pnpm ci` is a pnpm built-in.
 
 ## On `main` and on tags
 
 - `ci.yml` runs again on every push to `main`.
+- **Main red** (`main-red.yml`): when a push run of CI or Docker on `main` fails, the org's `main-red` action opens one issue for that workflow, labelled `main-red`; a further failing run adds a comment, and the issue closes when the workflow passes on `main` again. It is a `workflow_run` workflow, so it runs from `main`'s copy only, and it must not get a `concurrency` group. To watch another workflow, add its `name:` to the list.
 - **Docker** (`docker.yml`) runs on `main`, on `v*` tags and by hand. Job `image` builds amd64 and arm64 and pushes to `ghcr.io/transcoda/transcoda`. Then: `sandbox` (the plugin sandbox denial check inside the pushed image, natively per arch), `hardening` (the shipped compose file against the pushed image: capabilities, read-only root, plugin user), `vulnerabilities` (on `main` only) and `release-assets` (on release tags only). These run after the push, so a failure is a red run on an image that is already published.
 - Image tags: `main` for the branch; `<version>`, `<major>.<minor>` and `latest` for a release tag; a pre-release gets only its own version. No commit-SHA tags.
 - **GHCR cleanup** (`ghcr-cleanup.yml`) runs after each successful Docker run and weekly. It deletes untagged images older than a day only. A manual run defaults to a dry run.
@@ -20,7 +22,9 @@ The rules in force today for `.github/workflows/`, `docker/`, `renovate.json`, `
 
 ## Nightly
 
-`nightly.yml` runs daily at 07:17 UTC, only when `main` moved since the last finished nightly; a manual run always runs. Job `unit` runs the unit tests with the fixture media in the e2e container (`pnpm test:docker`), so the real-ffmpeg tests that pull requests skip run against the image's jellyfin-ffmpeg. Job `e2e` runs the browser tests. Job `issues` runs `scripts/nightly-issues.ts`: one issue per failing test, labelled `nightly` and titled `Nightly: <file> > <test>`; a further failure adds a comment, a pass closes it. More than 10 new failures give one combined issue; a run that fails before any report gives one "run failed" issue. The plugins repo runs the same script from its checkout of core.
+`nightly.yml` runs daily at 07:17 UTC, only when `main` moved since the last finished nightly; a manual run always runs (job `changed`, the org's `nightly-changed` action). Job `unit` runs the unit tests with the fixture media in the e2e container (`pnpm test:docker`), so the real-ffmpeg tests run against the image's jellyfin-ffmpeg. Job `e2e` runs the browser tests. Job `issues` runs the org's `nightly-issues` action on both JSON reports: one issue per failing test, labelled `nightly` and titled `Nightly: <file> > <test>`; a further failure adds a comment, a pass closes it. More than 10 new failures give one combined issue; a run that fails outside its tests gives one "the run failed outside its tests" issue. The workflow keeps its `concurrency` group (`nightly`, not cancelled), so two runs never open the same issue.
+
+The plugins repository's nightly uses the same two actions.
 
 ## Code scanning
 
@@ -41,7 +45,7 @@ The rules in force today for `.github/workflows/`, `docker/`, `renovate.json`, `
 
 ## Release notes and PR titles
 
-- Every pull request adds a `.changes/<name>.md` note or carries the `no user-facing change` label. `scripts/check-release-note.mjs` is the checker; the org action runs it. `pnpm check` also validates every note waiting in `.changes/`. Format and highlights: [`.changes/README.md`](../../.changes/README.md).
+- Every pull request adds a `.changes/<name>.md` note or carries the `no user-facing change` label. The checker is the shared one: the org's `release-note` action with `layout: flat` runs `transcoda-release-note check` from `@transcoda/dev-config`, which also refuses commit hashes and pull request numbers in a note. `pnpm check` validates every note waiting in `.changes/` with the same rules (`scripts/changes.test.ts`), and `pnpm release` reads them through the same library (`@transcoda/dev-config/changes`). The plugins repository uses the same format, one folder per plugin. Format and highlights: [`.changes/README.md`](../../.changes/README.md).
 - PR titles follow the house style `Area: what changed`. The area is free-form but starts with a capital letter or a digit, has no `(scope)`, and the title has no trailing full stop. No `feat:` or `chore(deps):`. Squash merges use the title as the commit message.
 
 ## Cutting a release

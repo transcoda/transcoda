@@ -5,7 +5,7 @@ Today's rules for the server outside the encode engine. The engine is in [engine
 ## Layers
 
 - Packages depend in one direction: `shared <- sdk <- contract <- server/web`. The web app depends on `shared` and `contract` only.
-- `scripts/check-deps.mjs` (run by `pnpm check-deps` and `pnpm check`) enforces it. It also refuses a relative import from one package into another (`../../server/src/...`).
+- `scripts/check-deps.ts` (run by `pnpm check-deps` and `pnpm check`) enforces it. It also refuses a relative import from one package into another (`../../server/src/...`).
 - `packages/contract` holds every procedure's route, input, output and errors. The server implements it; the web app calls it. Neither side defines an API shape on its own.
 
 ## How a procedure flows

@@ -28,7 +28,7 @@ export default defineConfig({
     ? [
         ['github'],
         ['html', { open: 'never', outputFolder: '.local/e2e-report' }],
-        // For the nightly's issues (scripts/nightly-issues.ts).
+        // For the nightly's issues (the org's nightly-issues action).
         ['json', { outputFile: '.local/nightly/playwright.json' }],
       ]
     : 'list',
