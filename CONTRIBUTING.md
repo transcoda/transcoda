@@ -25,7 +25,8 @@ pnpm fixtures                          # small test videos, made with ffmpeg
 pnpm --filter @transcoda/server dev    # API on :8080
 pnpm --filter @transcoda/web dev       # UI with hot reload on http://localhost:5173
 pnpm check                             # typecheck, lint, dependency and licence rules, tests
-pnpm build && pnpm e2e                 # browser tests (Playwright; once: pnpm exec playwright install chromium)
+pnpm e2e:docker                        # browser tests and screenshots, in Docker as CI runs them
+pnpm e2e:update                        # after a UI change on purpose: new screenshot baselines
 ```
 
 More in the README's [Development](README.md#development) section.
