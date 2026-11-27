@@ -72,6 +72,10 @@ test('main pages', async ({ page }) => {
   // A table on a desktop, a list of links on a phone.
   const harbor = page.getByRole('link', { name: /Harbor Lights/ }).first();
   await expect(harbor).toBeVisible();
+  // The three "Nothing to do" jobs finish within the same instant, so their order is not fixed:
+  // the shot shows the one replaced job.
+  await page.getByRole('button', { name: /^Replaced/ }).click();
+  await expect(page.getByRole('link', { name: /Quiet Meadow/ })).toHaveCount(0);
   await shot(page, 'jobs');
 
   await harbor.click();
