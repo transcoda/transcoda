@@ -12,4 +12,4 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:
-      - uses: transcoda/.github/actions/pr-title@43cbb990910eca37108711aedaa1b939835a1941 # v1.1.0
+      - uses: transcoda/.github/actions/pr-title@690ae52154e1b41a4cbd3b33069f1e590daa011d # v1.1.1
