@@ -2,9 +2,11 @@
 
 For coding agents working in this repository. Everything in [CONTRIBUTING.md](CONTRIBUTING.md) applies, and setup is there too. This file adds the rules agents tend to skip.
 
-Today's rules for each area are in [`docs/dev/`](docs/dev/): [testing](docs/dev/testing.md), [engine](docs/dev/engine.md), [server and API](docs/dev/server-api.md), [plugin host](docs/dev/plugins-host.md), [web UI](docs/dev/web-ui.md), [conventions](docs/dev/conventions.md), [CI and releases](docs/dev/ci-release.md). [`docs/decisions/`](docs/decisions/README.md) is the dated history behind them. Where it disagrees with `docs/dev/` or the code, the history is out of date.
+Today's rules for each area are in [`docs/dev/`](docs/dev/): [structure](docs/dev/structure.md), [testing](docs/dev/testing.md), [engine](docs/dev/engine.md), [server and API](docs/dev/server-api.md), [plugin host](docs/dev/plugins-host.md), [web UI](docs/dev/web-ui.md), [conventions](docs/dev/conventions.md), [CI and releases](docs/dev/ci-release.md). [`docs/decisions/`](docs/decisions/README.md) is the dated history behind them. Where it disagrees with `docs/dev/` or the code, the history is out of date.
 
 ## Repo map
+
+Where a new file or folder goes, the layer order and the naming rules: [docs/dev/structure.md](docs/dev/structure.md). Read it first. `pnpm check-structure` enforces it; parts of the tree below are still moving to the layout it describes.
 
 Dependencies point one way: `packages/shared` ← `packages/sdk` ← `packages/contract` ← `apps/server` and `apps/web`. `pnpm check-deps` enforces this and refuses relative imports across packages.
 
@@ -15,7 +17,7 @@ Dependencies point one way: `packages/shared` ← `packages/sdk` ← `packages/c
 
 ## What done means
 
-- `pnpm check` passes (typecheck, Biome with warnings as errors, knip, dependency, licence and file-size checks, all tests). No file over 1200 lines; split it rather than grow an entry in `.github/file-size-allowlist.json` ([conventions.md](docs/dev/conventions.md#file-size)).
+- `pnpm check` passes (typecheck, Biome with warnings as errors, knip, dependency, structure, licence and file-size checks, all tests). No file over 1200 lines; split it rather than grow an entry in `.github/file-size-allowlist.json` ([conventions.md](docs/dev/conventions.md#file-size)).
 - **Release note:** a note in `.changes/` ([format](.changes/README.md)). Use the `no user-facing change` label instead when users will not notice the change.
 - **Tests** are in the right tier ([testing.md](docs/dev/testing.md)), and a bug fix comes with a test that failed before the fix.
   - Run `pnpm fixtures` once per checkout. Without it, the real-ffmpeg tests skip silently.
@@ -23,7 +25,7 @@ Dependencies point one way: `packages/shared` ← `packages/sdk` ← `packages/c
 - **Docs:** update `README.md` and `docs/` for users, and the topic doc in `docs/dev/` when a rule changes.
 - **UI changes:** add the screenshots described under "UI changes".
 - **Pull request title:** `Area: what changed`, e.g. `Engine: drop hardware encoders that cannot run here`.
-  - Areas in use: Engine, Jobs, Libraries, Workflows, Editor, Plugins, Settings, Metrics, Design, UI, Docker, CI, Tests, Docs, Release, Dependencies.
+  - Areas in use: Engine, Jobs, Libraries, Workflows, Editor, Plugins, Settings, Metrics, Design, UI, Docker, CI, Tests, Docs, Release, Dependencies, Structure (moving files and folders to the layout in [structure.md](docs/dev/structure.md)).
   - No `feat:` or `fix(x):`, and no full stop ([details](CONTRIBUTING.md#pr-titles)).
 - **Names:** fixtures, docs and screenshots use invented titles and names only. Never a real show, film, person, host or address.
 

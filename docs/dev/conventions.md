@@ -8,6 +8,7 @@ Today's rules for how code is written here. Most of them are checked by `pnpm ch
 - Node runs `.ts` directly. Relative imports name the extension (`./x.ts`).
 - Scripts in `scripts/` are TypeScript too (`node scripts/x.ts`), type-checked by `pnpm typecheck` through `scripts/tsconfig.json`. Node strips the types, so use only erasable syntax: no `enum`, no `namespace`, no constructor parameter properties. The types of `@transcoda/dev-config` (plain JavaScript) that the scripts use are declared in `scripts/dev-config.d.ts`.
 - Packages depend one way, `shared <- sdk <- contract <- server/web`; no relative import from one workspace package into another. `pnpm check-deps` (`scripts/check-deps.ts`) enforces both.
+- Inside an app, areas are layered and a big file becomes a module folder; `pnpm check-structure` (`scripts/check-structure.ts`) enforces the rules in [structure.md](structure.md).
 
 ## Checked by Biome
 
@@ -31,6 +32,13 @@ Today's rules for how code is written here. Most of them are checked by `pnpm ch
 - A rule both repositories should follow goes in the shared base (`biome/base.json` in `transcoda/.github`), not here; a rule only this repository needs goes in `biome.json`'s `overrides`.
 - A suppression (`biome-ignore`) always says why. Don't add one to get past a rule you could follow. `scripts/biome-suppressions.test.ts` holds a budget per rule: a new suppression fails it, and so does a removed one until its count is lowered, so the budget only goes down. Raising a count is a decision a reviewer has to see in the pull request.
 
+## Checked by the structure check
+
+`pnpm check-structure` (part of `pnpm check`) holds the layout in [structure.md](structure.md): layers, module folders, no `index.ts` barrels, test support, and these names:
+
+- **Test names**, everywhere: `<subject>.test.ts` beside `<subject>.ts`, or `<subject>.<topic>.test.ts` for a further file on the same subject (`paths.property.test.ts`, `pipeline.real.test.ts`, `TcNode.ports.test.tsx`). The name up to one of its dots is a source file in the same folder. The tests that break it today are listed in `scripts/structure-allowlist.json` (`orphanTests`), a list that only shrinks.
+- **Folder names** (Biome's rule does not look at folders): kebab-case, or PascalCase for a component's module folder, which holds a `.tsx` of the same name. A folder that is a module holds its entry file under its own name, never `index.ts` ([structure.md](structure.md)).
+
 ## Dead code
 
 - `pnpm knip` (part of `pnpm check`, about 2 s) reports unused files, unused dependencies and exports nothing imports, in every workspace. Config: `knip.jsonc`.
@@ -42,6 +50,7 @@ Today's rules for how code is written here. Most of them are checked by `pnpm ch
 - No source file over 1200 lines: TypeScript, JavaScript and CSS under `apps/`, `packages/`, `scripts/`, `e2e/` and the root config files, tests included, fixtures excluded. Split a file before it gets there.
 - Files that were already over it are in `.github/file-size-allowlist.json` with their line count. The number may only go down: a listed file that grows fails, one that shrinks fails until its number is lowered to match, and one back under 1200 fails until its entry is removed. A pull request can't add an entry or raise a number.
 - `pnpm check-file-size` (part of `pnpm check`) and the CI job `file-size` run the same check (`transcoda-file-size` and the org's `file-size` action); their globs are the same, so change both together.
+- **Soft limit, 800 lines,** for source files (tests and fixtures aside, CSS included): split a file into a module folder well before the budget ([structure.md](structure.md), Rule B). `pnpm check-structure` checks it. The files over it today are in `softSizeLimit` in `scripts/structure-allowlist.json`, with the same rules as the hard allowlist: the number may only go down.
 
 ## Checked by tests
 
@@ -57,4 +66,4 @@ Today's rules for how code is written here. Most of them are checked by `pnpm ch
 - **Names in public text.** Fixtures, tests, docs, screenshots and commit messages use invented titles (Otter and Finch, Harbor Lights, ...). Never a real show or film, a real person, an email address, a hostname or a private IP.
 - **Comments** say why, not what. A comment that cites a decision points to the topic doc in `docs/dev/` or to the log entry by its heading (`docs/decisions/<file>.md`, "M1 engine Task 13: replace").
 
-History: [2026-11](../decisions/2026-11.md) ("Code consistency checks", "Design rule checks", "SI units everywhere"), [M0](../decisions/2026-10-m0.md) ("M0 tooling", "Task 5").
+History: [2026-11](../decisions/2026-11.md) ("Source layout and its check", "Code consistency checks", "Design rule checks", "SI units everywhere"), [M0](../decisions/2026-10-m0.md) ("M0 tooling", "Task 5").

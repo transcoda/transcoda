@@ -2,7 +2,7 @@
 
 The history of decisions made while building Transcoda: what was decided, when and why. It is a record, not the rulebook. Many entries were later superseded, and an old entry is not corrected in place.
 
-**For today's rules, read the topic docs in [`docs/dev/`](../dev/)**: [testing](../dev/testing.md), [engine](../dev/engine.md), [server and API](../dev/server-api.md), [plugin host](../dev/plugins-host.md), [web UI](../dev/web-ui.md), [conventions](../dev/conventions.md), [CI and releases](../dev/ci-release.md).
+**For today's rules, read the topic docs in [`docs/dev/`](../dev/)**: [structure](../dev/structure.md), [testing](../dev/testing.md), [engine](../dev/engine.md), [server and API](../dev/server-api.md), [plugin host](../dev/plugins-host.md), [web UI](../dev/web-ui.md), [conventions](../dev/conventions.md), [CI and releases](../dev/ci-release.md).
 
 ## Files
 
@@ -24,7 +24,7 @@ Until the end of October the work ran in milestones (M0 to M3), and the log was 
 
 1. Change the rule in the topic doc in `docs/dev/` it belongs to, so the rule reads as it is today.
 2. Add an entry to the newest month file (start `YYYY-MM.md` for a new month and add it to the table above): a `## YYYY-MM-DD Title` heading, then what was decided and why. When it replaces an older entry, say so in the new one.
-3. Add one line for it at the end of the index below: `- YYYY-MM-DD · Area · [Title](file.md)`. Areas in use: Auth, Conventions, Database, Design, Docker, Editor, Engine, Jobs, Libraries, MCP, Metrics, Plugins, Server, Tests, Tooling, Web, Workflows. A line may end with a note in parentheses, such as `(superseded by "…")`.
+3. Add one line for it at the end of the index below: `- YYYY-MM-DD · Area · [Title](file.md)`. Areas in use: Auth, Conventions, Database, Design, Docker, Editor, Engine, Jobs, Libraries, MCP, Metrics, Plugins, Server, Structure, Tests, Tooling, Web, Workflows. A line may end with a note in parentheses, such as `(superseded by "…")`.
 
 `scripts/decisions-index.test.ts` (part of `pnpm check`) fails when an entry has no date in its heading or is missing from the index, and prints the line to add.
 
@@ -189,3 +189,4 @@ Entries from M0 to M3 had no date of their own; they carry the day their milesto
 - 2026-11-27 · Tests · [Property tests with fast-check](2026-11.md)
 - 2026-11-27 · Docker · [Release provenance as .intoto.jsonl](2026-11.md)
 - 2026-11-27 · Docker · [corepack pinned by hash in the images](2026-11.md)
+- 2026-11-27 · Structure · [Source layout and its check](2026-11.md)

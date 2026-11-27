@@ -25,7 +25,7 @@ jobs:
           node-version-file: .node-version
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      # typecheck + lint + check-deps + check-licences + test (`pnpm ci` is reserved by pnpm 12).
+      # typecheck + lint + knip + check-deps + check-structure + check-licences + file size + test (`pnpm ci` is reserved by pnpm 12).
       # Licence allow-list: part of pnpm check (scripts/third-party-notices.ts --check).
       - run: pnpm check
       - run: pnpm build
