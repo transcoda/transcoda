@@ -26,6 +26,12 @@ Today's rules for how code is written here. Most of them are checked by `pnpm ch
 - A rule both repositories should follow goes in the shared base (`biome/base.json` in `transcoda/.github`), not here; a rule only this repository needs goes in `biome.json`'s `overrides`.
 - A suppression (`biome-ignore`) always says why. Don't add one to get past a rule you could follow.
 
+## File size
+
+- No source file over 1200 lines: TypeScript, JavaScript and CSS under `apps/`, `packages/`, `scripts/`, `e2e/` and the root config files, tests included, fixtures excluded. Split a file before it gets there.
+- Files that were already over it are in `.github/file-size-allowlist.json` with their line count. The number may only go down: a listed file that grows fails, one that shrinks fails until its number is lowered to match, and one back under 1200 fails until its entry is removed. A pull request can't add an entry or raise a number.
+- `pnpm check-file-size` (part of `pnpm check`) and the CI job `file-size` run the same check (`transcoda-file-size` and the org's `file-size` action); their globs are the same, so change both together.
+
 ## Checked by tests
 
 - **Migrations** (`apps/server/src/db/migration-conventions.test.ts`): named `NNNN_snake_case.ts`, numbered 1..N without gaps, registered in `apps/server/src/db/migrations/index.ts` in order with a matching `version` and `name`, each with its own test. The allowlist of old untested migrations may only shrink.

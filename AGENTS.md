@@ -15,7 +15,7 @@ Dependencies point one way: `packages/shared` ← `packages/sdk` ← `packages/c
 
 ## What done means
 
-- `pnpm check` passes (typecheck, Biome, dependency and licence checks, all tests).
+- `pnpm check` passes (typecheck, Biome, dependency, licence and file-size checks, all tests). No file over 1200 lines; split it rather than grow an entry in `.github/file-size-allowlist.json` ([conventions.md](docs/dev/conventions.md#file-size)).
 - **Release note:** a note in `.changes/` ([format](.changes/README.md)). Use the `no user-facing change` label instead when users will not notice the change.
 - **Tests** are in the right tier ([testing.md](docs/dev/testing.md)), and a bug fix comes with a test that failed before the fix.
   - Run `pnpm fixtures` once per checkout. Without it, the real-ffmpeg tests skip silently.
@@ -101,7 +101,7 @@ Use these rather than re-declaring them ([more](docs/dev/testing.md#helpers-to-u
 
 ## UI changes
 
-- A UI fix or change counts as done only with **before and after screenshots** of the affected page, at the widths and in the themes it touches. Put both in the pull request.
+- A UI fix or change counts as done only with **before and after screenshots** of the affected page, at the widths and in the themes it touches. Put both in the pull request description. The `screenshots` check fails a pull request that changes `apps/web/src/` without an image there; a change nobody can see (a refactor, a test helper) gets the `no screenshots needed` label instead.
 - Run the browser tests (`pnpm e2e:docker`) when a change touches a page or a flow they cover. When a page changes on purpose, update its screenshot baselines with `pnpm e2e:update`, look at every changed image, and commit them in the same pull request.
 - Follow [DESIGN.md](DESIGN.md) for colours, type, spacing and icons.
 - CSS lives in per-area files under `apps/web/src/styles/`, imported in a fixed order from `styles/index.css` (`tokens.css` first). Put a rule in its area's file; a new area gets a new file imported at the right place. Don't add to `assorted.css`, and never reorder the imports ([web-ui.md](docs/dev/web-ui.md)).
