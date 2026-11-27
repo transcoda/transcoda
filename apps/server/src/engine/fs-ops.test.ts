@@ -212,8 +212,8 @@ describe('copyRegular', () => {
 describe('readText', () => {
   it('reads a small regular file as UTF-8', async () => {
     const nfo = join(root, 'movie.nfo');
-    await writeFile(nfo, '<movie><title>Sherlock Jr.</title></movie>');
-    expect(await nodeFsOps.readText(nfo, 100)).toBe('<movie><title>Sherlock Jr.</title></movie>');
+    await writeFile(nfo, '<movie><title>Shepherd Jr.</title></movie>');
+    expect(await nodeFsOps.readText(nfo, 100)).toBe('<movie><title>Shepherd Jr.</title></movie>');
   });
 
   it('refuses a symlink to a file, a directory and a file over the limit', async () => {

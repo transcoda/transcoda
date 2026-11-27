@@ -36,7 +36,7 @@ const url = (id: string) => `/jobs/${id}/poster`;
 function media(posterPath: string | null): StoredJobMedia {
   return {
     kind: 'movie',
-    title: 'Sherlock Jr.',
+    title: 'Shepherd Jr.',
     year: 1924,
     season: null,
     episode: null,

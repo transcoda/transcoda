@@ -46,7 +46,7 @@ afterEach(async () => {
 
 const media = (posterPath: string | null) => ({
   kind: 'movie' as const,
-  title: 'The General',
+  title: 'The Gardener',
   year: 1926,
   season: null,
   episode: null,
@@ -89,7 +89,7 @@ describe('job media over RPC', () => {
     const by = Object.fromEntries(list.jobs.map((j) => [j.id, j.media]));
     const expected = {
       kind: 'movie',
-      title: 'The General',
+      title: 'The Gardener',
       year: 1926,
       season: null,
       episode: null,

@@ -1,0 +1,44 @@
+.chip {
+  /* The one chip size and font (convention 8): the same pill as the Jobs list's state chip. */
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  height: 28px;
+  padding: 0 var(--sp-3);
+  border-radius: var(--r-pill);
+  border: 1.5px solid currentColor;
+  font-size: var(--fs-small);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.chip-ok {
+  color: var(--accent-text);
+}
+
+.chip-error {
+  color: var(--st-failed-text);
+}
+
+.chip-warning {
+  color: var(--st-needs-setting);
+}
+
+/* No change (Not active, Kept original, Nothing to do, Skipped): a neutral outline. */
+.chip-neutral {
+  border-color: var(--line-strong);
+  color: var(--muted);
+}
+
+.eyebrow-kind {
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+}
+
+/* The kind words only ("Action", "plugin"); a plugin's name and version keep their case. */
+.eyebrow-kind-word {
+  text-transform: uppercase;
+}

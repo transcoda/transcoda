@@ -1,0 +1,425 @@
+/* ---------- Editor: zoom detail levels, toolbar, groups, minimap (N8–N11) ---------- */
+
+/* N9 icon level: an 80 px circle around the icon; every handle stays (centred on its side) so the
+   edges still draw. The ring takes the node kind's colour. */
+.tc-node.zoom-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  color: var(--node-kind);
+}
+
+/* The kind-coloured ring, unless a state border (N6) or the trace's failed ring draws one. */
+.tc-node.zoom-icon:not(.border-red, .border-amber, .border-dashed, .is-failed) {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--node-kind) 55%, var(--line-strong));
+}
+
+.tc-node.zoom-icon.is-running::before {
+  border-radius: 50%;
+}
+
+.tc-node.zoom-icon .tc-node-icon {
+  display: flex;
+}
+
+/* The job page's trace draws the icon tiles twice as large (see TRACE_ICON): a 160 px circle with a
+   thicker ring and a doubled badge, so they read at the ~0.3 zoom a long workflow fits at. */
+.tc-node.zoom-icon.is-big-icon {
+  width: 160px;
+  height: 160px;
+}
+
+.tc-node.zoom-icon.is-big-icon:not(.border-red, .border-amber, .border-dashed, .is-failed) {
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--node-kind) 55%, var(--line-strong));
+}
+
+.tc-node.zoom-icon.is-big-icon.is-running::before {
+  inset: -7px;
+}
+
+.tc-node.zoom-icon.is-big-icon.is-failed {
+  box-shadow: 0 0 0 4px var(--st-failed);
+}
+
+.tc-node.zoom-icon.is-big-icon .tc-badge.is-glyph {
+  top: -10px;
+  right: -10px;
+  transform: scale(2);
+  transform-origin: center;
+}
+
+.tc-badge.is-glyph {
+  top: -10px;
+  right: -10px;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+}
+
+/* N8: toolbar above the selected node. Buttons are 44 px wide and drawn 34 px tall; ::before
+   extends the hit area to 44 px tall. */
+.tc-toolbar {
+  display: flex;
+  gap: var(--sp-1);
+  padding: var(--sp-1);
+  border-radius: var(--r-md);
+  background: var(--line);
+  box-shadow: 0 6px 18px var(--toolbar-shadow);
+  font-family: var(--font-ui);
+}
+
+.tc-toolbar-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  min-width: var(--target-min);
+  height: 34px;
+  padding: 0 var(--sp-3);
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-small);
+  cursor: pointer;
+}
+
+.tc-toolbar-btn::before {
+  content: "";
+  position: absolute;
+  inset: -5px 0;
+}
+
+.tc-toolbar-btn:not(.tc-toolbar-try):not(.has-text) {
+  padding: 0;
+}
+
+@media (hover: hover) {
+  .tc-toolbar-btn:hover:not(:disabled) {
+    background: var(--line-strong);
+  }
+}
+
+.tc-toolbar-btn:disabled {
+  color: var(--faint);
+  cursor: not-allowed;
+}
+
+.tc-toolbar-btn.is-on {
+  background: var(--line-strong);
+  color: var(--accent-text);
+}
+
+.tc-toolbar-delete {
+  color: var(--danger-text);
+}
+
+/* N10: a dashed box; header and collapse chip inside it at the bottom (screen 05), in the 24 px
+   group padding. */
+.tc-group {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border: 1.5px dashed var(--group-line);
+  border-radius: var(--r-lg);
+  background: var(--group-fill);
+  color: var(--text);
+  font-family: var(--font-ui);
+}
+
+.react-flow__node.selected > .tc-group {
+  border-color: var(--accent-text);
+}
+
+.react-flow__node:focus-visible > .tc-group {
+  box-shadow: var(--focus-ring);
+}
+
+.tc-group-head {
+  position: absolute;
+  bottom: 4px;
+  left: 14px;
+  right: 44px;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: var(--fs-small);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.tc-group-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tc-group-note {
+  position: absolute;
+  top: 12px;
+  left: 14px;
+  right: 14px;
+  bottom: 36px;
+  overflow: hidden;
+  font-size: var(--fs-small);
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+/* A note's "# heading" line: a bold lead-in, not a document heading (the canvas is not part of
+   the page outline, and an h4 there skipped levels). */
+.markdown .markdown-heading {
+  margin: var(--sp-3) 0 var(--sp-1);
+  font-size: var(--fs-body);
+  font-weight: 700;
+  color: var(--text);
+}
+
+.markdown > :first-child {
+  margin-top: 0;
+}
+
+.markdown p,
+.markdown ul,
+.markdown ol {
+  margin: 0 0 var(--sp-2);
+}
+
+.markdown ul,
+.markdown ol {
+  padding-left: var(--sp-5);
+}
+
+.markdown strong {
+  color: var(--text);
+}
+
+.markdown code {
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+  padding: 0 var(--sp-1);
+  border-radius: var(--r-sm);
+  background: var(--raised);
+  color: var(--text);
+}
+
+.markdown a:any-link {
+  color: var(--accent-text);
+}
+
+.tc-group-count {
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  font-weight: 600;
+  color: var(--faint);
+  text-transform: uppercase;
+}
+
+/* 44 px target (or larger, --tc-hit) around the drawn 26 px chip; the chip sits at bottom 0,
+   right 8 px: the target is centred 21 px from the right edge and 13 px from the bottom. */
+.tc-group-toggle {
+  --tc-hit: max(var(--target-min), calc(24px / var(--tc-zoom, 1)));
+  position: absolute;
+  right: calc(21px - var(--tc-hit) / 2);
+  bottom: calc(13px - var(--tc-hit) / 2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--tc-hit);
+  height: var(--tc-hit);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.tc-group-toggle-chip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--r-sm);
+  background: var(--line);
+}
+
+@media (hover: hover) {
+  .tc-group-toggle:hover .tc-group-toggle-chip {
+    background: var(--line-strong);
+  }
+}
+
+.tc-group-toggle:focus-visible {
+  outline: none;
+}
+
+.tc-group-toggle:focus-visible .tc-group-toggle-chip {
+  box-shadow: var(--focus-ring);
+}
+
+/* Collapsed: a 210 x 60 tile (size from toFlow) with the header inside. */
+.tc-group.is-collapsed {
+  border-radius: var(--r-md);
+  background: var(--raised);
+}
+
+.tc-group.is-collapsed .tc-group-head {
+  inset: 0;
+  flex-wrap: wrap;
+  align-content: center;
+  row-gap: 0;
+  padding: 0 var(--sp-12) 0 var(--sp-4);
+}
+
+.tc-group.is-collapsed .tc-group-name {
+  flex: 1 1 100%;
+  order: 1;
+  font-size: var(--fs-body);
+}
+
+.tc-group.is-collapsed .tc-group-count {
+  order: 2;
+}
+
+.tc-group.is-collapsed .tc-group-toggle {
+  top: 50%;
+  right: calc(26px - var(--tc-hit) / 2);
+  bottom: auto;
+  transform: translateY(-50%);
+}
+
+/* N10: a collapsed tile shows its hidden members' worst state (badge from TcGroup, border as the
+   card's N6 rules). The badge is not a control: it never takes the toggle's 44 px target. */
+.tc-group .tc-badge {
+  pointer-events: none;
+}
+
+.tc-group.is-collapsed.border-red {
+  background: var(--node-broken-bg);
+  box-shadow: 0 0 0 2px var(--st-failed);
+}
+
+.tc-group.is-collapsed.border-amber {
+  box-shadow: 0 0 0 2px var(--st-needs-setting);
+}
+
+/* The tile's own dashed border takes the state colour; no second outline. Selection still wins. */
+.tc-group.is-collapsed.border-dashed {
+  border-color: var(--faint);
+}
+
+.react-flow__node.selected > .tc-group.is-collapsed.border-dashed {
+  border-color: var(--accent-text);
+}
+
+/* The focus ring still wins over a state border, as on cards. */
+.react-flow__node:focus-visible > .tc-group.is-collapsed {
+  box-shadow: var(--focus-ring);
+}
+
+.tc-group .tc-group-handle {
+  width: 12px;
+  height: 12px;
+  min-width: 0;
+  min-height: 0;
+  border: 2px dashed var(--muted);
+  border-radius: 50%;
+  background: var(--surface);
+}
+
+.react-flow__resize-control.handle.tc-group-resize-handle {
+  width: 10px;
+  height: 10px;
+  border: 2px solid var(--surface);
+  border-radius: 2px;
+}
+
+/* N11: the minimap keeps the kind colours and the N6 outlines. */
+.tc-minimap {
+  /* React Flow runs in colorMode="dark" and paints the minimap from these variables,
+     which would win over a plain background in the light theme. */
+  --xy-minimap-background-color-props: var(--raised);
+  --xy-minimap-mask-background-color-props: var(--backdrop);
+  border-radius: var(--r-md);
+  background: var(--raised);
+  box-shadow: inset 0 0 0 1px var(--line-strong);
+  overflow: hidden;
+}
+
+.tc-minimap .react-flow__minimap-mask {
+  fill: var(--backdrop);
+}
+
+.tc-mini {
+  fill: var(--faint);
+  stroke: none;
+  vector-effect: non-scaling-stroke;
+}
+
+.tc-mini.kind-trigger,
+.tc-mini.kind-start {
+  fill: var(--kind-trigger);
+}
+
+.tc-mini.kind-condition {
+  fill: var(--kind-condition);
+}
+
+.tc-mini.kind-action {
+  fill: var(--kind-action);
+}
+
+.tc-mini.kind-finish,
+.tc-mini.kind-end {
+  fill: var(--kind-finish);
+}
+
+.tc-mini.kind-data {
+  fill: var(--kind-data);
+}
+
+.tc-mini.border-red {
+  stroke: var(--st-failed);
+  stroke-width: 3px;
+}
+
+.tc-mini.border-amber {
+  stroke: var(--st-needs-setting);
+  stroke-width: 3px;
+}
+
+.tc-mini.border-dashed {
+  fill-opacity: 0.5;
+  stroke: var(--faint);
+  stroke-width: 2px;
+  stroke-dasharray: 4 3;
+}
+
+.tc-mini-values {
+  fill: var(--line-strong);
+}
+
+.tc-mini-group {
+  fill: transparent;
+  stroke: var(--group-line);
+  stroke-width: 1.5px;
+  stroke-dasharray: 5 4;
+}
+
+/* A collapsed group hides its members (React Flow skips hidden nodes), so its tile is filled;
+   --line-strong, not --raised, which is the minimap's own background. */
+.tc-mini-group.is-collapsed {
+  fill: var(--line-strong);
+}
+
+/* Spec N11 draws a broken node red; amber keeps the kind fill and the amber stroke. */
+.tc-mini.border-red,
+.tc-mini-group.border-red {
+  fill: var(--st-failed);
+}

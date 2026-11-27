@@ -1,0 +1,282 @@
+/* ---------- Colour key (screen 05: bottom left of the canvas) ---------- */
+.canvas-legend {
+  position: absolute;
+  left: 16px;
+  bottom: 16px;
+  z-index: 5;
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: flex-start;
+  gap: var(--sp-3);
+  /* Clear of the minimap and zoom controls on the right. */
+  max-width: calc(100% - 232px);
+}
+
+.canvas-legend-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-width: var(--target-min);
+  min-height: var(--target-min);
+  padding: 0 var(--sp-3);
+  border-radius: var(--r-md);
+  background: var(--line);
+  color: var(--text);
+  font-size: var(--fs-ui);
+  font-weight: 600;
+  list-style: none;
+  cursor: pointer;
+}
+
+.canvas-legend-toggle::-webkit-details-marker {
+  display: none;
+}
+
+.canvas-legend[open] > .canvas-legend-toggle {
+  background: var(--text);
+  color: var(--bg);
+}
+
+.canvas-legend-body {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  /* The key never grows past the canvas: it scrolls instead. */
+  max-height: calc(100vh - 220px);
+  overflow-y: auto;
+  padding: var(--sp-3) 52px var(--sp-3) var(--sp-4);
+  border-radius: var(--r-md);
+  background: var(--raised);
+  color: var(--legend-text);
+  font-size: var(--fs-mono);
+}
+
+.canvas-legend-body > .panel-close {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+}
+
+.legend-row {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  align-items: baseline;
+  gap: var(--sp-4);
+}
+
+.legend-items {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2) var(--sp-4);
+}
+
+.legend-label {
+  width: 96px;
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  font-weight: 600;
+  color: var(--faint);
+  text-transform: uppercase;
+}
+
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  /* An entry wraps as a whole, never "data" alone on a line. */
+  white-space: nowrap;
+}
+
+.legend-item kbd {
+  padding: 0 var(--sp-1);
+  border-radius: var(--r-sm);
+  background: var(--legend-kbd-bg);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+}
+
+.legend-stroke {
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-dasharray: 5 4;
+}
+
+.legend-line.is-path .legend-stroke {
+  stroke: var(--edge-path);
+  stroke-width: 3;
+  stroke-dasharray: 6 3;
+}
+
+.legend-arrow {
+  stroke: none;
+}
+
+.legend-line.is-file .legend-stroke {
+  stroke: var(--edge-file);
+  stroke-width: 3;
+  stroke-dasharray: none;
+}
+
+.legend-line.is-file .legend-arrow {
+  fill: var(--edge-file);
+}
+
+.legend-line.is-path .legend-arrow {
+  fill: var(--edge-path);
+}
+
+.legend-line.is-data .legend-arrow {
+  fill: var(--edge-data);
+}
+
+.legend-line.is-untaken .legend-arrow {
+  fill: var(--edge-untaken);
+}
+
+.legend-line.is-broken .legend-arrow {
+  fill: var(--edge-broken);
+}
+
+.legend-line.is-data .legend-stroke {
+  stroke: var(--edge-data);
+  stroke-dasharray: 0.01 5;
+}
+
+.legend-line.is-untaken .legend-stroke {
+  stroke: var(--edge-untaken);
+}
+
+.legend-line.is-broken .legend-stroke {
+  stroke: var(--edge-broken);
+}
+
+.legend-swatch {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+}
+
+.legend-swatch.is-file-in {
+  border-radius: 50%;
+  background: var(--surface);
+  border: 2.5px solid var(--muted);
+}
+
+.legend-swatch.is-file-out {
+  border-radius: 50%;
+  background: var(--text);
+  border: 2px solid var(--raised);
+}
+
+.legend-swatch.is-data-in,
+.legend-swatch.is-data-out {
+  width: 13px;
+  height: 13px;
+  border-radius: 2px;
+  transform: rotate(45deg);
+}
+
+.legend-swatch.is-data-in {
+  background: var(--raised);
+  border: 2.5px solid var(--kind-data);
+}
+
+.legend-swatch.is-data-out {
+  background: var(--kind-data);
+  border: 2px solid var(--raised);
+}
+
+.legend-swatch.is-selected {
+  width: 16px;
+  height: 12px;
+  border-radius: 2px;
+  background: var(--raised);
+  box-shadow: 0 0 0 2px var(--accent-text);
+}
+
+/* Running: a lime ring standing for the moving border (still in the key). */
+.legend-swatch.is-running {
+  width: 16px;
+  height: 12px;
+  border-radius: 2px;
+  background: var(--raised);
+  border: 2px solid var(--accent-text);
+}
+
+.legend-swatch.is-group {
+  width: 18px;
+  height: 12px;
+  border-radius: 2px;
+  border: 1.5px dashed var(--group-line);
+}
+
+.legend-swatch.is-kind {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+
+.legend-swatch.is-trigger {
+  background: var(--kind-trigger);
+}
+
+.legend-swatch.is-condition {
+  background: var(--kind-condition);
+}
+
+.legend-swatch.is-action {
+  background: var(--kind-action);
+}
+
+.legend-swatch.is-finish {
+  background: var(--kind-finish);
+}
+
+.legend-swatch.is-data {
+  background: var(--kind-data);
+}
+
+.legend-port {
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  font-weight: 600;
+}
+
+.legend-port.is-pass {
+  color: var(--accent-text);
+}
+
+.legend-port.is-else {
+  color: var(--faint);
+}
+
+.legend-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  font-size: var(--fs-micro);
+  font-weight: 800;
+}
+
+.legend-badge.is-missing {
+  background: var(--st-failed);
+  color: var(--st-failed-ink);
+}
+
+.legend-badge.is-setting {
+  background: var(--st-needs-setting);
+  color: var(--needs-setting-ink);
+}
+
+.legend-badge.is-unavailable,
+.legend-badge.is-unreachable {
+  background: var(--line-strong);
+  color: var(--text);
+}

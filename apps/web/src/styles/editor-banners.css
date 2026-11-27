@@ -1,0 +1,86 @@
+/* ---------- Canvas banners (screen 05: top of the graph) ---------- */
+.canvas-banners {
+  position: absolute;
+  top: 14px;
+  left: 16px;
+  right: 16px;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  pointer-events: none;
+}
+
+.canvas-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--r-md);
+  font-size: var(--fs-ui);
+  font-weight: 500;
+  pointer-events: auto;
+}
+
+/* The text shrinks beside the icon instead of wrapping under it; only the action wraps. */
+.canvas-banner > span {
+  flex: 1 1 12rem;
+  min-width: 0;
+}
+
+.canvas-banner.is-danger {
+  background: var(--st-failed-bg);
+  color: var(--st-failed-text);
+}
+
+.canvas-banner.is-warning {
+  background: var(--st-dry-bg);
+  color: var(--st-dry);
+}
+
+.canvas-banner.is-info {
+  background: var(--raised);
+  color: var(--text);
+}
+
+/* Buttons and links ("Edit it") alike: a flex box centres the label in the tall target, where a
+   link's text would otherwise sit at the top of it. */
+.canvas-banner-action {
+  display: inline-flex;
+  align-items: center;
+  margin-left: auto;
+  min-height: var(--target-min);
+  padding: 0 var(--sp-2);
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  .canvas-banner-action:hover {
+    color: inherit;
+  }
+}
+
+/* An action the version can't take yet (its reason is the tooltip): muted, no underline. */
+.canvas-banner-action:disabled {
+  color: var(--faint);
+  text-decoration: none;
+  cursor: not-allowed;
+}
+
+/* A past version's two actions stay side by side, on the message's line or wrapped together. */
+.canvas-banner-actions {
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+}
+
+.canvas-banner-actions > .canvas-banner-action {
+  margin-left: 0;
+}

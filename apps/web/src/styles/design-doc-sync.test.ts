@@ -1,4 +1,4 @@
-// DESIGN.md quotes token values; tokens.css and the top of styles.css hold them. DESIGN.md says
+// DESIGN.md quotes token values; tokens.css and variables.css hold them. DESIGN.md says
 // that when the two disagree, the stylesheet is right and DESIGN.md needs updating: this test
 // says when.
 import { existsSync, readFileSync } from 'node:fs';

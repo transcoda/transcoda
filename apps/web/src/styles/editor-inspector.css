@@ -1,0 +1,194 @@
+/* ---------- Inspector: header, form, "On the canvas", footer (screen 05; editor/ui/Inspector) ---------- */
+
+.inspector {
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.inspector-head {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-4) var(--sp-5);
+  border-bottom: 1px solid var(--line);
+}
+
+.inspector-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  color: var(--faint);
+}
+
+/* A plain word (the group inspector's "Group"); kind words carry their own case. */
+.inspector-eyebrow.is-caps {
+  text-transform: uppercase;
+}
+
+.inspector-eyebrow .eyebrow-kind {
+  font-size: var(--fs-micro);
+  color: inherit;
+}
+
+.inspector-kind-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  background: currentColor;
+}
+
+.inspector-eyebrow.kind-trigger,
+.inspector-eyebrow.kind-start {
+  color: var(--kind-trigger);
+}
+
+.inspector-eyebrow.kind-condition {
+  color: var(--kind-condition);
+}
+
+.inspector-eyebrow.kind-action {
+  color: var(--kind-action);
+}
+
+.inspector-eyebrow.kind-finish,
+.inspector-eyebrow.kind-end {
+  color: var(--kind-finish);
+}
+
+.inspector-eyebrow.kind-data {
+  color: var(--kind-data);
+}
+
+.inspector-title {
+  margin: 0;
+  font-size: var(--fs-h2);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
+}
+
+.inspector-description {
+  margin: 0;
+  font-size: var(--fs-small);
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.inspector-state,
+.inspector-note {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin: 0;
+  font-size: var(--fs-ui);
+}
+
+.inspector-state.tone-amber {
+  color: var(--st-needs-setting);
+}
+
+.inspector-state.tone-red {
+  color: var(--danger-text);
+}
+
+.inspector-state.tone-dashed,
+.inspector-note {
+  color: var(--muted);
+}
+
+.inspector-issues {
+  margin: 0;
+  padding-left: var(--sp-5);
+  font-size: var(--fs-small);
+  color: var(--muted);
+}
+
+.inspector-body,
+.node-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-5);
+  min-width: 0;
+}
+
+/* The only scroller of the inspector (header and footer stay in view). */
+.inspector-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--sp-4) var(--sp-5);
+}
+
+.inspector-section {
+  border-top: 1px solid var(--line);
+}
+
+/* A node's rarely changed settings: closed under "Advanced", spaced like the form above it. */
+.inspector-advanced {
+  border-top: 1px solid var(--line);
+}
+
+.inspector-advanced .disclosure-body {
+  gap: var(--sp-5);
+  padding-top: var(--sp-2);
+}
+
+.inspector-section-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  padding-top: var(--sp-2);
+}
+
+/* Footer buttons are btn-sm: 36 px drawn, 44 px hit area (.btn-sm::before). */
+.inspector-footer {
+  flex: none;
+  display: flex;
+  gap: var(--sp-2);
+  padding: var(--sp-3) var(--sp-5);
+  border-top: 1px solid var(--line);
+}
+
+.inspector-multi,
+.inspector-group {
+  margin: 0;
+  font-size: var(--fs-ui);
+}
+
+.editor-load-failed {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+/* The zoom controls sit in the bottom-right corner; the minimap stacks above them. */
+.editor-canvas .react-flow__minimap {
+  margin-bottom: 76px;
+}
+
+.note-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+/* Conflict dialog: what runs, and a failure shown inside the dialog. */
+.dialog-busy {
+  margin-top: var(--sp-2);
+  color: var(--faint);
+  font-size: var(--fs-ui);
+}
+
+.dialog-alert {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  margin-top: var(--sp-3);
+}

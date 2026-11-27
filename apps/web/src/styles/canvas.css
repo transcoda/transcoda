@@ -1,0 +1,284 @@
+/* ---------- Workflow canvas (screens/02) ---------- */
+
+.page-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-4) var(--sp-5);
+  border-bottom: 1px solid var(--line);
+}
+
+.page-bar h1 {
+  font-size: var(--fs-h2);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.page-bar-note {
+  font-size: var(--fs-small);
+  color: var(--faint);
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  height: 26px;
+  padding: 0 var(--sp-3);
+  border-radius: var(--r-pill);
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  font-weight: 600;
+}
+
+.badge-dry {
+  background: var(--st-dry-bg);
+  color: var(--st-dry);
+  border: 1.5px dashed var(--st-dry);
+}
+
+.canvas {
+  position: relative;
+  flex: 1;
+  min-height: 560px;
+}
+
+.canvas .react-flow {
+  position: absolute;
+  inset: 0;
+  --xy-background-color: var(--surface);
+  --xy-controls-box-shadow: none;
+  --xy-controls-button-background-color: var(--line);
+  --xy-controls-button-background-color-hover: var(--line-strong);
+  --xy-controls-button-color: var(--text);
+  --xy-controls-button-color-hover: var(--text);
+  --xy-controls-button-border-color: transparent;
+  --xy-attribution-background-color: transparent;
+  /* React Flow's forceColorMode="dark" also sets color-scheme: dark here; the canvas keeps the
+     app's, so the cards' selects, inputs and buttons match the theme. */
+  color-scheme: inherit;
+}
+
+/* The box-select rectangles keep React Flow's dark colours (its light-dark() defaults) in either
+   theme. */
+.canvas .react-flow__selection,
+.canvas .react-flow__nodesselection-rect {
+  color-scheme: dark;
+}
+
+.canvas .react-flow__controls {
+  gap: var(--sp-1);
+  margin: var(--sp-4);
+}
+
+.canvas .react-flow__controls-button,
+.canvas .react-flow__controls.horizontal .react-flow__controls-button {
+  width: var(--target-min);
+  height: var(--target-min);
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-md);
+}
+
+.canvas .react-flow__controls-button svg {
+  max-width: 14px;
+  max-height: 14px;
+}
+
+/* Our stroked icons (Tidy up, minimap): React Flow fills every control svg, which drew them as
+   solid blocks. */
+.canvas .react-flow__controls-button svg.icon {
+  fill: none;
+}
+
+/* "Tidy up" on a read-only or empty canvas. */
+.canvas .react-flow__controls-button:disabled,
+.canvas .react-flow__controls-button:disabled:hover {
+  background: var(--xy-controls-button-background-color);
+  color: var(--faint);
+  cursor: not-allowed;
+}
+
+.canvas .react-flow__attribution a {
+  color: var(--faint);
+}
+
+.empty-workflows {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-4);
+  padding: 64px var(--sp-6);
+  border-radius: var(--r-lg);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  text-align: center;
+}
+
+.empty-workflows > h2,
+.empty-workflows > p {
+  max-width: 420px;
+}
+
+.empty-workflows h2 {
+  font-size: var(--fs-h1);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.empty-workflows p {
+  font-size: var(--fs-body);
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.empty-workflows .empty-note {
+  font-size: var(--fs-small);
+  color: var(--faint);
+}
+
+.empty-note kbd {
+  font-family: var(--font-mono);
+  font-size: var(--fs-mono);
+  padding: var(--sp-1) var(--sp-2);
+  border-radius: var(--r-sm);
+  background: var(--line);
+  color: var(--text);
+  border-bottom: 2px solid var(--line-strong);
+}
+
+.empty-chain {
+  display: flex;
+  align-items: center;
+}
+
+.empty-node {
+  width: 72px;
+  height: 48px;
+  border-radius: var(--r-md);
+  border: 2px dashed;
+}
+
+.kind-trigger {
+  border-color: var(--kind-trigger);
+}
+
+.kind-action {
+  border-color: var(--kind-action);
+}
+
+.kind-finish {
+  border-color: var(--kind-finish);
+}
+
+.empty-link {
+  width: 36px;
+  border-top: 2px dashed var(--empty-link);
+}
+
+.empty-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--sp-3);
+  pointer-events: auto;
+}
+
+.empty-actions .btn {
+  font-size: var(--fs-body);
+}
+
+.empty-actions .btn:disabled {
+  opacity: 0.55;
+}
+
+.empty-examples {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-3);
+  width: 100%;
+  max-width: 760px;
+  margin: var(--sp-2) 0 0;
+  padding: 0;
+  border: 0;
+}
+
+/* "Or start from an example" sits on a hairline: the examples are part of the empty state, not
+   cards inside it. */
+.empty-examples legend {
+  float: left;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  width: 100%;
+  margin-bottom: var(--sp-1);
+  font-size: var(--fs-small);
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.empty-examples legend::before,
+.empty-examples legend::after {
+  content: "";
+  flex: 1;
+  border-top: 1px solid var(--line);
+}
+
+.empty-example-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--sp-3);
+  width: 100%;
+}
+
+/* An example is a borderless row of the empty state: name and one line, a fill on hover. */
+.empty-example {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  padding: var(--sp-3);
+  border: 0;
+  border-radius: var(--r-md);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease-out);
+}
+
+@media (hover: hover) {
+  .empty-example:hover:not(:disabled) {
+    background: var(--raised);
+  }
+}
+
+.empty-example:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.empty-example:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.empty-example strong {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  font-size: var(--fs-body);
+  font-weight: 600;
+}
+
+.empty-example strong .icon {
+  color: var(--faint);
+}
+
+.empty-example span {
+  font-size: var(--fs-small);
+  line-height: 1.45;
+  color: var(--muted);
+}

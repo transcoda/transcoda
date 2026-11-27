@@ -1,8 +1,7 @@
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { stylesCss } from '../../styles/css-source.ts';
 
-const css = readFileSync(join(__dirname, '../../styles.css'), 'utf8');
+const css = stylesCss;
 
 /** The declarations of the first `selector { … }` in any `@media (…)` block that starts with `media`. */
 function inMedia(media: string, selector: string): string {

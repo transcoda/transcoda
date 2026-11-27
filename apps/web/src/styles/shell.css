@@ -1,0 +1,395 @@
+/* ---------- App shell (screens/02, 03) ---------- */
+
+.shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* The first thing a keyboard reaches; off-screen until focused. */
+.skip-link {
+  position: absolute;
+  top: var(--sp-2);
+  left: var(--sp-2);
+  z-index: 100;
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--r-md);
+  background: var(--text);
+  color: var(--bg);
+  font-weight: 700;
+  text-decoration: none;
+  transform: translateY(-200%);
+}
+
+.skip-link:focus {
+  transform: none;
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-4);
+  padding: var(--sp-3) var(--sp-5);
+  border-bottom: 1px solid var(--line);
+  background: var(--bg);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  min-height: var(--target-min);
+  color: var(--text);
+  text-decoration: none;
+  border-radius: var(--r-sm);
+}
+
+@media (hover: hover) {
+  .brand:hover {
+    color: var(--text);
+  }
+}
+
+.brand .wordmark {
+  font-size: var(--fs-h2);
+}
+
+.server-name {
+  max-width: 24ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.topbar-end {
+  margin-left: auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+.topbar-error {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: var(--fs-small);
+  color: var(--st-failed-text);
+}
+
+.user {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: var(--fs-ui);
+  color: var(--muted);
+}
+
+.avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--line);
+  color: var(--text);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--fs-small);
+  font-weight: 700;
+}
+
+/* Activity widget (#9): what runs and what is queued, left of the user; a panel under it. */
+.activity {
+  position: relative;
+}
+
+.activity-button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-width: var(--target-min);
+  min-height: var(--target-min);
+  padding: 0 var(--sp-3);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-pill);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-ui);
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  .activity-button:hover {
+    background: var(--raised);
+  }
+}
+
+.activity-button:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.activity-ring {
+  flex: none;
+  fill: none;
+  stroke-width: 3;
+}
+
+.activity-ring-track {
+  stroke: var(--line-strong);
+}
+
+.activity-ring.is-neutral .activity-ring-track {
+  stroke: var(--muted);
+}
+
+.activity-ring-value {
+  stroke: var(--accent-text);
+  stroke-linecap: round;
+  transition: stroke-dashoffset 400ms linear;
+}
+
+.activity-text {
+  white-space: nowrap;
+}
+
+.activity-count {
+  font-family: var(--font-mono);
+  font-weight: 600;
+}
+
+.activity-panel {
+  position: absolute;
+  top: calc(100% + var(--sp-2));
+  right: 0;
+  z-index: 30;
+  width: min(360px, calc(100vw - 32px));
+  max-height: calc(100vh - var(--topbar-h) - var(--sp-4));
+  overflow-y: auto;
+  padding: var(--sp-3);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  box-shadow: 0 8px 24px var(--toolbar-shadow);
+}
+
+.activity-jobs {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.activity-job {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sp-1);
+  padding-bottom: var(--sp-2);
+  border-bottom: 1px solid var(--line);
+  font-size: var(--fs-small);
+  color: var(--muted);
+}
+
+.activity-job-file {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--target-min);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text);
+  font-size: var(--fs-ui);
+  font-weight: 600;
+  border-radius: var(--r-sm);
+}
+
+.activity-job-step {
+  color: var(--text);
+}
+
+.activity-job > .progress {
+  align-self: stretch;
+  height: 6px;
+  margin: var(--sp-1) 0 var(--sp-1);
+}
+
+.activity-job-progress {
+  font-family: var(--font-mono);
+}
+
+.activity-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  padding-top: var(--sp-2);
+  font-size: var(--fs-small);
+  color: var(--muted);
+}
+
+.activity-open {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--target-min);
+  margin-left: auto;
+  border-radius: var(--r-sm);
+  font-weight: 600;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .activity-ring-value {
+    transition: none;
+  }
+}
+
+.shell-body {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+.sidenav {
+  flex: 0 0 220px;
+  max-width: 100%;
+  padding: var(--sp-4) var(--sp-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+
+/* Stays beside a long page: sticky under the top bar, scrolling itself if the window is short. */
+.shell:not(.is-rail) .sidenav {
+  position: sticky;
+  top: var(--topbar-h);
+  align-self: flex-start;
+  max-height: calc(100vh - var(--topbar-h));
+  overflow-y: auto;
+}
+
+/* The phone header's Menu button; the drawer is the nav under it. */
+.topbar-menu {
+  margin-left: auto;
+  width: var(--target-min);
+  height: var(--target-min);
+  border-radius: var(--r-md);
+  border: 0;
+  background: var(--raised);
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.nav-account {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-3);
+  margin-top: auto;
+  padding: var(--sp-4) var(--sp-3) 0;
+  border-top: 1px solid var(--line);
+}
+
+@media (max-width: 639px) {
+  .topbar {
+    flex-wrap: nowrap;
+    padding: var(--sp-3) var(--sp-4);
+  }
+  .shell-body {
+    flex-direction: column;
+  }
+  .shell:not(.is-rail) .sidenav {
+    position: fixed;
+    top: var(--topbar-h);
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 15;
+    max-height: none;
+    padding: var(--sp-4);
+    background: var(--bg);
+  }
+  .shell:not(.is-rail) .sidenav:not([data-open]) {
+    display: none;
+  }
+  .activity.is-phone {
+    margin-left: auto;
+  }
+  .activity.is-phone + .topbar-menu {
+    margin-left: 0;
+  }
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  height: var(--target-min);
+  padding: 0 var(--sp-3);
+  border-radius: var(--r-md);
+  color: var(--text);
+  text-decoration: none;
+}
+
+@media (hover: hover) {
+  a.nav-item:hover {
+    color: var(--text);
+    background: var(--raised);
+  }
+}
+
+/* Current: a neutral raised row with the icon in the accent, so it does not weigh as much as the
+   page's primary button. The fill, the green icon and aria-current mark it; the weight stays. */
+a.nav-item.is-active {
+  background: var(--raised);
+  color: var(--text);
+}
+
+.nav-item.is-active .icon {
+  color: var(--accent-text);
+}
+
+/* The accent ring would vanish on a lime fill: ring in the text colour. */
+.btn-primary:focus-visible {
+  box-shadow: var(--focus-ring-on-accent);
+}
+
+.nav-sep {
+  height: 1px;
+  margin: var(--sp-2) var(--sp-1);
+  border: 0;
+  background: var(--line);
+}
+
+.shell-main {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  /* The nav's divider (#42). The nav is only as tall as its items (it is sticky), but the main
+     column stretches to the shell body, which fills the window: the line reaches the bottom on
+     short and long pages alike. */
+  border-left: 1px solid var(--line);
+}
+
+/* On a phone the nav is a drawer over the page: no divider. */
+@media (max-width: 639px) {
+  .shell-main {
+    border-left: 0;
+  }
+}

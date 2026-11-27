@@ -5,7 +5,7 @@ import { episodeCode, jobTitle, mediaSub, resultLines } from './mediaText.ts';
 
 const media = (o: Partial<JobMedia>): JobMedia => ({
   kind: 'unknown',
-  title: 'Sherlock Jr.',
+  title: 'Shepherd Jr.',
   year: null,
   season: null,
   episode: null,
@@ -28,26 +28,26 @@ describe('episodeCode', () => {
 });
 
 describe('jobTitle', () => {
-  const ep = { kind: 'episode' as const, title: 'The Beverly Hillbillies' };
+  const ep = { kind: 'episode' as const, title: 'The Bramblewood Family' };
   it('names an episode with its code', () => {
     expect(jobTitle({ media: media({ ...ep, season: 1, episode: 17 }) })).toBe(
-      'The Beverly Hillbillies S01E17',
+      'The Bramblewood Family S01E17',
     );
   });
   it('names a movie with its year when known', () => {
-    expect(jobTitle({ media: media({ kind: 'movie', year: 1924 }) })).toBe('Sherlock Jr. (1924)');
-    expect(jobTitle({ media: media({ kind: 'movie' }) })).toBe('Sherlock Jr.');
+    expect(jobTitle({ media: media({ kind: 'movie', year: 1924 }) })).toBe('Shepherd Jr. (1924)');
+    expect(jobTitle({ media: media({ kind: 'movie' }) })).toBe('Shepherd Jr.');
   });
   it('falls back to the title', () => {
-    expect(jobTitle({ media: media({}) })).toBe('Sherlock Jr.');
-    expect(jobTitle({ media: media(ep) })).toBe('The Beverly Hillbillies');
+    expect(jobTitle({ media: media({}) })).toBe('Shepherd Jr.');
+    expect(jobTitle({ media: media(ep) })).toBe('The Bramblewood Family');
   });
 });
 
 describe('mediaSub', () => {
   it('shows the code and the episode name', () => {
-    const m = media({ kind: 'episode', season: 1, episode: 17, episodeTitle: "Jed's Dilemma" });
-    expect(mediaSub(m)).toEqual({ code: 'S01E17', text: "Jed's Dilemma" });
+    const m = media({ kind: 'episode', season: 1, episode: 17, episodeTitle: "Ada's Dilemma" });
+    expect(mediaSub(m)).toEqual({ code: 'S01E17', text: "Ada's Dilemma" });
     expect(mediaSub({ ...m, episodeTitle: null })).toEqual({ code: 'S01E17', text: null });
   });
   it('shows a movie year and leaves out what is unknown', () => {

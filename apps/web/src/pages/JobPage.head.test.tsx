@@ -73,7 +73,7 @@ const movie = (over: Partial<JobDetail> = {}) =>
   jobDetail({
     media: {
       kind: 'movie',
-      title: 'Sherlock Jr.',
+      title: 'Shepherd Jr.',
       year: 1924,
       season: null,
       episode: null,
@@ -81,19 +81,19 @@ const movie = (over: Partial<JobDetail> = {}) =>
       source: 'filename',
       poster: true,
     },
-    fileName: 'Sherlock Jr. (1924).mkv',
-    filePath: '/media/Movies/Sherlock Jr. (1924)/Sherlock Jr. (1924).mkv',
+    fileName: 'Shepherd Jr. (1924).mkv',
+    filePath: '/media/Movies/Shepherd Jr. (1924)/Shepherd Jr. (1924).mkv',
     ...over,
   });
 
 describe('JobPage header: title and poster', () => {
   it('a movie: the heading is the title, the year sits beside it, the poster is an image', async () => {
     await open(movie());
-    expect(screen.getByRole('heading', { level: 1, name: 'Sherlock Jr.' })).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 1, name: 'Shepherd Jr.' })).toBeTruthy();
     expect(document.querySelector('.job-year')?.textContent).toBe('1924');
     const img = document.querySelector('.job-head .poster-page img') as HTMLImageElement;
     expect(img.getAttribute('src')).toBe('/api/v1/jobs/j1/poster');
-    expect(document.title).toContain('Sherlock Jr. (1924)');
+    await waitFor(() => expect(document.title).toContain('Shepherd Jr. (1924)'));
   });
 
   it('an episode: the heading is the show and a line reads the code and the episode title', async () => {
@@ -101,16 +101,16 @@ describe('JobPage header: title and poster', () => {
       jobDetail({
         media: {
           ...jobDetail().media,
-          title: 'The Beverly Hillbillies',
+          title: 'The Bramblewood Family',
           season: 1,
           episode: 17,
-          episodeTitle: "Jed's Dilemma",
+          episodeTitle: "Ada's Dilemma",
         },
       }),
     );
-    expect(screen.getByRole('heading', { level: 1, name: 'The Beverly Hillbillies' })).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 1, name: 'The Bramblewood Family' })).toBeTruthy();
     expect(document.querySelector('.job-year')).toBeNull();
-    expect(document.querySelector('.job-sub')?.textContent).toBe("S01E17 · Jed's Dilemma");
+    expect(document.querySelector('.job-sub')?.textContent).toBe("S01E17 · Ada's Dilemma");
     // No poster on this job: the placeholder.
     expect(document.querySelector('.job-head .poster-empty')).not.toBeNull();
     expect(document.querySelector('.job-head .poster img')).toBeNull();

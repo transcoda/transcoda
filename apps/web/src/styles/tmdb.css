@@ -1,0 +1,22 @@
+/* ---------- TMDB attribution (plugin settings, shell footer) ---------- */
+
+.tmdb-attribution {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-3);
+  margin: 0;
+  font-size: var(--fs-small);
+  color: var(--muted);
+}
+
+.tmdb-attribution img {
+  display: block;
+  height: 20px;
+  width: auto;
+}
+
+.shell-footer {
+  padding: var(--sp-3) var(--sp-5);
+  border-top: 1px solid var(--line);
+}

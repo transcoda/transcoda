@@ -1,13 +1,12 @@
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { cleanup, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
+import { stylesCss } from '../styles/css-source.ts';
 import { source, testEncode } from '../test/fixtures/beforeAfter.ts';
 import { BeforeAfter } from './BeforeAfter.tsx';
 
 afterEach(cleanup);
 
-const css = readFileSync(join(__dirname, '../styles.css'), 'utf8');
+const css = stylesCss;
 
 describe('BeforeAfter', () => {
   it('is a table with Before and After column headers and a row header per row', () => {

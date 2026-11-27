@@ -1,0 +1,135 @@
+/* Activation: the workflows list's status pill (colour never alone: icon + word). */
+.activation-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-height: 32px;
+  padding: 0 var(--sp-3);
+  border-radius: var(--r-pill);
+  font-family: var(--font-mono);
+  font-size: var(--fs-mono);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.activation-pill.is-active {
+  border: 1.5px solid var(--accent);
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.activation-pill.is-off {
+  border: 1.5px solid var(--line-strong);
+  background: transparent;
+  color: var(--muted);
+}
+
+.activation-pill.is-danger {
+  border: 1.5px solid var(--st-failed);
+  background: var(--st-failed-bg);
+  color: var(--st-failed-text);
+}
+
+.activate-summary {
+  margin: var(--sp-3) 0;
+}
+
+.activate-summary h3 {
+  margin: 0 0 var(--sp-2);
+  font-size: var(--fs-small);
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.activate-summary p {
+  margin: var(--sp-2) 0 0;
+}
+
+.activate-summary-versions,
+.activate-summary-changes {
+  margin: var(--sp-2) 0 0;
+  padding-left: var(--sp-5);
+}
+
+.activate-jobs {
+  margin-top: var(--sp-3);
+  color: var(--muted);
+}
+
+.activate-jobs p {
+  margin: 0;
+}
+
+/* The workflows list's quiet activation offers: "v6 not activated" under the pill, or "Not
+   active". A text button (24 px tall at least), underlined on hover like a link. */
+.wf-activate,
+.wf-activate-off {
+  min-height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: var(--fs-small);
+  text-align: left;
+}
+
+.wf-activate-off {
+  display: inline-flex;
+  align-items: center;
+}
+
+.wf-activate {
+  /* A 32 px target that still takes 24 px of the line (WCAG 2.5.8, with room to spare). */
+  min-height: 32px;
+  margin-block: -4px;
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  .wf-activate:hover {
+    color: var(--text);
+    text-decoration: underline;
+  }
+}
+
+.wf-activate:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* The run page's note line (a real request that became a dry run). */
+.run-note {
+  margin: var(--sp-2) 0 0;
+  color: var(--muted);
+  font-size: var(--fs-small);
+}
+
+/* A file's version in the run page's file list. */
+.run-file-version {
+  color: var(--faint);
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+}
+
+.activate-refused-title {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  color: var(--danger-text);
+  font-weight: 700;
+}
+
+.activate-refused ul {
+  margin: var(--sp-2) 0 0;
+  padding-left: var(--sp-5);
+}
+
+/* The activate dialog's library line when another workflow feeds the library, or it is gone. */
+.activate-library-refused {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  color: var(--danger-text);
+}

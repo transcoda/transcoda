@@ -1,6 +1,6 @@
 # DESIGN.md - Transcoda web UI ("Patchbay")
 
-This file explains the Transcoda web UI's design system: what it is for, the rules it follows and why. The values themselves live in `apps/web/src/styles/tokens.css`. That file comes from the Patchbay handoff (see `docs/decisions.md`, "Task 24"), plus three additions listed in `docs/decisions.md` under "2026-11-20 Design audit fixes": `--line-control`, the motion tokens and the reduced-motion rule. If this file and `tokens.css` disagree on a value, `tokens.css` is right and this file needs updating. Tests in `apps/web/src/styles/` hold `styles.css` to the rules here that a machine can check, and this file's quoted values to the stylesheet; their few exceptions, each with its reason, are in `apps/web/src/styles/design-exceptions.ts`.
+This file explains the Transcoda web UI's design system: what it is for, the rules it follows and why. The values themselves live in `apps/web/src/styles/tokens.css`. That file comes from the Patchbay handoff (see `docs/decisions.md`, "Task 24"), plus three additions listed in `docs/decisions.md` under "2026-11-20 Design audit fixes": `--line-control`, the motion tokens and the reduced-motion rule. If this file and `tokens.css` disagree on a value, `tokens.css` is right and this file needs updating. Tests in `apps/web/src/styles/` hold the stylesheets to the rules here that a machine can check, and this file's quoted values to the stylesheet; their few exceptions, each with its reason, are in `apps/web/src/styles/design-exceptions.ts`.
 
 ## Context
 
@@ -17,7 +17,7 @@ This file explains the Transcoda web UI's design system: what it is for, the rul
 - Single-minded proposition: you can see exactly what happens to every file.
 - References: hardware patchbays and modular synth panels (cables between labelled jacks). Avoid: generic SaaS admin templates (indigo, rounded cards, soft shadows).
 - Mode: dark by default, light supported (follows the OS, or `data-theme`). Density: balanced on pages, dense in the editor and tables.
-- Constraints: React + Vite, plain CSS (`styles.css` plus `tokens.css`), no CSS framework. Fonts are bundled (no CDN). WCAG 2.2 AA.
+- Constraints: React + Vite, plain CSS (`tokens.css` plus one file per area in `apps/web/src/styles/`, imported in a fixed order by `styles/index.css`, which says which file a new rule goes in), no CSS framework. Fonts are bundled (no CDN). WCAG 2.2 AA.
 
 ## Aesthetic
 
@@ -39,7 +39,7 @@ This file explains the Transcoda web UI's design system: what it is for, the rul
 
 - UI and display: Bricolage Grotesque, 400/500/700/800, `@fontsource/bricolage-grotesque`, OFL-1.1.
 - Mono: JetBrains Mono, 400/600, `@fontsource/jetbrains-mono`, OFL-1.1. Used for caps micro labels, paths, codecs, sizes and durations.
-- Scale: a deliberately tight scale for a dense tool. The steps are roughly 1.08 to 1.15 in the UI and open up to 1.4 to 1.57 for headings. Six steps live in `tokens.css`; four more (`--fs-micro`, `--fs-ui`, `--fs-h3`, `--fs-title`) sit at the top of `styles.css`, because `tokens.css` is vendored. Every `font-size` uses one of them; a test (`styles/type-scale-css.test.ts`) fails on a raw px size. The two exceptions are the auth hero tagline and inline code in notes.
+- Scale: a deliberately tight scale for a dense tool. The steps are roughly 1.08 to 1.15 in the UI and open up to 1.4 to 1.57 for headings. Six steps live in `tokens.css`; four more (`--fs-micro`, `--fs-ui`, `--fs-h3`, `--fs-title`) sit in `styles/variables.css`, because `tokens.css` is vendored. Every `font-size` uses one of them; a test (`styles/type-scale-css.test.ts`) fails on a raw px size. The two exceptions are the auth hero tagline and inline code in notes.
 
   | Token | Size | Weight / tracking | Use |
   |---|---|---|---|
@@ -100,11 +100,11 @@ Node kinds (always with an icon and a label):
 
 Verdicts (`--st-*`) have a fill, an `-ink` for text on that fill and, where needed, a `-text` for text on the page. Filled chips mean an outcome (replaced, failed). Outlined neutral chips mean nothing changed.
 
-Colours that are not tokens are named variables at the top of `styles.css`, with their light values next to them. No raw hex in rules.
+Colours that are not tokens are named variables in `styles/variables.css`, with their light values next to them. No raw hex in rules.
 
 ## Spacing, radius, shadow
 
-- Spacing: 4px base. `--sp-1` 4, `--sp-2` 8, `--sp-3` 12, `--sp-4` 16, `--sp-5` 20, `--sp-6` 24, `--sp-8` 32, `--sp-10` 40, `--sp-12` 48 (`--sp-5` and `--sp-10` sit at the top of `styles.css`). Tight inside a group (4 to 8), generous between sections (24 to 48). Every padding, margin and gap uses a token; a test (`styles/spacing-radius-css.test.ts`) fails on a raw length, apart from listed 1px hairlines.
+- Spacing: 4px base. `--sp-1` 4, `--sp-2` 8, `--sp-3` 12, `--sp-4` 16, `--sp-5` 20, `--sp-6` 24, `--sp-8` 32, `--sp-10` 40, `--sp-12` 48 (`--sp-5` and `--sp-10` sit in `styles/variables.css`). Tight inside a group (4 to 8), generous between sections (24 to 48). Every padding, margin and gap uses a token; a test (`styles/spacing-radius-css.test.ts`) fails on a raw length, apart from listed 1px hairlines.
 - Radius: `--r-sm` 6px for chips in dense rows, small controls and node ports; `--r-md` 12px for inputs, buttons, cards and node cards; `--r-lg` 16px for large panels only; `--r-pill` for tags, filter chips and dots. Nothing above 16px except pills. 2px only for tiny marks (swatches, port handles, highlights).
 - Shadows: defined edges, not elevation. Cards and rows are a 1px or 1.5px border plus a lightness step (bg < surface < raised). Box-shadow is used for:
   - focus rings

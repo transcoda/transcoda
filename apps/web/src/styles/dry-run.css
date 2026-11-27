@@ -1,0 +1,483 @@
+/* ---------- Dry-run plan, file picker (Task 24, screen 06) ---------- */
+.plan {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-5);
+}
+.plan-hero {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-5);
+}
+/* A plain line: the "Dry run" chip in the header is the one marker; this says what it means. */
+.plan-eyebrow {
+  color: var(--muted);
+  font-size: var(--fs-mono);
+  font-weight: 600;
+}
+.plan-tiles {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-5);
+  padding: var(--sp-4) var(--sp-5);
+  border-radius: var(--r-lg);
+  /* The dry-run tone (amber, dashed): a plan that changed nothing is not the lime of a success. */
+  background: var(--st-dry-bg);
+  color: var(--st-dry);
+  border: 1.5px dashed var(--st-dry);
+}
+.plan-tile {
+  display: flex;
+  flex-direction: column;
+}
+.plan-tile-label {
+  font-size: var(--fs-micro);
+  font-weight: 600;
+  text-transform: uppercase;
+}
+.plan-tile-value {
+  font-size: var(--fs-h2);
+  font-weight: 700;
+}
+.plan-tile-now {
+  text-transform: uppercase;
+}
+.plan-tile-sep {
+  width: 1px;
+  align-self: stretch;
+  background: currentColor;
+  opacity: 0.4;
+}
+.plan-percent {
+  font-size: var(--fs-title);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+.plan-card {
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  overflow: hidden;
+}
+.plan-card h2 {
+  font-size: var(--fs-h2);
+  font-weight: 700;
+}
+.plan-card-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--sp-3);
+  padding: var(--sp-4) var(--sp-5);
+  border-bottom: 1px solid var(--line);
+  font-size: var(--fs-ui);
+}
+.plan-table-wrap {
+  overflow-x: auto;
+}
+.plan-table {
+  width: 100%;
+  min-width: 600px;
+  /* Audio and Subtitles share one colgroup, so their columns line up down the page. */
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-size: var(--fs-body);
+}
+.plan-col-lang {
+  width: 26%;
+}
+.plan-col-track {
+  width: 34%;
+}
+.plan-col-default {
+  width: 24%;
+}
+.plan-col-result {
+  width: 16%;
+}
+.plan-lang-repeat {
+  display: none;
+}
+.plan-table thead th {
+  text-align: left;
+  padding: var(--sp-3) var(--sp-3);
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  font-weight: 600;
+  color: var(--faint);
+  text-transform: uppercase;
+}
+.plan-row {
+  border-top: 1px solid var(--line);
+}
+.plan-row.is-drop {
+  background: var(--plan-drop-row);
+}
+.plan-cell,
+.plan-lang {
+  padding: var(--sp-3);
+  vertical-align: top;
+}
+.plan-lang {
+  padding-left: var(--sp-5);
+  text-align: left;
+  font-weight: 700;
+  background: var(--surface);
+}
+.plan-table thead th:first-child {
+  padding-left: var(--sp-5);
+}
+.plan-lang-code {
+  font-size: var(--fs-mono);
+  font-weight: 400;
+  color: var(--faint);
+}
+.plan-original {
+  margin-left: var(--sp-1);
+  padding: var(--sp-1) var(--sp-2);
+  border-radius: var(--r-sm);
+  background: var(--data-chip-bg);
+  color: var(--kind-data);
+  font-size: var(--fs-micro);
+  font-weight: 600;
+  text-transform: uppercase;
+}
+.plan-track {
+  font-size: var(--fs-small);
+}
+.plan-default {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: var(--fs-ui);
+}
+.plan-default-now {
+  color: var(--accent-text);
+}
+.plan-default-was {
+  color: var(--st-dry);
+}
+.plan-default-why {
+  flex-basis: 100%;
+  font-size: var(--fs-mono);
+  color: var(--muted);
+}
+.plan-result {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  height: 28px;
+  padding: 0 var(--sp-3);
+  border-radius: var(--r-pill);
+  font-size: var(--fs-small);
+  font-weight: 700;
+}
+.plan-result-keep,
+.plan-result-convert {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+.plan-result-drop {
+  border: 1.5px solid var(--st-failed);
+  color: var(--danger-text);
+}
+.plan-drop-cell {
+  padding: 0;
+}
+.plan-drops summary {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  min-height: var(--target-min);
+  padding: 0 var(--sp-5);
+  cursor: pointer;
+  list-style: none;
+  color: var(--danger-text);
+  font-weight: 700;
+}
+.plan-drops summary::-webkit-details-marker {
+  display: none;
+}
+.plan-drops[open] summary .icon {
+  transform: rotate(90deg);
+}
+.plan-drops summary:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+/* Subtitle files (sidecars): file, language, forced, SDH, result. Its own column widths. */
+.plan-sidecars .plan-col-file {
+  width: 38%;
+}
+.plan-sidecars .plan-col-lang {
+  width: 20%;
+}
+.plan-sidecars .plan-col-flag {
+  width: 12%;
+}
+.plan-sidecars .plan-col-result {
+  width: 18%;
+}
+.plan-sidecar-file {
+  overflow-wrap: anywhere;
+}
+.plan-sidecar-note {
+  display: block;
+  margin-top: var(--sp-1);
+  font-size: var(--fs-mono);
+  font-weight: 400;
+  color: var(--muted);
+}
+/* Phone: each track is a stacked card (language, then track and RESULT, then DEFAULT) instead of
+   a 600px table that scrolls RESULT out of sight. The header row stays for readers only. */
+@media (max-width: 639px) {
+  .plan-table {
+    position: relative;
+    min-width: 0;
+    table-layout: auto;
+  }
+  .plan-table,
+  .plan-table tbody,
+  .plan-table tr,
+  .plan-table td,
+  .plan-table th {
+    display: block;
+  }
+  .plan-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .plan-table .plan-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: var(--sp-3);
+    align-items: center;
+    padding: var(--sp-3) var(--sp-4);
+  }
+  .plan-row .plan-lang,
+  .plan-row .plan-lang-repeat {
+    display: block;
+    grid-column: 1 / -1;
+    padding: 0 0 var(--sp-1);
+    background: transparent;
+    font-weight: 700;
+  }
+  .plan-row .plan-cell {
+    padding: var(--sp-1) 0;
+  }
+  .plan-row .plan-cell-default {
+    grid-column: 1 / -1;
+  }
+  .plan-row .plan-cell-default::before {
+    content: attr(data-label) " ";
+    margin-right: var(--sp-2);
+    color: var(--faint);
+    font-family: var(--font-mono);
+    font-size: var(--fs-micro);
+    font-weight: 600;
+    text-transform: uppercase;
+  }
+  .plan-sidecars .plan-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--sp-1) var(--sp-3);
+  }
+  .plan-sidecars .plan-row .plan-lang {
+    flex-basis: 100%;
+  }
+  .plan-sidecars .plan-cell::before {
+    content: attr(data-label) " ";
+    color: var(--faint);
+    font-family: var(--font-mono);
+    font-size: var(--fs-micro);
+    font-weight: 600;
+    text-transform: uppercase;
+  }
+  .plan-sidecars .plan-cell-result::before {
+    content: none;
+  }
+  .plan-row .plan-drop-cell {
+    grid-column: 1 / -1;
+    padding: 0;
+  }
+  .plan-drops summary {
+    padding: 0;
+  }
+}
+.plan-drop-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  padding: 0 var(--sp-5) var(--sp-4) 44px;
+}
+.plan-drop-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  height: 28px;
+  padding: 0 var(--sp-3);
+  border-radius: var(--r-sm);
+  background: var(--raised);
+  font-size: var(--fs-small);
+  color: var(--muted);
+}
+.plan-other {
+  padding: var(--sp-4) var(--sp-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+/* One line per stream and the container, as plain text in the card (no boxes inside it). */
+.plan-other-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2) var(--sp-6);
+  font-size: var(--fs-ui);
+}
+.plan-other-item {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.plan-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-3);
+}
+.picker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+.picker-dry {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--fs-small);
+}
+.picker-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+}
+/* One line: each crumb shortens with an ellipsis (its title has the full name); the current
+   folder gets the room, the folders between at most 14em each. */
+.picker-crumbs {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: var(--sp-1);
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text);
+  white-space: nowrap;
+}
+.picker-crumb {
+  display: inline-flex;
+  flex: 0 1 auto;
+  align-items: center;
+  gap: var(--sp-1);
+  min-width: 0;
+  max-width: 14em;
+}
+.picker-crumb:last-child {
+  flex: 0 1000 auto;
+  max-width: none;
+}
+/* The library name stays whole. */
+.picker-crumb:first-child {
+  flex-shrink: 0;
+}
+.picker-crumb-text,
+.picker-crumb-btn {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.picker-crumb-btn {
+  min-height: var(--target-min);
+  padding: 0 var(--sp-1);
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  cursor: pointer;
+}
+@media (hover: hover) {
+  .picker-crumb-btn:hover {
+    color: var(--text);
+  }
+}
+.picker-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-height: 280px;
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+}
+.picker-list li + li {
+  border-top: 1px solid var(--line);
+}
+.picker-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  min-height: var(--target-min);
+  padding: 0 var(--sp-3);
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+@media (hover: hover) {
+  .picker-item:hover:not(:disabled) {
+    background: var(--raised);
+  }
+}
+.picker-item:focus-visible,
+.picker-crumb-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+.picker-name {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: break-word;
+}
+.picker-size {
+  font-size: var(--fs-mono);
+}
+.picker-note {
+  padding: var(--sp-3);
+}
+.picker-empty {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  color: var(--text);
+}
+.picker-typed-row {
+  display: flex;
+  gap: var(--sp-2);
+}
+.picker-typed-row .input {
+  flex: 1;
+  min-width: 0;
+}
+.picker-error {
+  margin: 0;
+  font-size: var(--fs-small);
+  color: var(--danger-text);
+}

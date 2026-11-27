@@ -1,0 +1,386 @@
+/* ---------- Editor page: layout and header (screen 05) ---------- */
+
+/* The editor fills the window under the top bar; the side nav stays. */
+.shell:has(.editor) {
+  height: 100vh;
+}
+
+.shell:has(.editor) .shell-body {
+  min-height: 0;
+  flex-wrap: nowrap;
+}
+
+.shell:has(.editor) .shell-main {
+  min-height: 0;
+}
+
+.editor {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.editor-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-4);
+  padding: var(--sp-3) var(--sp-4);
+  border-bottom: 1px solid var(--line);
+}
+
+.crumb {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: var(--fs-body);
+  min-width: 0;
+}
+
+.crumb-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--target-min);
+  color: var(--muted);
+  text-decoration: none;
+}
+
+@media (hover: hover) {
+  .crumb-link:hover {
+    color: var(--text);
+  }
+}
+
+.crumb-sep {
+  color: var(--disabled-text);
+}
+
+.crumb-name {
+  min-height: var(--target-min);
+  max-width: 420px;
+  padding: 0 var(--sp-1);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-h2);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  cursor: text;
+}
+
+@media (hover: hover) {
+  .crumb-name:hover:not(:disabled) {
+    background: var(--raised);
+  }
+}
+
+.crumb-name:disabled {
+  cursor: default;
+}
+
+.crumb-input {
+  font-size: var(--fs-h3);
+  font-weight: 700;
+}
+
+.version-pill-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  height: 32px;
+  padding: 0 var(--sp-3);
+  border-radius: var(--r-sm);
+  border: 1px solid var(--line-strong);
+  background: transparent;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: var(--fs-mono);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+/* 32px drawn, 44px to hit. */
+.version-pill-btn::before {
+  content: "";
+  position: absolute;
+  inset: -6px 0;
+}
+
+@media (hover: hover) {
+  .version-pill-btn:hover {
+    color: var(--text);
+  }
+}
+
+/* The shown version is the active one: a lime ring (the Save button keeps the only lime fill). */
+.version-pill-btn.is-active {
+  border-color: var(--accent);
+  color: var(--accent-text);
+}
+
+/* The active version can't run. */
+.version-pill-btn.is-danger {
+  border-color: var(--st-failed);
+  background: var(--st-failed-bg);
+  color: var(--st-failed-text);
+}
+
+/* Versions panel (Task 18): non-modal, under the pill. */
+.version-pill-wrap {
+  position: relative;
+}
+
+.versions-panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 20;
+  width: 380px;
+  max-width: calc(100vw - 32px);
+  max-height: 420px;
+  overflow-y: auto;
+  padding: var(--sp-2);
+  border-radius: var(--r-md);
+  border: 1px solid var(--line-strong);
+  background: var(--raised);
+  box-shadow: 0 8px 24px var(--toolbar-shadow);
+}
+
+.versions-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+}
+
+/* The close button of the editor's non-modal panels (Versions, Key): a full 44 px target. */
+.panel-close {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--target-min);
+  height: var(--target-min);
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-md);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  .panel-close:hover {
+    background: var(--line);
+    color: var(--text);
+  }
+}
+
+.versions-title {
+  margin: var(--sp-1) var(--sp-2) var(--sp-2);
+  font-size: var(--fs-mono);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.versions-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.versions-row {
+  display: flex;
+  align-items: center;
+  min-height: var(--target-min);
+  padding: var(--sp-1) var(--sp-2);
+  border-radius: var(--r-sm);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: var(--fs-mono);
+  text-decoration: none;
+}
+
+.versions-row:focus-visible {
+  background: var(--line);
+}
+@media (hover: hover) {
+  .versions-row:hover {
+    background: var(--line);
+  }
+}
+
+/* The viewed version: a fill, not a side tab. The panel itself is --raised, so the fill is the
+   next step up. */
+.versions-row[aria-current="page"] {
+  background: var(--line);
+}
+
+/* Compact (below 1024 px): the name and the menu share one row; the version pill is a muted
+   status line below them. */
+.editor-head.is-compact {
+  gap: 0 var(--sp-2);
+  padding: var(--sp-2) var(--sp-3) var(--sp-3);
+}
+
+.editor-head.is-compact .crumb {
+  flex: 1 1 auto;
+}
+
+.editor-head.is-compact .crumb-name {
+  max-width: 100%;
+  min-width: 0;
+}
+
+.editor-head.is-compact .editor-head-end {
+  flex: none;
+}
+
+.editor-head.is-compact .version-pill-wrap {
+  flex-basis: 100%;
+}
+
+.editor-head.is-compact .version-pill-btn {
+  height: auto;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-family: inherit;
+  font-size: var(--fs-small);
+}
+
+.editor-head-end {
+  margin-left: auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+.editor-head .btn {
+  height: 40px;
+  padding: 0 var(--sp-4);
+  font-size: var(--fs-ui);
+  font-weight: 700;
+}
+
+/* 44px hit area around the 40px buttons (see .btn-sm::before). */
+.editor-head .btn::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: 0;
+  left: 0;
+  height: var(--target-min);
+  transform: translateY(-50%);
+}
+
+.history-group {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+}
+
+.editor-head .history-btn {
+  width: var(--target-min);
+  padding: 0;
+}
+
+.editor-body {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr) 340px;
+}
+
+.editor-body > .palette {
+  width: auto;
+  min-height: 0;
+}
+
+.editor-canvas-wrap {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+}
+
+.editor-canvas-wrap > .canvas {
+  position: absolute;
+  inset: 0;
+  min-height: 0;
+}
+
+.inspector-col {
+  /* Screen 05: the inspector's header and footer stay put, its body scrolls; the issues panel is
+     its own region below (its list scrolls by itself). */
+  min-height: 0;
+  overflow: hidden;
+  border-left: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+}
+
+/* Up to 1280 px (inclusive: a 1280 px laptop is the common case) the side columns give the
+   canvas room (screen 05 draws 240 / 340). */
+@media (max-width: 1280px) {
+  .editor-body {
+    grid-template-columns: 200px minmax(0, 1fr) 280px;
+  }
+}
+
+/* Below 1024 px the editor only looks (it is desktop-only): the canvas takes the whole width, the
+   palette is hidden and the read-only inspector is a bottom sheet, shown while something is
+   selected (see EditorPage). */
+@media (max-width: 1023px) {
+  .editor-body {
+    position: relative;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .editor-body > .palette {
+    display: none;
+  }
+
+  /* The read-only notice (and the other banners) run the full width of the canvas. */
+  .editor-canvas-wrap > .canvas-banners {
+    top: 0;
+    left: 0;
+    right: 0;
+    gap: 1px;
+  }
+
+  .editor-canvas-wrap .canvas-banner {
+    border-radius: 0;
+  }
+
+  .inspector-col.is-sheet {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 15;
+    max-height: 55%;
+    overflow-y: auto;
+    border-left: 0;
+    border-top: 1px solid var(--line-strong);
+    border-radius: var(--r-md) var(--r-md) 0 0;
+    background: var(--raised);
+    box-shadow: 0 -8px 24px var(--toolbar-shadow);
+  }
+}
+
+/* The bottom sheet's own header (only rendered below 1024 px): its Close button. */
+.sheet-head {
+  display: flex;
+  justify-content: flex-end;
+  flex: none;
+  padding: var(--sp-1) var(--sp-1) 0;
+}

@@ -47,8 +47,8 @@ const exec: Exec = async (_file, args) => {
 };
 
 const fsOps: FsOps = { ...nodeFsOps, statfs: async () => ({ bavail: 1e9, bsize: 4096 }) };
-const SHOW = 'The Beverly Hillbillies';
-const OTHER_SHOW = 'Superman';
+const SHOW = 'The Bramblewood Family';
+const OTHER_SHOW = 'Skyward';
 
 let base: string;
 let root: string;
@@ -312,7 +312,7 @@ describe('jobs.queueFiles', () => {
     for (const show of [
       '%%%',
       Buffer.from('[1,2]').toString('base64url'),
-      showOf('Sherlock Jr.'),
+      showOf('Shepherd Jr.'),
     ]) {
       const res = await post('/jobs/queue-files', { libraryId: lib, show, workflowId: wf });
       expect(res.status).toBe(404);

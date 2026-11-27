@@ -1,7 +1,6 @@
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { stylesCss } from '../styles/css-source.ts';
 import {
   identityPlan,
   mapleLanePlan,
@@ -318,7 +317,7 @@ describe('PlanView', () => {
       'plan-col-result',
     ]);
     expect(widths[1]).toEqual(widths[0]);
-    const css = readFileSync(join(__dirname, '../styles.css'), 'utf8');
+    const css = stylesCss;
     expect(css).toMatch(/\.plan-table\s*\{[^}]*table-layout:\s*fixed/);
     for (const col of widths[0] ?? []) {
       expect(css).toMatch(new RegExp(`\\.${col}\\s*\\{[^}]*width:`));
@@ -346,7 +345,7 @@ describe('PlanView', () => {
   });
 
   it('below 640px the plan tables become stacked row cards with RESULT beside the track, not behind a scroll', () => {
-    const css = readFileSync(join(__dirname, '../styles.css'), 'utf8');
+    const css = stylesCss;
     const start = css.indexOf('@media (max-width: 639px) {\n  .plan-table');
     expect(start).toBeGreaterThan(-1);
     const block = css.slice(start, css.indexOf('\n}\n', start));
@@ -358,7 +357,7 @@ describe('PlanView', () => {
   });
 
   it('the hero is the dry-run tone (amber, dashed), not the success lime', () => {
-    const css = readFileSync(join(__dirname, '../styles.css'), 'utf8');
+    const css = stylesCss;
     const rule = css.match(/\.plan-tiles\s*\{([^}]*)\}/)?.[1] ?? '';
     expect(rule).toMatch(/background:\s*var\(--st-dry-bg\)/);
     expect(rule).toMatch(/color:\s*var\(--st-dry\)/);

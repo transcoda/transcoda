@@ -27,8 +27,8 @@ function stubPhone(phone: boolean) {
 
 const FILE: LibraryFile = {
   id: 'f1',
-  path: '/media/classic-tv/The Beverly Hillbillies S01E02.mp4',
-  fileName: 'The Beverly Hillbillies S01E02.mp4',
+  path: '/media/classic-tv/The Bramblewood Family S01E02.mp4',
+  fileName: 'The Bramblewood Family S01E02.mp4',
   sizeBytes: 1_620_000_000,
   originalBytes: 2_410_000_000,
   mtime: '2026-10-16T18:00:00.000Z',
@@ -38,20 +38,20 @@ const FILE: LibraryFile = {
     ...fx.replaced,
     media: {
       ...fx.replaced.media,
-      title: 'The Beverly Hillbillies',
+      title: 'The Bramblewood Family',
       season: 1,
       episode: 2,
-      episodeTitle: 'Jed Buys Stock',
+      episodeTitle: 'Ada Buys Stock',
     },
   },
 };
 const OTHER: LibraryFile = {
   ...FILE,
   id: 'f2',
-  fileName: 'Night of the Living Dead.mkv',
+  fileName: 'Nocturne of the Quiet Moon.mkv',
   latest: {
     ...fx.kept,
-    media: { ...fx.kept.media, title: 'Night of the Living Dead', year: 1968 },
+    media: { ...fx.kept.media, title: 'Nocturne of the Quiet Moon', year: 1968 },
   },
 };
 
@@ -91,11 +91,11 @@ describe('LibraryFileTable', () => {
     table();
     const grid = screen.getByRole('table', { name: 'Files' });
     const row = within(grid)
-      .getByRole('link', { name: /The Beverly Hillbillies/ })
+      .getByRole('link', { name: /The Bramblewood Family/ })
       .closest('tr');
     expect(row).toBeTruthy();
     const r = within(row as HTMLElement);
-    expect(r.getByRole('link', { name: /The Beverly Hillbillies/ }).getAttribute('href')).toBe(
+    expect(r.getByRole('link', { name: /The Bramblewood Family/ }).getAttribute('href')).toBe(
       '/libraries/l1/files/f1',
     );
     expect(r.getByText('S01E02')).toBeTruthy();
@@ -107,7 +107,7 @@ describe('LibraryFileTable', () => {
 
   it('the file id is encoded in the link', () => {
     table({ files: [{ ...FILE, id: 'a b' }], total: 1 });
-    expect(screen.getByRole('link', { name: /The Beverly Hillbillies/ }).getAttribute('href')).toBe(
+    expect(screen.getByRole('link', { name: /The Bramblewood Family/ }).getAttribute('href')).toBe(
       '/libraries/l1/files/a%20b',
     );
   });
@@ -183,7 +183,7 @@ describe('LibraryFileTable', () => {
     stubPhone(true);
     table();
     expect(screen.queryByRole('table')).toBeNull();
-    const link = screen.getByRole('link', { name: /The Beverly Hillbillies/ });
+    const link = screen.getByRole('link', { name: /The Bramblewood Family/ });
     expect(link.getAttribute('href')).toBe('/libraries/l1/files/f1');
     const card = link.closest('.phone-card') as HTMLElement;
     expect(card).toBeTruthy();

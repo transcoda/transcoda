@@ -1,0 +1,129 @@
+.inline-edit {
+  height: 40px;
+  max-width: 320px;
+}
+
+.row-menu {
+  position: relative;
+  display: inline-block;
+}
+
+.row-menu-button {
+  width: var(--target-min);
+  height: var(--target-min);
+  padding: 0;
+  border-color: transparent;
+}
+
+.row-menu-list {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  z-index: 10;
+  min-width: 160px;
+  display: flex;
+  flex-direction: column;
+  padding: var(--sp-1);
+  border-radius: var(--r-md);
+  border: 1px solid var(--line-strong);
+  background: var(--raised);
+}
+
+.row-menu-list button {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-height: var(--target-min);
+  padding: 0 var(--sp-3);
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-ui);
+  text-align: left;
+  cursor: pointer;
+}
+
+.row-menu-list button:focus-visible {
+  background: var(--line);
+}
+@media (hover: hover) {
+  .row-menu-list button:hover {
+    background: var(--line);
+  }
+}
+
+.row-menu-list .row-menu-danger {
+  color: var(--danger-text);
+}
+
+.row-menu-list button[aria-disabled="true"] {
+  color: var(--faint);
+  cursor: not-allowed;
+}
+
+.examples-menu .row-menu-list {
+  white-space: nowrap;
+}
+
+/* Custom listbox dropdown (Jobs library filter): the action-menu overlay with option rows. */
+.listbox-select-button {
+  height: 40px;
+  font-size: var(--fs-ui);
+}
+/* In a form: the label above a full-width button that matches the text inputs. */
+.listbox-select-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.listbox-select-label {
+  font-size: var(--fs-ui);
+  font-weight: 500;
+}
+.listbox-select-field .listbox-select-button {
+  width: 100%;
+  height: 48px;
+  justify-content: space-between;
+  padding: 0 var(--sp-4);
+  border: 1.5px solid var(--line-control);
+  border-radius: var(--r-md);
+  font-size: var(--fs-h3);
+}
+.listbox-select-field .listbox-select-list {
+  right: 0;
+  top: 100%;
+  white-space: normal;
+}
+.listbox-select-list {
+  right: auto;
+  left: 0;
+  max-height: 320px;
+  overflow-y: auto;
+  white-space: nowrap;
+}
+.listbox-select-list:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+.listbox-option {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-height: var(--target-min);
+  padding: 0 var(--sp-3);
+  border-radius: var(--r-sm);
+  color: var(--text);
+  font-size: var(--fs-ui);
+  cursor: pointer;
+}
+.listbox-option.is-active {
+  background: var(--line);
+  box-shadow: inset 0 0 0 2px var(--text);
+}
+.listbox-option-check {
+  display: inline-flex;
+  width: 16px;
+  height: 16px;
+}

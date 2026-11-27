@@ -1,0 +1,835 @@
+/* ---------- Plugins (screen 09) ---------- */
+
+.plugins-page {
+  gap: 28px;
+}
+
+/* Toolbar: search, All / Installed / Updates, and the catalog's state as items that wrap whole. */
+.plugins-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-3);
+}
+.plugins-search {
+  position: relative;
+  flex: 1 1 280px;
+  max-width: 420px;
+}
+.plugins-search-icon {
+  position: absolute;
+  left: 14px;
+  top: 14px;
+  display: flex;
+  color: var(--faint);
+  pointer-events: none;
+}
+.plugins-search .input {
+  width: 100%;
+  height: 44px;
+  padding: 0 var(--sp-4) 0 var(--sp-10);
+  font-size: var(--fs-body);
+}
+.plugins-show {
+  display: flex;
+  padding: var(--sp-1);
+  border-radius: var(--r-md);
+  background: var(--raised);
+}
+.plugins-show button {
+  position: relative;
+  height: 38px;
+  padding: 0 var(--sp-4);
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-ui);
+  font-weight: 600;
+  cursor: pointer;
+}
+/* The control is 44px tall; each button's hit area fills it. */
+.plugins-show button::before {
+  content: "";
+  position: absolute;
+  inset: -3px 0;
+}
+.plugins-show button[aria-checked="true"] {
+  background: var(--text);
+  color: var(--bg);
+}
+.plugins-show button:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+.plugins-show-count {
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  opacity: 0.8;
+}
+.plugins-source {
+  margin-left: auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2) var(--sp-3);
+  font-size: var(--fs-small);
+  color: var(--faint);
+}
+.plugins-source-item {
+  white-space: nowrap;
+}
+.plugins-source-official {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  color: var(--muted);
+}
+
+/* The plugins workflows need: amber outline on the raised surface. */
+.plugins-need {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-4);
+  padding: var(--sp-5) var(--sp-5);
+  border-radius: var(--r-lg);
+  background: var(--raised);
+  box-shadow: inset 0 0 0 1.5px var(--st-dry);
+}
+.plugins-need-icon {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--r-md);
+  background: var(--st-dry-bg);
+  color: var(--st-dry);
+}
+.plugins-need-text {
+  flex: 1 1 360px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+.plugins-need-text h2 {
+  font-size: var(--fs-h3);
+  font-weight: 700;
+}
+.plugins-need-text p {
+  font-size: var(--fs-ui);
+  color: var(--muted);
+}
+.plugins-need-workflow {
+  color: var(--text);
+}
+
+.plugins-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+/* The section's name with Update all beside it (on the Updates tab). */
+.plugins-section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+}
+
+/* The 40px tile: the plugin's own icon (an image) or its monogram. */
+.plugin-tile {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--r-md);
+  background: var(--line);
+  color: var(--text);
+  /* Two letters ("So", "TM") fit the 40px tile. */
+  font-size: var(--fs-body);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+.plugin-tile img {
+  display: block;
+  width: 28px;
+  height: 28px;
+}
+
+/* Installed: one row per plugin in a single panel; settings open below the row. */
+.plugin-rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  overflow: hidden;
+}
+.plugin-row + .plugin-row {
+  border-top: 1px solid var(--line);
+}
+.plugin-row-main {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: var(--sp-4);
+  padding: var(--sp-4) var(--sp-5);
+}
+.plugin-row-text {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+.plugin-row-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--sp-2);
+}
+.plugin-row-title h3 {
+  margin: 0;
+  font-size: var(--fs-h3);
+  font-weight: 700;
+}
+.plugin-version {
+  font-family: var(--font-mono);
+  font-size: var(--fs-mono);
+  color: var(--faint);
+}
+.plugin-row-update {
+  font-size: var(--fs-small);
+  font-weight: 600;
+  color: var(--st-kept-text);
+}
+.plugin-row-used {
+  font-size: var(--fs-small);
+  color: var(--faint);
+}
+.plugin-row-reason {
+  font-size: var(--fs-small);
+  color: var(--st-failed-text);
+  overflow-wrap: anywhere;
+}
+/* The row's state: the shared StatusChip; this span only places it. */
+.plugin-status {
+  display: inline-flex;
+}
+.plugin-row-actions {
+  display: flex;
+  gap: var(--sp-2);
+}
+.plugin-row-actions .btn {
+  height: 40px;
+  padding: 0 var(--sp-4);
+  border-radius: var(--r-md);
+  font-size: var(--fs-ui);
+}
+.plugin-row-actions .btn.is-open {
+  background: var(--line);
+}
+.btn-update {
+  background: var(--st-kept);
+  color: var(--st-kept-ink);
+  font-weight: 700;
+}
+.btn-update:disabled {
+  background: var(--line);
+  color: var(--faint);
+}
+.plugin-row-alert {
+  margin: 0 var(--sp-5) var(--sp-4) 76px;
+}
+/* The hosts it connects to, under the name, as the install dialog lists them. */
+.plugin-row-hosts {
+  margin: calc(-1 * var(--sp-2)) var(--sp-5) var(--sp-4) 76px;
+}
+
+/* A row's settings: inset under the name, on the raised surface. */
+.plugin-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  margin: 0 var(--sp-5) var(--sp-5) 76px;
+  padding: var(--sp-5);
+  border-radius: var(--r-md);
+  background: var(--raised);
+}
+.plugin-panel .input {
+  background: var(--surface);
+}
+.plugin-settings {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+.plugin-settings-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
+  gap: var(--sp-4);
+}
+.plugin-settings-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+.plugin-settings-actions .plugin-remove {
+  margin-left: auto;
+  height: 44px;
+  padding: 0 var(--sp-4);
+  font-size: var(--fs-ui);
+}
+/* A stored secret: never its value, a dashed read-only line and Replace. */
+.plugin-secret {
+  display: flex;
+  gap: var(--sp-2);
+}
+.plugin-secret .input {
+  flex: 1;
+  min-width: 0;
+}
+.plugin-secret-stored {
+  border-style: dashed;
+  color: var(--faint);
+}
+.plugin-test-result {
+  display: flex;
+  gap: var(--sp-3);
+  align-items: flex-start;
+  padding: var(--sp-3) var(--sp-3);
+  border-radius: var(--r-md);
+  font-size: var(--fs-ui);
+}
+.plugin-test-result.is-ok {
+  background: var(--ok-bg);
+  color: var(--accent-text);
+}
+.plugin-test-result.is-fail {
+  background: var(--st-failed-bg);
+  color: var(--st-failed-text);
+}
+.plugin-test-line {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0 var(--sp-2);
+  overflow-wrap: anywhere;
+}
+.plugin-test-effect {
+  display: block;
+}
+.plugin-test-warnings {
+  margin: var(--sp-1) 0 0;
+  padding-left: var(--sp-5);
+  color: var(--st-dry);
+}
+.plugin-versions h4 {
+  margin: 0 0 var(--sp-2);
+  font-size: var(--fs-ui);
+  font-weight: 700;
+}
+.plugin-versions ul {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.plugin-version-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-3);
+}
+.plugin-mappings {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.plugin-mappings-empty {
+  margin: 0;
+  font-size: var(--fs-ui);
+  color: var(--muted);
+}
+/* One mapping: its two labelled paths, its buttons, then its test answer, stacked (#46). */
+.plugin-mapping {
+  margin: 0;
+  min-width: 0;
+  padding: var(--sp-3) var(--sp-4) var(--sp-4);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+.plugin-mapping-title {
+  padding: 0 var(--sp-1);
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  font-weight: 600;
+  color: var(--faint);
+}
+/* Side by side where there is room; each path takes the full width on a phone. */
+.plugin-mapping-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+  gap: var(--sp-3) var(--sp-4);
+}
+.plugin-mapping-fields .input {
+  width: 100%;
+  min-width: 0;
+}
+.plugin-mapping-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.plugin-mapping-remove {
+  margin-left: auto;
+}
+.plugin-mappings-add {
+  align-self: flex-start;
+}
+/* Path mappings take the whole width of the settings grid. */
+.plugin-settings-fields > .plugin-mappings {
+  grid-column: 1 / -1;
+}
+/* Install dialog: where the plugin comes from, one labelled row per fact. */
+.plugin-facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: var(--sp-2) var(--sp-4);
+  margin: 0;
+  font-size: var(--fs-small);
+}
+.plugin-facts > div {
+  display: contents;
+}
+.plugin-facts dt {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  color: var(--muted);
+}
+.plugin-facts dd {
+  margin: 0;
+  min-width: 0;
+  color: var(--text);
+}
+/* The full checksum wraps anywhere; Copy sits beside it. */
+.plugin-checksum {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-2);
+}
+.plugin-checksum .mono {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.plugin-checksum .btn {
+  flex: 0 0 auto;
+  margin-top: -4px;
+}
+.plugin-install-about {
+  margin: 0;
+}
+/* Install and Update dialogs: the hosts a build may reach, then what that promises. */
+.plugin-network {
+  font-size: var(--fs-small);
+}
+.plugin-network-title {
+  margin: 0 0 var(--sp-1);
+  font-size: var(--fs-small);
+  font-weight: 600;
+  color: var(--muted);
+}
+.plugin-network-list {
+  margin: 0;
+  padding-left: 1.2em;
+  overflow-wrap: anywhere;
+}
+.plugin-network-list li + li {
+  margin-top: var(--sp-1);
+}
+/* A host an update adds: an amber "new" pill after it. */
+.plugin-network-new {
+  display: inline-block;
+  margin-left: var(--sp-2);
+  padding: 0 var(--sp-2);
+  border-radius: var(--r-lg);
+  background: var(--st-dry);
+  color: var(--st-dry-ink);
+  font-size: var(--fs-micro);
+  font-weight: 600;
+  line-height: 16px;
+  vertical-align: 1px;
+}
+.plugin-network-note,
+.plugin-network-unlisted {
+  margin: var(--sp-2) 0 0;
+  color: var(--muted);
+}
+.plugin-network-unlisted {
+  margin-top: 0;
+}
+/* On a phone each fact stacks: its label above, the value (and the whole checksum) full width. */
+@media (max-width: 639px) {
+  .plugin-facts {
+    grid-template-columns: 1fr;
+    row-gap: var(--sp-1);
+  }
+  .plugin-facts > div + div dt {
+    margin-top: var(--sp-2);
+  }
+  /* The Build proof tip stays inside the dialog (no sideways scrolling). */
+  .plugin-facts .info-tip-text {
+    max-width: min(280px, 60vw);
+  }
+}
+
+/* InfoTip: the text appears above the button on hover and keyboard focus. */
+.info-tip {
+  position: relative;
+  display: inline-flex;
+}
+.info-tip-btn {
+  display: inline-flex;
+  padding: var(--sp-1);
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted);
+  cursor: help;
+}
+@media (hover: hover) {
+  .info-tip-btn:hover {
+    color: var(--text);
+  }
+}
+.info-tip-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+.info-tip-text {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: -8px;
+  z-index: 10;
+  width: max-content;
+  max-width: 280px;
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-md);
+  border: 1px solid var(--line-strong);
+  background: var(--raised);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: var(--fs-small);
+  font-weight: 400;
+  line-height: 1.4;
+  white-space: normal;
+  box-shadow: 0 6px 18px var(--toolbar-shadow);
+  visibility: hidden;
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease-out);
+  pointer-events: none;
+}
+.info-tip:hover .info-tip-text,
+.info-tip-btn:focus-visible + .info-tip-text {
+  visibility: visible;
+  opacity: 1;
+}
+.plugin-promise summary {
+  cursor: pointer;
+  color: var(--text);
+  font-weight: 600;
+}
+.plugin-promise p {
+  margin-top: var(--sp-2);
+  font-size: var(--fs-small);
+}
+
+/* Node chips: the kind's colour and word, then the node's name. */
+.node-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.node-chip {
+  --chip-kind: var(--faint);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-height: 26px;
+  padding: 0 var(--sp-2);
+  border-radius: var(--r-sm);
+  background: var(--raised);
+  font-size: var(--fs-mono);
+}
+.plugin-panel .node-chip {
+  background: var(--surface);
+}
+.node-chip.is-trigger {
+  --chip-kind: var(--kind-trigger);
+}
+.node-chip.is-condition {
+  --chip-kind: var(--kind-condition);
+}
+.node-chip.is-action {
+  --chip-kind: var(--kind-action);
+}
+.node-chip.is-finish {
+  --chip-kind: var(--kind-finish);
+}
+.node-chip.is-data {
+  --chip-kind: var(--kind-data);
+}
+.node-chip-swatch {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  background: var(--chip-kind);
+}
+.node-chip-kind {
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  font-weight: 600;
+  color: var(--chip-kind);
+  text-transform: uppercase;
+}
+
+/* Catalog: cards in a grid, one section per purpose. */
+.catalog-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr));
+  gap: var(--sp-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.catalog-card {
+  height: 100%;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  padding: var(--sp-4) var(--sp-5);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+.catalog-card-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+}
+.catalog-card-name {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.catalog-card-name h3 {
+  margin: 0;
+  font-size: var(--fs-h3);
+  font-weight: 700;
+}
+.catalog-card-ids {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--sp-2);
+  font-size: var(--fs-micro);
+  color: var(--faint);
+}
+.catalog-card-head .btn {
+  height: 40px;
+  padding: 0 var(--sp-4);
+  border-radius: var(--r-md);
+  font-size: var(--fs-ui);
+}
+.catalog-card-text {
+  margin: 0;
+  font-size: var(--fs-ui);
+  line-height: 1.45;
+  color: var(--muted);
+}
+.catalog-card-source {
+  margin: 0;
+  font-size: var(--fs-mono);
+  color: var(--faint);
+}
+.catalog-url {
+  font-size: var(--fs-small);
+  overflow-wrap: anywhere;
+}
+.catalog-needs {
+  margin: 0;
+  color: var(--st-dry);
+  font-size: var(--fs-small);
+}
+
+/* Catalog details: collapsed at the end of the page. */
+.catalog-details {
+  font-size: var(--fs-small);
+  color: var(--faint);
+}
+/* A list item keeps the disclosure triangle; the padding makes a 44px target. */
+.catalog-details summary {
+  width: fit-content;
+  padding: var(--sp-3) 0;
+  cursor: pointer;
+}
+.catalog-details-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  padding-top: var(--sp-2);
+}
+.catalog-details-body p {
+  margin: 0;
+}
+.catalog-sources {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.catalog-source {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2) var(--sp-3);
+}
+.catalog-source .catalog-url {
+  color: var(--muted);
+}
+.catalog-source-facts {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2) var(--sp-3);
+}
+.catalog-add {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  padding: var(--sp-4) var(--sp-5);
+  max-width: 640px;
+  color: var(--text);
+}
+.catalog-add h3 {
+  font-size: var(--fs-h3);
+  font-weight: 700;
+}
+
+@media (max-width: 639px) {
+  .plugins-search {
+    flex-basis: 100%;
+    max-width: none;
+  }
+  .plugins-source {
+    margin-left: 0;
+  }
+  .plugins-need .btn {
+    flex: 1 1 100%;
+  }
+  .plugin-row-main {
+    grid-template-columns: 44px minmax(0, 1fr);
+    gap: var(--sp-3) var(--sp-3);
+    padding: var(--sp-4);
+  }
+  .plugin-status {
+    grid-column: 2;
+    justify-self: start;
+  }
+  .plugin-row-actions {
+    grid-column: 1 / -1;
+  }
+  .plugin-row-actions .btn {
+    flex: 1 1 auto;
+    height: 44px;
+  }
+  .plugin-row-alert,
+  .plugin-row-hosts,
+  .plugin-panel {
+    margin: 0 var(--sp-3) var(--sp-3);
+  }
+  .plugin-panel {
+    padding: var(--sp-4);
+  }
+  .plugin-settings-actions .btn {
+    flex: 1 1 auto;
+  }
+  .plugin-settings-actions .plugin-remove {
+    margin-left: 0;
+  }
+  .catalog-add {
+    padding: var(--sp-4) var(--sp-4);
+  }
+}
+
+/* Jobs: a damaged source (kept the original; never a failure): solid orange */
+.job-chip.is-damaged {
+  background: var(--st-damaged);
+  border-color: var(--st-damaged);
+  color: var(--st-damaged-ink);
+}
+.job-detail-text.is-damaged {
+  color: var(--st-damaged-text);
+}
+.phone-finished-icon.is-damaged {
+  background: var(--st-damaged);
+  color: var(--st-damaged-ink);
+}
+
+/* Jobs: done with problems (needs attention) */
+.job-chip.is-attention {
+  background: var(--st-dry-bg);
+  border: 1.5px solid var(--st-dry);
+  color: var(--st-dry);
+}
+.job-detail-text.is-attention {
+  color: var(--st-dry);
+}
+.phone-finished-icon.is-attention {
+  background: var(--st-dry-bg);
+  color: var(--st-dry);
+  border: 1.5px solid var(--st-dry);
+}
+.tc-trace-plug {
+  display: inline-flex;
+  vertical-align: -2px;
+  margin-right: var(--sp-1);
+  color: var(--muted);
+}
+
+.update-block + .update-block {
+  margin-top: var(--sp-3);
+}
+
+.update-block p {
+  margin: 0;
+}
+
+.update-list {
+  margin: var(--sp-2) 0 0;
+  padding-left: var(--sp-5);
+}
