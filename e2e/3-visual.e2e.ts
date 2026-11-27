@@ -7,7 +7,7 @@ import { expect, type Page, test } from '@playwright/test';
 /**
  * Text that changes from run to run, rewritten to fixed words on every render (a mask would keep the
  * text's own width, which changes with it): dates, relative times, durations, the weekday labels
- * under the charts, the build's version, the clock in dialogs and free disk space. Runs in the page.
+ * under the charts, the build's version, the clock in dialogs, and sizes, bitrates and percentages. Runs in the page.
  */
 function steadyText() {
   const MONTH = '(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)';
@@ -21,7 +21,11 @@ function steadyText() {
     [/^(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)$/, 'Day'],
     [/v\d+\.\d+\.\d+-dev\+\w+/g, 'v0.0.0-dev'],
     [/\bNow \d{1,2}:\d{2}\b/g, 'Now 00:00'],
-    [/\b\d+(?:\.\d+)? (?:kB|MB|GB|TB) free\b/g, '10 GB free'],
+    // Sizes, bitrates and savings: x265's output differs by a few bytes between CPUs (its SIMD
+    // paths), and free disk space between machines.
+    [/\b\d+(?:\.\d+)? (?:B|kB|MB|GB|TB)\b/g, '1 MB'],
+    [/\b\d+(?:\.\d+)? (?:kb|Mb|Gb)\/s\b/g, '1 Mb/s'],
+    [/\d+(?:\.\d+)? ?%/g, '50%'],
   ];
   const fix = (node: Node) => {
     const text = node.textContent ?? '';
