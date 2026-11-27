@@ -1,33 +1,16 @@
 // The release notes waiting in .changes/ follow .changes/README.md now, not only when a pull
-// request adds one (the release-note check) or when a release is cut (pnpm release).
+// request adds one (the release-note check) or when a release is cut (pnpm release). The note
+// rules are the shared ones (@transcoda/dev-config/changes); the highlights are core's own.
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { HIGHLIGHTS, layoutOf, lintNotes } from '@transcoda/dev-config/changes';
 import { describe, expect, it } from 'vitest';
 // @ts-expect-error plain .mjs script without types
-import { HIGHLIGHTS, IMAGES_DIR, parseNote, prepareHighlights } from './release-notes.mjs';
+import { IMAGES_DIR, prepareHighlights } from './release-notes.mjs';
 
-const dir = join(import.meta.dirname, '../.changes');
+const root = join(import.meta.dirname, '..');
+const dir = join(root, '.changes');
 const entries = readdirSync(dir);
-const notes = entries.filter((f) => f.endsWith('.md') && f !== 'README.md' && f !== HIGHLIGHTS);
-
-/** A note's problems: the format, and no commit hashes or pull request numbers (README: "No code,
- *  commit hashes or internal names"). */
-function noteProblems(name: string, text: string): string[] {
-  const parsed = parseNote(text) as { errors?: string[]; text?: string };
-  const errors = (parsed.errors ?? []).map((e) => `.changes/${name}: ${e}`);
-  const body = parsed.text ?? '';
-  // A hash with digits and letters anywhere, or any hex word after "commit" or "sha" (so an
-  // all-letter abbreviation such as deadbeef counts there, but ordinary words do not).
-  if (
-    /\b(?=[0-9a-f]*\d)(?=[0-9a-f]*[a-f])[0-9a-f]{7,40}\b/.test(body) ||
-    /\b(?:commit|sha)\s*:?\s+[0-9a-f]{7,40}\b/i.test(body)
-  ) {
-    errors.push(`.changes/${name}: no commit hashes in a note`);
-  }
-  if (/(?<![\w&])#\d+\b/.test(body))
-    errors.push(`.changes/${name}: no pull request numbers in a note`);
-  return errors;
-}
 
 describe('.changes/', () => {
   it('holds only notes, the README, highlights and their images', () => {
@@ -38,18 +21,7 @@ describe('.changes/', () => {
   });
 
   it('every note has a valid type and text, without hashes or PR numbers', () => {
-    const problems = notes.flatMap((name) =>
-      noteProblems(name, readFileSync(join(dir, name), 'utf8')),
-    );
-    expect(problems, '.changes/README.md › Format').toEqual([]);
-    expect(noteProblems('x.md', '---\ntype: changed\n---\nSomething.\n')).toHaveLength(1);
-    expect(noteProblems('x.md', '---\ntype: fixed\n---\nFixed in 3f9c2a7e.\n')).toHaveLength(1);
-    expect(noteProblems('x.md', '---\ntype: fixed\n---\nFixed commit deadbeef.\n')).toHaveLength(1);
-    expect(
-      noteProblems('x.md', '---\ntype: fixed\n---\nA faded decade of accessed files.\n'),
-    ).toEqual([]);
-    expect(noteProblems('x.md', '---\ntype: fixed\n---\nFixed (#123).\n')).toHaveLength(1);
-    expect(noteProblems('x.md', '---\ntype: fixed\n---\nKeeps 1080p files.\n')).toEqual([]);
+    expect(lintNotes(root, layoutOf(root)), '.changes/README.md › Format').toEqual([]);
   });
 
   it('highlights, when present, link only images that exist and use every one', () => {
