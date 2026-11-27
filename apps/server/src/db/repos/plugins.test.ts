@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { migrations } from '../migrations/index.ts';
 import type { Database } from '../open.ts';
 import { createTestDb } from '../test-db.ts';
-import { insertJob, insertJobResult, type JobResultRow, listJobs } from './jobs.ts';
+import { insertJob, insertJobResult, type JobResultRow, listJobs } from './jobs/jobs.ts';
 import {
   addCatalog,
   deletePlugin,

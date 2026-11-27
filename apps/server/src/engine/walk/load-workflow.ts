@@ -1,5 +1,5 @@
 import type { Issue, WorkflowGraph } from '@transcoda/shared';
-import type { JobRow } from '../../db/repos/jobs.ts';
+import type { JobRow } from '../../db/repos/jobs/jobs.ts';
 import type { WorkflowService } from '../../workflows/service.ts';
 
 export type LoadedWorkflow = {

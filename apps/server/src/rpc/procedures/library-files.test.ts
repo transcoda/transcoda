@@ -2,13 +2,13 @@ import { emptyGraph, type JobState, type StoredJobMedia } from '@transcoda/share
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createTestApp, type TestApp } from '../../app/test-app.ts';
 import { asSession, bearer, createToken, login, type Session, send } from '../../app/test-http.ts';
+import { upsertFile } from '../../db/repos/files.ts';
 import {
   insertJob,
   insertJobResult,
   type JobResultRow,
   setJobProbe,
-  upsertFile,
-} from '../../db/repos/jobs.ts';
+} from '../../db/repos/jobs/jobs.ts';
 import { insertLibrary, softDeleteLibrary } from '../../db/repos/libraries.ts';
 import { showKey } from '../../db/repos/library-files.ts';
 import { insertRestore } from '../../db/repos/restores.ts';

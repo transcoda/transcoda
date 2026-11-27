@@ -8,7 +8,7 @@ vi.setConfig({ testTimeout: 30_000 });
 import { createTestApp, type TestApp } from '../../app/test-app.ts';
 import { createToken, login } from '../../app/test-http.ts';
 import type { Exec } from '../../capabilities/ffmpeg.ts';
-import { findJob, insertJobResult, updateJob } from '../../db/repos/jobs.ts';
+import { findJob, insertJobResult, updateJob } from '../../db/repos/jobs/jobs.ts';
 import { FakeSpawner } from '../../engine/encode/process.ts';
 import { logPathFor } from '../../engine/pipeline/pipeline.ts';
 import { packetRows } from '../../engine/testing/builders.ts';

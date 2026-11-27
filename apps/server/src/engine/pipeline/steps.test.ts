@@ -14,7 +14,7 @@ import type { JsonValue } from '@transcoda/shared';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 import { asSession, createToken, login, send } from '../../app/test-http.ts';
-import { findJobResult, listTrace } from '../../db/repos/jobs.ts';
+import { findJobResult, listTrace } from '../../db/repos/jobs/jobs.ts';
 import { mcpClient } from '../../mcp/test-client.ts';
 import { filePort } from '../../nodes/core/common.ts';
 import type { RegisteredNode } from '../../nodes/registry.ts';

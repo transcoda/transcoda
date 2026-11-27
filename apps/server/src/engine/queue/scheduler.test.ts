@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 import type { EncodeSlot } from '../../capabilities/devices.ts';
 import type { Database } from '../../db/open.ts';
-import { findJob, insertJob, type JobRow, updateJob } from '../../db/repos/jobs.ts';
+import { findJob, insertJob, type JobRow, updateJob } from '../../db/repos/jobs/jobs.ts';
 import { insertLibrary, updateLibrary } from '../../db/repos/libraries.ts';
 import { insertRun } from '../../db/repos/runs.ts';
 import { getSetting, SETTING_KEYS } from '../../db/repos/settings.ts';

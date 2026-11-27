@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createTestApp, type TestApp } from '../../app/test-app.ts';
 import { asSession, bearer, createToken, login, type Session, send } from '../../app/test-http.ts';
 import type { Exec } from '../../capabilities/ffmpeg.ts';
-import { findJob, type JobRow, updateJob } from '../../db/repos/jobs.ts';
+import { findJob, type JobRow, updateJob } from '../../db/repos/jobs/jobs.ts';
 import { setSetting } from '../../db/repos/settings.ts';
 import { FakeSpawner } from '../../engine/encode/process.ts';
 import { packetRows } from '../../engine/testing/builders.ts';

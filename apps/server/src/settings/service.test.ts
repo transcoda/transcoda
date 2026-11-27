@@ -2,7 +2,7 @@ import { type Capabilities, type Gpu, SettingsUpdateInputSchema } from '@transco
 import { DEFAULT_LIMITS, emptyGraph, type WorkflowGraph } from '@transcoda/shared';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Database } from '../db/open.ts';
-import { insertRecycled } from '../db/repos/jobs.ts';
+import { insertRecycled } from '../db/repos/recycled.ts';
 import { setSetting } from '../db/repos/settings.ts';
 import { appendVersion, insertWorkflow, setActiveVersion } from '../db/repos/workflows.ts';
 import { createTestDb } from '../db/test-db.ts';

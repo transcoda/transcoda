@@ -1,7 +1,7 @@
 import type { Capabilities } from '@transcoda/contract';
 import { emptyGraph, type JobState } from '@transcoda/shared';
 import { describe, expect, it } from 'vitest';
-import { insertJob, updateJob } from '../db/repos/jobs.ts';
+import { insertJob, updateJob } from '../db/repos/jobs/jobs.ts';
 import { insertLibrary } from '../db/repos/libraries.ts';
 import { insertRun } from '../db/repos/runs.ts';
 import { SETTING_KEYS, setSetting } from '../db/repos/settings.ts';

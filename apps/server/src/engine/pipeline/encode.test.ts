@@ -2,7 +2,7 @@ import { mkdir, readFile, rename, stat, symlink, utimes, writeFile } from 'node:
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { Exec } from '../../capabilities/ffmpeg.ts';
-import { findJobResult } from '../../db/repos/jobs.ts';
+import { findJobResult } from '../../db/repos/jobs/jobs.ts';
 import { node } from '../../workflows/test-helpers.ts';
 import { probeOf } from '../testing/builders.ts';
 import { coverFailure, coverTimeoutMs } from './encode.ts';

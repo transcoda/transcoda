@@ -11,7 +11,7 @@ import type { Exec } from '../capabilities/ffmpeg.ts';
 import { GpuLoadSampler } from '../capabilities/gpu-load.ts';
 import { IntelLoadReader } from '../capabilities/intel-load.ts';
 import type { Database } from '../db/open.ts';
-import { findJob, findJobProbe } from '../db/repos/jobs.ts';
+import { findJob, findJobProbe } from '../db/repos/jobs/jobs.ts';
 import { listLibraries } from '../db/repos/libraries.ts';
 import { countUsers } from '../db/repos/users.ts';
 import { nodeSpawner, type ProcessSpawner } from '../engine/encode/process.ts';

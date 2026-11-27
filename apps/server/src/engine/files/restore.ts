@@ -6,21 +6,23 @@ import { type Database, durably } from '../../db/open.ts';
 import { fingerprintKey } from '../../db/repos/files.ts';
 import {
   claimRestoreJournal,
-  deleteRecycled,
   findJob,
   findJobResult,
-  findRecycled,
   hasActiveJobAt,
   hasFileJournal,
-  insertRecycled,
   type JobRow,
-  listRecycledForJob,
-  type RecycledRow,
   type RestoreJournal,
   type RestoreMove,
   updateJob,
-} from '../../db/repos/jobs.ts';
+} from '../../db/repos/jobs/jobs.ts';
 import { findLibrary } from '../../db/repos/libraries.ts';
+import {
+  deleteRecycled,
+  findRecycled,
+  insertRecycled,
+  listRecycledForJob,
+  type RecycledRow,
+} from '../../db/repos/recycled.ts';
 import { findRestore, insertRestore, markRestoreUndone } from '../../db/repos/restores.ts';
 import {
   ClobberRefused,

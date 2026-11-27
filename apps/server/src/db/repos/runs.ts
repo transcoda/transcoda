@@ -1,6 +1,6 @@
 import { ACTIVE_JOB_STATES, type JobState, RUN_OUTCOME_KEYS } from '@transcoda/shared';
 import type { Database } from '../open.ts';
-import { DEPENDS_ON_SIZE_SQL } from './jobs.ts';
+import { DEPENDS_ON_SIZE_SQL } from './jobs/jobs.ts';
 
 export interface RunRow {
   id: string;

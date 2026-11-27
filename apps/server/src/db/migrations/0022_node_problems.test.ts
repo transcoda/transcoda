@@ -4,7 +4,7 @@ import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { migrate } from '../migrate.ts';
 import { closeDatabase, type Database, openDatabase } from '../open.ts';
-import { findJobResult } from '../repos/jobs.ts';
+import { findJobResult } from '../repos/jobs/jobs.ts';
 import { migrations } from './index.ts';
 
 const T = '2026-01-01T00:00:00.000Z';

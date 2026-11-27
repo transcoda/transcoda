@@ -1,7 +1,7 @@
 // After a replace: the subtitle files that were embedded move to the recycle folder.
 import { basename, dirname } from 'node:path';
 import type { BuildModel } from '@transcoda/sdk';
-import type { RecycledInsert } from '../../db/repos/jobs.ts';
+import type { RecycledInsert } from '../../db/repos/recycled.ts';
 import { type FsOps, renameNoClobber, syncDirs, why } from '../../platform/fs-ops.ts';
 import type { Logger } from '../../platform/logger.ts';
 import { extraInputOf, isExtraStream } from '../model/model.ts';

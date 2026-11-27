@@ -11,7 +11,7 @@ import {
   insertJobResult,
   type JobRow,
   updateJob,
-} from '../db/repos/jobs.ts';
+} from '../db/repos/jobs/jobs.ts';
 import { setSetting } from '../db/repos/settings.ts';
 import { type FsOps, nodeFsOps } from '../platform/fs-ops.ts';
 import { chain, node } from '../workflows/test-helpers.ts';

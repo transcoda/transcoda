@@ -1,7 +1,7 @@
 // Run hours on the server: which libraries hold back their automatic (`library`) jobs right now.
 import { isOpenAt, nextOpening } from '@transcoda/shared';
 import type { Database } from '../../db/open.ts';
-import type { JobListRow } from '../../db/repos/jobs.ts';
+import type { JobListRow } from '../../db/repos/jobs/jobs.ts';
 import { listLibraries } from '../../db/repos/libraries.ts';
 
 /** The server's own time zone (the container's `TZ`, else UTC): run hours are read in it. */

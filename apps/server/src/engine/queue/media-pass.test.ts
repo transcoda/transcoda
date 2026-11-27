@@ -3,7 +3,8 @@ import { join } from 'node:path';
 import { emptyGraph, type StoredJobMedia } from '@transcoda/shared';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Database } from '../../db/open.ts';
-import { insertJob, parseMedia, upsertFile } from '../../db/repos/jobs.ts';
+import { upsertFile } from '../../db/repos/files.ts';
+import { insertJob, parseMedia } from '../../db/repos/jobs/jobs.ts';
 import { insertLibrary, softDeleteLibrary } from '../../db/repos/libraries.ts';
 import {
   episodesWithoutShowPoster,

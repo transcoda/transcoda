@@ -1,7 +1,7 @@
 import { emptyGraph, type JobState } from '@transcoda/shared';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { Database } from '../../db/open.ts';
-import { insertJob, insertJobResult, updateJob } from '../../db/repos/jobs.ts';
+import { insertJob, insertJobResult, updateJob } from '../../db/repos/jobs/jobs.ts';
 import { insertLibrary } from '../../db/repos/libraries.ts';
 import { insertRun } from '../../db/repos/runs.ts';
 import { insertWorkflow } from '../../db/repos/workflows.ts';

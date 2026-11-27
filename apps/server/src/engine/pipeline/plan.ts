@@ -11,7 +11,7 @@ import {
   type WorkflowGraph,
 } from '@transcoda/shared';
 import type { Database } from '../../db/open.ts';
-import { recentRatios } from '../../db/repos/jobs.ts';
+import { recentRatios } from '../../db/repos/jobs/jobs.ts';
 import {
   containerCanHold,
   diffFromProbe,

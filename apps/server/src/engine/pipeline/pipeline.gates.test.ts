@@ -5,7 +5,8 @@ import { readFile, stat, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { WorkflowGraph } from '@transcoda/shared';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { findJobResult, listRecycled, listTrace } from '../../db/repos/jobs.ts';
+import { findJobResult, listTrace } from '../../db/repos/jobs/jobs.ts';
+import { listRecycled } from '../../db/repos/recycled.ts';
 import { chain, edge, mainGraph, node } from '../../workflows/test-helpers.ts';
 import {
   base,

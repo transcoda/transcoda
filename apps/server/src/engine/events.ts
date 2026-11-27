@@ -1,7 +1,7 @@
 // Engine events for the SSE stream: job and queue changes, trace entries, and a heartbeat.
 import { EventPublisher } from '@orpc/server';
 import type { JobState, Lane, PluginState, TraceEntry } from '@transcoda/shared';
-import type { JobProgress, JobRow } from '../db/repos/jobs.ts';
+import type { JobProgress, JobRow } from '../db/repos/jobs/jobs.ts';
 
 /** Heartbeat interval while a subscriber is connected. */
 export const HEARTBEAT_MS = 30_000;

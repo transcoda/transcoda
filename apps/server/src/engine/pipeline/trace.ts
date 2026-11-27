@@ -1,7 +1,7 @@
 // The finish-phase entries the pipeline adds to a job's trace after the walk: a size gate's
 // branch, a Render's Damaged, a plugin step's own answer, and the node a stop or failure cut.
 import { RENDER_DAMAGED_PORT, type TraceEntry } from '@transcoda/shared';
-import { appendTrace, type JobRow, nextTraceSeq } from '../../db/repos/jobs.ts';
+import { appendTrace, type JobRow, nextTraceSeq } from '../../db/repos/jobs/jobs.ts';
 import type { JobControl } from '../queue/scheduler.ts';
 import type { DamagedBranch, GateBranch } from '../walk/walk.ts';
 import type { PipelineCore } from './core.ts';

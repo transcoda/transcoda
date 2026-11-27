@@ -14,19 +14,22 @@ import {
   type StoredJobMedia,
 } from '@transcoda/shared';
 import type { Database } from '../../db/open.ts';
-import { type Fingerprint, fingerprintKey } from '../../db/repos/files.ts';
+import {
+  type Fingerprint,
+  fileSeen,
+  fingerprintKey,
+  markFolderListing,
+  upsertFile,
+} from '../../db/repos/files.ts';
 import {
   alreadyProcessedReason,
-  fileSeen,
   findPriorRun,
   findProcessedResult,
   hasReplaceJournal,
   insertJob,
   type JobRow,
-  markFolderListing,
   updateJob,
-  upsertFile,
-} from '../../db/repos/jobs.ts';
+} from '../../db/repos/jobs/jobs.ts';
 import {
   findLibrary,
   insertLibrary,
@@ -552,12 +555,9 @@ export class QueueService {
       input,
       newOnly,
     } = args;
-
     const now = this.deps.now();
     const candidates = await this.candidates(paths, realPath, known, library, now);
-
     const media = await this.resolveMedia(candidates, library, newOnly ? workflowId : null);
-
     const { db } = this;
     const written = db.transaction(() => {
       // When the files are seen, for their rows: `now` is from before the awaits above, and a

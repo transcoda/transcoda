@@ -7,7 +7,7 @@ import { afterEach, beforeEach, expect, vi } from 'vitest';
 import { z } from 'zod';
 import { createTestApp, type TestApp } from '../../app/test-app.ts';
 import type { Exec } from '../../capabilities/ffmpeg.ts';
-import { findJob, type JobRow } from '../../db/repos/jobs.ts';
+import { findJob, type JobRow } from '../../db/repos/jobs/jobs.ts';
 import type { LibraryRow } from '../../db/repos/libraries.ts';
 import type { RegisteredNode } from '../../nodes/registry.ts';
 import { type FsOps, nodeFsOps } from '../../platform/fs-ops.ts';

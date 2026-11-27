@@ -15,7 +15,7 @@ import type { EncodeSlot } from '../../capabilities/devices.ts';
 import type { Exec } from '../../capabilities/ffmpeg.ts';
 import type { Database } from '../../db/open.ts';
 import type { Fingerprint } from '../../db/repos/files.ts';
-import type { WalkStep } from '../../db/repos/jobs.ts';
+import type { WalkStep } from '../../db/repos/jobs/jobs.ts';
 import type { LibraryRow } from '../../db/repos/libraries.ts';
 import type { NodeRegistry } from '../../nodes/registry.ts';
 import type { Config } from '../../platform/config.ts';

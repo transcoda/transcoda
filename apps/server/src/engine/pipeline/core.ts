@@ -6,7 +6,12 @@ import { devicePlan, readEncodeDevice } from '../../capabilities/devices.ts';
 import { type Exec, makeExec } from '../../capabilities/ffmpeg.ts';
 import type { Database } from '../../db/open.ts';
 import { type Fingerprint, fingerprintKey } from '../../db/repos/files.ts';
-import { insertJobResult, type JobPatch, type JobRow, updateJob } from '../../db/repos/jobs.ts';
+import {
+  insertJobResult,
+  type JobPatch,
+  type JobRow,
+  updateJob,
+} from '../../db/repos/jobs/jobs.ts';
 import { findWorkflow } from '../../db/repos/workflows.ts';
 import type { CheckSourceResult } from '../../nodes/core-tools.ts';
 import { errorCode } from '../../platform/fs-ops.ts';

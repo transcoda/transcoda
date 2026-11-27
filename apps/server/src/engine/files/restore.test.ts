@@ -9,15 +9,13 @@ import {
   alreadyProcessedReason,
   findJob,
   findPriorRun,
-  findRecycled,
   insertJob,
   insertJobResult,
-  insertRecycled,
   type JobResultRow,
-  listRecycled,
   updateJob,
-} from '../../db/repos/jobs.ts';
+} from '../../db/repos/jobs/jobs.ts';
 import { insertLibrary } from '../../db/repos/libraries.ts';
+import { findRecycled, insertRecycled, listRecycled } from '../../db/repos/recycled.ts';
 import { findActiveRestore } from '../../db/repos/restores.ts';
 import { insertRun } from '../../db/repos/runs.ts';
 import { insertWorkflow } from '../../db/repos/workflows.ts';

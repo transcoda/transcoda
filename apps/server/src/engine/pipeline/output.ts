@@ -5,7 +5,7 @@ import { dirname, extname, isAbsolute, join, relative, resolve } from 'node:path
 import type { FinishAction } from '@transcoda/sdk';
 import { type FailureCode, RENDER_DONE_PORT } from '@transcoda/shared';
 import { durably } from '../../db/open.ts';
-import { findJob, type JobRow, updateJob } from '../../db/repos/jobs.ts';
+import { findJob, type JobRow, updateJob } from '../../db/repos/jobs/jobs.ts';
 import { ClobberRefused, errorCode, renameNoClobber } from '../../platform/fs-ops.ts';
 import { toVerifyProgress, type VerifyProgress } from '../encode/progress.ts';
 import { checkPath, isWithin } from '../files/paths.ts';

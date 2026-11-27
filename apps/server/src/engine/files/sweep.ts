@@ -6,18 +6,17 @@ import { type JobState, RENDER_TYPE, RUNNING_JOB_STATES } from '@transcoda/share
 import type { Database } from '../../db/open.ts';
 import {
   appendTrace,
-  deleteRecycled,
   hasReplaceJournal,
   type JobRow,
   jobsInStates,
   jobsWithReplaceJournal,
   jobsWithRestoreJournal,
-  listRecycled,
   listTrace,
   nextTraceSeq,
   type ReplaceJournal,
   updateJob,
-} from '../../db/repos/jobs.ts';
+} from '../../db/repos/jobs/jobs.ts';
+import { deleteRecycled, listRecycled } from '../../db/repos/recycled.ts';
 import { findVersion } from '../../db/repos/workflows.ts';
 import {
   ClobberRefused,

@@ -2,7 +2,7 @@
 // Render's or a Check source's Damaged when the source turns out damaged.
 import type { AnyFinishAction } from '@transcoda/sdk';
 import { finishPhaseRank } from '@transcoda/shared';
-import type { JobRow } from '../../db/repos/jobs.ts';
+import type { JobRow } from '../../db/repos/jobs/jobs.ts';
 import type { JobControl } from '../queue/scheduler.ts';
 import type { VerifyFailure } from '../verify/verify.ts';
 import {

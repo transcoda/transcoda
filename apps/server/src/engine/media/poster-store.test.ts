@@ -6,7 +6,7 @@ import { promisify } from 'node:util';
 import { emptyGraph, type StoredJobMedia } from '@transcoda/shared';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createTestApp, type TestApp } from '../../app/test-app.ts';
-import { insertJob } from '../../db/repos/jobs.ts';
+import { insertJob } from '../../db/repos/jobs/jobs.ts';
 import { insertLibrary, softDeleteLibrary } from '../../db/repos/libraries.ts';
 import { insertRun } from '../../db/repos/runs.ts';
 import { insertWorkflow } from '../../db/repos/workflows.ts';

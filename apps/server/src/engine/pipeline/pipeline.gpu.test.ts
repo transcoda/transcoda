@@ -1,6 +1,6 @@
 import type { Capabilities } from '@transcoda/contract';
 import { describe, expect, it, vi } from 'vitest';
-import { findJob, findJobResult, updateJob } from '../../db/repos/jobs.ts';
+import { findJob, findJobResult, updateJob } from '../../db/repos/jobs/jobs.ts';
 import { setSetting } from '../../db/repos/settings.ts';
 import { node } from '../../workflows/test-helpers.ts';
 import { probeOf } from '../testing/builders.ts';

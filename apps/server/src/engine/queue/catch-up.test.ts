@@ -5,7 +5,7 @@ import { parseFileName } from '@transcoda/shared';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Database } from '../../db/open.ts';
 import { fingerprintKey } from '../../db/repos/files.ts';
-import { insertJobResult, listJobs, updateJob } from '../../db/repos/jobs.ts';
+import { insertJobResult, listJobs, updateJob } from '../../db/repos/jobs/jobs.ts';
 import type { LibraryRow } from '../../db/repos/libraries.ts';
 import { listRuns } from '../../db/repos/runs.ts';
 import { createTestDb } from '../../db/test-db.ts';

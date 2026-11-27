@@ -3,15 +3,14 @@ import { dirname, join } from 'node:path';
 import { emptyGraph } from '@transcoda/shared';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { Database } from '../../db/open.ts';
+import { insertJob, updateJob } from '../../db/repos/jobs/jobs.ts';
+import { insertLibrary, type LibraryRow } from '../../db/repos/libraries.ts';
 import {
-  insertJob,
   insertRecycled,
   listRecycled,
   type RecycledRow,
   recycledTotalsByLibrary,
-  updateJob,
-} from '../../db/repos/jobs.ts';
-import { insertLibrary, type LibraryRow } from '../../db/repos/libraries.ts';
+} from '../../db/repos/recycled.ts';
 import { insertRun } from '../../db/repos/runs.ts';
 import { insertWorkflow } from '../../db/repos/workflows.ts';
 import { createTestDb } from '../../db/test-db.ts';
