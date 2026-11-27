@@ -34,8 +34,8 @@ const media = (title: string, posterPath: string | null = null): StoredJobMedia 
   source: 'sidecar',
   posterPath,
 });
-const M = media('Night of the Living Dead');
-const M2 = media('Sherlock Jr.');
+const M = media('Nocturne of the Quiet Moon');
+const M2 = media('Shepherd Jr.');
 
 let db: Database;
 let logs: Array<Record<string, unknown> | string>;
@@ -190,7 +190,7 @@ describe('show posters of episode media resolved before show posters', () => {
   /** Episode media as 0.6.0 stored it: a season poster and no `showPosterPath` key. */
   const oldEpisode = (posterPath: string | null): StoredJobMedia => ({
     kind: 'episode',
-    title: 'The Beverly Hillbillies',
+    title: 'The Bramblewood Family',
     year: 1962,
     season: 1,
     episode: 1,
@@ -232,7 +232,7 @@ describe('show posters of episode media resolved before show posters', () => {
 
   it('a pass looks each one up once from the folders (a show with none gets null), and the next pass has nothing to do', async () => {
     const root = await realpath(await tempDir('media-pass-show-'));
-    const withPoster = join(root, 'The Beverly Hillbillies (1962)');
+    const withPoster = join(root, 'The Bramblewood Family (1962)');
     const without = join(root, 'Popeye (1933)');
     for (const dir of [join(withPoster, 'Season 01'), join(without, 'Season 01')]) {
       await mkdir(dir, { recursive: true });
@@ -269,7 +269,7 @@ describe('show posters of episode media resolved before show posters', () => {
 
   it('a show folder that cannot be read keeps the key missing; the next pass with it readable writes the path', async () => {
     const root = await realpath(await tempDir('media-pass-share-'));
-    const show = join(root, 'The Beverly Hillbillies (1962)');
+    const show = join(root, 'The Bramblewood Family (1962)');
     await mkdir(join(show, 'Season 01'), { recursive: true });
     await writeFile(join(show, 'poster.jpg'), 'img');
     const path = join(show, 'Season 01', 'S01E01.mkv');
@@ -342,9 +342,9 @@ describe('MediaPass', () => {
     job('f1-older', 'f1', 1);
     job('f1-latest', 'f1', 2);
     job('f2-latest', 'f2', 3, M);
-    const resolver = fake(async (p) => media('Superman', p));
+    const resolver = fake(async (p) => media('Skyward', p));
     expect(await pass(resolver).run()).toEqual({ filled: 1 });
-    expect(mediaOf('f1-latest')?.title).toBe('Superman');
+    expect(mediaOf('f1-latest')?.title).toBe('Skyward');
     expect(mediaOf('f1-older')).toBeNull();
     expect(mediaOf('f2-latest')).toEqual(M);
     expect(resolver.resolve).toHaveBeenCalledTimes(1);
@@ -702,7 +702,7 @@ describe('MediaPass events', () => {
     library('l3', other);
     const episode: StoredJobMedia = {
       kind: 'episode',
-      title: 'The Beverly Hillbillies',
+      title: 'The Bramblewood Family',
       year: 1962,
       season: 1,
       episode: 1,

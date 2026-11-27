@@ -1,4 +1,3 @@
-import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { ORPCError } from '@orpc/client';
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
@@ -25,6 +24,7 @@ vi.mock('../api/client.ts', async () => {
   return { api: mocks, isDefinedError: orpc.isDefinedError, safe: orpc.safe };
 });
 
+import { stylesCss } from '../styles/css-source.ts';
 import { LibrariesPage } from './LibrariesPage.tsx';
 
 const at = '2026-10-16T18:00:00.000Z';
@@ -374,7 +374,7 @@ describe('LibrariesPage', () => {
     const path = within(row).getByTitle('/media/movies');
     expect(path.querySelectorAll('wbr')).toHaveLength(0);
     expect(path.textContent).toBe('\u200e/media/movies\u200e');
-    const css = readFileSync(join(__dirname, '../styles.css'), 'utf8');
+    const css = stylesCss;
     expect(css).toMatch(
       /\.lib-path,\s*\.lib-note-path\s*\{[^}]*white-space:\s*nowrap[^}]*direction:\s*rtl/,
     );

@@ -1,0 +1,382 @@
+/* The one not-found state (NotFound.tsx), in the empty state's language: the address as a node
+   card whose output port has a broken cable (the red "into a broken node" dash) running into an
+   empty dashed slot. Real elements, no picture. */
+.not-found-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-4);
+  padding: 64px var(--sp-6);
+  border-radius: var(--r-lg);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  text-align: center;
+}
+.not-found-title {
+  font-size: var(--fs-h1);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.not-found-state p {
+  max-width: 420px;
+  font-size: var(--fs-body);
+  line-height: 1.5;
+  color: var(--muted);
+}
+.not-found-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--sp-3);
+  margin-top: var(--sp-2);
+}
+.lost-chain {
+  display: flex;
+  align-items: center;
+  max-width: 100%;
+  margin-bottom: var(--sp-2);
+}
+.lost-node {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sp-1);
+  max-width: 240px;
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-md);
+  border: 1.5px solid var(--line-strong);
+  background: var(--raised);
+  text-align: left;
+}
+.lost-node-kind {
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+.lost-node-path {
+  max-width: 100%;
+  overflow: hidden;
+  font-family: var(--font-mono);
+  font-size: var(--fs-small);
+  color: var(--text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* The output jack, half over the card's edge, then the cable that reaches nothing. */
+.lost-port {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  margin-left: -8px;
+  border-radius: 50%;
+  border: 2px solid var(--muted);
+  background: var(--surface);
+}
+.lost-cable {
+  flex: none;
+  width: 72px;
+  border-top: 2.5px dashed var(--st-failed);
+}
+.lost-slot {
+  flex: none;
+  width: 56px;
+  height: 40px;
+  border-radius: var(--r-md);
+  border: 2px dashed var(--empty-link);
+}
+@media (max-width: 639px) {
+  .not-found-state {
+    padding: var(--sp-10) var(--sp-4);
+  }
+  .lost-node {
+    max-width: 180px;
+  }
+  .lost-cable {
+    width: 40px;
+  }
+}
+
+/* In the desktop editor the right column is the inspector (340 px) with its issues footer at the
+   bottom: toasts sit over the canvas instead of covering it. */
+@media (min-width: 1024px) {
+  body:has(.editor-body) .toasts {
+    right: calc(340px + 20px);
+  }
+}
+
+/* A menu item's second line (the Examples menu: what an example needs) and a divider. */
+.row-menu-list .row-menu-note {
+  display: block;
+  font-size: var(--fs-mono);
+  color: var(--muted);
+}
+.row-menu-list button:has(.row-menu-note) {
+  flex-wrap: wrap;
+}
+.row-menu-sep {
+  border: 0;
+  border-top: 1px solid var(--line);
+  margin: var(--sp-1) 0;
+}
+/* A disabled item's reason, shown under it (not only as a tooltip). */
+.row-menu-hint {
+  display: block;
+  padding: 0 var(--sp-3) var(--sp-2) var(--sp-10);
+  font-size: var(--fs-mono);
+  color: var(--muted);
+}
+
+/* Libraries: the first-run state, and a library's run hours under its name. */
+.lib-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sp-3);
+  max-width: 40rem;
+  padding: var(--sp-6);
+}
+.lib-empty-state h2 {
+  margin: 0;
+  font-size: var(--fs-h3);
+}
+.lib-empty-state p {
+  margin: 0;
+  color: var(--muted);
+}
+.lib-run-hours {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+  margin-top: var(--sp-1);
+  font-size: var(--fs-mono);
+  font-weight: 400;
+  color: var(--muted);
+}
+
+/* A test encode's badge: the dry-run dash, in the accent, so it reads apart from a plan. */
+.badge-test-encode {
+  border-color: var(--accent-text);
+  color: var(--accent-text);
+}
+
+/* The job page's "Queued 21:03 · started … · took 4 s" line, under the file's place. */
+.job-head-times {
+  margin: var(--sp-1) 0 0;
+  font-size: var(--fs-small);
+  color: var(--muted);
+}
+
+/* About: what Transcoda encodes with, first in "Show all encoders". */
+.about-encoders {
+  list-style: none;
+  margin: var(--sp-3) var(--sp-4) var(--sp-2);
+  padding: 0;
+  display: grid;
+  gap: var(--sp-2);
+}
+.about-encoders-row {
+  display: grid;
+  grid-template-columns: 6rem minmax(0, 1fr);
+  gap: var(--sp-3);
+  font-size: var(--fs-small);
+}
+.about-encoders-label {
+  color: var(--muted);
+}
+.about-caps > summary {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  cursor: pointer;
+  list-style: none;
+}
+.about-caps > summary::-webkit-details-marker {
+  display: none;
+}
+.about-caps-chevron {
+  transition: transform var(--dur-base) var(--ease-out);
+}
+.about-caps[open] .about-caps-chevron {
+  transform: rotate(180deg);
+}
+
+/* Phone: the Workflows and Libraries tables become one card per row, like the Jobs page: the name
+   and its actions on top, every other cell under it (a library's with its column name, data-label;
+   a workflow's as one meta line, below). The header row stays for screen readers only. */
+@media (max-width: 639px) {
+  .wf-table,
+  .lib-table {
+    overflow-x: visible;
+  }
+  .wf-table table,
+  .lib-table table {
+    min-width: 0;
+  }
+  .wf-table colgroup {
+    display: none;
+  }
+  .wf-table thead,
+  .lib-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .wf-table tbody,
+  .lib-table tbody {
+    display: block;
+  }
+  .lib-table tbody tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--sp-1) var(--sp-3);
+    padding: var(--sp-3) var(--sp-4);
+  }
+  .wf-table tbody tr + tr,
+  .lib-table tbody tr + tr {
+    border-top: 1px solid var(--line);
+  }
+  .wf-table .wf-cell,
+  .lib-table .lib-cell {
+    display: block;
+    padding: 0;
+    border: 0;
+  }
+  .lib-table .lib-cell {
+    grid-column: 1;
+  }
+  .lib-table .lib-cell:last-child {
+    grid-column: 2;
+    grid-row: 1;
+    align-self: start;
+  }
+  .lib-table [data-label]::before {
+    content: attr(data-label) ": ";
+    color: var(--muted);
+    font-size: var(--fs-mono);
+  }
+}
+@media (max-width: 639px) {
+  /* A workflow card: the name (and its problem chips) with the menu on line 1, then one muted meta
+     line, "Shows · Active v1 · v3 · 5 min ago", without column names. */
+  .wf-table tbody tr {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    row-gap: var(--sp-1);
+    padding: var(--sp-3) var(--sp-4);
+  }
+  .wf-table .wf-cell.wf-name {
+    flex: 1 1 calc(100% - var(--target-min) - 12px);
+    min-width: 0;
+  }
+  .wf-table .wf-cell.wf-actions {
+    order: 1;
+    margin-left: var(--sp-3);
+    align-self: flex-start;
+  }
+  .wf-table .wf-cell.wf-meta {
+    order: 2;
+    min-width: 0;
+    max-width: 100%;
+    color: var(--muted);
+    font-size: var(--fs-mono);
+  }
+  .wf-table .wf-meta + .wf-meta::before {
+    content: "·";
+    margin-left: var(--sp-2);
+    color: var(--faint);
+  }
+  .wf-table .wf-meta,
+  .wf-table .wf-active {
+    display: inline-flex;
+    flex-direction: row;
+    align-items: center;
+    gap: var(--sp-2);
+  }
+  .wf-table .wf-meta .activation-pill {
+    min-height: 22px;
+    padding: 0 var(--sp-2);
+    font-size: var(--fs-micro);
+  }
+  .wf-table .wf-activate,
+  .wf-table .wf-activate-off {
+    font-size: var(--fs-mono);
+  }
+  .wf-table .wf-version {
+    font-size: var(--fs-micro);
+  }
+}
+@media (max-width: 639px) {
+  /* A library card: the name with Scan now and the menu on its row; schedule, path and feeds
+     under it, without column names. */
+  .lib-table colgroup {
+    display: none;
+  }
+  .lib-table .lib-cell {
+    grid-column: 1 / -1;
+  }
+  /* The name cell's parts join the card's grid: the name beside the actions, the run hours on
+     their own line under them. */
+  .lib-table .lib-cell.lib-name {
+    display: contents;
+  }
+  .lib-table .lib-name-text {
+    grid-column: 1;
+    grid-row: 1;
+    align-self: center;
+    min-width: 0;
+  }
+  .lib-table .lib-run-hours {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    margin-top: 0;
+  }
+  .lib-table .lib-cell.lib-actions {
+    grid-column: 2;
+    grid-row: 1;
+    align-self: start;
+  }
+  .lib-table .lib-path {
+    font-size: var(--fs-mono);
+  }
+}
+@media (max-width: 639px) {
+  .wf-table .wf-cell:first-child,
+  .lib-table .lib-cell:first-child,
+  .wf-table .wf-cell:last-child,
+  .lib-table .lib-cell:last-child {
+    padding: 0;
+  }
+}
+
+/* About → Database backups: the restore how-to, closed until asked for. */
+.about-backups-help .disclosure-body {
+  gap: var(--sp-2);
+}
+
+/* A group after another group: clearly apart (the pause switch applies at once, the group after
+   it has its own Save). */
+.settings-group + .settings-group {
+  margin-top: var(--sp-6);
+}
+
+/* Library dialog: the recycle folder and the two switches, under "Advanced". */
+.lib-advanced {
+  border-top: 1px solid var(--line);
+}
+
+.lib-advanced .disclosure-body {
+  gap: var(--sp-4);
+  padding-top: var(--sp-2);
+}
+
+/* Plugin settings: path mappings and insecure TLS, under "Advanced". */
+.plugin-advanced .disclosure-body {
+  gap: var(--sp-4);
+  padding-top: var(--sp-1);
+}

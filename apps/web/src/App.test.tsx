@@ -1,5 +1,5 @@
 import { ORPCError } from '@orpc/client';
-import { act, cleanup, render, screen, within } from '@testing-library/react';
+import { act, cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { hostGuardInterceptor } from './api/host-guard.ts';
 
@@ -311,7 +311,7 @@ describe('App', () => {
       });
       renderApp();
       expect(await screen.findByText('workflows page')).toBeTruthy();
-      expect(document.title).toBe('Basement · Transcoda');
+      await waitFor(() => expect(document.title).toBe('Basement · Transcoda'));
       expect(document.documentElement.hasAttribute('data-theme')).toBe(false);
     });
   });

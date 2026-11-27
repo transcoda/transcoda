@@ -1,0 +1,78 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/* Keyboard focus and in-page jumps stop below the sticky top bar, not under it (WCAG 2.4.11).
+   Shell writes the bar's rendered height to --topbar-h, so the offset follows it when it wraps to
+   two rows at 640px and up. The editor has no top bar and does not scroll the page, so it needs
+   none. */
+html {
+  scroll-padding-top: calc(var(--topbar-h) + var(--sp-4));
+}
+
+html:has(.editor) {
+  scroll-padding-top: 0;
+}
+
+html,
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: var(--fs-body);
+  line-height: 1.4;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+p {
+  margin: 0;
+}
+
+/* Display headings sit tight: the body's 1.4 left a wrapped title's second line floating. */
+h1,
+h2 {
+  line-height: 1.2;
+}
+
+a {
+  color: var(--accent-text);
+}
+
+@media (hover: hover) {
+  a:hover {
+    color: var(--accent-hover);
+  }
+}
+
+.mono {
+  font-family: var(--font-mono);
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.faint {
+  color: var(--faint);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.icon {
+  flex: none;
+}

@@ -1,0 +1,137 @@
+/* Initial session check, before any screen can render. */
+.app-loading {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-6);
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: var(--fs-mono);
+}
+
+/* ---------- Setup and sign in (screens/01) ---------- */
+
+.auth {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 520px minmax(0, 1fr);
+}
+
+.auth-brand {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: var(--sp-8);
+  padding: 56px;
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.auth-logo {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+.auth-logo .wordmark {
+  font-size: var(--fs-h1);
+}
+
+.auth-tagline {
+  font-size: 64px;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  line-height: 0.95;
+}
+
+.auth-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  font-family: var(--font-mono);
+  font-size: var(--fs-mono);
+  font-weight: 600;
+}
+
+.auth-main {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 56px;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 400px;
+}
+
+/* Sign in names the host once: in the brand panel's footer beside the form; under the title on a
+   phone, where that footer is hidden. */
+@media (min-width: 900px) {
+  .lead:has(> .auth-host-intro) {
+    display: none;
+  }
+}
+
+.credentials {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+.credentials-head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-3);
+}
+
+.credentials h1 {
+  font-size: var(--fs-title);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: var(--fs-mono);
+  font-weight: 600;
+  color: var(--accent-text);
+  text-transform: uppercase;
+}
+
+.lead {
+  font-size: var(--fs-body);
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.credentials .btn {
+  margin-top: var(--sp-2);
+}
+
+@media (max-width: 899px) {
+  .auth {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto 1fr;
+  }
+
+  .auth-brand {
+    padding: var(--sp-6);
+    gap: var(--sp-6);
+  }
+
+  .auth-tagline {
+    font-size: 40px;
+  }
+
+  .auth-meta {
+    display: none;
+  }
+
+  .auth-main {
+    align-items: flex-start;
+    padding: var(--sp-8) var(--sp-6) var(--sp-12);
+  }
+}

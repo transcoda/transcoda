@@ -1,0 +1,281 @@
+.panel {
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+
+.panel h2,
+.reveal h2,
+.token-form h3,
+.reveal h3 {
+  font-size: var(--fs-h2);
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.reveal {
+  border-radius: var(--r-lg);
+  background: var(--accent);
+  color: var(--on-accent);
+  padding: var(--sp-6) var(--sp-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+.reveal-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+.reveal-warn {
+  font-size: var(--fs-ui);
+  font-weight: 500;
+}
+
+.reveal-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+
+.reveal-token {
+  flex: 1 1 420px;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  height: 52px;
+  padding: 0 var(--sp-4);
+  border-radius: var(--r-md);
+  background: var(--on-accent);
+  color: var(--accent-text);
+  font-family: var(--font-mono);
+  font-size: var(--fs-body);
+  overflow-x: auto;
+  white-space: nowrap;
+}
+
+/* "Selected. Press ⌘C to copy." when the clipboard can't be written (plain http, #27). The live
+   region stays in the DOM so it is announced; while empty it cancels the .reveal gap above it. */
+.reveal-hint {
+  font-size: var(--fs-ui);
+  font-weight: 600;
+}
+
+.reveal-hint:empty {
+  margin-top: calc(-1 * var(--sp-4));
+}
+
+.reveal-meta {
+  font-family: var(--font-mono);
+  font-size: var(--fs-mono);
+  font-weight: 600;
+}
+
+.token-form {
+  padding: var(--sp-6) var(--sp-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-5);
+}
+
+.token-form-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-5);
+}
+
+.field-name {
+  flex: 1 1 260px;
+}
+
+.field-expires {
+  flex: 1 1 200px;
+}
+
+.scopes {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.scopes legend {
+  padding: 0;
+  margin-bottom: var(--sp-3);
+}
+
+/* The scopes are a checklist inside the form, not chips: rows with no border or fill, the
+   checkbox shows the choice. */
+.scope-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr));
+  gap: 0 var(--sp-4);
+}
+
+.scope-chip {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  min-height: var(--target-min);
+  padding: 0 var(--sp-2);
+  border-radius: var(--r-md);
+  font-size: var(--fs-ui);
+  cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease-out);
+}
+
+@media (hover: hover) {
+  .scope-chip:hover {
+    background: var(--raised);
+  }
+}
+
+.scope-chip > span {
+  color: var(--muted);
+}
+
+.scope-chip:has(input:focus-visible) {
+  box-shadow: var(--focus-ring);
+}
+
+.scope-chip input {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--accent-text);
+}
+
+.scope-chip input:focus-visible {
+  box-shadow: none;
+}
+
+.scope-chip b {
+  font-weight: inherit;
+  color: var(--text);
+}
+
+.form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-3);
+}
+
+.form-actions .btn-primary {
+  padding: 0 var(--sp-5);
+}
+
+.form-actions + .form-reason {
+  margin-top: calc(-1 * var(--sp-3));
+}
+
+.token-table {
+  overflow-x: auto;
+}
+
+.token-table table {
+  width: 100%;
+  min-width: 820px;
+  border-collapse: collapse;
+  font-size: var(--fs-ui);
+}
+
+.token-table th {
+  padding: var(--sp-4) var(--sp-3);
+  text-align: left;
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  font-weight: 600;
+  color: var(--faint);
+  text-transform: uppercase;
+}
+
+.token-table td {
+  padding: var(--sp-4) var(--sp-3);
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+}
+
+.token-table th:first-child,
+.token-table td:first-child {
+  padding-left: var(--sp-5);
+}
+
+.token-table th:last-child,
+.token-table td:last-child {
+  padding-right: var(--sp-5);
+  text-align: right;
+}
+
+.token-table td.token-name {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.token-table td.faint {
+  color: var(--faint);
+}
+
+.token-table td.empty-row {
+  text-align: left;
+  color: var(--faint);
+}
+
+.token-table tr.is-new {
+  background: var(--row-new);
+}
+
+.token-table tr.is-revoked td {
+  color: var(--faint);
+}
+
+.token-table tr.is-revoked .token-name span:first-child {
+  text-decoration: line-through;
+}
+
+.new-tag {
+  margin-left: var(--sp-2);
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  font-weight: 600;
+  color: var(--on-accent);
+  background: var(--accent);
+  padding: var(--sp-1) var(--sp-2);
+  border-radius: var(--r-pill);
+  text-transform: uppercase;
+}
+
+.scope-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-1);
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+}
+
+.scope-tag {
+  padding: var(--sp-1) var(--sp-2);
+  border-radius: var(--r-sm);
+  background: var(--line);
+  color: var(--text);
+}
+
+.is-revoked .scope-tag {
+  background: transparent;
+  border: 1px solid var(--line-strong);
+  color: var(--faint);
+}
+
+.revoked-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  font-weight: 600;
+  color: var(--danger-text);
+  text-transform: uppercase;
+}

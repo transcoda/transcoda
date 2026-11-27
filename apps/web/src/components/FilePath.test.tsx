@@ -1,7 +1,6 @@
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { stylesCss } from '../styles/css-source.ts';
 import { FilePath, splitPath } from './FilePath.tsx';
 import { ToastProvider } from './Toast.tsx';
 
@@ -87,7 +86,7 @@ describe('FilePath', () => {
 });
 
 describe('FilePath styles', () => {
-  const css = readFileSync(join(__dirname, '..', 'styles.css'), 'utf8');
+  const css = stylesCss;
   const phone = css.slice(css.indexOf('/* Phones: one line, the folder cut from the left'));
   const block = phone.slice(0, phone.indexOf('\n}\n'));
 

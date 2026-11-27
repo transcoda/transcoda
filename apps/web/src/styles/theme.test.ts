@@ -1,10 +1,7 @@
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { stylesCss, tokensCss } from './css-source.ts';
 
-const sources = ['tokens.css', '../styles.css'].map((f) =>
-  readFileSync(join(__dirname, f), 'utf8'),
-);
+const sources = [tokensCss, stylesCss];
 
 /** The text between the braces of the block that starts with `head` (nested braces handled). */
 function block(source: string, head: string): string {

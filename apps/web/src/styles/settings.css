@@ -1,0 +1,388 @@
+/* ---------- Settings (#32) ---------- */
+
+/* Sub-nav beside the current section (640 px and wider); on a phone the page is a list, then a section. */
+.settings-layout {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: var(--sp-6);
+  align-items: start;
+}
+
+.settings-nav {
+  position: sticky;
+  top: calc(var(--topbar-h) + var(--sp-4));
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+
+.settings-nav-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  min-height: var(--target-min);
+  padding: 0 var(--sp-3);
+  border-radius: var(--r-md);
+  color: var(--muted);
+  text-decoration: none;
+}
+
+@media (hover: hover) {
+  .settings-nav-item:hover {
+    color: var(--text);
+    background: var(--raised);
+  }
+}
+
+/* Current: the fill, the text colour and a green icon, as in the main nav, so colour is not the
+   only sign. */
+.settings-nav-item.is-active {
+  color: var(--text);
+  background: var(--raised);
+}
+
+.settings-nav-item.is-active .icon {
+  color: var(--accent-text);
+}
+
+.settings-nav-item:focus-visible,
+.settings-list-link:focus-visible,
+.settings-back:focus-visible,
+.about-caps summary:focus-visible,
+.about-link:focus-visible,
+.licence-entry summary:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.settings-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  min-width: 0;
+}
+
+.settings-section h2 {
+  font-size: var(--fs-h2);
+  font-weight: 700;
+}
+
+.section-intro {
+  color: var(--muted);
+}
+
+/* API tokens inside Settings: the old page's spacing (its rules stay in "API tokens"). */
+.tokens {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-6);
+}
+
+.section-intro .mono {
+  font-size: var(--fs-small);
+}
+
+.settings-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.settings-list-item + .settings-list-item {
+  border-top: 1px solid var(--line);
+}
+
+.settings-list-link {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  min-height: var(--target-min);
+  padding: var(--sp-3) var(--sp-4);
+  color: var(--text);
+  text-decoration: none;
+  border-radius: var(--r-lg);
+}
+
+@media (hover: hover) {
+  .settings-list-link:hover {
+    color: var(--text);
+    background: var(--raised);
+  }
+}
+
+.settings-list-chevron {
+  display: inline-flex;
+  margin-left: auto;
+  color: var(--faint);
+}
+
+.settings-back {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  align-self: flex-start;
+  min-height: var(--target-min);
+  padding: 0 var(--sp-1);
+  color: var(--muted);
+  font-weight: 600;
+  text-decoration: none;
+  border-radius: var(--r-sm);
+}
+
+@media (hover: hover) {
+  .settings-back:hover {
+    color: var(--text);
+  }
+}
+
+/* A sub-page's way back to its section beside the nav: "About /" above its h2. */
+.settings-crumbs {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-bottom: calc(-1 * var(--sp-2));
+  font-size: var(--fs-small);
+  color: var(--faint);
+}
+
+.settings-crumb-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--target-min);
+  color: var(--muted);
+  text-decoration: none;
+}
+
+@media (hover: hover) {
+  .settings-crumb-link:hover {
+    color: var(--text);
+  }
+}
+
+/* One value, the same on every Settings screen: the label (where the value comes from as a quiet
+   tag on the right), the control or the value, then a short hint and an env variable's line. */
+.setting-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-4) 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.setting-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-1) var(--sp-3);
+  min-width: 0;
+}
+
+.setting-label {
+  font-weight: 600;
+}
+
+.setting-tag {
+  color: var(--faint);
+  font-size: var(--fs-mono);
+  white-space: nowrap;
+}
+
+.setting-hint,
+.setting-source {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--fs-small);
+}
+
+.setting-hint {
+  margin-top: calc(-1 * var(--sp-1));
+}
+
+.setting-source code {
+  font-family: var(--font-mono);
+  font-size: var(--fs-mono);
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+/* A section's form: its rows (they space themselves), then the one Save. */
+.settings-form {
+  display: flex;
+  flex-direction: column;
+}
+
+.settings-form > .alert,
+.settings-form > .form-actions {
+  margin-top: var(--sp-4);
+}
+
+.settings-form > .form-reason {
+  margin-top: var(--sp-2);
+}
+
+.setting-control {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+
+/* A titled group of rows inside a section ("Queue", "Encoding"). */
+.settings-group {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.settings-group > .group-h3 {
+  margin: 0 0 var(--sp-1);
+}
+
+/* Read-only values ("Set on the server"): last in a section, closed, "Read-only" on the right. */
+.settings-server {
+  margin-top: var(--sp-4);
+  border-top: 1px solid var(--line);
+}
+
+.settings-server .disclosure-meta {
+  margin-left: auto;
+}
+
+/* "Advanced": rarely changed rows, closed by default; it sits in the list of rows like one. */
+.settings-advanced {
+  border-bottom: 1px solid var(--line);
+}
+
+.settings-advanced .disclosure-body > .setting-row:last-child {
+  border-bottom: 0;
+}
+
+.setting-text {
+  width: 100%;
+  max-width: 420px;
+}
+
+.setting-number {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.setting-number .input {
+  width: 120px;
+}
+
+.setting-unit {
+  color: var(--muted);
+}
+
+.setting-fieldset {
+  margin: 0;
+  min-width: 0;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+}
+
+/* The legend floats so the fieldset lays out like a row; the source tag (outside the legend, so
+   it is not part of the group's name) sits on the legend's line, on the right. */
+.setting-fieldset {
+  position: relative;
+}
+
+.setting-fieldset legend {
+  float: left;
+  width: 100%;
+  padding: 0 6em 0 0;
+}
+
+.setting-fieldset legend + *,
+.setting-fieldset > .setting-control {
+  clear: left;
+}
+
+.setting-fieldset > .setting-tag {
+  position: absolute;
+  top: var(--sp-4);
+  right: 0;
+  line-height: 1.5;
+}
+
+.setting-radios {
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: var(--sp-1) var(--sp-4);
+}
+
+/* Phone: the section name is the page's title (beside the nav it is for screen readers only),
+   and long choices (a GPU's name) take a line each. */
+@media (max-width: 639px) {
+  .settings-section > h2 {
+    font-size: var(--fs-h1);
+    letter-spacing: -0.02em;
+  }
+
+  .setting-radios-stack {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0;
+  }
+}
+
+.setting-radio {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-3);
+  min-height: var(--target-min);
+  cursor: pointer;
+}
+
+.gpu-order {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.gpu-order-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+  min-height: var(--target-min);
+}
+
+.gpu-order-label {
+  flex: 1;
+  min-width: 0;
+}
+
+.setting-radio-input {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  accent-color: var(--accent-text);
+}
+
+.setting-radio-input:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.setting-switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  min-height: var(--target-min);
+}
+
+.setting-switch-row .setting-tag {
+  margin-left: auto;
+}

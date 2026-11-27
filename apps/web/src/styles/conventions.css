@@ -1,0 +1,104 @@
+/* ---------- Shared conventions (UI consistency pass) ----------
+   Headings (conventions 4/5): one section heading (H2) with a muted count, and one muted group
+   label (H3). Sentence case and sans; mono capitals are for table column heads and stat-tile
+   labels only. Use <SectionHeading> / <GroupLabel> from components/Headings.tsx. */
+.section-h2 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--sp-3);
+  margin: 0;
+  font-family: var(--font-ui);
+  font-size: var(--fs-h3);
+  font-weight: 700;
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--text);
+}
+.section-count {
+  font-family: var(--font-mono);
+  font-size: var(--fs-small);
+  font-weight: 600;
+  color: var(--muted);
+}
+/* The explanation under a section heading: its own muted line, never inline. */
+.section-note {
+  margin: var(--sp-1) 0 0;
+  font-size: var(--fs-small);
+  color: var(--muted);
+}
+.group-h3 {
+  margin: 0;
+  font-family: var(--font-ui);
+  font-size: var(--fs-small);
+  font-weight: 700;
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--muted);
+}
+/* The one muted status line under a page's H1 (convention 1). */
+.head-sub {
+  margin: var(--sp-1) 0 0;
+  font-size: var(--fs-small);
+  color: var(--muted);
+}
+/* A page header in one row: title block left, actions right (convention 1). */
+.head-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-4);
+}
+.head-row > .head-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--sp-2);
+  margin-left: auto;
+  padding-top: var(--sp-1);
+}
+
+/* The row is the link (convention 9): put .row-link on the row and .row-link-main on its one
+   primary link (the name: semibold, never underlined); the link's hit area covers the whole row.
+   Other links and buttons in the row stay clickable above it. Secondary links use .link-muted. */
+.row-link {
+  position: relative;
+  cursor: pointer;
+}
+@media (hover: hover) {
+  .row-link:hover {
+    background: var(--raised);
+  }
+}
+.row-link-main {
+  color: var(--text);
+  font-weight: 600;
+  text-decoration: none;
+}
+@media (hover: hover) {
+  .row-link-main:hover {
+    color: var(--text);
+    text-decoration: none;
+  }
+}
+.row-link-main::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+.row-link a:not(.row-link-main),
+.row-link button,
+.row-link input[type="checkbox"] {
+  position: relative;
+  z-index: 1;
+}
+/* A secondary link (library, workflow, run): muted, underlined on hover only. */
+.link-muted {
+  color: var(--muted);
+  text-decoration: none;
+}
+@media (hover: hover) {
+  .link-muted:hover {
+    color: var(--text);
+    text-decoration: underline;
+  }
+}

@@ -17,7 +17,7 @@ import { asSession, bearer, createToken, login, type Session, send } from '../..
 
 const now = new Date('2026-10-26T00:04:00.000Z');
 const at = (min: number) => new Date(now.getTime() + min * 60_000);
-const SHOW = 'The Beverly Hillbillies';
+const SHOW = 'The Bramblewood Family';
 
 let t: TestApp;
 let s: Session;
@@ -202,19 +202,19 @@ beforeEach(async () => {
     media: media({ episode: 2 }),
     result: { beforeBytes: 800, afterBytes: 900 },
   });
-  file('f3', '/media/tv/Night of the Living Dead.mkv', 500);
+  file('f3', '/media/tv/Nocturne of the Quiet Moon.mkv', 500);
   job('j3', 'f3', {
     state: 'done',
     queuedAt: 4,
     media: media({
       kind: 'movie',
-      title: 'Night of the Living Dead',
+      title: 'Nocturne of the Quiet Moon',
       year: 1968,
       season: null,
       episode: null,
     }),
   });
-  file('f9', '/media/other/Sherlock Jr.mkv', 300, 'l2');
+  file('f9', '/media/other/Shepherd Jr.mkv', 300, 'l2');
   job('j9', 'f9', { state: 'done', queuedAt: 5 });
 });
 afterEach(async () => {
@@ -300,7 +300,7 @@ describe('library browser read routes', () => {
   });
 
   it('GET /libraries/:id/files pages, sorts and searches over REST query parameters', async () => {
-    const { body } = await get('/libraries/l1/files?search=beverly&sort=title&limit=1&offset=1');
+    const { body } = await get('/libraries/l1/files?search=bramble&sort=title&limit=1&offset=1');
     expect(body).toMatchObject({ total: 2, files: [{ fileName: 'S01E02.mkv', id: 'f2' }] });
     expect(body.files).toHaveLength(1);
     const desc = await get('/libraries/l1/files?sort=size&desc=true');
@@ -442,10 +442,10 @@ describe('library browser read routes', () => {
       `/libraries/nope/seasons?show=${key}`,
       '/libraries/l1/files/f9',
       '/libraries/l1/files/unknown',
-      `/libraries/l1/seasons?show=${showKey({ title: 'Superman', year: 1978 })}`,
+      `/libraries/l1/seasons?show=${showKey({ title: 'Skyward', year: 1978 })}`,
       '/libraries/l1/seasons?show=%25%25',
       '/libraries/l1/files?show=%25%25',
-      `/libraries/l1/files?show=${showKey({ title: 'Superman', year: 1978 })}`,
+      `/libraries/l1/files?show=${showKey({ title: 'Skyward', year: 1978 })}`,
     ];
     for (const path of missing) {
       const res = await get(path);

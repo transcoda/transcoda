@@ -1,0 +1,63 @@
+/* ---------- Target size (WCAG 2.2 2.5.8: 24 x 24 px at least) ---------- */
+
+/* .text-target: a small text link outside a sentence gets 4 px of padding above and below,
+   cancelled by a matching negative margin: the target grows to 24 px or more and the text does not
+   move. The Jobs table's titles need nothing here: their ::after (.row-link-main) covers the row. */
+.text-target {
+  padding-block: var(--sp-1);
+  margin-block: -4px;
+}
+
+/* ---------- Numerals ----------
+   Figures line up in columns and do not jitter as they change: sizes, durations, percentages,
+   counts, dates and the plan, step and before/after numbers. */
+.stat-value,
+.stat-sub,
+.job-table td,
+.lib-table .lib-cell,
+.library-table td,
+.recycle-table td,
+.run-cell.run-size,
+.job-result-pct,
+.job-result-meta,
+.job-progress-detail,
+.job-outcome-sizes,
+.job-year,
+.plan-tile-value,
+.plan-tile-now,
+.plan-percent,
+.plan-original,
+.plan-track,
+.plan-table td,
+.step-table td,
+.ba-table td,
+.library-count,
+.library-pager-range,
+.selection-count,
+.recycle-usage-value,
+.rh-ticks span,
+.rh-summary,
+.tc-trace-row {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Help text measure ---------- */
+
+/* Help and description paragraphs stop at about 70 characters a line. Paths and file names are not
+   listed here and stay as long as they need. */
+.field-hint,
+.section-note,
+.section-intro,
+.setting-hint,
+.about-backups-hint,
+.about-backups-help .disclosure-body,
+.recycle-note,
+.recycle-explain,
+.catalog-sources,
+.plugin-network-note,
+.picker-hint,
+.picker-note,
+.run-note,
+.inline-edit-hint {
+  max-width: 70ch;
+}

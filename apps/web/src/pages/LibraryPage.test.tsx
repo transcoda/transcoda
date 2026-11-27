@@ -77,7 +77,7 @@ beforeEach(() => {
   mocks.libraries.titles.mockReset().mockResolvedValue(TITLES);
   mocks.libraries.seasons
     .mockReset()
-    .mockResolvedValue({ title: 'The Beverly Hillbillies', year: 1962, seasons: [] });
+    .mockResolvedValue({ title: 'The Bramblewood Family', year: 1962, seasons: [] });
   mocks.libraries.files.mockReset().mockResolvedValue(files(7));
   mocks.workflows.list.mockReset().mockResolvedValue({ workflows: [] });
   mocks.workflows.get.mockReset().mockResolvedValue({ activeIssues: [] });
@@ -189,14 +189,14 @@ describe('LibraryPage', () => {
     await renderPage();
     const box = screen.getByRole('searchbox', { name: 'Search this library' });
     fireEvent.change(box, { target: { value: 'bev' } });
-    fireEvent.change(box, { target: { value: 'beverly' } });
+    fireEvent.change(box, { target: { value: 'bramble' } });
     // Nothing is sent while the box is still changing.
     expect(mocks.libraries.titles).not.toHaveBeenCalledWith(
       expect.objectContaining({ search: 'bev' }),
     );
     await waitFor(() =>
       expect(mocks.libraries.titles).toHaveBeenLastCalledWith(
-        expect.objectContaining({ id: 'l1', search: 'beverly', offset: 0 }),
+        expect.objectContaining({ id: 'l1', search: 'bramble', offset: 0 }),
       ),
     );
   });
@@ -334,7 +334,7 @@ describe('LibraryPage', () => {
     const crumbs = await screen.findByRole('navigation', { name: 'Breadcrumb' });
     await waitFor(() => expect(within(crumbs).getByText('Season 2')).toBeTruthy());
     // The show title arrives with the seasons response, after the route's Season 2 crumb.
-    const show = await within(crumbs).findByRole('link', { name: 'The Beverly Hillbillies' });
+    const show = await within(crumbs).findByRole('link', { name: 'The Bramblewood Family' });
     expect(show.getAttribute('href')).toBe(
       '/libraries/l1/shows/WyJUaGUgQmV2ZXJseSBIaWxsYmlsbGllcyIsMTk2Ml0',
     );
@@ -353,14 +353,14 @@ describe('LibraryPage', () => {
   it('table view sends sort and offset to libraries.files', async () => {
     const file = {
       id: 'f1',
-      path: '/media/classic-tv/Night of the Living Dead.mkv',
-      fileName: 'Night of the Living Dead.mkv',
+      path: '/media/classic-tv/Nocturne of the Quiet Moon.mkv',
+      fileName: 'Nocturne of the Quiet Moon.mkv',
       sizeBytes: 1000,
       originalBytes: null,
       mtime: at,
       gone: false,
       poster: null,
-      latest: { ...fx.kept, media: { ...fx.kept.media, title: 'Night of the Living Dead' } },
+      latest: { ...fx.kept, media: { ...fx.kept.media, title: 'Nocturne of the Quiet Moon' } },
     };
     mocks.libraries.files.mockImplementation(async (q: { limit: number; offset: number }) => ({
       files: q.limit === 1 ? [] : [file],
@@ -368,7 +368,7 @@ describe('LibraryPage', () => {
     }));
     await renderPage();
     fireEvent.click(screen.getByRole('radio', { name: 'Table' }));
-    await screen.findByText('Night of the Living Dead');
+    await screen.findByText('Nocturne of the Quiet Moon');
     expect(mocks.libraries.files).toHaveBeenLastCalledWith(
       expect.objectContaining({ id: 'l1', sort: 'title', desc: false, offset: 0, limit: 100 }),
     );
@@ -528,7 +528,7 @@ describe('LibraryPage', () => {
 
   it('a show route in Posters view asks for the show seasons and shows the season cards', async () => {
     mocks.libraries.seasons.mockResolvedValue({
-      title: 'The Beverly Hillbillies',
+      title: 'The Bramblewood Family',
       year: 1962,
       seasons: [
         {
@@ -542,7 +542,7 @@ describe('LibraryPage', () => {
     });
     renderAt(`/libraries/l1/shows/${SHOW_KEY}`, page());
     const crumbs = await screen.findByRole('navigation', { name: 'Breadcrumb' });
-    await waitFor(() => expect(within(crumbs).getByText('The Beverly Hillbillies')).toBeTruthy());
+    await waitFor(() => expect(within(crumbs).getByText('The Bramblewood Family')).toBeTruthy());
     expect(within(crumbs).getByRole('link', { name: 'Libraries' })).toBeTruthy();
     expect(mocks.libraries.seasons).toHaveBeenCalledWith({ id: 'l1', show: SHOW_KEY });
     const card = await screen.findByRole('link', { name: /Season 1/ });
@@ -552,7 +552,7 @@ describe('LibraryPage', () => {
   it('a show page asks for its seasons once: the breadcrumbs and the cards share the answer', async () => {
     renderAt(`/libraries/l1/shows/${SHOW_KEY}`, page());
     const crumbs = await screen.findByRole('navigation', { name: 'Breadcrumb' });
-    await waitFor(() => expect(within(crumbs).getByText('The Beverly Hillbillies')).toBeTruthy());
+    await waitFor(() => expect(within(crumbs).getByText('The Bramblewood Family')).toBeTruthy());
     expect(await screen.findByRole('region', { name: 'Seasons' })).toBeTruthy();
     expect(mocks.libraries.seasons).toHaveBeenCalledTimes(1);
     expect(mocks.libraries.seasons).toHaveBeenCalledWith({ id: 'l1', show: SHOW_KEY });
@@ -560,7 +560,7 @@ describe('LibraryPage', () => {
 
   it('a non-empty search on a show route lists the matching episodes, an empty one the seasons', async () => {
     mocks.libraries.seasons.mockResolvedValue({
-      title: 'The Beverly Hillbillies',
+      title: 'The Bramblewood Family',
       year: 1962,
       seasons: [
         {
@@ -746,7 +746,7 @@ describe('LibraryPage selection and running', () => {
       files:
         q.limit === 1
           ? []
-          : [episode('f1', 'Night of the Living Dead'), episode('f2', 'Sherlock Jr.')],
+          : [episode('f1', 'Nocturne of the Quiet Moon'), episode('f2', 'Shepherd Jr.')],
       total: 2,
     }));
   });
@@ -768,9 +768,9 @@ describe('LibraryPage selection and running', () => {
     localStorage.setItem(LIBRARY_VIEW_KEY, 'table');
     await renderPage();
     fireEvent.click(
-      await screen.findByRole('checkbox', { name: 'Select Night of the Living Dead.mkv' }),
+      await screen.findByRole('checkbox', { name: 'Select Nocturne of the Quiet Moon.mkv' }),
     );
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Select Sherlock Jr..mkv' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Select Shepherd Jr..mkv' }));
   }
 
   it('a new search clears the selection', async () => {
@@ -783,7 +783,7 @@ describe('LibraryPage selection and running', () => {
     // The searched list's rows come with its answer: none of the last list's rows show meanwhile.
     expect(
       (await screen.findByRole('checkbox', {
-        name: 'Select Sherlock Jr..mkv',
+        name: 'Select Shepherd Jr..mkv',
       })) as HTMLInputElement,
     ).toHaveProperty('checked', false);
   });
@@ -796,7 +796,7 @@ describe('LibraryPage selection and running', () => {
     fireEvent.click(screen.getByRole('radio', { name: 'Table' }));
     expect(
       (await screen.findByRole('checkbox', {
-        name: 'Select Sherlock Jr..mkv',
+        name: 'Select Shepherd Jr..mkv',
       })) as HTMLInputElement,
     ).toHaveProperty('checked', false);
   });

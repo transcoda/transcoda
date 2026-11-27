@@ -1,12 +1,11 @@
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
+import { stylesCss } from '../../styles/css-source.ts';
 import { CanvasLegend } from './CanvasLegend.tsx';
 
 afterEach(cleanup);
 
-const css = readFileSync(join(__dirname, '../../styles.css'), 'utf8');
+const css = stylesCss;
 
 describe('CanvasLegend', () => {
   it('names the colour row "Node colors" (it shows node kinds, not icons)', () => {

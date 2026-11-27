@@ -95,17 +95,17 @@ const movieNfo = (title: string, year: number): string =>
 
 describe('createMediaResolver', () => {
   it('reads a movie folder: movie.nfo and poster.jpg', async () => {
-    const dir = '/lib/Sherlock Jr (1924)';
+    const dir = '/lib/Shepherd Jr (1924)';
     const { fs } = fakeFs({
-      [`${dir}/Sherlock.Jr.1924.720p.mkv`]: 'video',
-      [`${dir}/movie.nfo`]: movieNfo('Sherlock Jr.', 1924),
+      [`${dir}/Shepherd.Jr.1924.720p.mkv`]: 'video',
+      [`${dir}/movie.nfo`]: movieNfo('Shepherd Jr.', 1924),
       [`${dir}/poster.jpg`]: 'img',
     });
     const r = createMediaResolver({ fs, log });
-    expect(await r.resolve(`${dir}/Sherlock.Jr.1924.720p.mkv`, '/lib')).toEqual(
+    expect(await r.resolve(`${dir}/Shepherd.Jr.1924.720p.mkv`, '/lib')).toEqual(
       media({
         kind: 'movie',
-        title: 'Sherlock Jr.',
+        title: 'Shepherd Jr.',
         year: 1924,
         source: 'sidecar',
         posterPath: `${dir}/poster.jpg`,
@@ -114,54 +114,54 @@ describe('createMediaResolver', () => {
   });
 
   it('falls back to movie.nfo when <stem>.nfo is a movie .nfo with nothing usable', async () => {
-    const dir = '/lib/Sherlock Jr (1924)';
+    const dir = '/lib/Shepherd Jr (1924)';
     const { fs } = fakeFs({
       [`${dir}/clip.mkv`]: 'video',
       [`${dir}/clip.nfo`]: '<movie><title></title></movie>',
-      [`${dir}/movie.nfo`]: movieNfo('Sherlock Jr.', 1924),
+      [`${dir}/movie.nfo`]: movieNfo('Shepherd Jr.', 1924),
     });
     const r = createMediaResolver({ fs, log });
     expect(await r.resolve(`${dir}/clip.mkv`, '/lib')).toMatchObject({
       kind: 'movie',
-      title: 'Sherlock Jr.',
+      title: 'Shepherd Jr.',
       year: 1924,
       source: 'sidecar',
     });
   });
 
   it('prefers <stem>.nfo over movie.nfo and <stem>-poster over poster', async () => {
-    const dir = '/lib/The General';
+    const dir = '/lib/The Gardener';
     const { fs, calls } = fakeFs({
-      [`${dir}/The General.mkv`]: 'video',
-      [`${dir}/The General.nfo`]: movieNfo('The General', 1926),
+      [`${dir}/The Gardener.mkv`]: 'video',
+      [`${dir}/The Gardener.nfo`]: movieNfo('The Gardener', 1926),
       [`${dir}/movie.nfo`]: movieNfo('Wrong', 1999),
-      [`${dir}/The General-poster.png`]: 'img',
+      [`${dir}/The Gardener-poster.png`]: 'img',
       [`${dir}/poster.jpg`]: 'img',
     });
     const r = createMediaResolver({ fs, log });
-    expect(await r.resolve(`${dir}/The General.mkv`, '/lib')).toEqual(
+    expect(await r.resolve(`${dir}/The Gardener.mkv`, '/lib')).toEqual(
       media({
         kind: 'movie',
-        title: 'The General',
+        title: 'The Gardener',
         year: 1926,
         source: 'sidecar',
-        posterPath: `${dir}/The General-poster.png`,
+        posterPath: `${dir}/The Gardener-poster.png`,
       }),
     );
     // <stem>.nfo is read once (not again as a movie after the episode check); movie.nfo never.
     expect(calls.filter((c) => c.op === 'readText').map((c) => c.path)).toEqual([
-      `${dir}/The General.nfo`,
+      `${dir}/The Gardener.nfo`,
     ]);
   });
 
   it('makes a file the parser could not place a movie when a movie .nfo says so', async () => {
     const { fs } = fakeFs({
       '/lib/Films/clip.mkv': 'video',
-      '/lib/Films/movie.nfo': movieNfo('The General', 1926),
+      '/lib/Films/movie.nfo': movieNfo('The Gardener', 1926),
     });
     const r = createMediaResolver({ fs, log });
     expect(await r.resolve('/lib/Films/clip.mkv', '/lib')).toEqual(
-      media({ kind: 'movie', title: 'The General', year: 1926, source: 'sidecar' }),
+      media({ kind: 'movie', title: 'The Gardener', year: 1926, source: 'sidecar' }),
     );
   });
 
@@ -169,7 +169,7 @@ describe('createMediaResolver', () => {
     const dir = '/lib/Films';
     const { fs } = fakeFs({
       [`${dir}/Film.S01E01.mkv`]: 'video',
-      [`${dir}/Film.S01E01.nfo`]: movieNfo('The General', 1926),
+      [`${dir}/Film.S01E01.nfo`]: movieNfo('The Gardener', 1926),
       [`${dir}/tvshow.nfo`]: '<tvshow><title>Wrong Show</title></tvshow>',
       [`${dir}/poster.jpg`]: 'img',
     });
@@ -177,7 +177,7 @@ describe('createMediaResolver', () => {
     expect(await r.resolve(`${dir}/Film.S01E01.mkv`, '/lib')).toEqual(
       media({
         kind: 'movie',
-        title: 'The General',
+        title: 'The Gardener',
         year: 1926,
         source: 'sidecar',
         posterPath: `${dir}/poster.jpg`,
@@ -189,7 +189,7 @@ describe('createMediaResolver', () => {
     const dir = '/lib/Films';
     const { fs } = fakeFs({
       [`${dir}/Film.S01E01.mkv`]: 'video',
-      [`${dir}/movie.nfo`]: movieNfo('The General', 1926),
+      [`${dir}/movie.nfo`]: movieNfo('The Gardener', 1926),
     });
     const r = createMediaResolver({ fs, log });
     const got = await r.resolve(`${dir}/Film.S01E01.mkv`, '/lib');
@@ -204,7 +204,7 @@ describe('createMediaResolver', () => {
     const { fs } = fakeFs({
       [file]: 'video',
       [`${show}/Season 01/Show - S01E17.nfo`]:
-        '<episodedetails><title>Jed&apos;s Dilemma</title><showtitle>Ignored</showtitle><season>1</season><episode>17</episode></episodedetails>',
+        '<episodedetails><title>Ada&apos;s Dilemma</title><showtitle>Ignored</showtitle><season>1</season><episode>17</episode></episodedetails>',
       [`${show}/tvshow.nfo`]: '<tvshow><title>The Show</title><year>1962</year></tvshow>',
       [`${show}/poster.jpg`]: 'img',
     });
@@ -216,7 +216,7 @@ describe('createMediaResolver', () => {
         year: 1962,
         season: 1,
         episode: 17,
-        episodeTitle: "Jed's Dilemma",
+        episodeTitle: "Ada's Dilemma",
         source: 'sidecar',
         posterPath: `${show}/poster.jpg`,
         showPosterPath: `${show}/poster.jpg`,
@@ -225,17 +225,17 @@ describe('createMediaResolver', () => {
   });
 
   it('uses the episode .nfo showtitle when there is no tvshow.nfo', async () => {
-    const file = '/lib/Hillbillies/S01E02.mkv';
+    const file = '/lib/Hollowbrook/S01E02.mkv';
     const { fs } = fakeFs({
       [file]: 'video',
-      '/lib/Hillbillies/S01E02.nfo':
-        '<episodedetails><title>Getting Settled</title><showtitle>The Beverly Hillbillies</showtitle><season>1</season><episode>2</episode></episodedetails>',
+      '/lib/Hollowbrook/S01E02.nfo':
+        '<episodedetails><title>Getting Settled</title><showtitle>The Bramblewood Family</showtitle><season>1</season><episode>2</episode></episodedetails>',
     });
     const r = createMediaResolver({ fs, log });
     expect(await r.resolve(file, '/lib')).toEqual(
       media({
         kind: 'episode',
-        title: 'The Beverly Hillbillies',
+        title: 'The Bramblewood Family',
         season: 1,
         episode: 2,
         episodeTitle: 'Getting Settled',
@@ -245,24 +245,24 @@ describe('createMediaResolver', () => {
   });
 
   it('finds tvshow.nfo in the file folder itself', async () => {
-    const file = '/lib/Hillbillies/Hillbillies 1x03.mkv';
+    const file = '/lib/Hollowbrook/Hollowbrook 1x03.mkv';
     const { fs } = fakeFs({
       [file]: 'video',
-      '/lib/Hillbillies/tvshow.nfo':
-        '<tvshow><title>The Beverly Hillbillies</title><premiered>1962-09-26</premiered></tvshow>',
-      '/lib/Hillbillies/folder.png': 'img',
+      '/lib/Hollowbrook/tvshow.nfo':
+        '<tvshow><title>The Bramblewood Family</title><premiered>1962-09-26</premiered></tvshow>',
+      '/lib/Hollowbrook/folder.png': 'img',
     });
     const r = createMediaResolver({ fs, log });
     expect(await r.resolve(file, '/lib')).toEqual(
       media({
         kind: 'episode',
-        title: 'The Beverly Hillbillies',
+        title: 'The Bramblewood Family',
         year: 1962,
         season: 1,
         episode: 3,
         source: 'sidecar',
-        posterPath: '/lib/Hillbillies/folder.png',
-        showPosterPath: '/lib/Hillbillies/folder.png',
+        posterPath: '/lib/Hollowbrook/folder.png',
+        showPosterPath: '/lib/Hollowbrook/folder.png',
       }),
     );
   });
@@ -289,16 +289,16 @@ describe('createMediaResolver', () => {
   });
 
   it('matches names case-insensitively and returns the entry real name', async () => {
-    const dir = '/lib/Sherlock Jr (1924)';
+    const dir = '/lib/Shepherd Jr (1924)';
     const { fs } = fakeFs({
-      [`${dir}/Sherlock Jr (1924).mkv`]: 'video',
+      [`${dir}/Shepherd Jr (1924).mkv`]: 'video',
       [`${dir}/POSTER.JPG`]: 'img',
     });
     const r = createMediaResolver({ fs, log });
-    expect(await r.resolve(`${dir}/Sherlock Jr (1924).mkv`, '/lib')).toEqual(
+    expect(await r.resolve(`${dir}/Shepherd Jr (1924).mkv`, '/lib')).toEqual(
       media({
         kind: 'movie',
-        title: 'Sherlock Jr',
+        title: 'Shepherd Jr',
         year: 1924,
         source: 'filename',
         posterPath: `${dir}/POSTER.JPG`,
@@ -311,8 +311,8 @@ describe('createMediaResolver', () => {
     const files = {
       [`${dir}/Film.mkv`]: 'video',
       [`${dir}/film.mkv`]: 'video',
-      [`${dir}/Film.nfo`]: movieNfo('The General', 1926),
-      [`${dir}/film.nfo`]: movieNfo('Sherlock Jr.', 1924),
+      [`${dir}/Film.nfo`]: movieNfo('The Gardener', 1926),
+      [`${dir}/film.nfo`]: movieNfo('Shepherd Jr.', 1924),
       [`${dir}/Film-poster.jpg`]: 'img',
       [`${dir}/film-poster.jpg`]: 'img',
     };
@@ -321,7 +321,7 @@ describe('createMediaResolver', () => {
       expect(await r.resolve(`${dir}/Film.mkv`, '/lib')).toEqual(
         media({
           kind: 'movie',
-          title: 'The General',
+          title: 'The Gardener',
           year: 1926,
           source: 'sidecar',
           posterPath: `${dir}/Film-poster.jpg`,
@@ -330,7 +330,7 @@ describe('createMediaResolver', () => {
       expect(await r.resolve(`${dir}/film.mkv`, '/lib')).toEqual(
         media({
           kind: 'movie',
-          title: 'Sherlock Jr.',
+          title: 'Shepherd Jr.',
           year: 1924,
           source: 'sidecar',
           posterPath: `${dir}/film-poster.jpg`,
@@ -353,47 +353,53 @@ describe('createMediaResolver', () => {
   });
 
   it('takes no stray poster for a file in the library root, only <stem>-poster', async () => {
-    const one = fakeFs({ '/lib/The General (1926).mkv': 'video', '/lib/poster.jpg': 'img' });
+    const one = fakeFs({ '/lib/The Gardener (1926).mkv': 'video', '/lib/poster.jpg': 'img' });
     expect(
       (
         await createMediaResolver({ fs: one.fs, log }).resolve(
-          '/lib/The General (1926).mkv',
+          '/lib/The Gardener (1926).mkv',
           '/lib',
         )
       ).posterPath,
     ).toBeNull();
     const two = fakeFs({
-      '/lib/The General (1926).mkv': 'video',
+      '/lib/The Gardener (1926).mkv': 'video',
       '/lib/poster.jpg': 'img',
-      '/lib/The General (1926)-poster.jpg': 'img',
+      '/lib/The Gardener (1926)-poster.jpg': 'img',
     });
     expect(
       (
         await createMediaResolver({ fs: two.fs, log }).resolve(
-          '/lib/The General (1926).mkv',
+          '/lib/The Gardener (1926).mkv',
           '/lib',
         )
       ).posterPath,
-    ).toBe('/lib/The General (1926)-poster.jpg');
+    ).toBe('/lib/The Gardener (1926)-poster.jpg');
   });
 
   it('applies movie.nfo in the library root to no file, but <stem>.nfo there still', async () => {
     const one = fakeFs({
-      '/lib/The General (1926).mkv': 'video',
-      '/lib/movie.nfo': movieNfo('Sherlock Jr.', 1924),
+      '/lib/The Gardener (1926).mkv': 'video',
+      '/lib/movie.nfo': movieNfo('Shepherd Jr.', 1924),
     });
     expect(
-      await createMediaResolver({ fs: one.fs, log }).resolve('/lib/The General (1926).mkv', '/lib'),
-    ).toEqual(media({ kind: 'movie', title: 'The General', year: 1926 }));
+      await createMediaResolver({ fs: one.fs, log }).resolve(
+        '/lib/The Gardener (1926).mkv',
+        '/lib',
+      ),
+    ).toEqual(media({ kind: 'movie', title: 'The Gardener', year: 1926 }));
     expect(one.calls.filter((c) => c.op === 'readText')).toEqual([]);
     const two = fakeFs({
-      '/lib/The General (1926).mkv': 'video',
-      '/lib/movie.nfo': movieNfo('Sherlock Jr.', 1924),
-      '/lib/The General (1926).nfo': movieNfo('The General', 1927),
+      '/lib/The Gardener (1926).mkv': 'video',
+      '/lib/movie.nfo': movieNfo('Shepherd Jr.', 1924),
+      '/lib/The Gardener (1926).nfo': movieNfo('The Gardener', 1927),
     });
     expect(
-      await createMediaResolver({ fs: two.fs, log }).resolve('/lib/The General (1926).mkv', '/lib'),
-    ).toEqual(media({ kind: 'movie', title: 'The General', year: 1927, source: 'sidecar' }));
+      await createMediaResolver({ fs: two.fs, log }).resolve(
+        '/lib/The Gardener (1926).mkv',
+        '/lib',
+      ),
+    ).toEqual(media({ kind: 'movie', title: 'The Gardener', year: 1927, source: 'sidecar' }));
   });
 
   it('never reads above the library root', async () => {
@@ -416,17 +422,17 @@ describe('createMediaResolver', () => {
   });
 
   it('ignores a symlinked movie.nfo and a symlinked poster', async () => {
-    const dir = '/lib/Sherlock Jr (1924)';
+    const dir = '/lib/Shepherd Jr (1924)';
     const { fs, calls } = fakeFs({
-      [`${dir}/Sherlock Jr (1924).mkv`]: 'video',
+      [`${dir}/Shepherd Jr (1924).mkv`]: 'video',
       [`${dir}/movie.nfo`]: { symlinkTo: '/lib/other/movie.nfo' },
       [`${dir}/poster.jpg`]: { symlinkTo: '/lib/other/poster.jpg' },
       '/lib/other/movie.nfo': movieNfo('Wrong', 1999),
       '/lib/other/poster.jpg': 'img',
     });
     const r = createMediaResolver({ fs, log });
-    expect(await r.resolve(`${dir}/Sherlock Jr (1924).mkv`, '/lib')).toEqual(
-      media({ kind: 'movie', title: 'Sherlock Jr', year: 1924 }),
+    expect(await r.resolve(`${dir}/Shepherd Jr (1924).mkv`, '/lib')).toEqual(
+      media({ kind: 'movie', title: 'Shepherd Jr', year: 1924 }),
     );
     expect(calls.filter((c) => c.path.startsWith('/lib/other'))).toEqual([]);
   });
@@ -437,27 +443,27 @@ describe('createMediaResolver', () => {
     ['a truncated file', '<movie><title>Trunc'],
     ['a file that is too large', { error: 'it is larger than 1 MB' }],
   ] as const)('ignores a .nfo that is %s', async (_what, nfo) => {
-    const dir = '/lib/Sherlock Jr (1924)';
+    const dir = '/lib/Shepherd Jr (1924)';
     const { fs } = fakeFs({
-      [`${dir}/Sherlock Jr (1924).mkv`]: 'video',
+      [`${dir}/Shepherd Jr (1924).mkv`]: 'video',
       [`${dir}/movie.nfo`]: nfo,
     });
     const r = createMediaResolver({ fs, log });
-    expect(await r.resolve(`${dir}/Sherlock Jr (1924).mkv`, '/lib')).toEqual(
-      media({ kind: 'movie', title: 'Sherlock Jr', year: 1924 }),
+    expect(await r.resolve(`${dir}/Shepherd Jr (1924).mkv`, '/lib')).toEqual(
+      media({ kind: 'movie', title: 'Shepherd Jr', year: 1924 }),
     );
   });
 
   it('keeps the file-name result when the folder cannot be listed', async () => {
-    const dir = '/lib/Sherlock Jr (1924)';
+    const dir = '/lib/Shepherd Jr (1924)';
     const { fs } = fakeFs(
-      { [`${dir}/Sherlock Jr (1924).mkv`]: 'video', [`${dir}/movie.nfo`]: movieNfo('X', 1999) },
+      { [`${dir}/Shepherd Jr (1924).mkv`]: 'video', [`${dir}/movie.nfo`]: movieNfo('X', 1999) },
       { readdirFails: [dir] },
     );
     const debug: unknown[] = [];
     const r = createMediaResolver({ fs, log: { ...log, debug: (e) => debug.push(e) } });
-    expect(await r.resolve(`${dir}/Sherlock Jr (1924).mkv`, '/lib')).toEqual(
-      media({ kind: 'movie', title: 'Sherlock Jr', year: 1924 }),
+    expect(await r.resolve(`${dir}/Shepherd Jr (1924).mkv`, '/lib')).toEqual(
+      media({ kind: 'movie', title: 'Shepherd Jr', year: 1924 }),
     );
     expect(debug.length).toBeGreaterThan(0);
   });
@@ -723,18 +729,18 @@ describe('createMediaResolver', () => {
     });
 
     it('a movie never gets one', async () => {
-      const file = '/lib/The General (1926)/The General (1926).mkv';
-      const got = await resolve({ '/lib/The General (1926)/poster.jpg': 'img' }, file);
+      const file = '/lib/The Gardener (1926)/The Gardener (1926).mkv';
+      const got = await resolve({ '/lib/The Gardener (1926)/poster.jpg': 'img' }, file);
       expect(got.kind).toBe('movie');
       expect(got).not.toHaveProperty('showPosterPath');
     });
   });
 
   it('lists each folder once and reads tvshow.nfo once for a season', async () => {
-    const show = '/lib/The Beverly Hillbillies';
+    const show = '/lib/The Bramblewood Family';
     const season = `${show}/Season 01`;
     const files: Record<string, Entry> = {
-      [`${show}/tvshow.nfo`]: '<tvshow><title>The Beverly Hillbillies</title></tvshow>',
+      [`${show}/tvshow.nfo`]: '<tvshow><title>The Bramblewood Family</title></tvshow>',
       [`${show}/poster.jpg`]: 'img',
     };
     for (const n of [1, 2, 3]) files[`${season}/S01E0${n}.mkv`] = 'video';
@@ -742,7 +748,7 @@ describe('createMediaResolver', () => {
     const r = createMediaResolver({ fs, log });
     for (const n of [1, 2, 3]) {
       expect(await r.resolve(`${season}/S01E0${n}.mkv`, '/lib')).toMatchObject({
-        title: 'The Beverly Hillbillies',
+        title: 'The Bramblewood Family',
         episode: n,
         posterPath: `${show}/poster.jpg`,
       });

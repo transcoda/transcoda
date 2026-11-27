@@ -1,0 +1,273 @@
+/* ---------- Editor: palette and node search (screen 05) ---------- */
+
+.palette {
+  width: 240px;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  padding: var(--sp-4) var(--sp-3);
+  border-right: 1px solid var(--line);
+  overflow-y: auto;
+}
+
+.palette-search {
+  position: relative;
+}
+
+.palette-search-input {
+  width: 100%;
+  height: 44px;
+  padding: 0 var(--sp-10) 0 var(--sp-3);
+  border-radius: var(--r-md);
+  font-size: var(--fs-body);
+}
+
+.palette-search kbd {
+  position: absolute;
+  right: 10px;
+  top: 11px;
+  font-family: var(--font-mono);
+  font-size: var(--fs-mono);
+  padding: 1px var(--sp-2);
+  border-radius: var(--r-sm);
+  background: var(--line);
+  color: var(--text);
+  border-bottom: 2px solid var(--line-strong);
+  pointer-events: none;
+}
+
+.palette-section {
+  display: flex;
+  flex-direction: column;
+}
+
+.palette-heading {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 0 var(--sp-1) var(--sp-1);
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.palette-swatch {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  background: currentColor;
+}
+
+.palette-heading-trigger {
+  color: var(--kind-trigger);
+}
+
+.palette-heading-condition {
+  color: var(--kind-condition);
+}
+
+.palette-heading-action {
+  color: var(--kind-action);
+}
+
+.palette-heading-finish {
+  color: var(--kind-finish);
+}
+
+.palette-heading-data {
+  color: var(--kind-data);
+}
+
+/* Screen 05 draws 36 px rows with a 4 px gap; rows are 44 px with no gap (targets ≥ 44 px). */
+.palette-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  min-height: 44px;
+  padding: var(--sp-1) var(--sp-3);
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-ui);
+  text-align: left;
+  cursor: grab;
+}
+
+@media (hover: hover) {
+  .palette-item:hover:not([aria-disabled="true"]) {
+    background: var(--raised);
+  }
+}
+
+.palette-item[aria-disabled="true"] {
+  --item-icon: var(--disabled-text);
+  color: var(--disabled-text);
+  cursor: not-allowed;
+}
+
+.palette-item-line {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.palette-item-line > .icon {
+  color: var(--item-icon, var(--muted));
+}
+
+.plugin-mark {
+  display: inline-flex;
+  color: var(--faint);
+}
+
+.palette-item-reason {
+  font-size: var(--fs-mono);
+  color: var(--faint);
+}
+
+/* A disabled item's reason with a docs link: the link sits beside the item, not inside it. */
+.palette-item-wrap {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--sp-2);
+}
+.palette-item-wrap .palette-item {
+  flex: 1;
+  min-width: 0;
+}
+.palette-item-docs {
+  flex: none;
+  padding: var(--sp-1) var(--sp-3) var(--sp-2) 0;
+  font-size: var(--fs-mono);
+  color: var(--muted);
+}
+
+.palette-empty {
+  padding: 0 var(--sp-1);
+  font-size: var(--fs-small);
+  color: var(--faint);
+}
+
+.node-search-input {
+  width: 100%;
+}
+
+.node-search-list {
+  display: flex;
+  flex-direction: column;
+  max-height: min(420px, 60vh);
+  margin: var(--sp-3) 0 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.node-search-option {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto auto 1fr auto;
+  align-items: center;
+  column-gap: var(--sp-2);
+  min-height: 44px;
+  padding: var(--sp-1) var(--sp-3);
+  border-radius: var(--r-md);
+  font-size: var(--fs-ui);
+  cursor: pointer;
+}
+
+.node-search-option > .icon {
+  color: var(--muted);
+}
+
+.node-search-option .plugin-mark {
+  grid-column: 3;
+  justify-self: start;
+}
+
+/* Selected: the same marks as the current Settings item (fill and a straight bar inset from
+   the rounded corners), so colour is not the only sign. */
+.node-search-option[aria-selected="true"] {
+  background: var(--raised);
+}
+
+.node-search-option[aria-selected="true"]::before {
+  content: "";
+  position: absolute;
+  top: 10px;
+  bottom: 10px;
+  left: 0;
+  width: 3px;
+  border-radius: 0;
+  background: var(--accent-text);
+}
+
+.node-search-option[aria-disabled="true"] {
+  color: var(--disabled-text);
+  cursor: not-allowed;
+}
+
+.node-search-kind {
+  grid-column: 4;
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  font-weight: 600;
+  color: var(--faint);
+  text-transform: uppercase;
+}
+
+/* The node's description under its title: one muted line, cut with an ellipsis (the full text
+   is the title attribute and the option's description). */
+.node-search-desc {
+  grid-column: 2 / 4;
+  min-width: 0;
+  overflow: hidden;
+  font-size: var(--fs-mono);
+  color: var(--muted);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.node-search-option[aria-disabled="true"] .node-search-desc {
+  color: inherit;
+}
+
+/* The part of a name or description that matches the search. */
+.search-hit {
+  padding: 0;
+  border-radius: 2px;
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+/* On a row that can't be picked the match stays visible but doesn't outshine the greyed text. */
+.node-search-option[aria-disabled="true"] .search-hit {
+  background: var(--raised);
+  color: inherit;
+  text-decoration: underline;
+}
+
+.node-search-reason {
+  grid-column: 2 / -1;
+  font-size: var(--fs-mono);
+  color: var(--faint);
+}
+
+.node-search-empty {
+  margin-top: var(--sp-3);
+  font-size: var(--fs-small);
+  color: var(--faint);
+}
+
+/* N4: under a filtered list, which nodes it holds. */
+.node-search-hint {
+  margin-top: var(--sp-2);
+  padding: 0 var(--sp-3);
+  font-size: var(--fs-micro);
+  color: var(--faint);
+}

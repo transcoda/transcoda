@@ -1,16 +1,19 @@
-// The machine-checkable rules of DESIGN.md, held against styles.css through a CSS parser. Each
+// The machine-checkable rules of DESIGN.md, held against the stylesheets (every file styles/index.css imports, in order) through a CSS parser. Each
 // failure names the rule and its DESIGN.md section; the documented exceptions are in
 // ./design-exceptions.ts.
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   type CssRule,
   commaValues,
+  cssLine,
   type Decl,
   declsOf,
+  indexCss,
   rulesOf,
   spaceValues,
+  styleFiles,
   stylesCss,
   where,
 } from './css-source.ts';
@@ -92,7 +95,7 @@ function hoverProblems(source: string): string[] {
     const gated = rule.atRules.includes('@media (hover: hover)');
     for (const s of rule.selectors) {
       if (s.includes(':hover') && !gated && !(s in UNGATED_HOVER)) {
-        bad.push(`${s} (styles.css:${rule.line})`);
+        bad.push(`${s} (${cssLine(rule.line)})`);
       }
     }
   }
@@ -168,9 +171,9 @@ function focusProblems(source: string): string[] {
     const shadowReset = rule.decls.some((d) => d.prop === 'box-shadow' && d.value === 'none');
     for (const s of rule.selectors) {
       if (isFocus(s)) {
-        if ((outlineReset || shadowReset) && !held(s)) bad.push(`${s} (styles.css:${rule.line})`);
+        if ((outlineReset || shadowReset) && !held(s)) bad.push(`${s} (${cssLine(rule.line)})`);
       } else if (outlineReset && !held(`${s}:focus-visible`) && !held(`${s}:focus`)) {
-        bad.push(`${s} (styles.css:${rule.line}): an outline reset with no focus ring`);
+        bad.push(`${s} (${cssLine(rule.line)}): an outline reset with no focus ring`);
       }
     }
   }
@@ -275,7 +278,7 @@ function capsProblems(source: string): string[] {
     for (const s of rule.selectors) {
       const classes = lastCompound(s).match(/\.[\w-]+/g) ?? [];
       if (classes.some((c) => monoClasses.has(c)) || s in CAPS_OK) continue;
-      bad.push(`${s} (styles.css:${rule.line})`);
+      bad.push(`${s} (${cssLine(rule.line)})`);
     }
   }
   return bad;
@@ -349,7 +352,7 @@ describe('DESIGN.md › Color', () => {
   it('has no colour literal in a rule: colours are tokens or named variables', () => {
     expect(
       colourProblems(stylesCss),
-      'DESIGN.md › Color: no raw hex (or rgb(), named colour) in rules; use a token, or a named variable at the top of styles.css with its light value',
+      'DESIGN.md › Color: no raw hex (or rgb(), named colour) in rules; use a token, or a named variable in variables.css with its light value',
     ).toEqual([]);
   });
 
@@ -538,6 +541,23 @@ describe('DESIGN.md › Typography', () => {
     const html = readFileSync(join(__dirname, '../../index.html'), 'utf8');
     expect(html, 'DESIGN.md › Context: fonts are bundled (no CDN)').not.toMatch(/https?:\/\//);
     expect(stylesCss).not.toMatch(/@import|url\(\s*['"]?https?:/);
+  });
+});
+
+describe('The stylesheet entry (styles/index.css)', () => {
+  it('imports only local files, each once, with the vendored tokens first', () => {
+    const imports = [...indexCss.matchAll(/@import\s+([^;]+);/g)].map((m) => m[1]);
+    expect(imports.every((i) => /^"\.\/[\w-]+\.css"$/.test(i ?? ''))).toBe(true);
+    expect(imports[0]).toBe('"./tokens.css"');
+    expect(new Set(imports).size).toBe(imports.length);
+    expect(styleFiles.length).toBe(imports.length - 1);
+  });
+
+  it('imports every stylesheet in the folder, so the guard tests read all the CSS the app loads', () => {
+    const onDisk = readdirSync(__dirname).filter(
+      (f) => f.endsWith('.css') && f !== 'index.css' && f !== 'tokens.css',
+    );
+    expect([...styleFiles].sort()).toEqual(onDisk.sort());
   });
 });
 

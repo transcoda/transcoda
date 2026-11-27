@@ -1,5 +1,5 @@
 /**
- * The named widths the layout switches at (styles.css mirrors them; a test keeps the stylesheet to
+ * The named widths the layout switches at (the stylesheets mirror them; a test keeps the stylesheet to
  * these). `max-width` values, so a window of exactly 640 px is already "tablet".
  *  - phone   < 640 px: one column, the shell's header with a navigation drawer
  *  - tablet  < 1024 px: the editor's "needs a wider window" range, wide tables scroll

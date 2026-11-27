@@ -27,7 +27,7 @@ describe.skipIf(!toolsAvailable())('poster thumbnails with real ffmpeg', () => {
 
   beforeAll(async () => {
     base = await tempDir('poster-real-');
-    lib = join(base, 'lib', 'The General (1926)');
+    lib = join(base, 'lib', 'The Gardener (1926)');
     await mkdir(lib, { recursive: true });
   });
   afterAll(async () => {

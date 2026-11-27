@@ -11,7 +11,7 @@ const none = { replaced: 0, kept: 0, failed: 0, other: 0 };
 const SHOW: LibraryTitle = {
   type: 'show',
   key: 'a/b c',
-  title: 'The Beverly Hillbillies',
+  title: 'The Bramblewood Family',
   year: 1962,
   poster: null,
   episodes: 3,
@@ -25,7 +25,7 @@ const MOVIE: LibraryTitle = {
   poster: null,
   latest: {
     ...fx.kept,
-    media: { ...fx.kept.media, title: 'Night of the Living Dead', year: 1968, kind: 'movie' },
+    media: { ...fx.kept.media, title: 'Nocturne of the Quiet Moon', year: 1968, kind: 'movie' },
   },
 };
 
@@ -45,7 +45,7 @@ describe('TitleGrid', () => {
   it('a show card is one link with its title, year, episodes and outcomes', () => {
     renderAt('/', <TitleGrid libraryId="l1" items={[SHOW]} />);
     const list = screen.getByRole('list', { name: 'Titles' });
-    const link = within(list).getByRole('link', { name: /The Beverly Hillbillies/ });
+    const link = within(list).getByRole('link', { name: /The Bramblewood Family/ });
     expect(link.getAttribute('href')).toBe('/libraries/l1/shows/a%2Fb%20c');
     expect(within(link).getByText('1962 · 3 episodes')).toBeTruthy();
     expect(
@@ -56,7 +56,7 @@ describe('TitleGrid', () => {
 
   it('a movie card links to its file and shows year and the latest verdict', () => {
     renderAt('/', <TitleGrid libraryId="l1" items={[MOVIE]} />);
-    const link = screen.getByRole('link', { name: /Night of the Living Dead/ });
+    const link = screen.getByRole('link', { name: /Nocturne of the Quiet Moon/ });
     expect(link.getAttribute('href')).toBe('/libraries/l1/files/f9');
     expect(within(link).getByText('1968')).toBeTruthy();
     expect(within(link).getByText('Kept original')).toBeTruthy();

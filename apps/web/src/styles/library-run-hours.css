@@ -1,0 +1,115 @@
+/* ---------- Library run hours: the paintable 24-hour strip ---------- */
+
+.rh-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  margin: 0;
+  padding: var(--sp-3) var(--sp-4) var(--sp-4);
+  border: 1.5px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface);
+}
+
+.rh-card legend {
+  padding: 0 var(--sp-1);
+  font-size: var(--fs-ui);
+  font-weight: 500;
+}
+
+.rh-hint {
+  margin: 0;
+}
+
+.rh-mode {
+  align-self: flex-start;
+  min-width: 220px;
+}
+
+.rh-grid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  margin-top: var(--sp-2);
+  touch-action: none;
+  user-select: none;
+}
+
+.rh-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.rh-day {
+  flex: 0 0 30px;
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  color: var(--muted);
+}
+
+.rh-strip,
+.rh-ticks {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(24, minmax(0, 1fr));
+  gap: var(--sp-1);
+}
+
+.rh-cell {
+  position: relative;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: var(--raised);
+  cursor: pointer;
+}
+
+.rh-grid.is-per-day .rh-cell {
+  height: 22px;
+}
+
+.rh-cell.is-on {
+  background: var(--accent);
+}
+
+.rh-cell:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  z-index: 1;
+}
+
+/* The current hour: a ring and a notch above it. */
+.rh-cell.is-now {
+  box-shadow: inset 0 0 0 2px var(--text);
+}
+
+.rh-cell.is-now::before {
+  content: "";
+  position: absolute;
+  top: -6px;
+  left: 50%;
+  translate: -50% 0;
+  border: 4px solid transparent;
+  border-top-color: var(--text);
+  border-bottom: 0;
+}
+
+.rh-ticks span {
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  color: var(--faint);
+}
+
+.rh-summary {
+  margin: var(--sp-1) 0 0;
+  font-size: var(--fs-ui);
+  font-weight: 600;
+}
+
+.rh-now {
+  margin: 0;
+  font-size: var(--fs-small);
+  color: var(--muted);
+}

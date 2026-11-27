@@ -1,0 +1,139 @@
+/* Transcoda web styles, direction "Patchbay" (author's design handoff, kept outside the repo).
+   Design tokens live in ./tokens.css (copied unchanged from the handoff).
+   The few colours below are used by the screen files but are not tokens. */
+
+/* Type scale. tokens.css owns --fs-display, --fs-h1, --fs-h2, --fs-body, --fs-small and --fs-mono;
+   these four fill the gaps so the stylesheets carry no raw px font-size.
+   Documented exceptions (checked by styles/type-scale-css.test.ts): the auth hero tagline
+   (64px, 40px on phone) is a display glyph size of its own, and .markdown code is 0.92em of its
+   surrounding text. */
+/* biome-ignore-start lint/style/noHexColors: the named colours and their light values are the one
+   place hex is allowed (DESIGN.md › Color); rules use them through var(). */
+:root {
+  --fs-micro: 11px; /* mono caps micro labels; 12px on phone */
+  --fs-ui: 14px; /* controls, labels, dense rows */
+  --fs-h3: 17px; /* card and section headings */
+  --fs-title: 32px; /* page titles */
+  --sp-5: 20px; /* tokens.css has no 20px or 40px step; these two fill the gap */
+  --sp-10: 40px;
+  --danger-text: #ff9a8c;
+  --danger-line: #5c2a24;
+  --accent-hover: #e2ff9e;
+  --canvas-dot: #34333a;
+  --empty-link: #4a4850;
+  --row-new: #23271b;
+  --backdrop: rgb(0 0 0 / 0.6);
+  /* Node cards (screen 05). */
+  --node-head-line: #34333a;
+  --node-broken-bg: #2a1e1d;
+  --node-broken-line: #4a2a26;
+  --needs-setting-ink: #2b1c00;
+  --data-chip-bg: #3a3418;
+  --bypass-hatch: rgb(255 255 255 / 0.035);
+  /* Groups, node toolbar (screen 05, editor spec 01: N8, N10). */
+  --group-line: #5a5860;
+  --group-fill: rgb(255 255 255 / 0.015);
+  --toolbar-shadow: rgb(0 0 0 / 0.45);
+  /* Palette (screen 05). */
+  --disabled-text: #6a6770;
+  /* Colour key (screen 05). */
+  --legend-kbd-bg: #2e2d34;
+  --legend-text: #d6d2ca;
+  /* Inspector fields (screen 05): the dashed "Untagged" language chip. */
+  --chip-untagged-line: #6a6770;
+  /* Plugins (screen 09): the Connected badge and a passed test. */
+  --ok-bg: #23271b;
+  /* LIVE indicator (screens 04, 07): the halo around the lime dot. */
+  --live-halo: rgb(198 243 90 / 0.2);
+  /* Jobs (screens 07, 08): detail text on the kept and skipped rows. */
+  --st-kept-text: #9cc3ff;
+  --st-damaged-text: #ffc08f;
+  --st-skipped-text: #cdb8ff;
+  /* Job steps (screen 06b): the finish badges' text. */
+  --finish-text: #7fe8cf;
+  /* Dry-run plan (screen 06): a dropped default's row, the tiles' divider. */
+  --plan-drop-row: #221f22;
+  --plan-tile-sep: rgb(23 22 26 / 0.25);
+  /* Test encode (screen 06): the letterbox behind a video, black in both themes. */
+  --video-bg: #000;
+  color-scheme: dark;
+}
+
+/* On a phone the micro labels are 12px. Set on body (not :root) to keep the first :root block the
+   one the theme test reads. */
+@media (max-width: 639px) {
+  body {
+    --fs-micro: 12px;
+  }
+}
+
+/* Light values of the colours above (tokens.css holds the rest). Same two selectors as there:
+   the OS preference unless the user chose dark, and an explicit data-theme="light". */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --danger-text: #b3261e;
+    --danger-line: #e8b4ad;
+    --accent-hover: #335607;
+    --canvas-dot: #d6d2c8;
+    --empty-link: #b5b0a3;
+    --row-new: #eef4dc;
+    --backdrop: rgb(0 0 0 / 0.5);
+    --node-head-line: #e3dfd5;
+    --node-broken-bg: #fbedea;
+    --node-broken-line: #ebc2bc;
+    --needs-setting-ink: #ffffff;
+    --data-chip-bg: #f7edc4;
+    --bypass-hatch: rgb(0 0 0 / 0.04);
+    --group-line: #a39e92;
+    --group-fill: rgb(0 0 0 / 0.02);
+    --toolbar-shadow: rgb(0 0 0 / 0.18);
+    --disabled-text: #8a867e;
+    --legend-kbd-bg: #e3dfd5;
+    --legend-text: #3d3a34;
+    --chip-untagged-line: #8a867e;
+    --ok-bg: #eef4dc;
+    --live-halo: rgb(67 111 9 / 0.2);
+    --st-kept-text: #1d4f9f;
+    --st-damaged-text: #8a3d00;
+    --st-skipped-text: #5a35b3;
+    --finish-text: #0b6e57;
+    --plan-drop-row: #f1eee6;
+    --plan-tile-sep: rgb(255 255 255 / 0.35);
+    --video-bg: #000;
+    color-scheme: light;
+  }
+}
+
+:root[data-theme="light"] {
+  --danger-text: #b3261e;
+  --danger-line: #e8b4ad;
+  --accent-hover: #335607;
+  --canvas-dot: #d6d2c8;
+  --empty-link: #b5b0a3;
+  --row-new: #eef4dc;
+  --backdrop: rgb(0 0 0 / 0.5);
+  --node-head-line: #e3dfd5;
+  --node-broken-bg: #fbedea;
+  --node-broken-line: #ebc2bc;
+  --needs-setting-ink: #ffffff;
+  --data-chip-bg: #f7edc4;
+  --bypass-hatch: rgb(0 0 0 / 0.04);
+  --group-line: #a39e92;
+  --group-fill: rgb(0 0 0 / 0.02);
+  --toolbar-shadow: rgb(0 0 0 / 0.18);
+  --disabled-text: #8a867e;
+  --legend-kbd-bg: #e3dfd5;
+  --legend-text: #3d3a34;
+  --chip-untagged-line: #8a867e;
+  --ok-bg: #eef4dc;
+  --live-halo: rgb(67 111 9 / 0.2);
+  --st-kept-text: #1d4f9f;
+  --st-damaged-text: #8a3d00;
+  --st-skipped-text: #5a35b3;
+  --finish-text: #0b6e57;
+  --plan-drop-row: #f1eee6;
+  --plan-tile-sep: rgb(255 255 255 / 0.35);
+  --video-bg: #000;
+  color-scheme: light;
+}
+/* biome-ignore-end lint/style/noHexColors: end of the named colours */
