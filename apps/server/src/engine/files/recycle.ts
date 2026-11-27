@@ -1,15 +1,15 @@
 import { dirname, join, relative, resolve } from 'node:path';
 import type { Database } from '../../db/open.ts';
+import { hasFileJournal } from '../../db/repos/jobs/jobs.ts';
+import { findLibrary, type LibraryRow } from '../../db/repos/libraries.ts';
 import {
   deleteRecycled,
   findRecycled,
-  hasFileJournal,
   insertRecycled,
   listRecycled,
   type RecycledInsert,
   type RecycledRow,
-} from '../../db/repos/jobs.ts';
-import { findLibrary, type LibraryRow } from '../../db/repos/libraries.ts';
+} from '../../db/repos/recycled.ts';
 import { errorCode, type FsOps } from '../../platform/fs-ops.ts';
 import type { Logger } from '../../platform/logger.ts';
 

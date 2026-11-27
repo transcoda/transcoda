@@ -3,7 +3,8 @@ import { basename, dirname, isAbsolute, join, relative } from 'node:path';
 import { fmtBytes } from '@transcoda/shared';
 import { type Database, durably } from '../../db/open.ts';
 import type { Fingerprint } from '../../db/repos/files.ts';
-import { type RecycledInsert, type ReplaceJournal, updateJob } from '../../db/repos/jobs.ts';
+import { type ReplaceJournal, updateJob } from '../../db/repos/jobs/jobs.ts';
+import type { RecycledInsert } from '../../db/repos/recycled.ts';
 import {
   errorCode,
   type FsOps,

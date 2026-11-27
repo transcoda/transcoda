@@ -14,7 +14,7 @@ import {
   type JobRow,
   nextQueuedJobs,
   updateJob,
-} from '../../db/repos/jobs.ts';
+} from '../../db/repos/jobs/jobs.ts';
 import { findRun } from '../../db/repos/runs.ts';
 import {
   getSettingOr,

@@ -7,7 +7,7 @@ import {
   type PluginFinishAction,
 } from '@transcoda/sdk';
 import { fingerprintKey } from '../../db/repos/files.ts';
-import { findJob, type JobRow } from '../../db/repos/jobs.ts';
+import { findJob, type JobRow } from '../../db/repos/jobs/jobs.ts';
 import { hookJobOf } from '../../plugins/runtime/hooks.ts';
 // Two functions are named replaceOriginal: the finish node (nodes/core/finish.ts) and this one.
 import { fingerprintFromStats } from '../files/replace.ts';

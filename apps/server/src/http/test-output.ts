@@ -4,7 +4,7 @@ import { basename, extname } from 'node:path';
 import { Readable } from 'node:stream';
 import type { Context } from 'hono';
 import { requestHost } from '../auth/request-info.ts';
-import { findJob, findJobResult } from '../db/repos/jobs.ts';
+import { findJob, findJobResult } from '../db/repos/jobs/jobs.ts';
 import type { AppDeps } from '../rpc/context.ts';
 import { sameOriginOk } from '../rpc/middleware.ts';
 import type { ResolvedAuth } from './auth-context.ts';

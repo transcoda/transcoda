@@ -7,7 +7,7 @@ import type {
 } from '@transcoda/contract';
 import type { ProbeResult } from '@transcoda/sdk';
 import type { Database } from '../../db/open.ts';
-import { findJobProbe, findJobResult, type JobListRow } from '../../db/repos/jobs.ts';
+import { findJobProbe, findJobResult, type JobListRow } from '../../db/repos/jobs/jobs.ts';
 import {
   clearMigrationNotices,
   findLibrary,

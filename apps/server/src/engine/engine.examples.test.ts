@@ -13,7 +13,8 @@ import {
 } from '@transcoda/shared';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createTestApp, type TestApp } from '../app/test-app.ts';
-import { type JobResultRow, listRecycled } from '../db/repos/jobs.ts';
+import type { JobResultRow } from '../db/repos/jobs/jobs.ts';
+import { listRecycled } from '../db/repos/recycled.ts';
 import { nodeFsOps } from '../platform/fs-ops.ts';
 import type { Logger } from '../platform/logger.ts';
 import { nodeSpawner } from './encode/process.ts';

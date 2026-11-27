@@ -59,8 +59,10 @@ platform/        leaves with no domain knowledge: logger, config, process guards
 db/              open, migrate, backups; testing.ts (createTestDb)
   migrations/    one file per migration, registered in index.ts
   repos/         one file (or module folder) per table group; all SQL lives here
-    jobs/        jobs.ts (entry), results.ts, trace.ts, journals.ts, prior-runs.ts
+    jobs/        jobs.ts (entry), rows.ts, list.ts, stats.ts, results.ts, trace.ts, journals.ts,
+                 prior-runs.ts; testing.ts (a seeded database, job and result builders)
     files.ts     the files table and the fingerprint key
+    recycled.ts  the recycle index
 capabilities/    ffmpeg and GPU probes
 auth/            sessions, tokens, CSRF, cookies, passwords, rate limits, host-check, request-info
 nodes/           registry, remote nodes, availability, the CoreTools interface; core/ (the core nodes)
@@ -214,7 +216,7 @@ Steps 1 (the check and this doc), 2, 3, 4, 5 and 6 are done. Each later pull req
 - [x] 4. Server: `engine/` sub-areas, part 1: `model/`, `files/`, `media/`, `encode/`.
 - [x] 5. Server: `engine/` sub-areas, part 2: `verify/`, `walk/`, `queue/`, `pipeline/`, `testing/`.
 - [x] 6. Server: `plugins/` sub-folders (`trust/`, `runtime/`, `network/`) and its test support into `testing/`.
-- [ ] 7. Server splits, one pull request each: `db/repos/jobs.ts`, `plugins/service.ts`, `workflows/validate.ts`, `engine/verify/verify.ts`.
+- [ ] 7. Server splits, one pull request each: `db/repos/jobs.ts` (done), `plugins/service.ts`, `workflows/validate.ts`, `engine/verify/verify.ts`.
 - [ ] 8. Server: test names in the dot form; split the over-budget tests.
 - [ ] 9. Web: `shell/`, `test/` to `testing/`, the CSS guard tests into `styles/`.
 - [ ] 10. Web: pages into their features, in three pull requests; then delete `pages/`.

@@ -2,17 +2,17 @@ import { emptyGraph } from '@transcoda/shared';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { Database } from '../open.ts';
 import { createTestDb } from '../test-db.ts';
+import { upsertFile } from './files.ts';
 import {
   insertJob,
   insertJobResult,
-  insertRecycled,
   type JobResultRow,
   setJobProbe,
   updateJob,
-  upsertFile,
-} from './jobs.ts';
+} from './jobs/jobs.ts';
 import { insertLibrary, softDeleteLibrary } from './libraries.ts';
 import { metricsTotals } from './metrics.ts';
+import { insertRecycled } from './recycled.ts';
 import { insertRestore, markRestoreUndone } from './restores.ts';
 import { insertRun } from './runs.ts';
 import { insertWorkflow } from './workflows.ts';

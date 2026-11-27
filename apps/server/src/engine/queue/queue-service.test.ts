@@ -11,7 +11,7 @@ import {
   type JobResultRow,
   nextQueuedJobs,
   updateJob,
-} from '../../db/repos/jobs.ts';
+} from '../../db/repos/jobs/jobs.ts';
 import { findLibrary, insertLibrary, type LibraryRow } from '../../db/repos/libraries.ts';
 import { createTestDb } from '../../db/test-db.ts';
 import { type FsOps, nodeFsOps } from '../../platform/fs-ops.ts';

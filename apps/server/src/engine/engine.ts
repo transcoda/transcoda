@@ -33,14 +33,13 @@ import {
   jobStats,
   jobsWithReplaceJournal,
   listJobs,
-  listRecycledForJob,
   listTrace,
   type ReplaceJournal,
-  recycledTotalsByLibrary,
   updateJob,
   type WalkStep,
-} from '../db/repos/jobs.ts';
+} from '../db/repos/jobs/jobs.ts';
 import { findLibrary, listLibraries } from '../db/repos/libraries.ts';
+import { listRecycledForJob, recycledTotalsByLibrary } from '../db/repos/recycled.ts';
 import { findActiveRestore } from '../db/repos/restores.ts';
 import { getSettingOr, SETTING_DEFAULTS, SETTING_KEYS } from '../db/repos/settings.ts';
 import { findUserById } from '../db/repos/users.ts';

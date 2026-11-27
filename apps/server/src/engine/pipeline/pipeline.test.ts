@@ -10,7 +10,7 @@ import {
   insertJob,
   insertJobResult,
   listTrace,
-} from '../../db/repos/jobs.ts';
+} from '../../db/repos/jobs/jobs.ts';
 import { nodeFsOps } from '../../platform/fs-ops.ts';
 import { edge, mainGraph, node } from '../../workflows/test-helpers.ts';
 import type { RunnerProcess, SpawnOptions } from '../encode/process.ts';

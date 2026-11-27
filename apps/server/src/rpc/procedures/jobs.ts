@@ -3,7 +3,7 @@ import type { Issue } from '@transcoda/shared';
 import { ACTIVE_JOB_STATES } from '@transcoda/shared';
 import { hasScope } from '../../auth/tokens.ts';
 import type { Database } from '../../db/open.ts';
-import { findJob, type JobListRow, jobsInStates } from '../../db/repos/jobs.ts';
+import { findJob, type JobListRow, jobsInStates } from '../../db/repos/jobs/jobs.ts';
 import { findLibrary } from '../../db/repos/libraries.ts';
 import { filePathsOf, resolveShowSelection } from '../../db/repos/library-files.ts';
 import type { LibraryUnreachable, QueueResult } from '../../engine/queue/queue-service.ts';

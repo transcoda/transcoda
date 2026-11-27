@@ -20,7 +20,7 @@ import {
   usableGpus,
 } from '../capabilities/devices.ts';
 import type { Database } from '../db/open.ts';
-import { recycledTotals } from '../db/repos/jobs.ts';
+import { recycledTotals } from '../db/repos/recycled.ts';
 import {
   deleteSetting,
   getSetting,

@@ -2,7 +2,7 @@
 // path or a job. Deleted libraries are left out of every list.
 import { ACTIVE_JOB_STATES, type FailureCode, type JobState, type Lane } from '@transcoda/shared';
 import type { Database } from '../open.ts';
-import { ACTIVE_RESTORE_SQL } from './jobs.ts';
+import { ACTIVE_RESTORE_SQL } from './jobs/jobs.ts';
 import type { RunSource } from './runs.ts';
 
 export interface MetricsTotals {

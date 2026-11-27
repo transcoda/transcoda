@@ -7,7 +7,7 @@ import { promisify } from 'node:util';
 import type { JobState } from '@transcoda/shared';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { createTestApp, type TestApp } from '../../app/test-app.ts';
-import { findJob, findJobResult, type JobRow } from '../../db/repos/jobs.ts';
+import { findJob, findJobResult, type JobRow } from '../../db/repos/jobs/jobs.ts';
 import { type FsOps, nodeFsOps } from '../../platform/fs-ops.ts';
 import { chain, node } from '../../workflows/test-helpers.ts';
 import { defaultRecycleFolder } from '../files/recycle.ts';

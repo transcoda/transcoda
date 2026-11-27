@@ -1,5 +1,5 @@
 // Parsing of ffmpeg's `-progress pipe:1` output into job progress.
-import type { JobProgress } from '../../db/repos/jobs.ts';
+import type { JobProgress } from '../../db/repos/jobs/jobs.ts';
 
 export interface ProgressSample {
   /**

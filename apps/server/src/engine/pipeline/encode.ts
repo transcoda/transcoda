@@ -5,7 +5,7 @@
 import { open } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { ProbeResult, StreamPlan } from '@transcoda/sdk';
-import type { JobRow } from '../../db/repos/jobs.ts';
+import type { JobRow } from '../../db/repos/jobs/jobs.ts';
 import { errorCode } from '../../platform/fs-ops.ts';
 import type { ProgressSample } from '../encode/progress.ts';
 import { toJobProgress, withFrameTime } from '../encode/progress.ts';

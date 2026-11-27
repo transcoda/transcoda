@@ -15,7 +15,7 @@ import {
   type Session,
   send,
 } from '../app/test-http.ts';
-import { insertJob, insertJobResult } from '../db/repos/jobs.ts';
+import { insertJob, insertJobResult } from '../db/repos/jobs/jobs.ts';
 import { insertLibrary } from '../db/repos/libraries.ts';
 import { insertRun } from '../db/repos/runs.ts';
 import { insertWorkflow } from '../db/repos/workflows.ts';

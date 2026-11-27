@@ -2,7 +2,7 @@ import { basename } from 'node:path';
 import type { FileSort } from '@transcoda/contract';
 import { type JsonValue, parseFileName, type StoredJobMedia } from '@transcoda/shared';
 import type { Database } from '../open.ts';
-import { type JobListRow, listJobListRows, parseMedia } from './jobs.ts';
+import { type JobListRow, listJobListRows, parseMedia } from './jobs/jobs.ts';
 import { findLibrary } from './libraries.ts';
 
 export const LIBRARY_FILES_MAX = 200;

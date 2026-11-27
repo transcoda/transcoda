@@ -5,7 +5,7 @@ import { FINAL_JOB_STATES, type JobState } from '@transcoda/shared';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { migrate } from '../migrate.ts';
 import { closeDatabase, type Database, openDatabase } from '../open.ts';
-import { insertJob, updateJob } from '../repos/jobs.ts';
+import { insertJob, updateJob } from '../repos/jobs/jobs.ts';
 import { createTestDb } from '../test-db.ts';
 import { migrations } from './index.ts';
 

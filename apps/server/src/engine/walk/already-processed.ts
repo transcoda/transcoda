@@ -1,5 +1,5 @@
 import type { Database } from '../../db/open.ts';
-import { findProcessedResult, type ProcessedResult } from '../../db/repos/jobs.ts';
+import { findProcessedResult, type ProcessedResult } from '../../db/repos/jobs/jobs.ts';
 import { findWorkflow } from '../../db/repos/workflows.ts';
 import type { AlreadyProcessedAnswer, AlreadyProcessedQuery } from '../../nodes/core-tools.ts';
 

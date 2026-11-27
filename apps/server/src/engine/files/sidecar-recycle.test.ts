@@ -2,7 +2,7 @@ import { mkdir, readFile, realpath, rm, symlink, writeFile } from 'node:fs/promi
 import { join } from 'node:path';
 import type { BuildModel } from '@transcoda/sdk';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { RecycledInsert } from '../../db/repos/jobs.ts';
+import type { RecycledInsert } from '../../db/repos/recycled.ts';
 import { type FsOps, nodeFsOps } from '../../platform/fs-ops.ts';
 import type { Logger } from '../../platform/logger.ts';
 import { modelFromProbe } from '../model/model.ts';

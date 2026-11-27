@@ -5,7 +5,7 @@
 import { basename, dirname } from 'node:path';
 import { finishPhaseRank, type Lane, TRACE_CANCELED } from '@transcoda/shared';
 import { type EncodeSlot, slotGpuLabel } from '../../capabilities/devices.ts';
-import { findJob, hasReplaceJournal, type JobRow } from '../../db/repos/jobs.ts';
+import { findJob, hasReplaceJournal, type JobRow } from '../../db/repos/jobs/jobs.ts';
 import { isWithin, MAX_SIDECAR_BYTES } from '../files/paths.ts';
 import { encoderUsable, kept } from '../model/model.ts';
 import { coverExtractArgs, deviceVendor, renderArgs, renderCommandLine } from '../model/render.ts';
