@@ -42,6 +42,13 @@ a.btn:hover {
   gap: var(--sp-3);
 }
 
+.wf-count {
+  font-family: var(--font-mono);
+  font-size: var(--fs-small);
+  font-weight: 600;
+  color: var(--muted);
+}
+
 .wf-title .wf-count {
   font-size: var(--fs-body);
 }
@@ -52,13 +59,6 @@ a.btn:hover {
   gap: var(--sp-3);
   margin: 0 0 var(--sp-3);
   font-size: var(--fs-h3);
-}
-
-.wf-count {
-  font-family: var(--font-mono);
-  font-size: var(--fs-small);
-  font-weight: 600;
-  color: var(--muted);
 }
 
 /* Fits the 1024 px desktop without scrolling, so the row menu is never clipped there. Both

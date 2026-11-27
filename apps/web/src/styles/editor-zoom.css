@@ -44,13 +44,6 @@
   box-shadow: 0 0 0 4px var(--st-failed);
 }
 
-.tc-node.zoom-icon.is-big-icon .tc-badge.is-glyph {
-  top: -10px;
-  right: -10px;
-  transform: scale(2);
-  transform-origin: center;
-}
-
 .tc-badge.is-glyph {
   top: -10px;
   right: -10px;
@@ -58,6 +51,13 @@
   width: 22px;
   height: 22px;
   padding: 0;
+}
+
+.tc-node.zoom-icon.is-big-icon .tc-badge.is-glyph {
+  top: -10px;
+  right: -10px;
+  transform: scale(2);
+  transform-origin: center;
 }
 
 /* N8: toolbar above the selected node. Buttons are 44 px wide and drawn 34 px tall; ::before
