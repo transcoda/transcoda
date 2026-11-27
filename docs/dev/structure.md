@@ -85,7 +85,8 @@ engine/
                  test outputs and their browser preview
   media/         reading a file: probe, media info, NFO, posters, content hash
   encode/        the ffmpeg child: process, progress, stall guard, log condensing
-  verify/        verify.ts (entry), durations, stream checks, decode checks
+  verify/        verify.ts (entry), media (ffprobe runs, stream durations), durations, stream
+                 checks, decode checks, types; testing.ts
   walk/          walk.ts (entry), check-source, already-processed, load-workflow, plugin context
   queue/         queue service, scheduler, catch-up, media pass, run hours
   pipeline/      pipeline.ts (entry), core, prepare, plan, encode, output, steps, branches, trace,
@@ -212,14 +213,14 @@ A move pull request updates the paths in the allowlists and the "today" entries 
 
 ## Migration status
 
-Steps 1 (the check and this doc), 2, 3, 4, 5 and 6 are done. Each later pull request ticks its line.
+Steps 1 (the check and this doc), 2, 3, 4, 5, 6 and 7 are done. Each later pull request ticks its line.
 
 - [x] 2. Server: `platform/`, `app/` and `system/`; `host-check.ts` and `request-info.ts` into `auth/`.
 - [x] 3. Server: fix the upward imports (`fingerprintKey` into the repository layer, the official plugin constants out of `plugins/`, `CoreTools` into `nodes/`).
 - [x] 4. Server: `engine/` sub-areas, part 1: `model/`, `files/`, `media/`, `encode/`.
 - [x] 5. Server: `engine/` sub-areas, part 2: `verify/`, `walk/`, `queue/`, `pipeline/`, `testing/`.
 - [x] 6. Server: `plugins/` sub-folders (`trust/`, `runtime/`, `network/`) and its test support into `testing/`.
-- [ ] 7. Server splits, one pull request each: `db/repos/jobs.ts` (done), `plugins/service.ts` (done), `workflows/validate.ts` (done), `engine/verify/verify.ts`.
+- [x] 7. Server splits, one pull request each: `db/repos/jobs.ts`, `plugins/service.ts`, `workflows/validate.ts`, `engine/verify/verify.ts`.
 - [ ] 8. Server: test names in the dot form; split the over-budget tests.
 - [ ] 9. Web: `shell/`, `test/` to `testing/`, the CSS guard tests into `styles/`.
 - [ ] 10. Web: pages into their features, in three pull requests; then delete `pages/`.
