@@ -187,3 +187,4 @@ Entries from M0 to M3 had no date of their own; they carry the day their milesto
 - 2026-11-27 · Engine · [VA-API out of the auto encoder order](2026-11.md)
 - 2026-11-27 · Engine · [The `.orig` replace path removed](2026-11.md)
 - 2026-11-27 · Tests · [Property tests with fast-check](2026-11.md)
+- 2026-11-27 · Docker · [Release provenance as .intoto.jsonl](2026-11.md)
