@@ -1,8 +1,4 @@
 {
-  "apps/server/src/engine/queue/queue-service.test.ts": 1882,
-  "apps/server/src/engine/queue/scheduler.test.ts": 1464,
-  "apps/server/src/engine/walk/walk.test.ts": 1785,
-  "apps/server/src/plugins/network/fetch-proxy.test.ts": 1231,
   "apps/server/src/rpc/procedures/engine.test.ts": 1366,
   "apps/server/src/workflows/service.test.ts": 1657,
   "apps/web/src/pages/EditorPage.test.tsx": 2208,
