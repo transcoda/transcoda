@@ -2,6 +2,53 @@
 
 All notable changes to Transcoda, newest first. Generated from the notes in `.changes/` when a release is cut.
 
+## 0.7.0 — 2026-11-26
+
+#### Browse your libraries
+
+Open a library to see its files the way you think of them: shows, then seasons, then episodes, each with its poster, or every file in one table. Search narrows it down, and each file shows how its last job went.
+
+![A library of public-domain films as poster cards, each with its year and the result of its last job](docs/releases/0.7.0/library-browser.png)
+
+Every file has its own page with what it is now (container, length, video, audio and subtitle tracks), its size before and after, and every job that ran on it.
+
+#### Run a workflow on what you pick
+
+Select files, or a whole show or season, and run a workflow on them. Start them now, or add them to the queue to start in the library's run hours. Files the workflow already handled are left out unless you ask for them.
+
+<img src="docs/releases/0.7.0/run-on-selection.png" width="490" alt="Running a workflow on a season: run for real or as a dry run, start now or add to the queue, and optionally include files the workflow already handled">
+
+#### See where a job had trouble
+
+A step that left a warning or a problem on a job, such as a webhook that couldn't be sent, now carries a badge with that message on its node in the job's workflow. When an encode stops partway, Render shows as failed with the reason, or as canceled when you canceled the job.
+
+### New
+
+- Open a library to browse its files as posters (shows, then seasons, then episodes) or as one table, search them, and see how each file's last job went.
+- Each file in a library has its own page: what it is now (container, length, video, audio and subtitle tracks), its size before and after, and every job that ran on it.
+- The API can now list a library's shows, seasons, movies and files, each with the result of its latest job, and show one file with all its jobs.
+- Select files in a library, or a whole show or season, and run a workflow on them: start them now, or add them to the queue to start in the library's run hours. Files the workflow already handled are left out unless you ask for them.
+
+### Improved
+
+- Calmer pages: the current menu item no longer competes with the main button, the "page not found" screen offers a way back to Workflows or Jobs, and the API token scopes are a simple checklist.
+- Easier to read and use: form fields have clearer edges, small text is larger, numbers line up in tables, the workflow editor and a job's trace open at a readable zoom, and keyboard focus never hides under the top bar.
+- An episode on the Jobs page now shows the most specific poster beside it: its own (`<episode>-poster.jpg`), else its season's (`poster.jpg` in the season folder, or `season03-poster.jpg` and `season-specials-poster.jpg` in the show folder), else the show's. Shows with only season posters now get one too.
+- Icons all use the same line weight now, so small icons in chips and tables no longer look heavier than the ones beside them.
+- On Jobs, "Needs attention" now comes first and stands out, the weekly charts line up, and a dry run's status fits on one line.
+- A library's name on the Libraries page is now a link, with a focus ring, that opens that library.
+- The library browser opens faster on large libraries because each file now remembers its latest job.
+- On a phone, a file or job page shows a long path on one line with the file name in full, and Show full path reveals the whole path.
+- Show cards on the Library page now use the show's own poster, also for shows processed before this update, and fall back to a season or episode poster when the show folder has none.
+- A long workflow on a job's page shows its steps as larger icons, so they are easier to tell apart.
+- A step that left a warning or a problem on a job, such as a webhook that could not be sent, now shows a badge with that message on its node in the job's workflow and in its step list.
+
+### Fixed
+
+- An open library page shows titles and posters as they are found, without a refresh.
+- When a library's folder can't be reached, for example an unmounted share, browsing it or running a workflow on its files says so and offers to try again, instead of saying it wasn't found.
+- While a file encodes, the job's workflow now lights Render, and when the encode is stopped partway it marks Render as failed with the reason, or as canceled when you canceled the job, instead of saying it didn't run.
+
 ## 0.6.0 — 2026-11-18
 
 #### Jobs show titles and posters
