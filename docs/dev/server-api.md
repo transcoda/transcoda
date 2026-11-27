@@ -13,7 +13,7 @@ Today's rules for the server outside the encode engine. The engine is in [engine
 1. **Contract.** Add the procedure to its router in `packages/contract/src/routers/<area>.ts` with `oc.route({ method, path, tags, summary }).errors(...).input(...).output(...)`. Schemas go in `packages/contract/src/schemas/<area>.ts`. A new router is added to `contract` in `packages/contract/src/index.ts`. `packages/contract/src/contract.test.ts` pins each router's keys and some routes.
 2. **Server.** Implement it in `apps/server/src/rpc/procedures/<area>.ts` as `os.<area>.<name>.use(<guard>).handler(...)`. `os` comes from `rpc/middleware.ts`. Register it in `createRouter()` in `apps/server/src/rpc/router.ts`.
 3. **REST and RPC.** Nothing more to do. `rpc/handlers.ts` serves the same router on `/rpc` (browser, oRPC RPC protocol) and `/api/v1` (REST, from the contract's `method` and `path`). The OpenAPI document at `/api/openapi.json` is generated from the contract.
-4. **MCP, only if an agent should have it.** Add a tool with `defineTool` (`mcp/tool.ts`) in `apps/server/src/mcp/tools/<group>.ts`, add it to `ALL_TOOLS` in `mcp/tools/index.ts`, and to `EXPECTED_TOOLS` in `mcp/never.test.ts`. Describe it in `docs/mcp.md` (tool count and table; no test checks this file).
+4. **MCP, only if an agent should have it.** Add a tool with `defineTool` (`mcp/tool.ts`) in `apps/server/src/mcp/tools/<group>.ts`, add it to `ALL_TOOLS` in `mcp/tools/index.ts`, and to `EXPECTED_TOOLS` in `mcp/never.test.ts`. Describe it in `docs/mcp.md` (tool count and table; `mcp/mcp-docs.test.ts` checks both and the scopes).
 5. **Web.** Call it through `api` from `apps/web/src/api/client.ts` (a typed oRPC client over `/rpc`), usually from a hook in `apps/web/src/hooks/` or a page's own hook.
 
 - Routes that stream a file or plain text are plain Hono routes beside the contract, in `apps/server/src/http/` and mounted in `app.ts`: backup download, test output, job log, job poster, `/metrics`. They are not in the OpenAPI document or the RPC client.
@@ -60,7 +60,7 @@ Today's rules for the server outside the encode engine. The engine is in [engine
 ## Settings and environment variables
 
 - **Database settings** are things a person changes in the UI without a restart. Keys and defaults are `SETTING_KEYS` and `SETTING_DEFAULTS` in `db/repos/settings.ts`. `settings/service.ts` reads them; a row that fails its schema reads as the default. `settings.update` is session only and allow-lists its fields in `SettingsUpdateInputSchema`. No MCP tool reads or changes settings.
-- **Environment variables** are deployment facts that need a restart. They are parsed only in `loadConfig()` (`apps/server/src/config.ts`) into `Config`, with a `ConfigError` for a bad value. Document each in `docs/env.md`. No test checks `docs/env.md`.
+- **Environment variables** are deployment facts that need a restart. They are parsed only in `loadConfig()` (`apps/server/src/config.ts`) into `Config`, with a `ConfigError` for a bad value. Document each in a table row in `docs/env.md`; `config-docs.test.ts` compares the rows with the variables `config.ts` reads.
 - The Settings page shows some variables read-only (`source.kind: 'env'`) with their effective values from `Config`. The service learns which variables are set by name only (`transcodaEnvNames` in `deps.ts`), and `settings.get` never returns a secret.
 
 ## Workflows and activation

@@ -70,7 +70,7 @@ The image ships jellyfin-ffmpeg 8 (`JELLYFIN_FFMPEG_VERSION` in `docker/Dockerfi
 - ffmpeg 8 rounds null-muxer timestamps and logs false dts errors: hence `NULL_TIMESTAMPS` on every null decode.
 - ffmpeg 8 reports `out_time=N/A` for a whole encode with a copied image track. Every complete progress block is still a sample (`outTimeSeconds` null), and `withFrameTime` takes the further of out time and `frame=` over the frame rate.
 - jellyfin-ffmpeg lists NVENC, QSV and VA-API in every build; `usableHardware` is what keeps them out where they cannot run.
-- Default flags assume Matroska's `default_mode` is passthrough.
+- Default flags assume Matroska's `default_mode` is passthrough (the default disposition is written as it is, never inferred). It is the muxer's default in jellyfin-ffmpeg 8.1.3, the version the image ships (`ffmpeg -h muxer=matroska`: `-default_mode … (default passthrough)`), as in ffmpeg 9, so the argv does not set it.
 
 ## Tests
 
