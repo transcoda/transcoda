@@ -91,17 +91,17 @@
   border-radius: var(--r-md);
   font-size: var(--fs-h3);
 }
-.listbox-select-field .listbox-select-list {
-  right: 0;
-  top: 100%;
-  white-space: normal;
-}
 .listbox-select-list {
   right: auto;
   left: 0;
   max-height: 320px;
   overflow-y: auto;
   white-space: nowrap;
+}
+.listbox-select-field .listbox-select-list {
+  right: 0;
+  top: 100%;
+  white-space: normal;
 }
 .listbox-select-list:focus-visible {
   outline: none;

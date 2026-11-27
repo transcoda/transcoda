@@ -69,11 +69,6 @@
   font-size: var(--fs-body);
 }
 
-.tc-field.has-issue .tc-input,
-.tc-field.has-issue .tc-chips {
-  border-color: var(--st-needs-setting);
-}
-
 .tc-field-clear:focus-visible,
 .tc-switch:focus-visible,
 .tc-segmented button:focus-visible,
@@ -277,6 +272,11 @@
   border-radius: var(--r-md);
   background: var(--raised);
   border: 1.5px solid var(--line-control);
+}
+
+.tc-field.has-issue .tc-input,
+.tc-field.has-issue .tc-chips {
+  border-color: var(--st-needs-setting);
 }
 
 .lang-chip {

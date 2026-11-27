@@ -20,7 +20,7 @@ import {
 import type { Catalog } from '../../hooks/use-catalog.ts';
 import type { TraceNodeData, TraceOverlay } from '../flow/types.ts';
 
-export type { TraceNodeData, TraceOverlay };
+export type { TraceOverlay };
 
 /** The node a job is at, as `job.changed` reports it. */
 export type CurrentNode = { workflowPath: string[]; nodeId: string };
