@@ -48,7 +48,7 @@ Today's rules for how code is written here. Most of them are checked by `pnpm ch
 ## File size
 
 - No source file over 1200 lines: TypeScript, JavaScript and CSS under `apps/`, `packages/`, `scripts/`, `e2e/` and the root config files, tests included, fixtures excluded. Split a file before it gets there.
-- Files that were already over it are in `.github/file-size-allowlist.json` with their line count. The number may only go down: a listed file that grows fails, one that shrinks fails until its number is lowered to match, and one back under 1200 fails until its entry is removed. A pull request can't add an entry or raise a number.
+- Files that were already over it are in `.github/file-size-allowlist.json` with their line count. The number may only go down: a listed file that grows fails, one that shrinks fails until its number is lowered to match, and one back under 1200 fails until its entry is removed. A pull request can't add an entry or raise a number. A file that git sees as moved keeps its entry under the new path: the move passes when the count stayed the same or went down.
 - `pnpm check-file-size` (part of `pnpm check`) and the CI job `file-size` run the same check (`transcoda-file-size` and the org's `file-size` action); their globs are the same, so change both together.
 - **Soft limit, 800 lines,** for source files (tests and fixtures aside, CSS included): split a file into a module folder well before the budget ([structure.md](structure.md), Rule B). `pnpm check-structure` checks it. The files over it today are in `softSizeLimit` in `scripts/structure-allowlist.json`, with the same rules as the hard allowlist: the number may only go down.
 

@@ -198,3 +198,4 @@ Entries from M0 to M3 had no date of their own; they carry the day their milesto
 - 2026-11-27 · Structure · [Jobs repository split](2026-11.md)
 - 2026-11-27 · Structure · [Plugin service split](2026-11.md)
 - 2026-11-27 · Structure · [Workflow validation split](2026-11.md)
+- 2026-11-27 · Tooling · [File-size check follows moved files](2026-11.md)
