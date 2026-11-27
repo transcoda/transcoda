@@ -1433,7 +1433,7 @@ describe('QueueService.retryFailed', () => {
 });
 
 describe('QueueService media info', () => {
-  const MOVIE_NFO = '<movie><title>Sherlock Jr.</title><year>1924</year></movie>';
+  const MOVIE_NFO = '<movie><title>Shepherd Jr.</title><year>1924</year></movie>';
 
   /** A second service over the same db and library, with the given resolver. */
   function withResolver(mediaResolver: () => MediaResolver): QueueService {
@@ -1449,14 +1449,14 @@ describe('QueueService media info', () => {
   }
 
   it('a folder with movie.nfo and poster.jpg: the job carries the nfo title and the poster', async () => {
-    const dir = join(root, 'Sherlock Jr. (1924)');
+    const dir = join(root, 'Shepherd Jr. (1924)');
     await mkdir(dir);
     await writeFile(join(dir, 'movie.nfo'), MOVIE_NFO);
     await writeFile(join(dir, 'poster.jpg'), 'img');
-    const file = await settled(join(dir, 'Sherlock Jr. (1924).mkv'));
+    const file = await settled(join(dir, 'Shepherd Jr. (1924).mkv'));
     const r = await queued(dir);
     expect(r.jobs[0]?.media).toMatchObject({
-      title: 'Sherlock Jr.',
+      title: 'Shepherd Jr.',
       year: 1924,
       source: 'sidecar',
       posterPath: join(dir, 'poster.jpg'),
@@ -1465,7 +1465,7 @@ describe('QueueService media info', () => {
   });
 
   it('a file with no sidecars: the media is what the file name says', async () => {
-    const file = await settled(join(root, 'Show', 'The General (1926).mkv'));
+    const file = await settled(join(root, 'Show', 'The Gardener (1926).mkv'));
     const r = await queued(file);
     expect(r.jobs[0]?.media).toEqual(parseFileName(file, lib.path));
   });
@@ -1479,7 +1479,7 @@ describe('QueueService media info', () => {
   });
 
   it('a resolver that throws still queues the job, with the file-name media', async () => {
-    const file = await settled(join(root, 'Show', 'The General (1926).mkv'));
+    const file = await settled(join(root, 'Show', 'The Gardener (1926).mkv'));
     const failing = withResolver(() => ({
       resolve: () => Promise.reject(new Error('boom')),
       showPoster: async () => ({ path: null }),
@@ -1491,7 +1491,7 @@ describe('QueueService media info', () => {
   });
 
   it('a resolver factory that throws still queues the job, with the file-name media', async () => {
-    const file = await settled(join(root, 'Show', 'The General (1926).mkv'));
+    const file = await settled(join(root, 'Show', 'The Gardener (1926).mkv'));
     const broken = withResolver(() => {
       throw new Error('x');
     });
@@ -1544,8 +1544,8 @@ describe('QueueService.queueFiles', () => {
 
   beforeEach(async () => {
     show = join(root, 'Show');
-    a = await settled(join(show, 'Superman (1941).mkv'));
-    b = await settled(join(show, 'Sherlock Jr. (1924).mkv'));
+    a = await settled(join(show, 'Skyward (1941).mkv'));
+    b = await settled(join(show, 'Shepherd Jr. (1924).mkv'));
   });
 
   function filesInput(extra: Partial<QueueFilesInput> = {}): QueueFilesInput {
@@ -1682,7 +1682,7 @@ describe('QueueService.queueFiles', () => {
   });
 
   it('a path outside the library is refused; a vanished file is skipped', async () => {
-    const stray = await settled(join(outside, 'The General (1926).mkv'));
+    const stray = await settled(join(outside, 'The Gardener (1926).mkv'));
     for (const [paths, offending] of [
       [[a, stray], stray],
       [['/etc/passwd'], '/etc/passwd'],
@@ -1697,7 +1697,7 @@ describe('QueueService.queueFiles', () => {
     expect(rowCounts()).toEqual({ jobs: 0, runs: 0, files: 0 });
     expect(onQueued).not.toHaveBeenCalled();
 
-    const gone = await settled(join(show, 'Night of the Living Dead (1968).mkv'));
+    const gone = await settled(join(show, 'Nocturne of the Quiet Moon (1968).mkv'));
     await rm(gone);
     const r = await queuedFiles({ paths: [a, gone] });
     expect(r.jobs.map((j) => [j.path, j.state, j.reason])).toEqual([
@@ -1723,9 +1723,9 @@ describe('QueueService.queueFiles', () => {
   it('files named through a symlink to the root count as inside it, one job per real file', async () => {
     const alias = join(base, 'alias');
     await symlink(root, alias);
-    const viaAlias = join(alias, 'Show', 'Superman (1941).mkv');
+    const viaAlias = join(alias, 'Show', 'Skyward (1941).mkv');
     const r = await queuedFiles({
-      paths: [viaAlias, a, join(alias, 'Show', 'Sherlock Jr. (1924).mkv')],
+      paths: [viaAlias, a, join(alias, 'Show', 'Shepherd Jr. (1924).mkv')],
     });
     expect(r.jobs.map((j) => [j.path, j.state])).toEqual([
       [a, 'queued'],
@@ -1743,11 +1743,11 @@ describe('QueueService.queueFiles', () => {
       { id: 'l2', name: 'Films', path: alias, recycleFolder: null, processHardlinked: false },
       new Date(),
     );
-    const f = await settled(join(films, 'The General (1926).mkv'));
-    const g = await settled(join(films, 'Sherlock Jr. (1924).mkv'));
+    const f = await settled(join(films, 'The Gardener (1926).mkv'));
+    const g = await settled(join(films, 'Shepherd Jr. (1924).mkv'));
     const r = await queuedFiles({
       libraryId: 'l2',
-      paths: [join(alias, 'The General (1926).mkv'), g],
+      paths: [join(alias, 'The Gardener (1926).mkv'), g],
     });
     expect(r.run).toMatchObject({ libraryId: 'l2', requestedPath: films });
     expect(r.jobs.map((j) => [j.path, j.state])).toEqual([
@@ -1804,9 +1804,9 @@ describe('QueueService.queueFiles', () => {
   it('previewFiles counts without writing anything', async () => {
     // a: new; b: done by v2; c: held by a queued real job; d: deleted from disk
     await doneByV2(b);
-    const c = await settled(join(show, 'The General (1926).mkv'));
+    const c = await settled(join(show, 'The Gardener (1926).mkv'));
     await queued(c);
-    const d = await settled(join(show, 'Night of the Living Dead (1968).mkv'));
+    const d = await settled(join(show, 'Nocturne of the Quiet Moon (1968).mkv'));
     await rm(d);
     const calls = onQueued.mock.calls.length;
     const events = published.length;

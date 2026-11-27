@@ -1097,22 +1097,22 @@ describe('Jobs table', () => {
       id: 'j-bh17',
       media: {
         ...fx.replaced.media,
-        title: 'The Beverly Hillbillies',
+        title: 'The Bramblewood Family',
         season: 1,
         episode: 17,
-        episodeTitle: "Jed's Dilemma",
+        episodeTitle: "Ada's Dilemma",
       },
-      fileName: 'The.Beverly.Hillbillies.S01E17.mkv',
+      fileName: 'The.Bramblewood.Family.S01E17.mkv',
     };
     withJobs([ep, fx.queued]);
     await renderPage();
     const row = rowOf(ep);
-    const link = within(row).getByRole('link', { name: 'The Beverly Hillbillies S01E17' });
-    expect(link.textContent).toBe('The Beverly Hillbillies');
+    const link = within(row).getByRole('link', { name: 'The Bramblewood Family S01E17' });
+    expect(link.textContent).toBe('The Bramblewood Family');
     expect(link.getAttribute('href')).toBe('/jobs/j-bh17');
     expect(link.getAttribute('title')).toBe(ep.fileName);
     const code = within(row).getByText('S01E17');
-    expect(code.closest('.job-title-sub')?.textContent).toBe("S01E17 · Jed's Dilemma");
+    expect(code.closest('.job-title-sub')?.textContent).toBe("S01E17 · Ada's Dilemma");
     expect(within(row).getByText('Shows')).toBeTruthy();
     expect(within(row).getByText('TV cleanup v7')).toBeTruthy();
     expect(row.querySelector('.job-chip')?.textContent).toBe('Replaced');

@@ -32,7 +32,7 @@ import { insertWorkflow } from './workflows.ts';
 const now = new Date('2026-01-01T00:00:00.000Z');
 const at = (min: number) => new Date(now.getTime() + min * 60_000);
 
-const SHOW = 'The Beverly Hillbillies';
+const SHOW = 'The Bramblewood Family';
 const ep = (
   season: number | null,
   episode: number,
@@ -255,11 +255,11 @@ describe('latest job of a file', () => {
   });
 
   it('a file with no media on any job gets its file-name media', () => {
-    file('f1', '/media/movies/Sherlock Jr. (1924).mkv', 1000);
+    file('f1', '/media/movies/Shepherd Jr. (1924).mkv', 1000);
     job('j1', 'f1', { state: 'done', queuedAt: 1 });
     const row = only({ libraryId: 'l2' });
     expect(row.media).toEqual(
-      parseFileName('/media/movies/Sherlock Jr. (1924).mkv', '/media/movies'),
+      parseFileName('/media/movies/Shepherd Jr. (1924).mkv', '/media/movies'),
     );
     expect(row.media).toMatchObject({ kind: 'movie', source: 'filename', year: 1924 });
     expect(row.mediaJobId).toBeNull();
@@ -268,9 +268,9 @@ describe('latest job of a file', () => {
   it('an episode row carries the key listTitles gives its show; a movie and a file-name file carry none', () => {
     file('f1', '/media/tv/a.mkv', 1000);
     job('j1', 'f1', { state: 'done', queuedAt: 1, media: ep(2, 1) });
-    file('f2', '/media/movies/Sherlock Jr. (1924).mkv', 1000);
-    job('j2', 'f2', { state: 'done', queuedAt: 1, media: movie('Sherlock Jr.', 1924) });
-    file('f3', '/media/movies/The General (1926).mkv', 1000);
+    file('f2', '/media/movies/Shepherd Jr. (1924).mkv', 1000);
+    job('j2', 'f2', { state: 'done', queuedAt: 1, media: movie('Shepherd Jr.', 1924) });
+    file('f3', '/media/movies/The Gardener (1926).mkv', 1000);
     job('j3', 'f3', { state: 'done', queuedAt: 1 });
     const card = listTitles(db, { libraryId: 'l1', offset: 0, limit: 10 }).items[0];
     const episode = findLibraryFile(db, 'l1', 'f1');
@@ -445,7 +445,7 @@ describe('listLibraryFiles', () => {
     job('jm1', 'm1', {
       state: 'done',
       queuedAt: 1,
-      media: movie('night of the Living Dead', 1968),
+      media: movie('nocturne of the Quiet Moon', 1968),
     });
     file('e22', '/media/tv/S02E02.mkv', 1000);
     job('je22', 'e22', { state: 'done', queuedAt: 1, media: ep(2, 2) });
@@ -453,21 +453,21 @@ describe('listLibraryFiles', () => {
     job('je21', 'e21', { state: 'done', queuedAt: 1, media: ep(2, 1) });
     file('e11', '/media/tv/S01E01.mkv', 1000);
     job('je11', 'e11', { state: 'done', queuedAt: 1, media: ep(1, 1) });
-    file('m2', '/media/tv/Sherlock.mkv', 1000);
-    job('jm2', 'm2', { state: 'done', queuedAt: 1, media: movie('Sherlock Jr.', 1924) });
+    file('m2', '/media/tv/Shepherd.mkv', 1000);
+    job('jm2', 'm2', { state: 'done', queuedAt: 1, media: movie('Shepherd Jr.', 1924) });
     const ids = (desc: boolean) => rows({ desc }).map((r) => r.id);
-    // NOCASE: "night…" sorts before "Sherlock…".
+    // NOCASE: "nocturne…" sorts before "Shepherd…".
     expect(ids(false)).toEqual(['m1', 'm2', 'e11', 'e21', 'e22']);
     // desc flips the title only; a show's episodes stay in order.
     expect(ids(true)).toEqual(['e11', 'e21', 'e22', 'm2', 'm1']);
   });
 
   it('a file with no media sorts by its file name', () => {
-    file('f1', '/media/tv/Superman.mkv', 1000);
+    file('f1', '/media/tv/Skyward.mkv', 1000);
     job('j1', 'f1', { state: 'done', queuedAt: 1 });
     file('f2', '/media/tv/x.mkv', 1000);
-    job('j2', 'f2', { state: 'done', queuedAt: 1, media: movie('The General', 1926) });
-    expect(paths()).toEqual(['/media/tv/Superman.mkv', '/media/tv/x.mkv']);
+    job('j2', 'f2', { state: 'done', queuedAt: 1, media: movie('The Gardener', 1926) });
+    expect(paths()).toEqual(['/media/tv/Skyward.mkv', '/media/tv/x.mkv']);
   });
 
   it('sorts by size using the now size', () => {
@@ -504,28 +504,28 @@ describe('listLibraryFiles', () => {
   });
 
   it('searches title, episode title and file name, case-insensitively', () => {
-    file('e1', '/media/tv/Hillbillies/S01E01.mkv', 1000);
-    job('j1', 'e1', { state: 'done', queuedAt: 1, media: ep(1, 1, 'The Clampetts Strike Oil') });
-    file('e2', '/media/tv/Hillbillies/S01E02.mkv', 1000);
+    file('e1', '/media/tv/Hollowbrook/S01E01.mkv', 1000);
+    job('j1', 'e1', { state: 'done', queuedAt: 1, media: ep(1, 1, 'The Bramblewoods Strike Oil') });
+    file('e2', '/media/tv/Hollowbrook/S01E02.mkv', 1000);
     job('j2', 'e2', {
       state: 'done',
       queuedAt: 1,
-      media: ep(1, 2, 'Getting Settled; Jed Buys Stocks'),
+      media: ep(1, 2, 'Getting Settled; Ada Buys Stocks'),
     });
-    file('m1', '/media/tv/General.mkv', 1000);
-    job('j3', 'm1', { state: 'done', queuedAt: 1, media: movie('The General', 1926) });
-    expect(paths({ search: 'beverly' })).toHaveLength(2);
-    expect(paths({ search: 'JED BUYS' })).toEqual(['/media/tv/Hillbillies/S01E02.mkv']);
+    file('m1', '/media/tv/Gardener.mkv', 1000);
+    job('j3', 'm1', { state: 'done', queuedAt: 1, media: movie('The Gardener', 1926) });
+    expect(paths({ search: 'bramble' })).toHaveLength(2);
+    expect(paths({ search: 'ADA BUYS' })).toEqual(['/media/tv/Hollowbrook/S01E02.mkv']);
     expect(paths({ search: 'S01E02.mkv' })).toHaveLength(1);
-    expect(listLibraryFiles(db, q({ search: 'general' })).total).toBe(1);
+    expect(listLibraryFiles(db, q({ search: 'gardener' })).total).toBe(1);
   });
 
   it('a % or _ in the search is literal', () => {
-    file('a', '/media/movies/100% Superman.mkv', 1000);
+    file('a', '/media/movies/100% Skyward.mkv', 1000);
     job('ja', 'a', { state: 'done', queuedAt: 1 });
-    file('b', '/media/movies/100x Superman.mkv', 1000);
+    file('b', '/media/movies/100x Skyward.mkv', 1000);
     job('jb', 'b', { state: 'done', queuedAt: 1 });
-    expect(paths({ libraryId: 'l2', search: '100%' })).toEqual(['/media/movies/100% Superman.mkv']);
+    expect(paths({ libraryId: 'l2', search: '100%' })).toEqual(['/media/movies/100% Skyward.mkv']);
     expect(paths({ libraryId: 'l2', search: '_' })).toEqual([]);
     expect(paths({ libraryId: 'l2', search: '100' })).toHaveLength(2);
   });
@@ -621,7 +621,7 @@ describe('latestJobPerFileSql', () => {
     job('t-dry', 't', { state: 'dry_run', dryRun: true, queuedAt: 1, media: ep(1, 1) });
     job('t-done', 't', { state: 'done', queuedAt: 2 });
     file('m', '/media/movies/b.mkv', 1000);
-    job('m-done', 'm', { state: 'done', queuedAt: 1, media: movie('The General', 1926) });
+    job('m-done', 'm', { state: 'done', queuedAt: 1, media: movie('The Gardener', 1926) });
     const { sql, params } = latestJobPerFileSql({});
     const got = db
       .prepare(
@@ -646,12 +646,10 @@ it('stays fast at 20,000 files', () => {
     for (let i = 0; i < N; i++) {
       const isEpisode = i % 2 === 0;
       const path = isEpisode
-        ? `/media/tv/Hillbillies/S${String(i % 9).padStart(2, '0')}E${String(i).padStart(5, '0')}.mkv`
-        : `/media/tv/Movies/Superman ${String(i).padStart(5, '0')}.mkv`;
+        ? `/media/tv/Hollowbrook/S${String(i % 9).padStart(2, '0')}E${String(i).padStart(5, '0')}.mkv`
+        : `/media/tv/Movies/Skyward ${String(i).padStart(5, '0')}.mkv`;
       file(`f${i}`, path, 1000 + i);
-      const media = isEpisode
-        ? ep(i % 9, i)
-        : movie(`Superman ${String(i).padStart(5, '0')}`, 1941);
+      const media = isEpisode ? ep(i % 9, i) : movie(`Skyward ${String(i).padStart(5, '0')}`, 1941);
       job(`d${i}`, `f${i}`, { state: 'done', queuedAt: 1, media });
       job(`a${i}`, `f${i}`, { state: 'already_processed', queuedAt: 2, media });
     }
@@ -669,11 +667,11 @@ it('stays fast at 20,000 files', () => {
     return st;
   });
   const page = listLibraryFiles(db, { ...q(), limit: 100 });
-  const found = listLibraryFiles(db, { ...q(), search: 'beverly', limit: 100 });
+  const found = listLibraryFiles(db, { ...q(), search: 'bramble', limit: 100 });
 
   expect(page.total).toBe(N);
   expect(page.rows).toHaveLength(100);
-  // Movies "Superman 00001"… sort before "The Beverly Hillbillies".
+  // Movies "Skyward 00001"… sort before "The Bramblewood Family".
   expect(page.rows[0]).toMatchObject({ id: 'f1', latest: { id: 'd1', state: 'done' } });
   expect(page.rows[99]).toMatchObject({ id: 'f199' });
   expect(found.total).toBe(N / 2);
@@ -715,7 +713,7 @@ describe('titles and seasons', () => {
     job(`j-${id}`, id, { state, queuedAt: 1, media: ep(season, episode) });
   };
 
-  function seedHillbillies(): void {
+  function seedHollowbrook(): void {
     file('e1', '/media/tv/e1.mkv', 1000);
     job('j-e1', 'e1', { state: 'done', queuedAt: 1, media: ep(1, 1), result: done });
     file('e2', '/media/tv/e2.mkv', 1000);
@@ -730,18 +728,18 @@ describe('titles and seasons', () => {
   }
 
   it('groups episodes into one show card and lists movies one per file, by title', () => {
-    seedHillbillies();
+    seedHollowbrook();
     file('m1', '/media/tv/m1.mkv', 1000);
     job('j-m1', 'm1', {
       state: 'done',
       queuedAt: 1,
-      media: movie('Night of the Living Dead', 1968),
+      media: movie('Nocturne of the Quiet Moon', 1968),
     });
     file('m2', '/media/tv/m2.mkv', 1000);
-    job('j-m2', 'm2', { state: 'done', queuedAt: 1, media: movie('Sherlock Jr.', 1924) });
+    job('j-m2', 'm2', { state: 'done', queuedAt: 1, media: movie('Shepherd Jr.', 1924) });
     expect(tq().items.map((i) => [i.type, label(i)])).toEqual([
-      ['movie', 'Night of the Living Dead'],
-      ['movie', 'Sherlock Jr.'],
+      ['movie', 'Nocturne of the Quiet Moon'],
+      ['movie', 'Shepherd Jr.'],
       ['show', SHOW],
     ]);
     const m = tq().items[0];
@@ -750,7 +748,7 @@ describe('titles and seasons', () => {
   });
 
   it('a show card counts episodes, seasons, outcomes and space saved', () => {
-    seedHillbillies();
+    seedHollowbrook();
     expect(showCard()).toMatchObject({
       key: showKey(HILL),
       year: 1962,
@@ -762,7 +760,7 @@ describe('titles and seasons', () => {
   });
 
   it('a restored replace no longer counts as replaced or as space saved; running jobs are other', () => {
-    seedHillbillies();
+    seedHollowbrook();
     insertRestore(db, {
       id: 'x1',
       jobId: 'j-e1',
@@ -778,7 +776,7 @@ describe('titles and seasons', () => {
   });
 
   it('the same title with another year is another show; gone and job-less files are not counted', () => {
-    seedHillbillies();
+    seedHollowbrook();
     file('r1', '/media/tv/r1.mkv', 1000);
     job('j-r1', 'r1', { state: 'done', queuedAt: 1, media: { ...ep(1, 1), year: 2026 } });
     file('nojob', '/media/tv/nojob.mkv', 1000);
@@ -853,19 +851,19 @@ describe('titles and seasons', () => {
     addEp('e2', 1, 2);
     addEp('e1', 1, 1);
     expect(showCard().poster).toMatchObject({ jobId: 'j-e1', media: { episode: 1 } });
-    file('m', '/media/tv/Superman (1978).mkv', 1000);
+    file('m', '/media/tv/Skyward (1978).mkv', 1000);
     job('j-m', 'm', { state: 'done', queuedAt: 1 });
     const m = tq().items.find((i) => i.type === 'movie');
     expect(m).toMatchObject({ type: 'movie', fileId: 'm', poster: null });
   });
 
   it('search finds shows and movies by title only', () => {
-    seedHillbillies();
+    seedHollowbrook();
     file('m1', '/media/tv/m1.mkv', 1000);
-    job('j-m1', 'm1', { state: 'done', queuedAt: 1, media: movie('Sherlock Jr.', 1924) });
-    expect(titles({ search: 'hillbil' })).toEqual([SHOW]);
-    expect(showCard({ search: 'hillbil' }).episodes).toBe(3);
-    expect(titles({ search: 'sherlock' })).toEqual(['Sherlock Jr.']);
+    job('j-m1', 'm1', { state: 'done', queuedAt: 1, media: movie('Shepherd Jr.', 1924) });
+    expect(titles({ search: 'brambl' })).toEqual([SHOW]);
+    expect(showCard({ search: 'brambl' }).episodes).toBe(3);
+    expect(titles({ search: 'shepherd' })).toEqual(['Shepherd Jr.']);
     expect(titles({ search: 'S01E01' })).toEqual([]);
     expect(titles({ search: 'e1.mkv' })).toEqual([]);
     expect(titles({ search: '%' })).toEqual([]);
@@ -884,8 +882,8 @@ describe('titles and seasons', () => {
 
   it('showKey round-trips, and parseShowKey refuses garbage', () => {
     expect(parseShowKey(showKey(HILL))).toEqual(HILL);
-    expect(parseShowKey(showKey({ title: 'Superman', year: null }))).toEqual({
-      title: 'Superman',
+    expect(parseShowKey(showKey({ title: 'Skyward', year: null }))).toEqual({
+      title: 'Skyward',
       year: null,
     });
     expect(parseShowKey('not-a-key')).toBeNull();
@@ -895,7 +893,7 @@ describe('titles and seasons', () => {
   });
 
   it('a show card counts exactly the files listLibraryFiles returns for its show', () => {
-    seedHillbillies();
+    seedHollowbrook();
     addEp('e4', null, 1);
     file('r1', '/media/tv/r1.mkv', 1000);
     job('j-r1', 'r1', { state: 'done', queuedAt: 1, media: { ...ep(1, 1), year: null } });
@@ -920,7 +918,7 @@ describe('titles and seasons', () => {
   });
 
   it('listSeasons gives each season its episodes, outcomes and poster; no season comes last as none', () => {
-    seedHillbillies();
+    seedHollowbrook();
     file('e4', '/media/tv/e4.mkv', 1000);
     job('j-e4', 'e4', { state: 'done', queuedAt: 1, media: withPoster(ep(null, 1), '/p/n.jpg') });
     const seasons = listSeasons(db, 'l1', HILL);
@@ -944,22 +942,22 @@ describe('titles and seasons', () => {
   it('case-variant titles of the same year never tie: pages hold each card once, in a fixed order', () => {
     // Inserted lower case first, so an unordered tie would tend to put it first.
     file('lo', '/media/tv/lo.mkv', 1000);
-    job('j-lo', 'lo', { state: 'done', queuedAt: 1, media: { ...ep(1, 1), title: 'superman' } });
+    job('j-lo', 'lo', { state: 'done', queuedAt: 1, media: { ...ep(1, 1), title: 'skyward' } });
     file('up', '/media/tv/up.mkv', 1000);
-    job('j-up', 'up', { state: 'done', queuedAt: 1, media: { ...ep(1, 1), title: 'Superman' } });
+    job('j-up', 'up', { state: 'done', queuedAt: 1, media: { ...ep(1, 1), title: 'Skyward' } });
     file('caps', '/media/tv/caps.mkv', 1000);
     job('j-caps', 'caps', {
       state: 'done',
       queuedAt: 1,
-      media: { ...ep(1, 1), title: 'SUPERMAN' },
+      media: { ...ep(1, 1), title: 'SKYWARD' },
     });
-    expect(titles()).toEqual(['SUPERMAN', 'Superman', 'superman']);
+    expect(titles()).toEqual(['SKYWARD', 'Skyward', 'skyward']);
     const paged = [0, 1, 2].map((offset) => titles({ offset, limit: 1 })[0]);
-    expect(paged).toEqual(['SUPERMAN', 'Superman', 'superman']);
+    expect(paged).toEqual(['SKYWARD', 'Skyward', 'skyward']);
   });
 
   it('showExists finds a show with a present episode only', () => {
-    seedHillbillies();
+    seedHollowbrook();
     expect(showExists(db, 'l1', HILL)).toBe(true);
     expect(showExists(db, 'l1', { title: SHOW, year: 1999 })).toBe(false);
     expect(showExists(db, 'l1', { title: SHOW.toUpperCase(), year: 1962 })).toBe(false);

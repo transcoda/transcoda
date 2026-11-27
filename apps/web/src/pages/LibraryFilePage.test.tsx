@@ -30,11 +30,11 @@ const SHOW_KEY = 'key-from-the-server';
 const EPISODE = {
   ...fx.replaced.media,
   kind: 'episode' as const,
-  title: 'The Beverly Hillbillies',
+  title: 'The Bramblewood Family',
   year: null,
   season: 1,
   episode: 2,
-  episodeTitle: 'Jed Buys Stock',
+  episodeTitle: 'Ada Buys Stock',
 };
 
 const probeOf = (container: string, seconds: number, codec: string, sizeBytes: number) => ({
@@ -96,8 +96,8 @@ const latest = job({ id: 'j3', media: EPISODE, libraryId: 'l1', libraryName: 'Cl
 const detail = (over: Partial<LibraryFileDetail> = {}): LibraryFileDetail => ({
   file: {
     id: 'f1',
-    path: '/media/classic-tv/The Beverly Hillbillies S01E02.mkv',
-    fileName: 'The Beverly Hillbillies S01E02.mkv',
+    path: '/media/classic-tv/The Bramblewood Family S01E02.mkv',
+    fileName: 'The Bramblewood Family S01E02.mkv',
     sizeBytes: 700_000_000,
     originalBytes: null,
     mtime: at,
@@ -276,7 +276,7 @@ describe('LibraryFilePage', () => {
       media: {
         ...EPISODE,
         kind: 'movie',
-        title: 'Night of the Living Dead',
+        title: 'Nocturne of the Quiet Moon',
         year: 1968,
         season: null,
         episode: null,
@@ -361,11 +361,11 @@ describe('LibraryFilePage', () => {
 
   it('shows poster, title, path, size and the probe facts', async () => {
     const { container } = await renderPage();
-    expect(screen.getByRole('heading', { level: 1, name: 'The Beverly Hillbillies' })).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 1, name: 'The Bramblewood Family' })).toBeTruthy();
     const head = container.querySelector('.job-head') as HTMLElement;
     expect(within(head).getByText('S01E02', { selector: 'b' })).toBeTruthy();
-    expect(within(head).getByText(/Jed Buys Stock/)).toBeTruthy();
-    const path = '/media/classic-tv/The Beverly Hillbillies S01E02.mkv';
+    expect(within(head).getByText(/Ada Buys Stock/)).toBeTruthy();
+    const path = '/media/classic-tv/The Bramblewood Family S01E02.mkv';
     expect(screen.getByText(path)).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Show full path' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Copy path', description: path })).toBeTruthy();
@@ -384,7 +384,7 @@ describe('LibraryFilePage', () => {
       '/libraries/l1',
     );
     expect(
-      within(crumbs).getByRole('link', { name: 'The Beverly Hillbillies' }).getAttribute('href'),
+      within(crumbs).getByRole('link', { name: 'The Bramblewood Family' }).getAttribute('href'),
     ).toBe(`/libraries/l1/shows/${SHOW_KEY}`);
     expect(within(crumbs).getByRole('link', { name: 'Season 1' }).getAttribute('href')).toBe(
       `/libraries/l1/shows/${SHOW_KEY}/seasons/1`,
@@ -398,7 +398,7 @@ describe('LibraryFilePage', () => {
       media: {
         ...EPISODE,
         kind: 'movie',
-        title: 'Night of the Living Dead',
+        title: 'Nocturne of the Quiet Moon',
         year: 1968,
         season: null,
         episode: null,
@@ -456,8 +456,8 @@ describe('LibraryFilePage', () => {
       detail({ file: { ...detail().file, latest: bare }, jobs: [bare], jobsTotal: 1 }),
     );
     await renderPage();
-    expect(screen.getByRole('heading', { level: 1, name: 'The Beverly Hillbillies' })).toBeTruthy();
-    expect(document.title).toContain('The Beverly Hillbillies S01E02');
+    expect(screen.getByRole('heading', { level: 1, name: 'The Bramblewood Family' })).toBeTruthy();
+    await waitFor(() => expect(document.title).toContain('The Bramblewood Family S01E02'));
   });
 
   it('falls back to the file name when no job has stored media', async () => {
@@ -466,7 +466,7 @@ describe('LibraryFilePage', () => {
     );
     await renderPage();
     expect(
-      screen.getByRole('heading', { level: 1, name: 'The Beverly Hillbillies S01E02.mkv' }),
+      screen.getByRole('heading', { level: 1, name: 'The Bramblewood Family S01E02.mkv' }),
     ).toBeTruthy();
     const crumbs = screen.getByRole('navigation', { name: 'Breadcrumb' });
     expect(within(crumbs).getAllByRole('link')).toHaveLength(2);

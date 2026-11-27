@@ -87,7 +87,7 @@ describe('PosterStore', () => {
     base = await tempDir('poster-store-');
     lib = join(base, 'lib');
     dir = join(base, 'cache', 'posters');
-    await mkdir(join(lib, 'Sherlock Jr. (1924)'), { recursive: true });
+    await mkdir(join(lib, 'Shepherd Jr. (1924)'), { recursive: true });
     now = new Date('2026-11-17T12:00:00.000Z');
     calls = [];
     run = fakeRun;
@@ -102,7 +102,7 @@ describe('PosterStore', () => {
     (await readdir(dir).catch(() => [])).filter((n) => n.endsWith('.tmp'));
 
   async function poster(name = 'poster.jpg', head: Buffer = JPEG): Promise<string> {
-    const p = join(lib, 'Sherlock Jr. (1924)', name);
+    const p = join(lib, 'Shepherd Jr. (1924)', name);
     await writeFile(p, Buffer.concat([head, Buffer.alloc(100)]));
     const past = new Date(Date.now() - 60_000);
     await utimes(p, past, past);
@@ -194,7 +194,7 @@ describe('PosterStore', () => {
 
     it('a path through a symlinked folder', async () => {
       const real = await poster();
-      await symlink(join(lib, 'Sherlock Jr. (1924)'), join(lib, 'alias'));
+      await symlink(join(lib, 'Shepherd Jr. (1924)'), join(lib, 'alias'));
       expect(await store().thumbnail(join(lib, 'alias', 'poster.jpg'), lib)).toBeNull();
       expect(real).toBeTruthy();
     });
@@ -213,7 +213,7 @@ describe('PosterStore', () => {
     });
 
     it('a playlist named poster.jpg', async () => {
-      const p = join(lib, 'Sherlock Jr. (1924)', 'poster.jpg');
+      const p = join(lib, 'Shepherd Jr. (1924)', 'poster.jpg');
       await writeFile(p, '#EXTM3U\n#EXTINF:-1,x\nhttp://example.invalid/a.ts\n');
       expect(await store().thumbnail(p, lib)).toBeNull();
     });
@@ -408,7 +408,7 @@ describe('engine.jobPoster', () => {
   function job(id: string, posterPath: string | null): void {
     const media: StoredJobMedia = {
       kind: 'movie',
-      title: 'The General',
+      title: 'The Gardener',
       year: 1926,
       season: null,
       episode: null,
