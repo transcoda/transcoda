@@ -182,4 +182,6 @@ Entries from M0 to M3 had no date of their own; they carry the day their milesto
 - 2026-11-26 · Tooling · [Main red, file-size budget and screenshots checks](2026-11.md)
 - 2026-11-26 · Tooling · [Scripts in TypeScript, tests on Vitest](2026-11.md)
 - 2026-11-26 · Tooling · [Nightly on the shared actions](2026-11.md)
+- 2026-11-26 · Tests · [Real-ffmpeg tests on engine pull requests](2026-11.md)
+- 2026-11-26 · Tooling · [Renovate groups for pnpm and the shared tooling](2026-11.md)
 - 2026-11-27 · Engine · [VA-API out of the auto encoder order](2026-11.md)

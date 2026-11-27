@@ -5,6 +5,7 @@ The rules in force today for `.github/workflows/`, `docker/`, `renovate.json`, `
 ## On a pull request
 
 - **CI** (`ci.yml`): job `check` runs `pnpm install --frozen-lockfile`, `pnpm check` (typecheck, Biome with `--error-on-warnings`, knip, `check-deps`, `check-licences`, `check-file-size`, Vitest), `pnpm build`, and `docker/entrypoint.test.sh` in the image's Node base. Job `file-size` runs the org's `file-size` action: no source file over 1200 lines, and on a pull request no new or raised entry in `.github/file-size-allowlist.json` ([conventions.md](conventions.md#file-size)). Job `e2e` runs the browser and screenshot tests through `scripts/e2e-docker.sh`, the same script as `pnpm e2e:docker`.
+- **Real ffmpeg** (`real-ffmpeg.yml`, job `real-ffmpeg`): only on pull requests that touch the engine, its capabilities, the core nodes, the fixture generator or the Dockerfiles that pin ffmpeg (the `paths` list in the file). It runs `pnpm test:docker`: the unit tests in the e2e container with the fixtures, so the real-ffmpeg tests that `check` skips run against jellyfin-ffmpeg. Not a required check, since it doesn't run on every pull request.
 - **PR title** (`pr-title.yml`, job `pr-title`) and **Release note** (`release-note.yml`, job `release-note`) call the shared actions in the org's `.github` repository.
 - **Screenshots** (`screenshots.yml`, job `screenshots`): a pull request that changes `apps/web/src/` (tests and `src/test/` aside), `apps/web/index.html` or `apps/web/public/` needs an image in its description, or the `no screenshots needed` label when nothing visible changed. It runs again when the description or the labels change.
 - The `main` ruleset requires the `check`, `release-note` and `pr-title` checks, one approving review (code owner review on), and allows squash merges only. `e2e` runs on every pull request but is not a required check.
@@ -57,9 +58,9 @@ The plugins repository's nightly uses the same two actions.
 
 ## Dependency updates (Renovate)
 
-- One weekly window, Sunday 17:00 to 23:59 New York time; security fixes skip it and get the `security` label. Releases must be 3 days old first (not `@transcoda/sdk`). Weekly lockfile maintenance in the same window.
+- One weekly window, Sunday 17:00 to 23:59 New York time; security fixes skip it and get the `security` label. Releases must be 3 days old first, except our own: `@transcoda/sdk`, and the shared tooling from `transcoda/.github`. Weekly lockfile maintenance in the same window.
 - Every Renovate PR gets the `dependencies` and `no user-facing change` labels, and a house-style title (`Dependencies:`, `CI:` for actions, `FFmpeg:` for jellyfin-ffmpeg).
-- Groups: `GitHub Actions`, `npm non-major` (majors one by one), `Node.js` (`node` and `@types/node`; majors are disabled and done by hand), `Playwright` (the npm package and the container image together; run `pnpm e2e:update` on that PR and commit the new baselines).
+- Groups: `GitHub Actions`, `npm non-major` (majors one by one), `pnpm` (the `packageManager` field, on its own, as in the plugins repository so both move in the same week), `Node.js` (`node` and `@types/node`; majors are disabled and done by hand), `Playwright` (the npm package and the container image together; run `pnpm e2e:update` on that PR and commit the new baselines), `transcoda shared tooling` (the `@transcoda/dev-config` dev dependency and every `transcoda/.github/actions/*` pin move to the same tag in one PR, titled `CI:`).
 - Regex managers keep `JELLYFIN_FFMPEG_VERSION` and `COREPACK_VERSION` in `docker/Dockerfile` current. A jellyfin-ffmpeg PR asks the reviewer to swap the label for a `.changes/` note when users would notice the update.
 - There is no Dependabot.
 

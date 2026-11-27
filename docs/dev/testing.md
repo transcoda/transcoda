@@ -28,7 +28,7 @@ Use these instead of writing your own:
 ## Real-ffmpeg fixtures
 
 - `pnpm fixtures` (`scripts/fixtures/generate.ts`) makes small, reproducible test videos with your local ffmpeg into `.local/fixtures/` (git-ignored) and checks each with ffprobe. Run it once on a new checkout; without it the real-ffmpeg tests skip silently (`it.skipIf(!fixturesAvailable())`).
-- The `check` job in CI has no fixtures, so these tests skip on pull requests. They run in the e2e container in the nightly (`pnpm test:docker`), against the image's jellyfin-ffmpeg. When you change the engine, run `pnpm test:docker` (or `pnpm fixtures && pnpm test`) yourself.
+- The `check` job in CI has no fixtures, so these tests skip there. A pull request that touches the engine (`apps/server/src/engine/`, `capabilities/`, `nodes/core/`, the fixture generator, or the Dockerfiles that pin ffmpeg) also runs `real-ffmpeg.yml`: every unit test in the e2e container with the fixtures, against the image's jellyfin-ffmpeg (`pnpm test:docker`). The nightly runs the same for every change to `main`. Run `pnpm test:docker` (or `pnpm fixtures && pnpm test`) yourself before you push an engine change.
 - Encoders in tests are software only (`libx264`, `libx265`). Hardware encoders are not tested automatically.
 
 ## Browser tests and screenshots
