@@ -9,7 +9,7 @@ vi.mock('../api/client.ts', async () => {
 import { catalogOutput } from '../test/fixtures/plugins.ts';
 import { renderAt } from '../test/render.tsx';
 import { CatalogGroups, catalogCards, compareVersions, matchesQuery } from './CatalogSection.tsx';
-import type { CatalogView } from './usePlugins.ts';
+import type { CatalogView } from './use-plugins.ts';
 
 type Entry = CatalogView['plugins'][number];
 

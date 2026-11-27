@@ -43,9 +43,20 @@
           "style": {
             "useFilenamingConvention": {
               "level": "error",
-              "options": {
-                "filenameCases": ["kebab-case"]
-              }
+              "options": { "filenameCases": ["kebab-case"] }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["apps/web/src/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "useFilenamingConvention": {
+              "level": "error",
+              "options": { "filenameCases": ["kebab-case", "PascalCase"] }
             }
           }
         }
@@ -56,43 +67,19 @@
         "apps/server/src/plugins/fixtures/**",
         "apps/server/src/plugins/testing/global-setup.ts"
       ],
-      "linter": {
-        "rules": {
-          "style": {
-            "noDefaultExport": "off"
-          }
-        }
-      }
+      "linter": { "rules": { "style": { "noDefaultExport": "off" } } }
     },
     {
       "includes": ["e2e/**"],
-      "linter": {
-        "rules": {
-          "style": {
-            "useConsistentTestIt": "off"
-          }
-        }
-      }
+      "linter": { "rules": { "style": { "useConsistentTestIt": "off" } } }
     },
     {
       "includes": ["apps/server/src/logger.ts"],
-      "linter": {
-        "rules": {
-          "suspicious": {
-            "noConsole": "off"
-          }
-        }
-      }
+      "linter": { "rules": { "suspicious": { "noConsole": "off" } } }
     },
     {
       "includes": ["apps/web/src/**/*.css"],
-      "linter": {
-        "rules": {
-          "style": {
-            "noHexColors": "error"
-          }
-        }
-      }
+      "linter": { "rules": { "style": { "noHexColors": "error" } } }
     }
   ]
 }

@@ -1,12 +1,12 @@
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { settingsFixture } from './settingsFixture.ts';
+import { settingsFixture } from './settings-fixture.ts';
 
 const mocks = vi.hoisted(() => ({ get: vi.fn(), update: vi.fn(), setAppearance: vi.fn() }));
 vi.mock('../../api/client.ts', () => ({
   api: { settings: { get: mocks.get, update: mocks.update } },
 }));
-vi.mock('../../auth/useAuth.ts', () => ({
+vi.mock('../../auth/use-auth.ts', () => ({
   useAuth: () => ({ setAppearance: mocks.setAppearance }),
 }));
 

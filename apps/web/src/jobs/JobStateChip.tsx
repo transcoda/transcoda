@@ -6,7 +6,7 @@ import {
   stateWord,
   type Verdict,
   verdictOf,
-} from './jobText.ts';
+} from './job-text.ts';
 
 /** One icon per verdict (screen 07's chips; cancelled and already processed are not drawn). */
 export const VERDICT_ICON: Record<Verdict, IconName> = {

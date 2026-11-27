@@ -9,8 +9,8 @@ import { Icon } from '../components/Icon.tsx';
 import { ListboxSelect } from '../components/ListboxSelect.tsx';
 import { Loading } from '../components/Loading.tsx';
 import { useToast } from '../components/Toast.tsx';
-import { useWorkflows } from '../hooks/useWorkflows.ts';
-import { ACTIVATE_TO_RUN, recycleFolderText, runBlocked } from '../jobs/useRunOnFile.tsx';
+import { useWorkflows } from '../hooks/use-workflows.ts';
+import { ACTIVATE_TO_RUN, recycleFolderText, runBlocked } from '../jobs/use-run-on-file.tsx';
 
 /** What the dialog runs on: listed files by id, or every file of a show (one season). */
 export type RunSelection =

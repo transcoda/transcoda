@@ -16,9 +16,9 @@ vi.mock('../api/client.ts', async () => {
   return { api: mocks, isDefinedError: orpc.isDefinedError, safe: orpc.safe };
 });
 
-import { EventsProvider } from '../hooks/useEvents.ts';
-import { REFETCH_COALESCE_MS } from '../hooks/useRefetchOn.ts';
-import { fakeEventSource, jobChanged, queueSnapshot } from '../test/fakeEventStream.ts';
+import { EventsProvider } from '../hooks/use-events.ts';
+import { REFETCH_COALESCE_MS } from '../hooks/use-refetch-on.ts';
+import { fakeEventSource, jobChanged, queueSnapshot } from '../test/fake-event-stream.ts';
 import { fx, job } from '../test/fixtures/jobs.ts';
 import { renderAt } from '../test/render.tsx';
 import { LibraryFilePage } from './LibraryFilePage.tsx';

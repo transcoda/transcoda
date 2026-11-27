@@ -1,10 +1,10 @@
 import { branchPortLabel, branchWord } from '@transcoda/shared';
 import { Handle, Position } from '@xyflow/react';
 import { Icon } from '../../components/Icon.tsx';
-import type { PortSpec } from '../../hooks/useCatalog.ts';
-import type { Fit, HandleRef } from './connectionFit.ts';
+import type { PortSpec } from '../../hooks/use-catalog.ts';
+import type { Fit, HandleRef } from './connection-fit.ts';
 import type { TcNodeData } from './types.ts';
-import type { FlowState } from './useFlowState.ts';
+import type { FlowState } from './use-flow-state.ts';
 
 /**
  * Whether a node's file outputs read their own names: true when it shows more than one file

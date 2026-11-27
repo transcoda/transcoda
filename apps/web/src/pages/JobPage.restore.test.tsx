@@ -24,10 +24,10 @@ vi.mock('../api/client.ts', async () => {
 
 import { ORPCError } from '@orpc/client';
 import { Route, Switch } from 'wouter';
-import { resetCatalogCache } from '../hooks/useCatalog.ts';
-import { EventsProvider } from '../hooks/useEvents.ts';
+import { resetCatalogCache } from '../hooks/use-catalog.ts';
+import { EventsProvider } from '../hooks/use-events.ts';
 import { fmtDate } from '../lib/time.ts';
-import { fakeEventSource } from '../test/fakeEventStream.ts';
+import { fakeEventSource } from '../test/fake-event-stream.ts';
 import { nodesFixture } from '../test/fixtures/catalog.ts';
 import { jobDetail, runningJobDetail } from '../test/fixtures/trace.ts';
 import { renderAt } from '../test/render.tsx';

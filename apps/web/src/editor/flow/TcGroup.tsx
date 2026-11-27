@@ -4,7 +4,7 @@ import { Markdown } from '../../components/Markdown.tsx';
 import type { GroupProblem } from '../model/group-state.ts';
 import { useEditorActions } from './actions-context.ts';
 import { BADGE_ICON } from './badges.ts';
-import { GROUP_HANDLE } from './toFlow.ts';
+import { GROUP_HANDLE } from './to-flow.ts';
 import type { TcGroupNode } from './types.ts';
 
 /** Smallest box the resizer allows (a group still has room for its header and one card's edge). */

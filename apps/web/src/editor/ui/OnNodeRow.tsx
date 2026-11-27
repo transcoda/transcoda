@@ -2,8 +2,8 @@ import type { NodeInfo } from '@transcoda/contract';
 import type { JsonValue, NodeInstance } from '@transcoda/shared';
 import { useId, useMemo, useState } from 'react';
 import { languageName } from '../../data/languages.ts';
-import { useLibraries } from '../../hooks/useLibraries.ts';
-import type { ZoomLevel } from '../flow/useZoomLevel.ts';
+import { useLibraries } from '../../hooks/use-libraries.ts';
+import type { ZoomLevel } from '../flow/use-zoom-level.ts';
 import { NEEDS_A_SETTING, type NodeState } from '../model/issues.ts';
 import {
   clientIssue,

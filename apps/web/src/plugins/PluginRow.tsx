@@ -22,7 +22,7 @@ import {
   updateNeedsLook,
   usedByText,
   webLink,
-} from './pluginText.ts';
+} from './plugin-text.ts';
 import { TmdbAttribution } from './TmdbAttribution.tsx';
 import { UpdateDialog } from './UpdateDialog.tsx';
 

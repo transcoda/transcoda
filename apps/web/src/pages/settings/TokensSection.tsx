@@ -6,7 +6,7 @@ import { DisabledReason, RequiredMark } from '../../components/Form.tsx';
 import { Icon } from '../../components/Icon.tsx';
 import { Loading } from '../../components/Loading.tsx';
 import { RowMenu } from '../../components/RowMenu.tsx';
-import { useAsync } from '../../hooks/useAsync.ts';
+import { useAsync } from '../../hooks/use-async.ts';
 import { copyShortcut, copyText } from '../../lib/clipboard.ts';
 import { fmtAgo, fmtDate, fmtDayMonth } from '../../lib/time.ts';
 
