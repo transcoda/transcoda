@@ -36,7 +36,7 @@ vi.mock('../api/client.ts', async () => {
   };
 });
 
-import { resetCatalogCache } from '../hooks/useCatalog.ts';
+import { resetCatalogCache } from '../hooks/use-catalog.ts';
 import { stylesCss } from '../styles/css-source.ts';
 import { WorkflowsPage } from './WorkflowsPage.tsx';
 

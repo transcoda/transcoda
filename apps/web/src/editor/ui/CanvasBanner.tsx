@@ -2,7 +2,7 @@ import type { WorkflowSummary } from '@transcoda/contract';
 import type { Issue, WorkflowGraph } from '@transcoda/shared';
 import { type ReactNode, useId } from 'react';
 import { Icon } from '../../components/Icon.tsx';
-import type { Catalog } from '../../hooks/useCatalog.ts';
+import type { Catalog } from '../../hooks/use-catalog.ts';
 import { GuardedLink } from '../../lib/navigation.tsx';
 import { firstError } from '../model/issues.ts';
 import type { libraryShift as LibraryShiftFn } from '../model/library-shift.ts';

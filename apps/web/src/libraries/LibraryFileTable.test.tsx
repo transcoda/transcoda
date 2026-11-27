@@ -2,7 +2,7 @@ import { cleanup, fireEvent, screen, within } from '@testing-library/react';
 import type { LibraryFile } from '@transcoda/contract';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('../jobs/useQueue.ts', () => ({
+vi.mock('../jobs/use-queue.ts', () => ({
   useQueue: () => ({ status: { paused: false, lanes: {}, encodeSlots: 1 }, set: vi.fn() }),
 }));
 

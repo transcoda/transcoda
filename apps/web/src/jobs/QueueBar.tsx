@@ -1,7 +1,7 @@
 import { type ReactNode, useState } from 'react';
 import { api } from '../api/client.ts';
 import { useToast } from '../components/Toast.tsx';
-import type { Queue } from './useQueue.ts';
+import type { Queue } from './use-queue.ts';
 
 export const QUEUE_PAUSED_TEXT = 'Queue paused — running jobs are frozen, nothing new starts';
 

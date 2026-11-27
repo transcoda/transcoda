@@ -2,7 +2,7 @@ import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Link } from 'wouter';
 import { Icon, type IconName } from '../components/Icon.tsx';
 import type { NodeRef } from '../editor/trace/TraceCanvas.tsx';
-import type { Decision } from '../editor/trace/traceOverlay.ts';
+import type { Decision } from '../editor/trace/trace-overlay.ts';
 import {
   type Badge,
   badgeWord,

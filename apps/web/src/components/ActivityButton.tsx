@@ -5,12 +5,12 @@
 // panel is a disclosure, not a modal: Escape and a mousedown outside close it.
 import { useEffect, useRef, useState } from 'react';
 import { useLocation } from 'wouter';
-import { useCatalog } from '../hooks/useCatalog.ts';
+import { useCatalog } from '../hooks/use-catalog.ts';
 import { progressLine, type RingState, stepLine } from '../jobs/activity.ts';
 import { JobProgress } from '../jobs/JobProgress.tsx';
 import { DryRunBadge } from '../jobs/JobStateChip.tsx';
-import { type Job, percentOf, versionText } from '../jobs/jobText.ts';
-import { type Activity, useActivity } from '../jobs/useActivity.ts';
+import { type Job, percentOf, versionText } from '../jobs/job-text.ts';
+import { type Activity, useActivity } from '../jobs/use-activity.ts';
 import { GuardedLink } from '../lib/navigation.tsx';
 
 export const ACTIVITY_PANEL_ID = 'activity-panel';

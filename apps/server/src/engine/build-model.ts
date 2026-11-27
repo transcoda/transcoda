@@ -244,7 +244,7 @@ function metadataChanges(s: StreamPlan, p: ProbeStream): string[] {
 /**
  * `libx265 crf 24 medium main10 yuv420p10le`, `aac 160k 2ch`, `mov_text`. The job page reads this
  * back (`parseConversion` in packages/shared/src/engine/conversion.ts, used by the web's
- * jobs/compareJob.ts): change the format there too (build-model.test.ts round-trips it).
+ * jobs/compare-job.ts): change the format there too (build-model.test.ts round-trips it).
  */
 export function conversion(s: StreamPlan): string {
   const parts = [s.encoder ?? s.codec];

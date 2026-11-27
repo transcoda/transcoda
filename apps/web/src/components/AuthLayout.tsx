@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { api } from '../api/client.ts';
-import { useAsync } from '../hooks/useAsync.ts';
+import { useAsync } from '../hooks/use-async.ts';
 import { Mark, Wordmark } from './Logo.tsx';
 
 /**

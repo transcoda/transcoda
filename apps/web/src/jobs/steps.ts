@@ -22,9 +22,9 @@ import {
   RENDER_TYPE,
   TRACE_CANCELED,
 } from '@transcoda/shared';
-import type { Decision } from '../editor/trace/traceOverlay.ts';
+import type { Decision } from '../editor/trace/trace-overlay.ts';
 import { fmtKbps } from '../lib/rate.ts';
-import { languageNameOf } from './planText.ts';
+import { languageNameOf } from './plan-text.ts';
 
 export type Badge =
   | 'start'

@@ -1,6 +1,6 @@
 import { KIND_WORD } from '../components/Chips.tsx';
-import type { NodeKind } from '../hooks/useCatalog.ts';
-import { monogram, nodeNameOf } from './pluginGroups.ts';
+import type { NodeKind } from '../hooks/use-catalog.ts';
+import { monogram, nodeNameOf } from './plugin-groups.ts';
 
 /**
  * The 40px tile in front of a plugin's name: its own SVG icon, shown only as an image (an SVG in

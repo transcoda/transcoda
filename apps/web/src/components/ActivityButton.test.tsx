@@ -1,17 +1,17 @@
 import { act, cleanup, fireEvent, screen, within } from '@testing-library/react';
 import type { JobDetail } from '@transcoda/contract';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { CurrentNode } from '../editor/trace/traceOverlay.ts';
+import type { CurrentNode } from '../editor/trace/trace-overlay.ts';
 import { activitySummary, ringState } from '../jobs/activity.ts';
-import { detailLine, type Job } from '../jobs/jobText.ts';
-import type { Activity } from '../jobs/useActivity.ts';
+import { detailLine, type Job } from '../jobs/job-text.ts';
+import type { Activity } from '../jobs/use-activity.ts';
 
 const state = vi.hoisted(() => ({
   activity: null as Activity | null,
   detailsFor: [] as Array<readonly string[]>,
   listeners: new Set<() => void>(),
 }));
-vi.mock('../jobs/useActivity.ts', async () => {
+vi.mock('../jobs/use-activity.ts', async () => {
   const { useSyncExternalStore } = await import('react');
   const subscribe = (fn: () => void) => {
     state.listeners.add(fn);
@@ -25,8 +25,8 @@ vi.mock('../jobs/useActivity.ts', async () => {
   };
 });
 // Built here, not from test/fixtures/catalog.ts: that file imports this module (a mock cycle).
-vi.mock('../hooks/useCatalog.ts', async (importActual) => {
-  const actual = await importActual<typeof import('../hooks/useCatalog.ts')>();
+vi.mock('../hooks/use-catalog.ts', async (importActual) => {
+  const actual = await importActual<typeof import('../hooks/use-catalog.ts')>();
   const { NodesListOutputSchema } = await import('@transcoda/contract');
   const raw = (await import('../test/fixtures/nodes.json')).default;
   const catalog = actual.buildCatalog(NodesListOutputSchema.parse(raw).nodes);
