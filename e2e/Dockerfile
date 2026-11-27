@@ -3,16 +3,18 @@
 # Its tag moves with @playwright/test (Renovate groups them).
 FROM mcr.microsoft.com/playwright:v1.65.1-noble@sha256:1507cbfc550a63a6b7396791ca4f00df17beb56342d2447b3f106c306f525579
 
-# Node (the node_image build context), corepack and jellyfin-ffmpeg at the versions docker/Dockerfile
+# Node (the node_image build context), corepack (the corepack build context: docker/corepack's
+# lockfile, as docker/Dockerfile installs it) and jellyfin-ffmpeg at the version docker/Dockerfile
 # pins; the script passes them.
-ARG COREPACK_VERSION
 ARG JELLYFIN_FFMPEG_VERSION
 COPY --from=node_image /usr/local/bin/node /usr/local/bin/node
 COPY --from=node_image /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/npm
+COPY --from=corepack package.json package-lock.json /opt/corepack/
 ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
 RUN set -eux; \
     ln -sf ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm; \
-    npm install -g "corepack@${COREPACK_VERSION}"; \
+    npm ci --prefix /opt/corepack --ignore-scripts --no-audit --no-fund; \
+    ln -sf /opt/corepack/node_modules/corepack/dist/corepack.js /usr/local/bin/corepack; \
     corepack enable; \
     apt-get update; \
     apt-get install -y --no-install-recommends ca-certificates curl gnupg rsync; \

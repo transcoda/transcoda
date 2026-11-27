@@ -20,7 +20,7 @@ image=transcoda-e2e
 platform=linux/amd64
 docker build -q --platform "$platform" -t "$image" -f e2e/Dockerfile \
   --build-context "node_image=docker-image://$node_image" \
-  --build-arg "COREPACK_VERSION=$(arg COREPACK_VERSION)" \
+  --build-context corepack=docker/corepack \
   --build-arg "JELLYFIN_FFMPEG_VERSION=$(arg JELLYFIN_FFMPEG_VERSION)" \
   e2e >/dev/null
 
