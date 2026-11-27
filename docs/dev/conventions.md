@@ -4,16 +4,16 @@ Today's rules for how code is written here. Most of them are checked by `pnpm ch
 
 ## TypeScript
 
-- Strict mode with `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes` and `verbatimModuleSyntax` (`tsconfig.base.json`). `pnpm typecheck` runs `tsc -b` over the solution file.
+- Strict mode with `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes` and `verbatimModuleSyntax` (`@transcoda/dev-config/tsconfig.base.json`, the base the plugins repository extends too; every `tsconfig.json` here extends it). `pnpm typecheck` runs `tsc -b` over the solution file.
 - Node runs `.ts` directly. Relative imports name the extension (`./x.ts`).
 - Packages depend one way, `shared <- sdk <- contract <- server/web`; no relative import from one workspace package into another. `pnpm check-deps` (`scripts/check-deps.mjs`) enforces both.
 
 ## Checked by Biome
 
-Biome's recommended preset, plus `overrides` blocks and two GritQL plugins in `biome.json`. `pnpm lint` runs `biome check --error-on-warnings`, so a warning fails CI like an error. The rules added on top of the preset:
+`biome.json` extends the shared base, `@transcoda/dev-config/biome` from the org's `.github` repository: the formatter, Biome's recommended preset and the rules below that both repositories share. `biome.json` adds this repository's files, its own rules (file names, CSS) and exceptions as `overrides`, and turns on the base's two GritQL rules for its paths. `pnpm lint` runs `biome check --error-on-warnings`, so a warning fails CI like an error. The rules added on top of the preset:
 
 - **Imports:** extensions on relative imports (`useImportExtensions`); no import cycles (`noImportCycles`); no deprecated imports (`noDeprecatedImports`).
-- **Exports:** no default exports (`noDefaultExport`). Exempt: tool config files (`*.config.ts`), plugin fixtures (the plugin format is a default export) and Vitest's `globalSetup`.
+- **Exports:** no default exports (`noDefaultExport`). Exempt: tool config files (`*.config.{ts,mts,js,mjs}`, in the shared base), plugin fixtures (the plugin format is a default export) and Vitest's `globalSetup`.
 - **Types:** no `any` (`noExplicitAny`), no non-null `!` (`noNonNullAssertion`), `T[]` rather than `Array<T>` (`useConsistentArrayType`).
 - **Promises:** no floating promises, no `await` on a non-promise (`noFloatingPromises`, `useAwaitThenable`).
 - **Console:** no `console` in app and package source (`noConsole`). The server logs through `apps/server/src/logger.ts`, the one exempt file.
@@ -24,9 +24,10 @@ Biome's recommended preset, plus `overrides` blocks and two GritQL plugins in `b
   - a test follows its subject (`JobPage.test.tsx`, `media-text.test.ts`); a test of one part of a component file adds a dot part (`TcNode.ports.test.tsx`); a test of a topic rather than a file is kebab-case (`editor-layout-css.test.ts`).
   - Biome cannot see what a file exports, so `apps/web/src/file-names.test.ts` checks which case applies: a PascalCase module is a `.tsx` file that exports a component, a `.tsx` file that exports only components is PascalCase, and a PascalCase test has a component file of that name beside it.
 - **CSS:** no hex colours in the web stylesheets (`noHexColors`); colours come from the tokens.
-- **UTC dates** (`scripts/biome/utc-dates.grit`): no local-time `Date` methods (`getHours`, `toLocaleDateString`, ...) in server or package code. Times are UTC. A place that really means local time has a `biome-ignore lint/plugin/utc-dates` with its reason (backup file names, the day in an "already processed" reason). GritQL has no types, so `toLocaleString` is flagged only on `new Date(...)` or a receiver named like a date (`d`, `*Date*`, `*Time*`, `*Now*`, `*When*`, `*Day*`, `*At`).
-- **Web test cleanup** (`scripts/biome/test-cleanup.grit`): a web test file that imports `render` or `renderHook` has a top-level `afterEach` that calls `cleanup`. Web tests run without Vitest globals, so Testing Library cannot clean up by itself.
+- **UTC dates** (`utc-dates.grit` from the shared package): no local-time `Date` methods (`getHours`, `toLocaleDateString`, ...) in server or package code. Times are UTC. A place that really means local time has a `biome-ignore lint/plugin/utc-dates` with its reason (backup file names, the day in an "already processed" reason). GritQL has no types, so `toLocaleString` is flagged only on `new Date(...)` or a receiver named like a date (`d`, `*Date*`, `*Time*`, `*Now*`, `*When*`, `*Day*`, `*At`).
+- **Web test cleanup** (`test-cleanup.grit` from the shared package): a web test file that imports `render` or `renderHook` has a top-level `afterEach(cleanup)`, or an `afterEach` whose callback calls `cleanup()`. Web tests run without Vitest globals, so Testing Library cannot clean up by itself.
 - Formatting: two spaces, single quotes, 100 columns. `pnpm format` fixes it.
+- A rule both repositories should follow goes in the shared base (`biome/base.json` in `transcoda/.github`), not here; a rule only this repository needs goes in `biome.json`'s `overrides`.
 - A suppression (`biome-ignore`) always says why. Don't add one to get past a rule you could follow. `scripts/biome-suppressions.test.ts` holds a budget per rule: a new suppression fails it, and so does a removed one until its count is lowered, so the budget only goes down. Raising a count is a decision a reviewer has to see in the pull request.
 
 ## Dead code

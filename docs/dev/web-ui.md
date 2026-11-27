@@ -81,7 +81,7 @@ The rules in force today for `apps/web/**`. History is in the decision files lin
 ## Web tests
 
 - Unit tests sit beside the code (`*.test.ts(x)`), Vitest in jsdom with Testing Library. Find elements by role and accessible name. Which tier a test belongs in: [testing.md](testing.md).
-- Vitest globals are off, so every file that imports `render` or `renderHook` has a top-level `afterEach(cleanup)` (Biome rule `scripts/biome/test-cleanup.grit`; one inside a `describe` does not count).
+- Vitest globals are off, so every file that imports `render` or `renderHook` has a top-level `afterEach(cleanup)` (Biome rule `test-cleanup.grit` from `@transcoda/dev-config`; one inside a `describe` does not count).
 - Render a page with `renderAt(path, ui)` from `test/render.tsx` (a wouter memory router plus `ToastProvider`). Bare React Flow: `renderFlow` from `test/flow.tsx`. The event stream: `test/fake-event-stream.ts`. `test/setup.ts` gives jsdom the layout React Flow needs.
 - Node definitions in tests come from `catalogFixture` / `nodesFixture` (`test/fixtures/catalog.ts`), never from `nodes.json` directly. `test/fixtures/nodes.json` is generated: `pnpm --filter @transcoda/server dump-nodes > apps/web/src/test/fixtures/nodes.json` (`apps/server/scripts/dump-nodes.ts`), then re-add the hand-written `test:unavailable` entry. `apps/server/src/nodes/web-fixture.test.ts` fails when the core nodes in it drift from the server.
 - No `toMatchSnapshot` of component HTML. Assert what a user sees.
