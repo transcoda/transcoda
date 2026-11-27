@@ -25,12 +25,8 @@
     "e2e:report": "playwright show-report .local/e2e-report",
     "notices": "node scripts/third-party-notices.ts",
     "check-licences": "node --test scripts/third-party-notices.test.ts && node scripts/third-party-notices.ts --check",
-<<<<<<< HEAD
     "check-file-size": "transcoda-file-size --max-lines 1200 --allowlist .github/file-size-allowlist.json 'apps/**/*.{ts,tsx,mts,mjs,css}' 'packages/**/*.{ts,tsx,mts,mjs}' 'scripts/**/*.{ts,mts,mjs}' 'e2e/**/*.{ts,mjs}' '*.{ts,mts,mjs}' '!**/fixtures/**'",
-    "check": "pnpm typecheck && pnpm lint && pnpm check-deps && pnpm check-licences && pnpm check-file-size && pnpm test"
-=======
-    "check": "pnpm typecheck && pnpm lint && pnpm knip && pnpm check-deps && pnpm check-licences && pnpm test"
->>>>>>> jhadenfeldt/shared-checks-adopt
+    "check": "pnpm typecheck && pnpm lint && pnpm knip && pnpm check-deps && pnpm check-licences && pnpm check-file-size && pnpm test"
   },
   "devDependencies": {
     "@biomejs/biome": "2.6.8",

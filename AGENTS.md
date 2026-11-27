@@ -15,11 +15,7 @@ Dependencies point one way: `packages/shared` ← `packages/sdk` ← `packages/c
 
 ## What done means
 
-<<<<<<< HEAD
-- `pnpm check` passes (typecheck, Biome, dependency, licence and file-size checks, all tests). No file over 1200 lines; split it rather than grow an entry in `.github/file-size-allowlist.json` ([conventions.md](docs/dev/conventions.md#file-size)).
-=======
-- `pnpm check` passes (typecheck, Biome with warnings as errors, knip, dependency and licence checks, all tests).
->>>>>>> jhadenfeldt/shared-checks-adopt
+- `pnpm check` passes (typecheck, Biome with warnings as errors, knip, dependency, licence and file-size checks, all tests). No file over 1200 lines; split it rather than grow an entry in `.github/file-size-allowlist.json` ([conventions.md](docs/dev/conventions.md#file-size)).
 - **Release note:** a note in `.changes/` ([format](.changes/README.md)). Use the `no user-facing change` label instead when users will not notice the change.
 - **Tests** are in the right tier ([testing.md](docs/dev/testing.md)), and a bug fix comes with a test that failed before the fix.
   - Run `pnpm fixtures` once per checkout. Without it, the real-ffmpeg tests skip silently.
