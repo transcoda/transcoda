@@ -1,7 +1,8 @@
 import { link, rm, stat, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { type Fingerprint, fingerprintKey, fingerprintOf, sameFingerprint } from './fingerprint.ts';
+import { type Fingerprint, fingerprintKey } from '../db/repos/files.ts';
+import { fingerprintOf, sameFingerprint } from './fingerprint.ts';
 import { tempDir } from './fixtures.ts';
 
 const base: Fingerprint = { sizeBytes: 1234, mtimeMs: 1700000000123, ino: 42, dev: 7, nlink: 1 };

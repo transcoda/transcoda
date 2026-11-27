@@ -15,8 +15,8 @@ import { type AddressInfo, createServer as createTcpServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import type { SigningKey } from '../platform/signing-keys.ts';
 import { Installer, MAX_BUNDLE_BYTES } from './installer.ts';
-import type { SigningKey } from './signature.ts';
 import { signText } from './testing/sign.ts';
 
 const SDK = '1.0.0-rc.1';

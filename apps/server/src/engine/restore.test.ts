@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { emptyGraph } from '@transcoda/shared';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { Database } from '../db/open.ts';
+import { fingerprintKey } from '../db/repos/files.ts';
 import {
   alreadyProcessedReason,
   findJob,
@@ -23,7 +24,7 @@ import { insertWorkflow } from '../db/repos/workflows.ts';
 import { createTestDb } from '../db/test-db.ts';
 import { failingAt, nodeFsOps } from '../platform/fs-ops.ts';
 import type { Logger } from '../platform/logger.ts';
-import { fingerprintKey, fingerprintOf } from './fingerprint.ts';
+import { fingerprintOf } from './fingerprint.ts';
 import { tempDir } from './fixtures.ts';
 import { type RestoreDeps, recycleFolderOf, restoreRecycled } from './restore.ts';
 

@@ -2,6 +2,7 @@ import type { Stats } from 'node:fs';
 import { basename, dirname, isAbsolute, join, relative } from 'node:path';
 import { fmtBytes } from '@transcoda/shared';
 import { type Database, durably } from '../db/open.ts';
+import type { Fingerprint } from '../db/repos/files.ts';
 import { type RecycledInsert, type ReplaceJournal, updateJob } from '../db/repos/jobs.ts';
 import {
   errorCode,
@@ -12,7 +13,7 @@ import {
   syncFile,
 } from '../platform/fs-ops.ts';
 import type { Logger } from '../platform/logger.ts';
-import { type Fingerprint, sameFingerprint } from './fingerprint.ts';
+import { sameFingerprint } from './fingerprint.ts';
 import { recordRecycledRow } from './recycle.ts';
 /** Free space the original's filesystem must keep beyond the replacement's size. */
 export const FREE_SPACE_MARGIN_BYTES = 5_000_000_000;

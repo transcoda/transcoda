@@ -1,14 +1,5 @@
 import { stat } from 'node:fs/promises';
-
-/** Identity of a file on disk: if any of size, mtime, inode or device changes, it is a new file. */
-export interface Fingerprint {
-  sizeBytes: number;
-  mtimeMs: number;
-  ino: number;
-  dev: number;
-  /** Hard-link count; reported, but not part of the identity. */
-  nlink: number;
-}
+import type { Fingerprint } from '../db/repos/files.ts';
 
 /** @internal Test helper (the engine fingerprints from the stats it already has: `fingerprintFromStats`). */
 export async function fingerprintOf(
@@ -17,10 +8,6 @@ export async function fingerprintOf(
 ): Promise<Fingerprint> {
   const st = await fs.stat(path);
   return { sizeBytes: st.size, mtimeMs: st.mtimeMs, ino: st.ino, dev: st.dev, nlink: st.nlink };
-}
-
-export function fingerprintKey(f: Fingerprint): string {
-  return `${f.dev}:${f.ino}:${f.sizeBytes}:${f.mtimeMs}`;
 }
 
 /** Same file, unchanged: size, mtime, inode and device match (nlink is ignored). */

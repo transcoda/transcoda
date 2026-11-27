@@ -12,7 +12,7 @@ import type {
 } from '@transcoda/sdk';
 import type { HookName, JsonValue } from '@transcoda/shared';
 import { z } from 'zod';
-import type { CoreTools } from '../engine/check-source.ts';
+import type { CoreTools } from './core-tools.ts';
 import { serverSettingsSchema } from './plugin-settings-schema.ts';
 import type { NodeSource } from './registry.ts';
 

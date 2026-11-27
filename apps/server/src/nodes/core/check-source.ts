@@ -5,7 +5,7 @@ import {
   CHECK_SOURCE_TYPE,
 } from '@transcoda/shared';
 import { z } from 'zod';
-import type { CoreTools } from '../../engine/check-source.ts';
+import type { CoreTools } from '../core-tools.ts';
 import { filePort } from './common.ts';
 
 /**

@@ -1,10 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { OFFICIAL_BLOCKLIST_URL } from './catalog-url.ts';
-import {
-  BLOCKLIST_INERT_WARNING,
-  blocklistInertWarning,
-  OFFICIAL_SIGNING_KEYS,
-} from './official-keys.ts';
+import { OFFICIAL_BLOCKLIST_URL, OFFICIAL_SIGNING_KEYS } from '../platform/official-plugins.ts';
+import { BLOCKLIST_INERT_WARNING, blocklistInertWarning } from './official-keys.ts';
 
 describe('blocklistInertWarning', () => {
   const other = [{ id: 'mine', publicKey: 'a'.repeat(64) }];

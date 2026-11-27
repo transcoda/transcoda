@@ -14,6 +14,7 @@ import {
   type StoredJobMedia,
 } from '@transcoda/shared';
 import type { Database } from '../db/open.ts';
+import { type Fingerprint, fingerprintKey } from '../db/repos/files.ts';
 import {
   alreadyProcessedReason,
   fileSeen,
@@ -41,7 +42,6 @@ import { errorCode, type FsOps, nodeFsOps } from '../platform/fs-ops.ts';
 import type { Logger } from '../platform/logger.ts';
 import type { WorkflowService } from '../workflows/service.ts';
 import type { EngineEvents } from './events.ts';
-import { type Fingerprint, fingerprintKey } from './fingerprint.ts';
 import { createMediaResolver, type MediaResolver } from './media-info.ts';
 import {
   checkPath,

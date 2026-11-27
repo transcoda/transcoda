@@ -1,14 +1,6 @@
 {
   "$comment": "What broke a rule of scripts/check-structure.ts before the check existed. Every list only shrinks: fix the code, then remove the entry (the check fails until you do). Never add an entry to get past a new failure. Rules and fixes: docs/dev/structure.md.",
   "upwardImports": [
-    "apps/server/src/platform/config.ts -> apps/server/src/plugins/catalog-url.ts",
-    "apps/server/src/platform/config.ts -> apps/server/src/plugins/official-keys.ts",
-    "apps/server/src/platform/config.ts -> apps/server/src/plugins/signature.ts",
-    "apps/server/src/db/repos/jobs.ts -> apps/server/src/engine/fingerprint.ts",
-    "apps/server/src/engine/test-outputs.ts -> apps/server/src/engine/preview.ts",
-    "apps/server/src/nodes/core/already-processed.ts -> apps/server/src/engine/check-source.ts",
-    "apps/server/src/nodes/core/check-source.ts -> apps/server/src/engine/check-source.ts",
-    "apps/server/src/nodes/remote.ts -> apps/server/src/engine/check-source.ts",
     "apps/web/src/components/ActivityButton.tsx -> apps/web/src/jobs/JobProgress.tsx",
     "apps/web/src/components/ActivityButton.tsx -> apps/web/src/jobs/JobStateChip.tsx",
     "apps/web/src/components/ActivityButton.tsx -> apps/web/src/jobs/activity.ts",

@@ -32,12 +32,12 @@ import {
   SIZE_GATE_ELSE_PORT,
   SIZE_GATE_TYPE,
 } from '../nodes/availability.ts';
+import type { CoreTools } from '../nodes/core-tools.ts';
 import type { NodeRegistry } from '../nodes/registry.ts';
 import { isRemoteDefinition, RemoteHookError } from '../nodes/remote.ts';
 import { migrationPath } from '../workflows/upgrade.ts';
 import { behaviourHoldText, SIZE_GATE_SHARED_TEXT } from '../workflows/validate.ts';
 import { isExtraStream, modelFromProbe } from './build-model.ts';
-import type { CoreTools } from './check-source.ts';
 import { modelChanges } from './model-changes.ts';
 import type { AutoPick } from './retarget.ts';
 

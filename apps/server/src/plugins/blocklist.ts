@@ -9,9 +9,10 @@ import { PLUGIN_NAME_PATTERN } from '@transcoda/shared';
 import semver from 'semver';
 import { z } from 'zod';
 import type { Logger } from '../platform/logger.ts';
+import type { SigningKey } from '../platform/signing-keys.ts';
 import { urlSchema } from './catalog.ts';
 import { httpFetch } from './http-get.ts';
-import { type SigningKey, verifySignature } from './signature.ts';
+import { verifySignature } from './signature.ts';
 import { fetchSigned, SignatureError } from './signed-fetch.ts';
 
 /** Largest blocklist body accepted. */

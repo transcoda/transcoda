@@ -14,6 +14,7 @@ import { z } from 'zod';
 import { encodeSlots, readEncodeDevice, readGpuOrder } from '../capabilities/devices.ts';
 import type { Exec } from '../capabilities/ffmpeg.ts';
 import type { Database } from '../db/open.ts';
+import { fingerprintKey } from '../db/repos/files.ts';
 import {
   allTimeSaved,
   countDependsOnSize,
@@ -55,7 +56,6 @@ import { migratePinned } from '../workflows/validate.ts';
 import { LibraryCatchUp } from './catch-up.ts';
 import { contentHash } from './content-hash.ts';
 import { EngineEvents } from './events.ts';
-import { fingerprintKey } from './fingerprint.ts';
 import { readCondensedTail } from './log-condense.ts';
 import { MediaPass } from './media-pass.ts';
 import { logPathFor, Pipeline } from './pipeline.ts';

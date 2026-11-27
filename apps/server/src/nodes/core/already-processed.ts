@@ -1,6 +1,6 @@
 import { defineNode } from '@transcoda/sdk';
 import { ALREADY_PROCESSED_TYPE, AlreadyProcessedSettingsSchema } from '@transcoda/shared';
-import type { CoreTools } from '../../engine/check-source.ts';
+import type { CoreTools } from '../core-tools.ts';
 import { filePort, passElse } from './common.ts';
 
 /**

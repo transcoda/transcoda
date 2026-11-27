@@ -1,19 +1,7 @@
-import type { JsonValue } from '@transcoda/shared';
 import type { Database } from '../db/open.ts';
 import { findProcessedResult, type ProcessedResult } from '../db/repos/jobs.ts';
 import { findWorkflow } from '../db/repos/workflows.ts';
-
-/** What Already processed asks: a workflow (null: the job's own) and a version (null: any). */
-export interface AlreadyProcessedQuery {
-  workflowId: string | null;
-  version: number | null;
-}
-
-export interface AlreadyProcessedAnswer {
-  processed: boolean;
-  reason: string;
-  findings: Record<string, JsonValue>;
-}
+import type { AlreadyProcessedAnswer, AlreadyProcessedQuery } from '../nodes/core-tools.ts';
 
 /** The job and file Already processed decides for (the pipeline binds them). */
 export interface AlreadyProcessedSubject {

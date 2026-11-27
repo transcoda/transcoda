@@ -1,15 +1,7 @@
 import { createPublicKey, type KeyObject, verify } from 'node:crypto';
 import { z } from 'zod';
+import { HEX_KEY, KEY_ID, type SigningKey } from '../platform/signing-keys.ts';
 
-/** One trusted ed25519 public key: an id the signature file names, and the raw 32 bytes as hex. */
-export interface SigningKey {
-  id: string;
-  /** 64 lowercase hex characters. */
-  publicKey: string;
-}
-
-const KEY_ID = /^[A-Za-z0-9._-]{1,64}$/;
-const HEX_KEY = /^[0-9a-f]{64}$/;
 // Prefix of an ed25519 SubjectPublicKeyInfo DER; the raw key is appended.
 const SPKI_PREFIX = Buffer.from('302a300506032b6570032100', 'hex');
 
@@ -70,21 +62,4 @@ export function verifySignature(
   return good
     ? { ok: true, keyId }
     : { ok: false, reason: 'mismatch', message: 'signature does not match' };
-}
-
-/** `<id>:<64 hex>` entries, comma-separated. */
-export function parseSigningKeys(value: string): SigningKey[] {
-  return value
-    .split(',')
-    .map((s) => s.trim())
-    .filter((s) => s.length > 0)
-    .map((entry) => {
-      const i = entry.indexOf(':');
-      const id = i < 0 ? '' : entry.slice(0, i);
-      const publicKey = i < 0 ? '' : entry.slice(i + 1);
-      if (!KEY_ID.test(id) || !HEX_KEY.test(publicKey)) {
-        throw new Error(`${entry}: expected <id>:<64 hex>`);
-      }
-      return { id, publicKey };
-    });
 }

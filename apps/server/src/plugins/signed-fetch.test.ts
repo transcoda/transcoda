@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
-import type { SigningKey } from './signature.ts';
+import type { SigningKey } from '../platform/signing-keys.ts';
 import { fetchSigned, SignatureError, sigUrlOf } from './signed-fetch.ts';
 
 const { publicKey, privateKey } = generateKeyPairSync('ed25519');

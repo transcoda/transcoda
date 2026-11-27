@@ -6,6 +6,7 @@ import { dirname, extname, join } from 'node:path';
 import type { AnyFinishAction, ProbeResult, StreamPlan } from '@transcoda/sdk';
 import type { Issue, JsonValue, Lane, TraceEntry, WorkflowGraph } from '@transcoda/shared';
 import { type Exec, makeExec } from '../capabilities/ffmpeg.ts';
+import { type Fingerprint, fingerprintKey } from '../db/repos/files.ts';
 import {
   alreadyProcessedReason,
   appendTrace,
@@ -17,6 +18,7 @@ import {
   type WalkStep,
 } from '../db/repos/jobs.ts';
 import { findRun } from '../db/repos/runs.ts';
+import type { CoreTools } from '../nodes/core-tools.ts';
 import { alreadyProcessed } from './already-processed.ts';
 import {
   copyPictures,
@@ -27,9 +29,8 @@ import {
   kept,
   normalizeDefaults,
 } from './build-model.ts';
-import { type CoreTools, checkSource } from './check-source.ts';
+import { checkSource } from './check-source.ts';
 import type { CurrentNode } from './events.ts';
-import { type Fingerprint, fingerprintKey } from './fingerprint.ts';
 import { loadWorkflowForJob } from './load-workflow.ts';
 import { checkPath, skipReasonFor } from './paths.ts';
 import { sourceDamagedAtCheck } from './pipeline-branches.ts';
