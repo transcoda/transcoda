@@ -10,7 +10,7 @@
   },
   "scripts": {
     "typecheck": "tsc -b",
-    "lint": "biome check .",
+    "lint": "biome check --error-on-warnings .",
     "format": "biome check --write .",
     "test": "vitest run",
     "build": "pnpm --filter @transcoda/web build && pnpm --filter @transcoda/server build",

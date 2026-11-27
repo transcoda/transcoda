@@ -338,6 +338,7 @@
   background: var(--surface);
 }
 
+/* biome-ignore lint/style/noDescendingSpecificity: a different list from .about-backups-list li + li above; the two never nest, so their order does not matter */
 .licence-list li {
   border-top: 1px solid var(--line);
 }

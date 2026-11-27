@@ -67,6 +67,7 @@ The rules in force today for `apps/web/**`. History is in the decision files lin
   - A new area gets a new file, imported from `index.css` at the right place in the cascade (usually just before `utilities.css`, which stays last).
   - Never add to `assorted.css`: it is a catch-all kept only to preserve the cascade order.
   - The design tests read every imported file, in order, through `styles/css-source.ts` (`stylesCss`), and `styles/design-rules-css.test.ts` fails when a `.css` file in `styles/` is not imported.
+  - **Specificity is linted per file only.** Biome's `noDescendingSpecificity` (an error, like every warning: `pnpm lint` runs with `--error-on-warnings`) compares selectors within one file. A rule in a later file that a more specific rule in an earlier file overrides is not flagged; when you move or add a rule across files, check the cascade yourself (the screenshot tests catch what they show). Within a file, put the general rule before the specific one; where two selectors only share their last part and never match the same element, a `biome-ignore` with that reason is fine.
 
 ## Accessibility
 

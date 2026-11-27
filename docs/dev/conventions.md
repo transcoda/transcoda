@@ -10,7 +10,7 @@ Today's rules for how code is written here. Most of them are checked by `pnpm ch
 
 ## Checked by Biome
 
-Biome's recommended preset, plus one `overrides` block and two GritQL plugins in `biome.json`. All are errors:
+Biome's recommended preset, plus `overrides` blocks and two GritQL plugins in `biome.json`. `pnpm lint` runs `biome check --error-on-warnings`, so a warning fails CI like an error. The rules added on top of the preset:
 
 - **Imports:** extensions on relative imports (`useImportExtensions`); no import cycles (`noImportCycles`); no deprecated imports (`noDeprecatedImports`).
 - **Exports:** no default exports (`noDefaultExport`). Exempt: tool config files (`*.config.ts`), plugin fixtures (the plugin format is a default export) and Vitest's `globalSetup`.
@@ -41,6 +41,5 @@ Biome's recommended preset, plus one `overrides` block and two GritQL plugins in
 - **Words.** Every size a person reads or types is SI (1 kB = 1000 B), printed by `fmtBytes` from `@transcoda/shared`; binary units stay in internal byte math only. Times are stored and logged in UTC. UI text is short, plain and says what happened; match the words existing pages use (see [web-ui.md](web-ui.md)).
 - **Names in public text.** Fixtures, tests, docs, screenshots and commit messages use invented titles (Otter and Finch, Harbor Lights, ...). Never a real show or film, a real person, an email address, a hostname or a private IP.
 - **Comments** say why, not what. A comment that cites a decision points to the topic doc in `docs/dev/` or to the log entry by its heading (`docs/decisions/<file>.md`, "M1 engine Task 13: replace").
-- **Biome warnings** do not fail CI yet. Don't add new ones.
 
 History: [2026-11](../decisions/2026-11.md) ("Code consistency checks", "Design rule checks", "SI units everywhere"), [M0](../decisions/2026-10-m0.md) ("M0 tooling", "Task 5").
