@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import type { ProbeResult } from '@transcoda/sdk';
 import type { JobState } from '@transcoda/shared';
 import { describe, expect, it, vi } from 'vitest';
-import { findJobResult, hasReplaceJournal, listRecycled, updateJob } from '../db/repos/jobs.ts';
+import { findJobResult, hasReplaceJournal, listRecycled } from '../db/repos/jobs.ts';
 import { node } from '../workflows/test-helpers.ts';
 import { modelFromProbe } from './build-model.ts';
 import { contentHash } from './content-hash.ts';
@@ -340,45 +340,6 @@ describe('pipeline: fix round (review)', () => {
     expect((await stat(join(root, '.transcoda-recycle', 'Show', 'a.mkv'))).size).toBe(1000);
     expect(listRecycled(t.db)).toHaveLength(1);
     expect(await listAll(join(root, 'Show'))).toEqual(['/a.mkv']);
-  });
-
-  it('final I2: installed but the .orig cannot be removed: done with replacedTo/afterBytes and a warning; the journal stays and the next start finishes it', async () => {
-    await t.deps.engine.stop();
-    let id = '';
-    const copyPath = join(root, '.transcoda-recycle', 'Show', 'a.mkv');
-    // The install fails (settled at once); recycling is off for this journal (no M1 path sets
-    // that, so the test turns it off) and the .orig cannot be removed once.
-    const link = faultOnce(fsOps, 'link', (_a, b) => {
-      if (b !== file()) return false;
-      const j = row(id).replaceJournal;
-      if (j) updateJob(t.db, id, { replaceJournal: { ...j, recycling: false } }, new Date());
-      return true;
-    });
-    const fs = faultOnce(link, 'unlink', (p) => p === copyPath, 'EACCES');
-    await setup({ fs });
-    id = await queue(file(), encodeAnd(replaceNode()));
-    const job = await runOnce(id);
-    expect(link.fired() && fs.fired()).toBe(true);
-    expect(job).toMatchObject({ state: 'done', attempt: 1 });
-    expect(job.reason).toBe(
-      'finished with a problem: replace: installing_tmp: injected; recovered: the replacement is installed; ' +
-        `the original copy ${copyPath} could not be removed, the next start retries`,
-    );
-    expect(findJobResult(t.db, id)).toMatchObject({
-      outcome: 'done',
-      afterBytes: 600,
-      replacedTo: 'deleted',
-    });
-    expect(hasReplaceJournal(t.db, id)).toBe(true);
-    expect((await stat(file())).size).toBe(600);
-
-    // The next start removes the .orig and clears the journal; the job stays done.
-    await t.deps.engine.stop();
-    await t.deps.engine.start();
-    await until('journal cleared', () => !hasReplaceJournal(t.db, id));
-    expect(row(id).state).toBe('done');
-    expect(await listAll(join(root, '.transcoda-recycle'))).toEqual(['/Show']);
-    expect((await stat(file())).size).toBe(600);
   });
 
   it('final I3: an unexpected throw after the replace ends done with the problem, not failed', async () => {

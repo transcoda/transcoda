@@ -44,8 +44,8 @@ export type RestoreResult =
 const REASON = {
   sidecar: "A subtitle file comes back with its video's original; restore that instead.",
   busy: 'This job is still running or replacing its file.',
-  deleted:
-    "This library deletes originals instead of recycling them, so there's nothing to restore.",
+  noRecord:
+    "Transcoda has no record of moving this original to the recycle folder, so it won't restore it.",
   active: 'A job for this file is queued or running; restore it once that job ends.',
   unreachable: "The library's folder can't be reached (is the share mounted?).",
   noOutputKey:
@@ -153,8 +153,9 @@ export async function restoreRecycled(
     return { kind: 'refused', reason: REASON.busy };
   }
   const result = findJobResult(db, job.id);
+  // Every replace recycles; this guards a row whose job has no result, or an old `deleted` one.
   if (result === null || result.replacedTo !== 'recycle') {
-    return { kind: 'refused', reason: REASON.deleted };
+    return { kind: 'refused', reason: REASON.noRecord };
   }
   if (hasActiveJobAt(db, job.path)) return { kind: 'refused', reason: REASON.active };
   const library = findLibrary(db, job.libraryId);

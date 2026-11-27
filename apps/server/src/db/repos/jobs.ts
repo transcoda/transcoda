@@ -42,11 +42,16 @@ export interface ReplaceJournal {
   originalPath: string;
   tmpPath: string;
   outputPath: string;
-  /** The recycle path, or the `.orig` path when recycling is off. */
+  /** Where the original moves: its path in the recycle folder. */
   copyPath: string;
   /** The library root: the sweep decides nothing while it is unreachable (an unmounted share). */
   libraryRoot: string;
-  recycling: boolean;
+  /**
+   * Never written now. A journal from before 2026-11-27 has it, and `false` there means the copy
+   * is a `.orig` beside the file that the replace deleted at the end: the sweep leaves such a job
+   * for the user (docs/dev/engine.md, "Safety rules that must hold").
+   */
+  recycling?: boolean;
   fingerprint: Fingerprint;
   outputBytes: number;
 }

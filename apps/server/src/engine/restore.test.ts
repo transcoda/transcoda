@@ -306,7 +306,6 @@ describe('restoreRecycled', () => {
           outputPath: 'o',
           copyPath: 'y',
           libraryRoot: root,
-          recycling: true,
           fingerprint: { sizeBytes: 1, mtimeMs: 1, ino: 1, dev: 1, nlink: 1 },
           outputBytes: 1,
         },
@@ -318,12 +317,12 @@ describe('restoreRecycled', () => {
     expect(await restoreRecycled(deps, input())).toEqual(running);
   });
 
-  it('refuses a library that deletes originals', async () => {
+  it('refuses a job whose result records no recycled original (an old `deleted` one)', async () => {
     db.prepare("UPDATE job_results SET replaced_to = 'deleted'").run();
     expect(await restoreRecycled(deps, input())).toEqual({
       kind: 'refused',
       reason:
-        "This library deletes originals instead of recycling them, so there's nothing to restore.",
+        "Transcoda has no record of moving this original to the recycle folder, so it won't restore it.",
     });
   });
 
