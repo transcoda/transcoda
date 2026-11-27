@@ -3446,6 +3446,20 @@ describe('pipeline: fix round (review)', () => {
     expect(classifyErrorLine('[h264 @ 0x1] [warning] something', codecs, new Set())).toBeNull();
   });
 
+  it("x265's CPU mask error (no NUMA nodes, as in Docker Desktop) is not an output error", () => {
+    const encoders = new Set(['libx265']);
+    const codecs = sourceDecoderNames(['h264']);
+    expect(
+      classifyErrorLine('x265 [error]: Failed to genrate CPU mask', codecs, encoders),
+    ).toBeNull();
+    expect(
+      classifyErrorLine('x265 [error]: Failed to generate CPU mask', codecs, encoders),
+    ).toBeNull();
+    expect(classifyErrorLine('x265 [error]: unable to open input file', codecs, encoders)).toBe(
+      'output',
+    );
+  });
+
   it('a dca decoder line is a source error when the source has a dts stream', () => {
     const codecs = sourceDecoderNames(['dts', 'hevc']);
     expect(

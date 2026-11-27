@@ -28,6 +28,13 @@ export function sourceDecoderNames(codecs: Iterable<string>): Set<string> {
 }
 
 /**
+ * Error-level lines that do not mean the output is wrong. x265 prints "Failed to genrate CPU mask"
+ * (sic) when the kernel shows no NUMA nodes, as in Docker Desktop's VM on macOS and Windows, and
+ * then encodes on its default thread pool; the file is complete and verify still checks it.
+ */
+const HARMLESS_ERRORS: readonly RegExp[] = [/^x265 \[error\]: Failed to gene?rate CPU mask$/];
+
+/**
  * Which side an ffmpeg error-level line (`[error]`/`[fatal]`/`[panic]`, ffmpeg's `level+` tag) came
  * from; null for any other line. `source`: a decoder of the source said it: its first context is one
  * of the source's streams (`…ist#0:…`) or a decoder context (`dec:<name>`, or a bare
@@ -43,6 +50,7 @@ export function classifyErrorLine(
   encoders: ReadonlySet<string>,
 ): 'source' | 'demuxer' | 'output' | null {
   if (!/\[(error|fatal|panic)\]/.test(line)) return null;
+  if (HARMLESS_ERRORS.some((re) => re.test(line.trim()))) return null;
   const m = /^\[([^\]@]+?)(?: @ 0x[0-9a-f]+)?\]/i.exec(line.trim());
   const ctx = m?.[1]?.trim();
   if (!ctx || /^(error|fatal|panic)$/.test(ctx)) return 'output';
