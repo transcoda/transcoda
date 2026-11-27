@@ -1,7 +1,7 @@
 import { DEFAULT_LIMITS, type PluginLimits, type SupervisorLimits } from '@transcoda/shared';
 import { z } from 'zod';
-import type { Database } from '../db/open.ts';
-import { getSetting } from '../db/repos/settings.ts';
+import type { Database } from '../../db/open.ts';
+import { getSetting } from '../../db/repos/settings.ts';
 
 const HOUR_MS = 3_600_000;
 

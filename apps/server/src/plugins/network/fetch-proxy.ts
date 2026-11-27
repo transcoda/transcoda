@@ -12,7 +12,7 @@ import {
   SECRET_PLACEHOLDER,
   type SupervisorLimits,
 } from '@transcoda/shared';
-import { type SecretEncoding, sanitizeSecretPath } from '../plugin-host/redact.ts';
+import { type SecretEncoding, sanitizeSecretPath } from '../../plugin-host/redact.ts';
 import {
   type AddressKind,
   addressVerdict,

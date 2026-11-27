@@ -1,5 +1,5 @@
-import { OFFICIAL_BLOCKLIST_URL, OFFICIAL_SIGNING_KEYS } from '../platform/official-plugins.ts';
-import type { SigningKey } from '../platform/signing-keys.ts';
+import { OFFICIAL_BLOCKLIST_URL, OFFICIAL_SIGNING_KEYS } from '../../platform/official-plugins.ts';
+import type { SigningKey } from '../../platform/signing-keys.ts';
 
 export const BLOCKLIST_INERT_WARNING =
   'the official plugin blocklist is configured but TRANSCODA_PLUGIN_CATALOG_KEY replaces the official signing keys: the blocklist is inert and blocks nothing';

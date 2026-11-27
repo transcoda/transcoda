@@ -1,7 +1,7 @@
 import { DEFAULT_LIMITS, type FetchPolicy, type SupervisorLimits } from '@transcoda/shared';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { PluginIsolation } from '../platform/config.ts';
-import { type FakeChild, fakeFork, TEST_MANIFEST } from './fake-child.ts';
+import type { PluginIsolation } from '../../platform/config.ts';
+import { type FakeChild, fakeFork, TEST_MANIFEST } from '../testing/fake-child.ts';
 import type { ProcessIdentity } from './isolation.ts';
 import { PluginCallError } from './process.ts';
 import {

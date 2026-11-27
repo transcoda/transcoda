@@ -2,8 +2,8 @@ import { chmodSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { fixturePluginPath, hostPath } from '../testing/build.ts';
 import { checkPluginBundle, parseCheckArgs, runCheckPlugin } from './check-plugin.ts';
-import { fixturePluginPath, hostPath } from './testing/build.ts';
 
 describe('parseCheckArgs', () => {
   it('takes the bundle, the bare --expect-denials flag and --other-bundle', () => {

@@ -6,8 +6,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { OFFICIAL_CATALOG_URL } from '../platform/official-plugins.ts';
-import type { SigningKey } from '../platform/signing-keys.ts';
+import { OFFICIAL_CATALOG_URL } from '../../platform/official-plugins.ts';
+import type { SigningKey } from '../../platform/signing-keys.ts';
 import { CatalogClient } from './catalog.ts';
 
 const index = {

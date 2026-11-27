@@ -58,7 +58,7 @@ export default defineConfig([
           ...base,
           ...standalone,
           name: 'fixtures',
-          entry: { 'fixtures/denial-0.1.0': 'src/plugins/fixtures/denial.plugin.ts' },
+          entry: { 'fixtures/denial-0.1.0': 'src/plugins/testing/fixtures/denial.plugin.ts' },
         } satisfies UserConfig,
       ]
     : []),

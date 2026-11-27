@@ -9,7 +9,7 @@ import { SchemaTooNewError } from './db/migrate.ts';
 import { openDatabase } from './db/open.ts';
 import { type Config, ConfigError, loadConfig } from './platform/config.ts';
 import { createLogger } from './platform/logger.ts';
-import { IsolationError } from './plugins/isolation.ts';
+import { IsolationError } from './plugins/runtime/isolation.ts';
 
 let dir: string;
 const log = { info: vi.fn(), warn: vi.fn(), error: vi.fn() };

@@ -1,5 +1,5 @@
 // The format of a trusted ed25519 key list (`TRANSCODA_PLUGIN_CATALOG_KEY`, a custom catalog's
-// keys). Here so config.ts can parse it; plugins/signature.ts verifies with the keys.
+// keys). Here so config.ts can parse it; plugins/trust/signature.ts verifies with the keys.
 
 /** One trusted ed25519 public key: an id the signature file names, and the raw 32 bytes as hex. */
 export interface SigningKey {

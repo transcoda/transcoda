@@ -6,7 +6,7 @@ import type { PluginManifest } from '@transcoda/shared';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createTestApp, type TestApp } from '../../app/test-app.ts';
 import { asSession, bearer, createToken, login, type Session, send } from '../../app/test-http.ts';
-import { checkPluginBundle } from '../../plugins/check-plugin.ts';
+import { checkPluginBundle } from '../../plugins/runtime/check-plugin.ts';
 import { fixturePluginPath, hostPath } from '../../plugins/testing/build.ts';
 
 const KEY = 'sk-live-REST-secret-4821';

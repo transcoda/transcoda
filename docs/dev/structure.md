@@ -66,7 +66,12 @@ auth/            sessions, tokens, CSRF, cookies, passwords, rate limits, host-c
 nodes/           registry, remote nodes, availability, the CoreTools interface; core/ (the core nodes)
 workflows/       the workflow service, validate/, upgrade, subworkflow settings, webhook URLs
 plugin-host/     the plugin child process entry (bundled on its own)
-plugins/         service/, trust/, runtime/, network/; settings, crypto, installer, errors; testing/
+plugins/         service/; settings, crypto, installer, errors
+  trust/         catalogs, signatures, blocklist, guarded HTTP reads
+  runtime/       supervisor, process, channel, isolation, limits, restart gate, hooks,
+                 check-plugin and its sandbox expectations, dev plugins
+  network/       fetch proxy, address policy, catalog-token hosts
+  testing/       build, sign, spawn, global setup, fake child; fixtures/ (the fixture plugins)
 engine/
   model/         what to do to a file: model.ts (entry), changes.ts, render.ts, targets.ts,
                  retarget.ts, fallback.ts. Imports nothing but platform.
@@ -202,13 +207,13 @@ A move pull request updates the paths in the allowlists and the "today" entries 
 
 ## Migration status
 
-Steps 1 (the check and this doc), 2, 3, 4 and 5 are done. Each later pull request ticks its line.
+Steps 1 (the check and this doc), 2, 3, 4, 5 and 6 are done. Each later pull request ticks its line.
 
 - [x] 2. Server: `platform/`, `app/` and `system/`; `host-check.ts` and `request-info.ts` into `auth/`.
 - [x] 3. Server: fix the upward imports (`fingerprintKey` into the repository layer, the official plugin constants out of `plugins/`, `CoreTools` into `nodes/`).
 - [x] 4. Server: `engine/` sub-areas, part 1: `model/`, `files/`, `media/`, `encode/`.
 - [x] 5. Server: `engine/` sub-areas, part 2: `verify/`, `walk/`, `queue/`, `pipeline/`, `testing/`.
-- [ ] 6. Server: `plugins/` sub-folders (`trust/`, `runtime/`, `network/`) and its test support into `testing/`.
+- [x] 6. Server: `plugins/` sub-folders (`trust/`, `runtime/`, `network/`) and its test support into `testing/`.
 - [ ] 7. Server splits, one pull request each: `db/repos/jobs.ts`, `plugins/service.ts`, `workflows/validate.ts`, `engine/verify/verify.ts`.
 - [ ] 8. Server: test names in the dot form; split the over-budget tests.
 - [ ] 9. Web: `shell/`, `test/` to `testing/`, the CSS guard tests into `styles/`.

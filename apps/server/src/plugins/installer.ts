@@ -11,10 +11,10 @@ import {
 } from '@transcoda/shared';
 import semver from 'semver';
 import type { SigningKey } from '../platform/signing-keys.ts';
-import { httpFetch } from './http-get.ts';
-import { verifySignature } from './signature.ts';
-import { MAX_SIGNATURE_BYTES } from './signed-fetch.ts';
-import { fetchGuarded, readLimited } from './token-hosts.ts';
+import { fetchGuarded, readLimited } from './network/token-hosts.ts';
+import { httpFetch } from './trust/http-get.ts';
+import { verifySignature } from './trust/signature.ts';
+import { MAX_SIGNATURE_BYTES } from './trust/signed-fetch.ts';
 
 export const MAX_BUNDLE_BYTES = 32 * 1024 * 1024;
 const MAX_MANIFEST_BYTES = 1024 * 1024;

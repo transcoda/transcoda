@@ -1,7 +1,7 @@
 import type { HookJob } from '@transcoda/sdk';
 import { describe, expect, it, vi } from 'vitest';
-import type { JobRow } from '../db/repos/jobs.ts';
-import type { Logger } from '../platform/logger.ts';
+import type { JobRow } from '../../db/repos/jobs.ts';
+import type { Logger } from '../../platform/logger.ts';
 import { type HookName, type HookTarget, hookJobOf, PluginHooksRunner } from './hooks.ts';
 
 const job = (over: Partial<HookJob> = {}): HookJob => ({

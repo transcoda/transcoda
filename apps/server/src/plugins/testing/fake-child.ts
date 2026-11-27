@@ -7,7 +7,7 @@ import {
   type PluginManifest,
   PROTOCOL_VERSION,
 } from '@transcoda/shared';
-import type { ChildLike, ForkOptions } from './process.ts';
+import type { ChildLike, ForkOptions } from '../runtime/process.ts';
 
 export const TEST_MANIFEST: PluginManifest = {
   name: 'example',

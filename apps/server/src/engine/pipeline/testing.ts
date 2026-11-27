@@ -12,7 +12,7 @@ import type { LibraryRow } from '../../db/repos/libraries.ts';
 import type { RegisteredNode } from '../../nodes/registry.ts';
 import { type FsOps, nodeFsOps } from '../../platform/fs-ops.ts';
 import type { Logger } from '../../platform/logger.ts';
-import type { PluginHooksRunner } from '../../plugins/hooks.ts';
+import type { PluginHooksRunner } from '../../plugins/runtime/hooks.ts';
 import { edge, mainGraph, node, testRegistry } from '../../workflows/test-helpers.ts';
 import { FakeSpawner } from '../encode/process.ts';
 import type { EngineEvent } from '../events.ts';

@@ -2,9 +2,9 @@ import { fakeHookContext } from '@transcoda/sdk/testing';
 import type { JsonValue } from '@transcoda/shared';
 import { PROTOCOL_VERSION } from '@transcoda/shared';
 import { afterEach, describe, expect, it } from 'vitest';
+import { type FixtureName, fixturePluginPath, hostPath } from '../testing/build.ts';
+import { type HostHandle, type SpawnedHost, spawnHost, startHost } from '../testing/spawn.ts';
 import { sandboxExpectations } from './sandbox-expectations.ts';
-import { type FixtureName, fixturePluginPath, hostPath } from './testing/build.ts';
-import { type HostHandle, type SpawnedHost, spawnHost, startHost } from './testing/spawn.ts';
 
 const started: HostHandle[] = [];
 afterEach(async () => {

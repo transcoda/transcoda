@@ -32,7 +32,7 @@ import {
 import { listCurrentVersions } from '../db/repos/workflows.ts';
 import type { Config } from '../platform/config.ts';
 import type { Logger } from '../platform/logger.ts';
-import { LIMIT_BOUNDS } from '../plugins/limits.ts';
+import { LIMIT_BOUNDS } from '../plugins/runtime/limits.ts';
 
 /**
  * Server settings: the rows of the key-value `settings` table a person may change in the UI, plus

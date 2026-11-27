@@ -1,6 +1,6 @@
 import { createPublicKey, type KeyObject, verify } from 'node:crypto';
 import { z } from 'zod';
-import { HEX_KEY, KEY_ID, type SigningKey } from '../platform/signing-keys.ts';
+import { HEX_KEY, KEY_ID, type SigningKey } from '../../platform/signing-keys.ts';
 
 // Prefix of an ed25519 SubjectPublicKeyInfo DER; the raw key is appended.
 const SPKI_PREFIX = Buffer.from('302a300506032b6570032100', 'hex');

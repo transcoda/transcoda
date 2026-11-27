@@ -2,9 +2,10 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import type { AddressInfo } from 'node:net';
 import { DEFAULT_LIMITS, type FetchPolicy, type SupervisorLimits } from '@transcoda/shared';
 import { afterEach, describe, expect, it } from 'vitest';
-import type { ServerHookContext } from '../nodes/remote.ts';
-import { wireContext } from '../nodes/remote.ts';
-import { FetchProxy } from './fetch-proxy.ts';
+import type { ServerHookContext } from '../../nodes/remote.ts';
+import { wireContext } from '../../nodes/remote.ts';
+import { FetchProxy } from '../network/fetch-proxy.ts';
+import { type FixtureName, fixturePluginPath, hostPath } from '../testing/build.ts';
 import { PluginCallError } from './process.ts';
 import {
   type PluginFetcher,
@@ -12,7 +13,6 @@ import {
   type PluginStatus,
   PluginSupervisor,
 } from './supervisor.ts';
-import { type FixtureName, fixturePluginPath, hostPath } from './testing/build.ts';
 
 const policy: FetchPolicy = { allowedOrigins: [], allowInsecureTls: false };
 const supervisors: PluginSupervisor[] = [];

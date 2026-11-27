@@ -64,7 +64,7 @@
     },
     {
       "includes": [
-        "apps/server/src/plugins/fixtures/**",
+        "apps/server/src/plugins/testing/fixtures/**",
         "apps/server/src/plugins/testing/global-setup.ts"
       ],
       "linter": { "rules": { "style": { "noDefaultExport": "off" } } }

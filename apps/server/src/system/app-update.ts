@@ -7,7 +7,7 @@ import semver from 'semver';
 import { z } from 'zod';
 import type { EngineEvents } from '../engine/events.ts';
 import type { Logger } from '../platform/logger.ts';
-import { readLimited } from '../plugins/token-hosts.ts';
+import { readLimited } from '../plugins/network/token-hosts.ts';
 
 const REPO = 'transcoda/transcoda';
 export const LATEST_RELEASE_URL = `https://api.github.com/repos/${REPO}/releases/latest`;

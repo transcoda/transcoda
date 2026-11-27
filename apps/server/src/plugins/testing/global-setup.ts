@@ -9,7 +9,7 @@ import { BUILD_DIR, FIXTURE_NAMES, FIXTURE_VERSION, SERVER_DIR } from './build.t
 
 const SOURCES = [
   join(SERVER_DIR, 'src', 'plugin-host'),
-  join(SERVER_DIR, 'src', 'plugins', 'fixtures'),
+  join(SERVER_DIR, 'src', 'plugins', 'testing', 'fixtures'),
   join(SERVER_DIR, '..', '..', 'packages', 'sdk', 'src'),
   join(SERVER_DIR, '..', '..', 'packages', 'shared', 'src'),
 ];
@@ -54,7 +54,10 @@ export default async function setup(): Promise<void> {
   await Promise.all([
     bundle('plugin-host', 'src/plugin-host/main.ts'),
     ...FIXTURE_NAMES.map((name) =>
-      bundle(`fixtures/${name}-${FIXTURE_VERSION}`, `src/plugins/fixtures/${name}.plugin.ts`),
+      bundle(
+        `fixtures/${name}-${FIXTURE_VERSION}`,
+        `src/plugins/testing/fixtures/${name}.plugin.ts`,
+      ),
     ),
   ]);
 }
