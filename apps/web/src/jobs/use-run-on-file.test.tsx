@@ -2,7 +2,7 @@ import { ORPCError } from '@orpc/client';
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import type { WorkflowSummary } from '@transcoda/contract';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { renderAt } from '../test/render.tsx';
+import { renderAt } from '../testing/render.tsx';
 
 const mocks = vi.hoisted(() => ({ list: vi.fn(), browse: vi.fn(), queue: vi.fn() }));
 vi.mock('../api/client.ts', async () => {

@@ -5,7 +5,7 @@ import { createRef } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { KIND_WORD } from '../../components/Chips.tsx';
 import { buildCatalog } from '../../hooks/use-catalog.ts';
-import { catalogFixture, nodesFixture } from '../../test/fixtures/catalog.ts';
+import { catalogFixture, nodesFixture } from '../../testing/fixtures/catalog.ts';
 import { Palette, type PaletteItem } from './Palette.tsx';
 
 afterEach(cleanup);

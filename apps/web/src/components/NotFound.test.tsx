@@ -1,6 +1,6 @@
 import { cleanup, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
-import { renderAt } from '../test/render.tsx';
+import { renderAt } from '../testing/render.tsx';
 import { NotFound } from './NotFound.tsx';
 
 afterEach(cleanup);

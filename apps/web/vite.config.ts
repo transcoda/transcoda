@@ -25,7 +25,7 @@ export default defineConfig({
     // still gets its own module graph and globals.
     pool: 'vmThreads',
     passWithNoTests: true,
-    setupFiles: ['src/test/setup.ts'],
+    setupFiles: ['src/testing/setup.ts'],
     // React Flow / editor tests render a lot of DOM. Alone they take 0.1 - 0.3 s; with the whole
     // monorepo's tests running in parallel they have taken more than 5 s. A passing test never
     // waits for this, only a hung one does.

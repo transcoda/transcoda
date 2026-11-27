@@ -6,7 +6,7 @@ import {
   mapleLanePlan,
   mapleLaneProbe,
   mapleLaneResult,
-} from '../test/fixtures/plan.ts';
+} from '../testing/fixtures/plan.ts';
 import { PlanView } from './PlanView.tsx';
 
 afterEach(cleanup);

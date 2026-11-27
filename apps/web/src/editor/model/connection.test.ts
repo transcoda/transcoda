@@ -4,8 +4,8 @@ import type { NodeInfo } from '@transcoda/contract';
 import type { FinishPhase, WorkflowGraph } from '@transcoda/shared';
 import { describe, expect, it } from 'vitest';
 import { buildCatalog } from '../../hooks/use-catalog.ts';
-import { catalogFixture as catalog, nodesFixture } from '../../test/fixtures/catalog.ts';
-import { chainMainReplace, otterFinchSub } from '../../test/fixtures/graphs.ts';
+import { catalogFixture as catalog, nodesFixture } from '../../testing/fixtures/catalog.ts';
+import { chainMainReplace, otterFinchSub } from '../../testing/fixtures/graphs.ts';
 import {
   checkConnection,
   compatibleTargets,

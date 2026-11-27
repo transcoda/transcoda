@@ -1,6 +1,6 @@
 import { cleanup } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
-import { renderFlow } from '../../test/flow.tsx';
+import { renderFlow } from '../../testing/flow.tsx';
 import { ZoomVar } from './ZoomVar.tsx';
 
 afterEach(cleanup);

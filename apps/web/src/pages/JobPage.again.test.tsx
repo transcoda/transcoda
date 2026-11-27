@@ -24,8 +24,8 @@ vi.mock('../api/client.ts', async () => {
 import { Route, Switch } from 'wouter';
 import { resetCatalogCache } from '../hooks/use-catalog.ts';
 import { EventsProvider } from '../hooks/use-events.ts';
-import { fakeEventSource } from '../test/fake-event-stream.ts';
-import { nodesFixture } from '../test/fixtures/catalog.ts';
+import { fakeEventSource } from '../testing/fake-event-stream.ts';
+import { nodesFixture } from '../testing/fixtures/catalog.ts';
 import {
   COMMAND,
   entry,
@@ -35,8 +35,8 @@ import {
   SUB_ID,
   TRACE,
   traceSub,
-} from '../test/fixtures/trace.ts';
-import { renderAt } from '../test/render.tsx';
+} from '../testing/fixtures/trace.ts';
+import { renderAt } from '../testing/render.tsx';
 import { JobPage } from './JobPage.tsx';
 
 const FILE = '/media/Shows/Otter and Finch/Otter and Finch S01E01.mkv';

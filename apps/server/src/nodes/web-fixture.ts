@@ -6,7 +6,7 @@ import { nodeAvailability } from './availability.ts';
 import { createCoreRegistry } from './registry.ts';
 
 /**
- * Fixed capabilities for the web test fixture (apps/web/src/test/fixtures/nodes.json), so the
+ * Fixed capabilities for the web test fixture (apps/web/src/testing/fixtures/nodes.json), so the
  * fixture does not depend on the ffmpeg of the machine that regenerates it.
  */
 export const FIXTURE_CAPABILITIES: Capabilities = {

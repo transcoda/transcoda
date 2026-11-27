@@ -3,7 +3,6 @@ import { Redirect, Route, Switch } from 'wouter';
 import { useAuth } from './auth/use-auth.ts';
 import { Loading } from './components/Loading.tsx';
 import { NotFound } from './components/NotFound.tsx';
-import { Shell } from './components/Shell.tsx';
 import { EventsProvider } from './hooks/use-events.ts';
 import { EditorPage } from './pages/EditorPage.tsx';
 import { HostNotAllowedPage } from './pages/HostNotAllowedPage.tsx';
@@ -20,6 +19,7 @@ import { RunPage } from './pages/RunPage.tsx';
 import { SetupPage } from './pages/SetupPage.tsx';
 import { SettingsPage } from './pages/settings/SettingsPage.tsx';
 import { WorkflowsPage } from './pages/WorkflowsPage.tsx';
+import { Shell } from './shell/Shell.tsx';
 
 /** The session check, before any screen can render: the shared Loading, filling the screen. */
 function AppLoading() {

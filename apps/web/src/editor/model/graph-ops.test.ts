@@ -1,12 +1,12 @@
 import { emptyGraph, type NodeInstance, type WorkflowGraph } from '@transcoda/shared';
 import { describe, expect, it } from 'vitest';
-import { catalogFixture as catalog } from '../../test/fixtures/catalog.ts';
+import { catalogFixture as catalog } from '../../testing/fixtures/catalog.ts';
 import {
   chainMainReplace,
   oneTrigger,
   otterFinchMain,
   otterFinchSub,
-} from '../../test/fixtures/graphs.ts';
+} from '../../testing/fixtures/graphs.ts';
 import {
   addNode,
   connect,

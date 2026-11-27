@@ -28,14 +28,14 @@ vi.mock('../jobs/use-activity.ts', async () => {
 vi.mock('../hooks/use-catalog.ts', async (importActual) => {
   const actual = await importActual<typeof import('../hooks/use-catalog.ts')>();
   const { NodesListOutputSchema } = await import('@transcoda/contract');
-  const raw = (await import('../test/fixtures/nodes.json')).default;
+  const raw = (await import('../testing/fixtures/nodes.json')).default;
   const catalog = actual.buildCatalog(NodesListOutputSchema.parse(raw).nodes);
   return { ...actual, useCatalog: () => ({ catalog, error: null, reload() {} }) };
 });
 
-import { fx, job } from '../test/fixtures/jobs.ts';
-import { ELSE_PATH, ELSE_TRACE, jobDetail } from '../test/fixtures/trace.ts';
-import { renderAt } from '../test/render.tsx';
+import { fx, job } from '../testing/fixtures/jobs.ts';
+import { ELSE_PATH, ELSE_TRACE, jobDetail } from '../testing/fixtures/trace.ts';
+import { renderAt } from '../testing/render.tsx';
 import { ActivityButton } from './ActivityButton.tsx';
 
 const A = job({ ...fx.running, id: 'a', workflowName: 'TV cleanup', workflowVersion: 3 });

@@ -1,7 +1,7 @@
 import type { Edge, NodeInstance, WorkflowGraph } from '@transcoda/shared';
 import { describe, expect, it } from 'vitest';
-import { catalogFixture } from '../../test/fixtures/catalog.ts';
-import { tvCleanupMain } from '../../test/fixtures/tv-cleanup.ts';
+import { catalogFixture } from '../../testing/fixtures/catalog.ts';
+import { tvCleanupMain } from '../../testing/fixtures/tv-cleanup.ts';
 import { GROUP_PADDING, NODE_SIZE, type Position, type Size } from './graph-ops.ts';
 import { tidyUp } from './layout.ts';
 

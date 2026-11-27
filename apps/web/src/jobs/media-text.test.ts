@@ -1,6 +1,6 @@
 import type { JobMedia } from '@transcoda/contract';
 import { describe, expect, it } from 'vitest';
-import { job } from '../test/fixtures/jobs.ts';
+import { job } from '../testing/fixtures/jobs.ts';
 import { episodeCode, jobTitle, mediaSub, resultLines } from './media-text.ts';
 
 const media = (o: Partial<JobMedia>): JobMedia => ({

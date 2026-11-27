@@ -1,6 +1,6 @@
 import type { Issue } from '@transcoda/shared';
 import { describe, expect, it } from 'vitest';
-import { catalogFixture } from '../../test/fixtures/catalog.ts';
+import { catalogFixture } from '../../testing/fixtures/catalog.ts';
 import { nodeStateFor } from './issues.ts';
 import { fieldsFor } from './schema-fields.ts';
 import { effectiveNodeIssues, jsonEquals } from './setting-issues.ts';

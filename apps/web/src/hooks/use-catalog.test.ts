@@ -1,6 +1,6 @@
 import { act, cleanup, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { nodesFixture } from '../test/fixtures/catalog.ts';
+import { nodesFixture } from '../testing/fixtures/catalog.ts';
 
 const mocks = vi.hoisted(() => ({ list: vi.fn() }));
 vi.mock('../api/client.ts', () => ({

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { chainMainReplace } from '../../test/fixtures/graphs.ts';
+import { chainMainReplace } from '../../testing/fixtures/graphs.ts';
 import { LAYOUT_ONLY_NOTE, saveNoteFor } from './save-note.ts';
 
 const moved = () => {

@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, screen, within } from '@testing-library/react';
 import type { WorkflowSummary } from '@transcoda/contract';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { renderAt } from '../../test/render.tsx';
+import { renderAt } from '../../testing/render.tsx';
 import { EditorHeader, versionPill } from './EditorHeader.tsx';
 
 afterEach(cleanup);

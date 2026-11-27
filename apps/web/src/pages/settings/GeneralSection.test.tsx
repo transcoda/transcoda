@@ -10,7 +10,7 @@ vi.mock('../../auth/use-auth.ts', () => ({
   useAuth: () => ({ setAppearance: mocks.setAppearance }),
 }));
 
-import { renderAt } from '../../test/render.tsx';
+import { renderAt } from '../../testing/render.tsx';
 import { GeneralSection } from './GeneralSection.tsx';
 
 beforeEach(() => {

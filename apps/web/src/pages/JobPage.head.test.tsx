@@ -19,10 +19,10 @@ import { resetCatalogCache } from '../hooks/use-catalog.ts';
 import { EventsProvider } from '../hooks/use-events.ts';
 import { jobWhenLine } from '../jobs/job-outcome.ts';
 import { fmtDate } from '../lib/time.ts';
-import { fakeEventSource } from '../test/fake-event-stream.ts';
-import { nodesFixture } from '../test/fixtures/catalog.ts';
-import { jobDetail, runningJobDetail, SUB_ID, traceSub } from '../test/fixtures/trace.ts';
-import { renderAt } from '../test/render.tsx';
+import { fakeEventSource } from '../testing/fake-event-stream.ts';
+import { nodesFixture } from '../testing/fixtures/catalog.ts';
+import { jobDetail, runningJobDetail, SUB_ID, traceSub } from '../testing/fixtures/trace.ts';
+import { renderAt } from '../testing/render.tsx';
 import { JobPage } from './JobPage.tsx';
 
 const realClipboard = Object.getOwnPropertyDescriptor(navigator, 'clipboard');

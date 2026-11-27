@@ -1,5 +1,5 @@
-import { AuthLayout } from '../components/AuthLayout.tsx';
 import { Icon } from '../components/Icon.tsx';
+import { AuthLayout } from '../shell/AuthLayout.tsx';
 
 /** Shown when the server's host check rejects the host name this UI was opened under. */
 export function HostNotAllowedPage({ host }: { host: string }) {

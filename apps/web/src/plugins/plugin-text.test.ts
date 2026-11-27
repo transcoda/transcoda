@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { PluginSummary } from '@transcoda/contract';
 import { describe, expect, it } from 'vitest';
-import { plugin } from '../test/fixtures/plugins.ts';
+import { plugin } from '../testing/fixtures/plugins.ts';
 import {
   addedHosts,
   blockedText,

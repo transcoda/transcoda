@@ -12,7 +12,7 @@ vi.mock('../api/client.ts', async () => {
   return { api: mocks, isDefinedError: orpc.isDefinedError, safe: orpc.safe };
 });
 
-import { catalogOutput, plugin } from '../test/fixtures/plugins.ts';
+import { catalogOutput, plugin } from '../testing/fixtures/plugins.ts';
 import { usePlugins } from './use-plugins.ts';
 
 beforeEach(() => {

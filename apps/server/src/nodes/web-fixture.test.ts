@@ -4,9 +4,12 @@ import { describe, expect, it } from 'vitest';
 import { fixtureNodes } from './web-fixture.ts';
 
 describe('web node-catalogue fixture', () => {
-  it('apps/web/src/test/fixtures/nodes.json matches the live core catalogue', () => {
+  it('apps/web/src/testing/fixtures/nodes.json matches the live core catalogue', () => {
     const fixture = JSON.parse(
-      readFileSync(new URL('../../../web/src/test/fixtures/nodes.json', import.meta.url), 'utf8'),
+      readFileSync(
+        new URL('../../../web/src/testing/fixtures/nodes.json', import.meta.url),
+        'utf8',
+      ),
     ) as { nodes: NodeInfo[] };
     expect(
       fixture.nodes.filter((n) => n.type.startsWith('core:')),

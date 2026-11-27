@@ -1,7 +1,7 @@
 import type { WorkflowSummary } from '@transcoda/contract';
 import type { WorkflowGraph } from '@transcoda/shared';
 import { describe, expect, it } from 'vitest';
-import { oneTrigger } from '../../test/fixtures/graphs.ts';
+import { oneTrigger } from '../../testing/fixtures/graphs.ts';
 import { libraryShift } from './library-shift.ts';
 
 const libraries = [

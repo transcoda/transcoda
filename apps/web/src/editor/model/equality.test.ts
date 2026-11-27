@@ -1,6 +1,6 @@
 import type { WorkflowGraph } from '@transcoda/shared';
 import { describe, expect, it } from 'vitest';
-import { chainMainReplace } from '../../test/fixtures/graphs.ts';
+import { chainMainReplace } from '../../testing/fixtures/graphs.ts';
 import { graphEquals, isLayoutOnlyChange } from './equality.ts';
 
 function edit(fn: (g: WorkflowGraph) => void): WorkflowGraph {

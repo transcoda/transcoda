@@ -143,7 +143,7 @@ export const COLOUR_LITERAL_FILES_OK: Record<string, string> = {
 export const SVG_FILES_OK: Record<string, string> = {
   'components/Icon.tsx': 'the icon set',
   'components/Logo.tsx': 'the brand mark',
-  'components/ActivityButton.tsx': 'the activity progress ring',
+  'shell/ActivityButton.tsx': 'the activity progress ring',
   'components/LoadStrip.tsx': 'a chart',
   'components/WeekBars.tsx': 'a chart',
   'editor/ui/CanvasLegend.tsx': 'edge line samples in the canvas key',

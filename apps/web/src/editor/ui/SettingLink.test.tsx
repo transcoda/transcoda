@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import type { NodeInstance, SharedValue } from '@transcoda/shared';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { catalogFixture } from '../../test/fixtures/catalog.ts';
+import { catalogFixture } from '../../testing/fixtures/catalog.ts';
 import { NodeForm, type Sharing } from './NodeForm.tsx';
 
 afterEach(cleanup);

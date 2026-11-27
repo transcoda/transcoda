@@ -1,8 +1,8 @@
 import { cleanup, fireEvent, render } from '@testing-library/react';
 import type { WorkflowGraph } from '@transcoda/shared';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { catalogFixture } from '../../test/fixtures/catalog.ts';
-import { chainMainReplace } from '../../test/fixtures/graphs.ts';
+import { catalogFixture } from '../../testing/fixtures/catalog.ts';
+import { chainMainReplace } from '../../testing/fixtures/graphs.ts';
 import type { EditorState } from '../model/editor-state.ts';
 import { type EditorKeyActions, useEditorKeys } from './use-editor-keys.ts';
 

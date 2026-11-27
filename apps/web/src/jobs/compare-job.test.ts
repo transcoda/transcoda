@@ -7,7 +7,7 @@ import {
   source,
   stream,
   testEncode,
-} from '../test/fixtures/before-after.ts';
+} from '../testing/fixtures/before-after.ts';
 import { type BeforeAfterJob, compareJob, type Side } from './compare-job.ts';
 
 /** A row as text: label, then each side's items joined as shown, then its loss words. */

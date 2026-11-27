@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
-import { job } from '../test/fixtures/jobs.ts';
+import { job } from '../testing/fixtures/jobs.ts';
 import { Poster } from './Poster.tsx';
 
 afterEach(cleanup);

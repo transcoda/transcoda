@@ -8,7 +8,7 @@ vi.mock('../../api/client.ts', () => ({
   api: { settings: { get: mocks.get, update: mocks.update } },
 }));
 
-import { renderAt } from '../../test/render.tsx';
+import { renderAt } from '../../testing/render.tsx';
 import { RecycleSection } from './RecycleSection.tsx';
 
 beforeEach(() => {

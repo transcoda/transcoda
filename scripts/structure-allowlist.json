@@ -1,17 +1,6 @@
 {
   "$comment": "What broke a rule of scripts/check-structure.ts before the check existed. Every list only shrinks: fix the code, then remove the entry (the check fails until you do). Never add an entry to get past a new failure. Rules and fixes: docs/dev/structure.md.",
-  "upwardImports": [
-    "apps/web/src/components/ActivityButton.tsx -> apps/web/src/jobs/JobProgress.tsx",
-    "apps/web/src/components/ActivityButton.tsx -> apps/web/src/jobs/JobStateChip.tsx",
-    "apps/web/src/components/ActivityButton.tsx -> apps/web/src/jobs/activity.ts",
-    "apps/web/src/components/ActivityButton.tsx -> apps/web/src/jobs/job-text.ts",
-    "apps/web/src/components/ActivityButton.tsx -> apps/web/src/jobs/use-activity.ts",
-    "apps/web/src/components/EmptyWorkflows.tsx -> apps/web/src/examples/bundled.ts",
-    "apps/web/src/components/Shell.tsx -> apps/web/src/auth/use-auth.ts",
-    "apps/web/src/components/Shell.tsx -> apps/web/src/jobs/use-jobs-list.ts",
-    "apps/web/src/components/Shell.tsx -> apps/web/src/plugins/TmdbAttribution.tsx",
-    "apps/web/src/components/Shell.tsx -> apps/web/src/plugins/use-plugins-nav.ts"
-  ],
+  "upwardImports": [],
   "moduleEntryImports": [
     "apps/server/src/capabilities/devices.test.ts -> apps/server/src/engine/model/render.ts",
     "apps/server/src/capabilities/devices.ts -> apps/server/src/engine/model/render.ts",
@@ -49,8 +38,7 @@
     "apps/server/src/workflows/test-helpers.ts",
     "apps/web/src/pages/settings/settings-fixture.ts",
     "apps/web/src/styles/css-source.ts",
-    "apps/web/src/styles/design-exceptions.ts",
-    "apps/web/src/test/"
+    "apps/web/src/styles/design-exceptions.ts"
   ],
   "pageImports": [
     "apps/web/src/editor/ui/Palette.tsx -> apps/web/src/pages/settings/source-text.ts",
@@ -61,7 +49,6 @@
     "apps/server/src/settings",
     "apps/web/src/auth",
     "apps/web/src/data",
-    "apps/web/src/examples",
     "apps/web/src/recycle"
   ],
   "orphanTests": [
@@ -75,20 +62,12 @@
     "apps/server/src/settings/settings-docs.test.ts",
     "apps/server/src/workflows/e2e.test.ts",
     "apps/server/src/workflows/examples-plugins.test.ts",
-    "apps/web/src/components/activity-css.test.ts",
-    "apps/web/src/components/shell-css.test.ts",
     "apps/web/src/design-source.test.tsx",
-    "apps/web/src/editor/ui/editor-layout-css.test.ts",
     "apps/web/src/editor/ui/fields/fields.test.tsx",
     "apps/web/src/file-names.test.ts",
     "apps/web/src/jobs/time-left.property.test.ts",
     "apps/web/src/lib/job-times.test.ts",
-    "apps/web/src/libraries/library-grid-css.test.ts",
-    "apps/web/src/libraries/selection-css.test.ts",
     "apps/web/src/libraries/selection.test.tsx",
-    "apps/web/src/pages/jobs-tiles-css.test.ts",
-    "apps/web/src/pages/settings/settings-nav-css.test.ts",
-    "apps/web/src/pages/workflows-css.test.ts",
     "apps/web/src/source-copy.test.ts",
     "apps/web/src/styles.forms.test.ts",
     "apps/web/src/styles/conventions-css.test.ts",

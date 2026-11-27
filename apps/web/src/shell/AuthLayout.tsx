@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { api } from '../api/client.ts';
+import { Mark, Wordmark } from '../components/Logo.tsx';
 import { useAsync } from '../hooks/use-async.ts';
-import { Mark, Wordmark } from './Logo.tsx';
 
 /**
  * Two-panel layout of the setup and sign-in screens (screens/01-setup-and-login). The brand

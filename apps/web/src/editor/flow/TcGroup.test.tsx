@@ -2,7 +2,7 @@ import { cleanup, fireEvent, screen, within } from '@testing-library/react';
 import type { Group } from '@transcoda/shared';
 import type { NodeProps } from '@xyflow/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { renderFlow } from '../../test/flow.tsx';
+import { renderFlow } from '../../testing/flow.tsx';
 import type { GroupProblem } from '../model/group-state.ts';
 import {
   DEFAULT_EDITOR_ACTIONS,

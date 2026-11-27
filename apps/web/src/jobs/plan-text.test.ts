@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { identityPlan, mapleLanePlan, mapleLaneProbe } from '../test/fixtures/plan.ts';
+import { identityPlan, mapleLanePlan, mapleLaneProbe } from '../testing/fixtures/plan.ts';
 import {
   containerLine,
   dropLine,

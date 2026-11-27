@@ -3,7 +3,7 @@ import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/re
 import type { Library, WorkflowSummary } from '@transcoda/contract';
 import { useState } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { renderAt } from '../test/render.tsx';
+import { renderAt } from '../testing/render.tsx';
 
 const mocks = vi.hoisted(() => ({
   list: vi.fn(),

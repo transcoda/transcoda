@@ -15,9 +15,9 @@ vi.mock('../api/client.ts', async () => {
 });
 
 import { EventsProvider } from '../hooks/use-events.ts';
-import { fakeEventSource, queueSnapshot } from '../test/fake-event-stream.ts';
-import { fx, job } from '../test/fixtures/jobs.ts';
-import { runningJobDetail } from '../test/fixtures/trace.ts';
+import { fakeEventSource, queueSnapshot } from '../testing/fake-event-stream.ts';
+import { fx, job } from '../testing/fixtures/jobs.ts';
+import { runningJobDetail } from '../testing/fixtures/trace.ts';
 import { useActivity } from './use-activity.ts';
 
 let fake: ReturnType<typeof fakeEventSource>;

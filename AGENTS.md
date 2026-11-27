@@ -12,7 +12,7 @@ Dependencies point one way: `packages/shared` ← `packages/sdk` ← `packages/c
 
 - **`packages/`**: `shared` (types and pure helpers both sides use), `sdk` (the published plugin and node SDK, `defineNode`), `contract` (every API procedure's route, input, output and errors, oRPC).
 - **`apps/server/src`**: `app/` (the composition root: app, bootstrap, deps wiring), `platform/` (logger, `config.ts` with the environment variables, process guards, disk and child-process helpers); `rpc/` (procedures, guards), `http/` (plain routes), `auth/` (sessions, tokens, host check, proxies); `db/` (SQLite, migrations, repos, backups), `settings/`, `system/` (health, app update, folder browsing); `engine/` (`model/` what to do to a file, `files/` the library on disk, `media/` probing and sidecars, `encode/` the ffmpeg child, `verify/`, `walk/` the workflow walk, `queue/` the queue and scheduler, `pipeline/` a job's run), `capabilities/` (ffmpeg and GPU probes), `nodes/` (core nodes, registry), `workflows/` (validation, versions, activation); `plugins/` and `plugin-host/` (sandboxed plugin processes), `mcp/`, `metrics/`.
-- **`apps/web/src`**: `App.tsx` (routes), `pages/`, `jobs/` (job page wording), `editor/` (`model/` pure, `flow/` React Flow, `ui/`, `trace/`), `api/`, `hooks/`, `components/`, `lib/`, `styles/` (tokens, per-area stylesheets, design guard tests), `test/`.
+- **`apps/web/src`**: `App.tsx` (routes), `pages/`, `jobs/` (job page wording), `editor/` (`model/` pure, `flow/` React Flow, `ui/`, `trace/`), `api/`, `hooks/`, `components/`, `shell/` (nav and app chrome), `workflows/`, `lib/`, `styles/` (tokens, per-area stylesheets, design guard tests), `testing/`.
 - **Elsewhere**: `e2e/` (Playwright flows, screenshot baselines), `docker/` (the image), `examples/` (shipped workflows, Grafana dashboard), `scripts/` (repo checks, fixtures, release tooling).
 
 ## What done means
@@ -47,8 +47,8 @@ A code comment cites the topic doc, or a log entry by file and heading.
    - a settings schema and its hooks.
 2. Add it to `coreNodes` in `apps/server/src/nodes/core/index.ts` and to the list in `apps/server/src/nodes/core/core.test.ts`.
 3. Regenerate the web fixture. `apps/server/src/nodes/web-fixture.test.ts` fails until you do.
-   - Run `pnpm --filter @transcoda/server dump-nodes > apps/web/src/test/fixtures/nodes.json`.
-   - Re-add the hand-written `test:unavailable` entry (see `apps/web/src/test/fixtures/catalog.ts`).
+   - Run `pnpm --filter @transcoda/server dump-nodes > apps/web/src/testing/fixtures/nodes.json`.
+   - Re-add the hand-written `test:unavailable` entry (see `apps/web/src/testing/fixtures/catalog.ts`).
 4. Give an action node its job-page sentence in `ACTIONS` in `apps/web/src/jobs/steps.ts`, tested in `steps.test.ts`. Condition and data nodes show the engine's reason.
 5. To change an existing node's settings, bump its `version` and add a step to its `migrations` (`NodeMigration` in `packages/sdk/src/node.ts`); saved workflows must keep working. Update `docs/plugins.md` or `examples/` if they show the node.
 
@@ -76,7 +76,7 @@ A code comment cites the topic doc, or a log entry by file and heading.
 
 **Add a page**
 - A component in `apps/web/src/pages/` and its route in `apps/web/src/App.tsx`.
-- A nav item in `apps/web/src/components/Shell.tsx` if it needs one.
+- A nav item in `apps/web/src/shell/Shell.tsx` if it needs one.
 - `usePageTitle` for the tab title, and the shared `Loading` and `NotFound` states.
 - Its styles in its area's file under `apps/web/src/styles/`, or a new file imported from `styles/index.css` at the right place in the cascade (a guard test fails on a file that is not imported). Never add to `assorted.css`.
 - A unit test with `renderAt`. Add a browser flow or screenshot only for a key page ([web-ui.md](docs/dev/web-ui.md)).
@@ -99,7 +99,7 @@ A code comment cites the topic doc, or a log entry by file and heading.
 
 ## Test helpers
 
-Use these rather than re-declaring them ([more](docs/dev/testing.md#helpers-to-use)): `createTestApp` (`apps/server/src/app/testing/app.ts`); `send`, `login`, `withCsrf`, `createToken` (`apps/server/src/app/testing/http.ts`); `createTestDb` (`apps/server/src/db/test-db.ts`); `node`, `edge`, `mainGraph`, `testRegistry` (`apps/server/src/workflows/test-helpers.ts`); `probeOf`, `fileOf`, `capsOf` (`apps/server/src/engine/testing/builders.ts`); `fixturesAvailable` (`apps/server/src/engine/testing/fixtures.ts`); `renderAt` (`apps/web/src/test/render.tsx`).
+Use these rather than re-declaring them ([more](docs/dev/testing.md#helpers-to-use)): `createTestApp` (`apps/server/src/app/testing/app.ts`); `send`, `login`, `withCsrf`, `createToken` (`apps/server/src/app/testing/http.ts`); `createTestDb` (`apps/server/src/db/test-db.ts`); `node`, `edge`, `mainGraph`, `testRegistry` (`apps/server/src/workflows/test-helpers.ts`); `probeOf`, `fileOf`, `capsOf` (`apps/server/src/engine/testing/builders.ts`); `fixturesAvailable` (`apps/server/src/engine/testing/fixtures.ts`); `renderAt` (`apps/web/src/testing/render.tsx`).
 
 ## UI changes
 

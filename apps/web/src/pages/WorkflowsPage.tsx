@@ -5,7 +5,6 @@ import { api, isDefinedError, safe } from '../api/client.ts';
 import { describeError } from '../api/errors.ts';
 import { StatusChip } from '../components/Chips.tsx';
 import { Dialog } from '../components/Dialog.tsx';
-import { EmptyWorkflows } from '../components/EmptyWorkflows.tsx';
 import { Icon } from '../components/Icon.tsx';
 import { Loading } from '../components/Loading.tsx';
 import { RowMenu, type RowMenuItem } from '../components/RowMenu.tsx';
@@ -13,13 +12,14 @@ import { useToast } from '../components/Toast.tsx';
 import { ActivateDialog } from '../editor/ui/ActivateDialog.tsx';
 import { ActivationPill } from '../editor/ui/ActivationControl.tsx';
 import { MISSING_LIBRARY } from '../editor/ui/fields/LibrarySelect.tsx';
-import { BUNDLED_EXAMPLES, type BundledExample } from '../examples/bundled.ts';
-import { createFromGraph } from '../examples/create-example.ts';
 import { useWorkflows } from '../hooks/use-workflows.ts';
 import { runBlocked, useRunOnFile } from '../jobs/use-run-on-file.tsx';
 import { useTryOnFile } from '../jobs/use-try-on-file.ts';
 import { usePageTitle } from '../lib/page-title.ts';
 import { fmtAgoShort } from '../lib/time.ts';
+import { BUNDLED_EXAMPLES, type BundledExample } from '../workflows/bundled.ts';
+import { createFromGraph } from '../workflows/create-example.ts';
+import { EmptyWorkflows } from '../workflows/EmptyWorkflows.tsx';
 
 const CANT_RUN_TITLE = "This version can't run; open the workflow to see why";
 

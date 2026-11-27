@@ -2,7 +2,7 @@ import type { NodeInfo } from '@transcoda/contract';
 import type { WorkflowGraph } from '@transcoda/shared';
 import { describe, expect, it } from 'vitest';
 import { buildCatalog } from '../../hooks/use-catalog.ts';
-import { nodesFixture } from '../../test/fixtures/catalog.ts';
+import { nodesFixture } from '../../testing/fixtures/catalog.ts';
 import { checkConnection } from '../model/connection.ts';
 import { connectionFit, type HandleRef, nodeFaded } from './connection-fit.ts';
 

@@ -36,7 +36,7 @@ Use these instead of writing your own:
 - **Workflow graphs and registries:** `apps/server/src/workflows/test-helpers.ts`: `node`, `edge`, `mainGraph`, `subGraph`, `chain`, `testRegistry`, `withSetting` and the test node definitions. Don't re-declare graph builders in a test file.
 - **Engine inputs:** `apps/server/src/engine/testing/builders.ts`: `probeOf`, `fileOf`, `capsOf`, `withStream`, `withSidecar`, `packetRows`.
 - **MCP:** `apps/server/src/mcp/test-client.ts`.
-- **Web:** `renderAt` (`apps/web/src/test/render.tsx`) renders inside a router on an in-memory location, with the toast provider; `renderFlow` (`apps/web/src/test/flow.tsx`) renders a bare React Flow for canvas tests; `apps/web/src/test/fake-event-stream.ts` for the live event stream. The node catalogue fixture is `apps/web/src/test/fixtures/nodes.json` (see "Fixtures that are checked" below).
+- **Web:** `renderAt` (`apps/web/src/testing/render.tsx`) renders inside a router on an in-memory location, with the toast provider; `renderFlow` (`apps/web/src/testing/flow.tsx`) renders a bare React Flow for canvas tests; `apps/web/src/testing/fake-event-stream.ts` for the live event stream. The node catalogue fixture is `apps/web/src/testing/fixtures/nodes.json` (see "Fixtures that are checked" below).
 
 ## Real-ffmpeg fixtures
 
@@ -56,7 +56,7 @@ Use these instead of writing your own:
 
 ## Fixtures that are checked
 
-- `apps/web/src/test/fixtures/nodes.json` must match the live core node catalogue (`apps/server/src/nodes/web-fixture.test.ts`). Regenerate it with `pnpm --filter @transcoda/server dump-nodes > apps/web/src/test/fixtures/nodes.json`, then re-add the hand-written `test:unavailable` entry (see `apps/web/src/test/fixtures/catalog.ts`).
+- `apps/web/src/testing/fixtures/nodes.json` must match the live core node catalogue (`apps/server/src/nodes/web-fixture.test.ts`). Regenerate it with `pnpm --filter @transcoda/server dump-nodes > apps/web/src/testing/fixtures/nodes.json`, then re-add the hand-written `test:unavailable` entry (see `apps/web/src/testing/fixtures/catalog.ts`).
 - `docs/metrics.md` and the Grafana example must match the metrics catalogue (`apps/server/src/metrics/catalog.sync.test.ts`).
 - `docs/env.md`'s tables must name every environment variable `config.ts` reads, and no variable nothing reads (`apps/server/src/platform/config.docs.test.ts`). Its "Settings in the database" table must list `SETTING_KEYS` with their defaults (`apps/server/src/settings/settings-docs.test.ts`).
 - `docs/mcp.md`'s Tools table and tool count must match `ALL_TOOLS`, with each tool's scopes (`apps/server/src/mcp/mcp-docs.test.ts`).
