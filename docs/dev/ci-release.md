@@ -19,7 +19,9 @@ The rules in force today for `.github/workflows/`, `docker/`, `renovate.json`, `
 
 ## Nightly
 
-`nightly.yml` runs daily at 07:17 UTC, only when `main` moved since the last finished nightly; a manual run always runs. Job `unit` runs the unit tests with the fixture media in the e2e container (`pnpm test:docker`), so the real-ffmpeg tests that pull requests skip run against the image's jellyfin-ffmpeg. Job `e2e` runs the browser tests. Job `issues` runs `scripts/nightly-issues.ts`: one issue per failing test, labelled `nightly` and titled `Nightly: <file> > <test>`; a further failure adds a comment, a pass closes it. More than 10 new failures give one combined issue; a run that fails before any report gives one "run failed" issue. The plugins repo runs the same script from its checkout of core.
+`nightly.yml` runs daily at 07:17 UTC, only when `main` moved since the last finished nightly; a manual run always runs (job `changed`, the org's `nightly-changed` action). Job `unit` runs the unit tests with the fixture media in the e2e container (`pnpm test:docker`), so the real-ffmpeg tests run against the image's jellyfin-ffmpeg. Job `e2e` runs the browser tests. Job `issues` runs the org's `nightly-issues` action on both JSON reports: one issue per failing test, labelled `nightly` and titled `Nightly: <file> > <test>`; a further failure adds a comment, a pass closes it. More than 10 new failures give one combined issue; a run that fails outside its tests gives one "the run failed outside its tests" issue. The workflow keeps its `concurrency` group (`nightly`, not cancelled), so two runs never open the same issue.
+
+`scripts/nightly-issues.ts` is the older copy of that logic. Only the plugins repository's nightly still runs it, from a sparse checkout of core's `main`; delete it (and its test) once that nightly uses the action.
 
 ## Code scanning
 

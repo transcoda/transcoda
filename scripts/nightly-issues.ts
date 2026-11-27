@@ -1,8 +1,11 @@
 // Turns the nightly run's test reports into GitHub issues: one per failing test, labelled `nightly`.
 // A test that already has an open issue gets a comment instead of a second issue; a test that passes
 // again gets its issue closed. A run that failed before any report said why (install, build) gets
-// one "the nightly run failed" issue. Used by .github/workflows/nightly.yml, and by
-// transcoda-plugins' nightly from its checkout of this repo:
+// one "the nightly run failed" issue.
+// Kept only for transcoda-plugins' nightly, which runs it from a sparse checkout of this repo's main.
+// Core's own nightly uses the org's nightly-issues action (transcoda/.github), which finds the
+// issues this script opened by the same marker. Delete this file and its test once the plugins
+// nightly uses the action too.
 //   node scripts/nightly-issues.ts <report.json>...
 // Each report is vitest's or Playwright's JSON report (told apart by their shape).
 // Env: GITHUB_TOKEN, GITHUB_REPOSITORY (owner/name), RUN_URL, SHA, RUN_FAILED ("true" when a step

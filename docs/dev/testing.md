@@ -53,7 +53,7 @@ Use these instead of writing your own:
 ## Nightly
 
 - `.github/workflows/nightly.yml` runs once a night when `main` moved since the last finished nightly (a manual run always runs): the unit tests with fixtures in the e2e container (`pnpm test:docker`), and the browser and screenshot tests.
-- A failing test gets a GitHub issue labelled `nightly`, titled `Nightly: <file> > <test>` (`scripts/nightly-issues.ts`). A test that fails again gets a comment, a test that passes again gets its issue closed, more than 10 new failures get one "many tests fail" issue, and a run that fails before any report gets one "the run failed" issue.
-- The plugins repository runs the same script against core `main`.
+- A failing test gets a GitHub issue labelled `nightly`, titled `Nightly: <file> > <test>` (the org's `nightly-issues` action, from `transcoda/.github`). A test that fails again gets a comment, a test that passes again gets its issue closed, more than 10 new failures get one "many tests fail" issue, and a run that fails outside its tests gets one "the run failed outside its tests" issue.
+- The plugins repository's nightly still runs core's older `scripts/nightly-issues.ts` (same issues, same markers) until it moves to the action; then that script and its test go.
 
 History: [2026-11](../decisions/2026-11.md) ("Test tiers", "Nightly tests and their issues"), [M2 editor](../decisions/2026-10-m2-editor.md) ("M2 Task 1").
