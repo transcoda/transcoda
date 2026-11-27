@@ -62,7 +62,11 @@ The rules in force today for `apps/web/**`. History is in the decision files lin
 - `styles/design-doc-sync.test.ts` checks the values DESIGN.md quotes against the stylesheets. When they disagree, the stylesheet is right: update DESIGN.md.
 - `src/design-source.test.tsx` checks the components: no colour literal in TypeScript, icons only from `components/Icon.tsx` (stroke `ICON_STROKE`, 2.4, not a prop), inline SVG only in the icon set and the listed drawings.
 - Every exception to a design rule is in one file, `styles/design-exceptions.ts`, with its reason. Add one there only with a reason a reviewer can check. Do not add a second exceptions list.
-- New styles go in the stylesheet for that page; the design tests pick them up through `styles/css-source.ts`.
+- **Stylesheet layout.** `main.tsx` imports one entry, `styles/index.css`, which `@import`s every area file in a fixed cascade order, `tokens.css` first. Never reorder the imports; the comment at the top of `index.css` says where each kind of rule goes.
+  - A new rule goes in its area's file (`jobs.css`, `job-page.css`, `settings.css`, the `editor-*.css` files, `buttons.css`, `forms.css`...). Values that are not tokens go in `variables.css`.
+  - A new area gets a new file, imported from `index.css` at the right place in the cascade (usually just before `utilities.css`, which stays last).
+  - Never add to `assorted.css`: it is a catch-all kept only to preserve the cascade order.
+  - The design tests read every imported file, in order, through `styles/css-source.ts` (`stylesCss`), and `styles/design-rules-css.test.ts` fails when a `.css` file in `styles/` is not imported.
 
 ## Accessibility
 

@@ -36,7 +36,10 @@ function indexed(): Entry[] {
     .filter((l) => l.startsWith('- '))
     .map((l) => {
       const m = LINE.exec(l);
-      if (!m) throw new Error(`index line not in the form "- YYYY-MM-DD · Area · [Title](file.md)": ${l}`);
+      if (!m)
+        throw new Error(
+          `index line not in the form "- YYYY-MM-DD · Area · [Title](file.md)": ${l}`,
+        );
       return { date: m[1] ?? '', title: m[3] ?? '', file: m[4] ?? '' };
     });
 }
@@ -59,7 +62,9 @@ describe('decision log', () => {
   });
 
   it('indexes every entry once, in log order', () => {
-    const entries = logFiles().flatMap((f) => headings(f).flatMap((h) => (h.entry ? [h.entry] : [])));
+    const entries = logFiles().flatMap((f) =>
+      headings(f).flatMap((h) => (h.entry ? [h.entry] : [])),
+    );
     const missing = entries
       .filter((e) => !indexed().some((i) => i.file === e.file && i.title === e.title))
       .map((e) => `- ${e.date} · <Area> · [${e.title}](${e.file})`);

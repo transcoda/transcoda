@@ -8,25 +8,10 @@ Today's rules for each area are in [`docs/dev/`](docs/dev/): [testing](docs/dev/
 
 Dependencies point one way: `packages/shared` ← `packages/sdk` ← `packages/contract` ← `apps/server` and `apps/web`. `pnpm check-deps` enforces this and refuses relative imports across packages.
 
-- **`packages/`**
-  - `shared`: types and pure helpers both sides use (engine vocabulary, formatting).
-  - `sdk`: the published plugin and node SDK (`defineNode`).
-  - `contract`: every API procedure's route, input, output and errors (oRPC).
-- **`apps/server/src`**
-  - API: `rpc/` (procedures, guards), `http/` (plain routes), `auth/`.
-  - Data: `db/` (SQLite, migrations, repos, backups), `settings/`, `config.ts` (environment variables).
-  - Encoding: `engine/` (probe, build model, ffmpeg, verify, replace, queue, the pipeline), `capabilities/` (ffmpeg and GPU probes), `nodes/` (core nodes, registry), `workflows/` (validation, versions, activation).
-  - Integrations: `plugins/` and `plugin-host/` (sandboxed plugin processes), `mcp/`, `metrics/`.
-- **`apps/web/src`**
-  - `App.tsx` (routes), `pages/`, `jobs/` (job page wording).
-  - `editor/`: `model/` is pure, `flow/` is React Flow, plus `ui/` and `trace/`.
-  - `api/`, `hooks/`, `components/`, `lib/`, `test/`.
-  - `styles/`: tokens, stylesheets, design guard tests.
-- **Elsewhere**
-  - `e2e/`: Playwright flows and screenshot baselines.
-  - `docker/`: the image.
-  - `examples/`: shipped workflows and the Grafana dashboard.
-  - `scripts/`: repo checks, fixtures, release tooling.
+- **`packages/`**: `shared` (types and pure helpers both sides use), `sdk` (the published plugin and node SDK, `defineNode`), `contract` (every API procedure's route, input, output and errors, oRPC).
+- **`apps/server/src`**: `rpc/` (procedures, guards), `http/` (plain routes), `auth/`; `db/` (SQLite, migrations, repos, backups), `settings/`, `config.ts` (environment variables); `engine/` (probe, build model, ffmpeg, verify, replace, queue, the pipeline), `capabilities/` (ffmpeg and GPU probes), `nodes/` (core nodes, registry), `workflows/` (validation, versions, activation); `plugins/` and `plugin-host/` (sandboxed plugin processes), `mcp/`, `metrics/`.
+- **`apps/web/src`**: `App.tsx` (routes), `pages/`, `jobs/` (job page wording), `editor/` (`model/` pure, `flow/` React Flow, `ui/`, `trace/`), `api/`, `hooks/`, `components/`, `lib/`, `styles/` (tokens, per-area stylesheets, design guard tests), `test/`.
+- **Elsewhere**: `e2e/` (Playwright flows, screenshot baselines), `docker/` (the image), `examples/` (shipped workflows, Grafana dashboard), `scripts/` (repo checks, fixtures, release tooling).
 
 ## What done means
 
@@ -91,7 +76,7 @@ A code comment cites the topic doc, or a log entry by file and heading.
 - A component in `apps/web/src/pages/` and its route in `apps/web/src/App.tsx`.
 - A nav item in `apps/web/src/components/Shell.tsx` if it needs one.
 - `usePageTitle` for the tab title, and the shared `Loading` and `NotFound` states.
-- Its styles in the stylesheet for that page.
+- Its styles in its area's file under `apps/web/src/styles/`, or a new file imported from `styles/index.css` at the right place in the cascade (a guard test fails on a file that is not imported). Never add to `assorted.css`.
 - A unit test with `renderAt`. Add a browser flow or screenshot only for a key page ([web-ui.md](docs/dev/web-ui.md)).
 
 **Add a setting** (stored in the database, edited in Settings)
@@ -112,18 +97,11 @@ A code comment cites the topic doc, or a log entry by file and heading.
 
 ## Test helpers
 
-Use these rather than re-declaring them ([more](docs/dev/testing.md#helpers-to-use)):
-
-- `createTestApp` (`apps/server/src/test-app.ts`).
-- `send`, `login`, `withCsrf`, `createToken` (`apps/server/src/test-http.ts`).
-- `createTestDb` (`apps/server/src/db/test-db.ts`).
-- `node`, `edge`, `mainGraph`, `testRegistry` (`apps/server/src/workflows/test-helpers.ts`).
-- `probeOf`, `fileOf`, `capsOf` (`apps/server/src/engine/test-helpers.ts`).
-- `fixturesAvailable` (`apps/server/src/engine/fixtures.ts`).
-- `renderAt` (`apps/web/src/test/render.tsx`).
+Use these rather than re-declaring them ([more](docs/dev/testing.md#helpers-to-use)): `createTestApp` (`apps/server/src/test-app.ts`); `send`, `login`, `withCsrf`, `createToken` (`apps/server/src/test-http.ts`); `createTestDb` (`apps/server/src/db/test-db.ts`); `node`, `edge`, `mainGraph`, `testRegistry` (`apps/server/src/workflows/test-helpers.ts`); `probeOf`, `fileOf`, `capsOf` (`apps/server/src/engine/test-helpers.ts`); `fixturesAvailable` (`apps/server/src/engine/fixtures.ts`); `renderAt` (`apps/web/src/test/render.tsx`).
 
 ## UI changes
 
 - A UI fix or change counts as done only with **before and after screenshots** of the affected page, at the widths and in the themes it touches. Put both in the pull request.
 - Run the browser tests (`pnpm e2e:docker`) when a change touches a page or a flow they cover. When a page changes on purpose, update its screenshot baselines with `pnpm e2e:update`, look at every changed image, and commit them in the same pull request.
 - Follow [DESIGN.md](DESIGN.md) for colours, type, spacing and icons.
+- CSS lives in per-area files under `apps/web/src/styles/`, imported in a fixed order from `styles/index.css` (`tokens.css` first). Put a rule in its area's file; a new area gets a new file imported at the right place. Don't add to `assorted.css`, and never reorder the imports ([web-ui.md](docs/dev/web-ui.md)).
