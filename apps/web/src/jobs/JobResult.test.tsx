@@ -1,9 +1,8 @@
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { cleanup, render, screen } from '@testing-library/react';
 import type { JobDetail } from '@transcoda/contract';
 import { afterEach, describe, expect, it } from 'vitest';
 import { fmtDate } from '../lib/time.ts';
+import { stylesCss } from '../styles/css-source.ts';
 import { JobResult } from './JobResult.tsx';
 import { RESULT_TONE } from './jobOutcome.ts';
 import { VERDICT_WORD } from './jobText.ts';
@@ -159,7 +158,7 @@ describe('JobResult', () => {
   });
 
   it('the raw ffmpeg output is one disclosure: the command in it is flat and its summary is a full-size target', () => {
-    const css = readFileSync(join(__dirname, '../styles.css'), 'utf8');
+    const css = stylesCss;
     const flat = css.match(/\.ffmpeg-raw \.command-block\s*\{([^}]*)\}/)?.[1] ?? '';
     expect(flat).toMatch(/border:\s*0/);
     expect(flat).toMatch(/background:\s*transparent/);
@@ -169,7 +168,7 @@ describe('JobResult', () => {
   });
 
   describe('the card is neutral; only the icon circle takes the chip colour', () => {
-    const css = readFileSync(join(__dirname, '../styles.css'), 'utf8');
+    const css = stylesCss;
 
     it('no outcome colours the panel itself (no slab, no edge bar)', () => {
       expect(css).not.toMatch(/\.job-result\.(v|is)-[a-z]+\s*\{/);

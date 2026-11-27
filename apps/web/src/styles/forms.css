@@ -1,0 +1,43 @@
+/* ---------- Form fields ---------- */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.field > label,
+.scopes legend {
+  font-size: var(--fs-ui);
+  font-weight: 500;
+}
+
+.input {
+  height: 48px;
+  padding: 0 var(--sp-4);
+  background: var(--raised);
+  border: 1.5px solid var(--line-control);
+  border-radius: var(--r-md);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-h3);
+}
+
+.input[type="date"] {
+  padding: 0 var(--sp-3);
+  color-scheme: dark;
+}
+
+.input:disabled {
+  color: var(--faint);
+  cursor: not-allowed;
+}
+
+.input[aria-invalid="true"] {
+  border-color: var(--st-failed);
+}
+
+.field-hint {
+  font-size: var(--fs-small);
+  color: var(--faint);
+}

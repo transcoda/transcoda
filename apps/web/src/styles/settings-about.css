@@ -1,0 +1,400 @@
+/* Recycle: what the recycled originals take now, a value rather than a sentence. */
+.recycle-usage-value {
+  font-size: var(--fs-h2);
+  font-weight: 700;
+  color: var(--text);
+}
+
+/* About */
+.about {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+/* About → a newer release: a neutral panel (no edge bar, convention 16) with a tinted download
+   icon, the compose command to copy, then the notes of every missed version. Notice only. */
+.app-update {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  padding: var(--sp-5) var(--sp-6);
+}
+
+.app-update-head {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  column-gap: var(--sp-3);
+  align-items: start;
+}
+
+.app-update-head h2 {
+  margin: 0;
+  font-size: var(--fs-h2);
+}
+
+.app-update-head p {
+  margin: var(--sp-1) 0 0;
+}
+
+.app-update-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--r-pill);
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  color: var(--accent-text);
+}
+
+.app-update-how {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.app-update-how p {
+  margin: 0;
+}
+
+.app-update-command {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-2) var(--sp-2) var(--sp-4);
+  border-radius: var(--r-md);
+  background: var(--bg);
+}
+
+.app-update-command pre {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  color: var(--text);
+  font-size: var(--fs-mono);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.app-update-notes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  padding-top: var(--sp-4);
+  border-top: 1px solid var(--line);
+}
+
+.app-update-notes > p {
+  margin: 0;
+}
+
+.app-update-releases {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.app-update-release h4 {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  margin: 0 0 var(--sp-2);
+  font-size: var(--fs-body);
+}
+
+.app-update-date {
+  color: var(--muted);
+  font-weight: 400;
+  font-size: var(--fs-small);
+}
+
+.app-update-group + .app-update-group {
+  margin-top: var(--sp-2);
+}
+
+.app-update-group ul {
+  margin: var(--sp-1) 0 0;
+  padding-left: var(--sp-5);
+  list-style: disc;
+  line-height: 1.5;
+}
+
+/* What to change after updating: the amber attention colour, on the label only. */
+.app-update-group.is-breaking .group-h3 {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  color: var(--st-needs-setting);
+}
+
+.about-list {
+  margin: 0;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.about-row {
+  display: grid;
+  grid-template-columns: 140px minmax(0, 1fr);
+  gap: var(--sp-4);
+  padding: var(--sp-3) var(--sp-4);
+}
+
+.about-row + .about-row {
+  border-top: 1px solid var(--line);
+}
+
+.about-list dt {
+  color: var(--muted);
+}
+
+.about-list dd {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  min-width: 0;
+}
+
+.about-path {
+  color: var(--faint);
+  font-size: var(--fs-small);
+  overflow-wrap: anywhere;
+}
+
+.about-error {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  color: var(--danger-text);
+}
+
+.about-caps {
+  border-radius: var(--r-lg);
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.about-caps summary {
+  display: flex;
+  align-items: center;
+  min-height: var(--target-min);
+  padding: 0 var(--sp-4);
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: var(--r-lg);
+}
+
+.about-chips {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: 0 var(--sp-4) var(--sp-4);
+}
+
+.about-chips h3 {
+  font-size: var(--fs-small);
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.about-chips ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.about-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  min-height: var(--target-min);
+  padding: 0 var(--sp-4);
+  border-radius: var(--r-lg);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+@media (hover: hover) {
+  .about-link:hover {
+    color: var(--text);
+    background: var(--raised);
+  }
+}
+
+.about-backups {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-3) var(--sp-4) var(--sp-4);
+  border-radius: var(--r-lg);
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.about-backups-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--sp-3);
+}
+
+.about-backups-head h3 {
+  font-size: var(--fs-body);
+  font-weight: 600;
+}
+
+.about-backups-hint {
+  margin: 0;
+  font-size: var(--fs-small);
+}
+
+.about-backups-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.about-backups-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding: var(--sp-2) 0;
+  min-width: 0;
+}
+
+.about-backups-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  min-width: 0;
+}
+
+.about-backups-list li + li {
+  border-top: 1px solid var(--line);
+}
+
+.about-backups-name {
+  overflow-wrap: anywhere;
+}
+
+.about-backups-head .btn[aria-disabled="true"] {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.about-backups-done {
+  margin: 0;
+  font-size: var(--fs-small);
+}
+
+.about-backups-done:empty {
+  display: none;
+}
+
+.about-backups-meta {
+  color: var(--muted);
+  font-size: var(--fs-small);
+}
+
+/* Open-source licences (About sub-page): search, then one disclosure per component. */
+.licences {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+.licence-search {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  max-width: 420px;
+}
+
+.licence-search label {
+  font-weight: 600;
+}
+
+.licence-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.licence-list li {
+  border-top: 1px solid var(--line);
+}
+
+.licence-list li:first-child {
+  border-top: 0;
+}
+
+.licence-entry summary {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  min-height: var(--target-min);
+  padding: var(--sp-2) var(--sp-4);
+  cursor: pointer;
+  border-radius: var(--r-lg);
+}
+
+.licence-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.licence-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: 0 var(--sp-4) var(--sp-4);
+}
+
+.licence-home {
+  font-size: var(--fs-small);
+  overflow-wrap: anywhere;
+}
+
+.licence-text {
+  margin: 0;
+  max-height: 320px;
+  overflow: auto;
+  padding: var(--sp-3);
+  border-radius: var(--r-md);
+  background: var(--raised);
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: var(--fs-small);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 639px) {
+  .settings-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .about-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--sp-1);
+  }
+}

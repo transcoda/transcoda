@@ -1,0 +1,66 @@
+.toasts {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  max-width: min(420px, calc(100vw - 40px));
+}
+
+.toasts > div {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-2) var(--sp-2) var(--sp-2) var(--sp-4);
+  border-radius: var(--r-md);
+  background: var(--raised);
+  border: 1px solid var(--line-strong);
+  color: var(--text);
+  font-size: var(--fs-ui);
+}
+
+.toast-success {
+  border-color: var(--st-replaced);
+}
+.toast-success .icon {
+  color: var(--st-replaced-text);
+}
+
+.toast-error {
+  background: var(--st-failed-bg);
+  border-color: var(--danger-line);
+  color: var(--st-failed-text);
+}
+
+.toast-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.toast-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--target-min);
+  height: var(--target-min);
+  flex: none;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  .toast-close:hover {
+    background: var(--line);
+  }
+}

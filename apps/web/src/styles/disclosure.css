@@ -1,0 +1,96 @@
+/* ---------- Disclosure (components/Disclosure.tsx): "Advanced" and other closed sections ---------- */
+
+.disclosure-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  width: 100%;
+  min-height: var(--target-min);
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-ui);
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  .disclosure-toggle:hover .disclosure-title {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+}
+
+.disclosure-toggle:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.disclosure-chevron {
+  display: inline-flex;
+  color: var(--muted);
+  transition: transform var(--dur-base) var(--ease-out);
+}
+
+.disclosure-toggle[aria-expanded="true"] .disclosure-chevron {
+  transform: rotate(90deg);
+}
+
+.disclosure-meta {
+  color: var(--faint);
+  font-size: var(--fs-mono);
+  font-weight: 400;
+}
+
+.disclosure-body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .disclosure-chevron {
+    transition: none;
+  }
+}
+
+.setting-hosts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.setting-hosts li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--sp-1) var(--sp-3);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.setting-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--target-min);
+}
+
+.account-form {
+  max-width: 420px;
+}
+
+.account-form .setting-row {
+  padding: var(--sp-2) 0;
+  border-bottom: 0;
+}
+
+.account-form > .form-actions {
+  margin-top: var(--sp-3);
+}

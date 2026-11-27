@@ -1,5 +1,3 @@
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { ORPCError } from '@orpc/client';
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import type { WorkflowSummary } from '@transcoda/contract';
@@ -39,6 +37,7 @@ vi.mock('../api/client.ts', async () => {
 });
 
 import { resetCatalogCache } from '../hooks/useCatalog.ts';
+import { stylesCss } from '../styles/css-source.ts';
 import { WorkflowsPage } from './WorkflowsPage.tsx';
 
 const minutesAgo = (m: number) => new Date(Date.now() - m * 60_000).toISOString();
@@ -163,7 +162,7 @@ describe('WorkflowsPage', () => {
   });
 
   it('styles the section heads next to the workflow table rules', () => {
-    const css = readFileSync(join(__dirname, '../styles.css'), 'utf8');
+    const css = stylesCss;
     expect(css).toMatch(/\.wf-section-head\s*\{/);
     expect(css).toMatch(/\.wf-count\s*\{[^}]*color:\s*var\(--muted\)/);
   });

@@ -12,7 +12,7 @@ const domOf = (s: ReactFlowState): HTMLDivElement | null => s.domNode;
 /**
  * Writes the canvas zoom to `--tc-zoom` on the React Flow wrapper, so CSS can keep a small
  * on-canvas button (the "+" and the group toggle) at least 24 px on screen (WCAG 2.5.8) when the
- * canvas is zoomed out: see `--tc-hit` in styles.css. Renders nothing.
+ * canvas is zoomed out: see `--tc-hit` in styles/editor-nodes.css. Renders nothing.
  */
 export function ZoomVar() {
   const zoom = useViewportStore(zoomOf);

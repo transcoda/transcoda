@@ -1,0 +1,295 @@
+/* ---------- Libraries (M2 Task 26) ---------- */
+
+/* Positioned so the visually hidden header text scrolls with the table instead of widening the page. */
+.lib-table {
+  position: relative;
+  overflow-x: auto;
+}
+
+.lib-table table {
+  width: 100%;
+  min-width: 720px;
+  border-collapse: collapse;
+  font-size: var(--fs-ui);
+}
+
+.lib-table th {
+  padding: var(--sp-4) var(--sp-3);
+  text-align: left;
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  font-weight: 600;
+  color: var(--faint);
+  text-transform: uppercase;
+}
+
+.lib-table .lib-cell {
+  padding: var(--sp-3);
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  vertical-align: middle;
+}
+
+.lib-table table {
+  table-layout: fixed;
+}
+.lib-table .lib-col-name {
+  width: 24%;
+}
+.lib-table .lib-col-feeds {
+  width: 28%;
+}
+.lib-table .lib-col-actions {
+  width: 170px;
+}
+
+/* The count beside the H1 ("Libraries 1"), like a section heading's count. */
+.lib-h1-count {
+  margin-left: var(--sp-1);
+  font-family: var(--font-mono);
+  font-size: var(--fs-body);
+  font-weight: 600;
+  letter-spacing: 0;
+  color: var(--muted);
+}
+
+/* A path on one muted line, cut from the left ("…/media/movies"); the full path is its title. */
+.lib-path,
+.lib-note-path {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  direction: rtl;
+  text-align: left;
+  font-size: var(--fs-small);
+  color: var(--muted);
+}
+.lib-note-path {
+  display: inline-block;
+  vertical-align: bottom;
+  max-width: calc(100% - 7em);
+  font-size: var(--fs-mono);
+}
+/* A setting that differs from the default, under the path. */
+.lib-note {
+  display: block;
+  margin-top: var(--sp-1);
+  font-size: var(--fs-mono);
+  color: var(--muted);
+}
+
+/* Feeds: the workflow's name and the same activation pill as the Workflows list. */
+.lib-feed {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+  color: var(--text);
+}
+.lib-feed .activation-pill {
+  min-height: 24px;
+  padding: 0 var(--sp-2);
+  font-size: var(--fs-micro);
+}
+
+.lib-table th:first-child,
+.lib-table .lib-cell:first-child {
+  padding-left: var(--sp-5);
+}
+
+.lib-table th:last-child,
+.lib-table .lib-cell:last-child {
+  padding-right: var(--sp-5);
+  text-align: right;
+}
+
+.lib-table .lib-name {
+  min-width: 9em;
+  color: var(--text);
+  font-weight: 700;
+}
+
+/* The empty row's one cell is also the last one: keep it left-aligned. */
+.lib-table .lib-cell.lib-empty {
+  padding-left: var(--sp-5);
+  text-align: left;
+  color: var(--faint);
+}
+
+.lib-actions {
+  white-space: nowrap;
+}
+
+/* The upgrade notices above the table: icon, title and list, Dismiss on the right. */
+.lib-notices {
+  align-items: flex-start;
+  margin-bottom: var(--sp-4);
+}
+
+.lib-notices-icon {
+  display: flex;
+  flex: none;
+  margin-top: var(--sp-1);
+}
+
+.lib-notices-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.lib-notices-title {
+  margin: 0 0 var(--sp-1);
+  font-size: var(--fs-ui);
+  font-weight: 700;
+}
+
+.lib-notices-body ul {
+  margin: 0;
+  padding-left: 1.2em;
+  font-weight: 400;
+}
+
+.lib-notices-body p {
+  margin: var(--sp-2) 0 0;
+}
+
+.lib-notices .btn {
+  flex: none;
+  min-height: var(--target-min);
+}
+
+.lib-feeds-none span {
+  color: var(--faint);
+}
+
+.lib-feeds-waiting > span {
+  color: var(--muted);
+}
+
+/* "Activate vN…" in the Feeds column: a button that reads as the column's links do. */
+.lib-activate {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent-text);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  .lib-activate:hover {
+    color: var(--accent-hover);
+  }
+}
+
+.lib-dry-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  margin: var(--sp-3) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lib-dry-list .btn {
+  width: 100%;
+  justify-content: flex-start;
+}
+
+.lib-actions .row-menu {
+  margin-left: var(--sp-2);
+  vertical-align: middle;
+}
+
+.lib-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  color: var(--text);
+}
+
+.lib-field-error {
+  font-size: var(--fs-small);
+  color: var(--danger-text);
+}
+
+.lib-recycle {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.lib-recycle legend {
+  margin-bottom: var(--sp-1);
+  padding: 0;
+  font-size: var(--fs-ui);
+  font-weight: 500;
+}
+
+.lib-radio,
+.lib-check {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  min-height: 44px;
+  cursor: pointer;
+}
+
+.lib-radio span,
+.lib-check span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.lib-radio input,
+.lib-check input {
+  width: 20px;
+  height: 20px;
+  flex: none;
+  margin: 0;
+  accent-color: var(--accent-text);
+}
+
+.lib-radio input:focus-visible,
+.lib-check input:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.lib-switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  min-height: 44px;
+}
+
+.required-mark {
+  margin-left: var(--sp-1);
+  color: var(--muted);
+  font-weight: 700;
+}
+
+/* One line under a disabled primary button: what is still missing. */
+.form-reason {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--fs-small);
+}
+
+.lib-switch-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+
+.lib-switch-label {
+  font-size: var(--fs-ui);
+  font-weight: 500;
+}

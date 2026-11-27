@@ -1,0 +1,174 @@
+/* ---------- Sub-workflows: used-by, Run node inspector, overrides (editor/ui/RunSubworkflowInspector) ---------- */
+
+.used-by {
+  font-family: var(--font-mono);
+  font-size: var(--fs-mono);
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.run-pin {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.run-pin-line {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--fs-mono);
+  color: var(--muted);
+}
+
+.run-pin-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+.run-open {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--target-min);
+  font-size: var(--fs-ui);
+}
+
+.run-overrides {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  padding-top: var(--sp-3);
+  border-top: 1px solid var(--line);
+}
+
+.run-overrides-title {
+  margin: 0;
+  font-size: var(--fs-ui);
+  font-weight: 600;
+}
+
+.run-missing,
+.run-load-failed,
+.override-stale {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+  margin: 0;
+  font-size: var(--fs-small);
+}
+
+.run-missing {
+  color: var(--danger-text);
+}
+
+.overrides-empty,
+.run-load-failed,
+.override-stale {
+  margin: 0;
+  font-size: var(--fs-small);
+  color: var(--muted);
+}
+
+.overrides,
+.overrides-node {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+.overrides-node-title {
+  margin: 0;
+  font-size: var(--fs-mono);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+.override-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.override-row-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+}
+
+.override-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-height: var(--target-min);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: var(--fs-small);
+  cursor: pointer;
+}
+
+.override-toggle:focus-visible {
+  outline: 2px solid var(--accent-text);
+  outline-offset: 2px;
+  border-radius: var(--r-sm);
+}
+
+/* The switch drawn inside the toggle button is decoration; the button is the target. */
+.override-toggle .tc-switch::before {
+  content: none;
+}
+
+.override-toggle[aria-checked="true"] .tc-switch {
+  background: var(--accent);
+}
+
+.override-toggle[aria-checked="true"] .tc-switch .tc-switch-knob {
+  left: auto;
+  right: 3px;
+  background: var(--bg);
+}
+
+.override-toggle:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.override-default {
+  margin: 0;
+  font-size: var(--fs-small);
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.override-default-word {
+  color: var(--faint);
+}
+
+/* Event stream indicator (screens 04, 07, 08). */
+.live-dot {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  font-weight: 600;
+  color: var(--muted);
+}
+.live-dot.is-live {
+  color: var(--accent-text);
+  text-transform: uppercase;
+}
+.live-dot-mark {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 4px var(--live-halo);
+}

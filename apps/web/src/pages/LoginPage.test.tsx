@@ -1,5 +1,3 @@
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -24,6 +22,7 @@ vi.mock('../api/client.ts', () => ({
 }));
 vi.mock('../auth/useAuth.ts', () => ({ useAuth: () => ({ refresh: mocks.refresh }) }));
 
+import { stylesCss } from '../styles/css-source.ts';
 import { LoginPage } from './LoginPage.tsx';
 
 function submit() {
@@ -48,7 +47,7 @@ describe('LoginPage', () => {
     const intro = container.querySelector('.auth-host-intro') as HTMLElement;
     expect(intro.textContent).toBe(`to Transcoda on ${window.location.hostname}`);
     expect(container.querySelector('.auth-meta')?.textContent).toContain(window.location.host);
-    const css = readFileSync(join(__dirname, '../styles.css'), 'utf8');
+    const css = stylesCss;
     // Wide: the intro line is hidden (the footer says it). Phone: the footer is hidden.
     expect(css).toMatch(
       /@media \(min-width: 900px\) \{\s*\.lead:has\(> \.auth-host-intro\) \{\s*display: none;/,

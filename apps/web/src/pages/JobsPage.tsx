@@ -454,7 +454,7 @@ function JobTable({
       <table className={withActions ? 'job-table has-actions' : 'job-table'} aria-label={label}>
         <colgroup>
           <col />
-          {/* Library and Workflow give way first when the table is narrow (styles.css). */}
+          {/* Library and Workflow give way first when the table is narrow (styles/jobs.css). */}
           <col className="job-col-library job-optional" />
           <col className="job-col-workflow job-optional" />
           <col className="job-col-status" />

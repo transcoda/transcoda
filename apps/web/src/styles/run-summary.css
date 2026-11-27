@@ -1,0 +1,115 @@
+/* ---------- Run summary: header, Jobs-style tiles, per-file table (phone: stacked cards) ---------- */
+
+/* The run's title left, Process again / Dry run again right; on a narrow screen the action wraps under. */
+.run-head-row {
+  flex-wrap: wrap;
+}
+
+.run-title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+.run-counts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+.run-stats .stat-tile {
+  flex: 0 1 200px;
+}
+.run-dry-summary {
+  color: var(--muted);
+  font-size: var(--fs-small);
+}
+.run-bytes {
+  color: var(--muted);
+}
+.run-mismatch,
+.run-error {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-3);
+  border-radius: var(--r-md);
+  border: 1px solid var(--danger-line);
+  color: var(--danger-text);
+}
+
+.run-files {
+  /* Positioned so the sr-only header stays inside the scroll box (no page scroll on phones). */
+  position: relative;
+  padding: 0;
+  overflow-x: auto;
+}
+.run-files table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-ui);
+}
+.run-files th {
+  padding: var(--sp-4) var(--sp-3);
+  text-align: left;
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+.run-cell {
+  padding: var(--sp-3);
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  vertical-align: middle;
+}
+.run-cell.run-file-name {
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+.run-cell.run-file-name .job-name {
+  white-space: normal;
+}
+/* Why a file ended as it did, under its name (no Reason column). */
+.run-file-note {
+  display: block;
+  margin-top: var(--sp-1);
+  font-size: var(--fs-small);
+  color: var(--muted);
+}
+.run-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+.run-cards {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.run-cell.run-size {
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: var(--fs-mono);
+  white-space: nowrap;
+}
+
+@media (max-width: 639px) {
+  .run-page {
+    padding: var(--sp-5) var(--sp-4) var(--sp-8);
+  }
+  .run-page .page-head h1 {
+    font-size: var(--fs-h1);
+  }
+  /* Phone: the saved tile on its own row, the outcomes side by side under it. */
+  .run-stats {
+    flex-wrap: wrap;
+  }
+  .run-stats .stat-tile {
+    flex: 1 1 0;
+  }
+  .run-stats .stat-tile:first-child {
+    flex-basis: 100%;
+  }
+}

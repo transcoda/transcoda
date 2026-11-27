@@ -1,8 +1,9 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { stylesCss } from './css-source.ts';
 
-const css = readFileSync(join(__dirname, '../styles.css'), 'utf8');
+const css = stylesCss;
 const tokens = readFileSync(join(__dirname, 'tokens.css'), 'utf8');
 
 function rule(source: string, selector: string): string {

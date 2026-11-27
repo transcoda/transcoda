@@ -1,0 +1,674 @@
+/* ---------- Editor: node cards, handles, edges (screen 05, editor spec 01: N2, N4–N7) ---------- */
+
+.tc-node {
+  --node-kind: var(--faint);
+  position: relative;
+  width: 210px;
+  border-radius: var(--r-md);
+  background: var(--raised);
+  box-shadow: 0 0 0 1px var(--line-strong);
+  color: var(--text);
+  font-family: var(--font-ui);
+}
+
+.tc-values {
+  width: 240px;
+  padding: var(--sp-3) var(--sp-3) var(--sp-3);
+  border-radius: var(--r-md);
+  background: var(--raised);
+  box-shadow: 0 0 0 1px var(--line-strong);
+  color: var(--text);
+  font-family: var(--font-ui);
+}
+
+.react-flow__node.selected > .tc-values {
+  box-shadow: 0 0 0 2px var(--accent-text);
+}
+
+.tc-values-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-2);
+  font-size: var(--fs-small);
+  font-weight: 700;
+  color: var(--accent-text);
+}
+
+.tc-values-empty {
+  margin: 0;
+  font-size: var(--fs-small);
+  color: var(--muted);
+}
+
+.tc-values-list {
+  display: grid;
+  gap: var(--sp-2);
+  margin: 0;
+}
+
+.tc-values-row dt {
+  font-size: var(--fs-small);
+  font-weight: 600;
+}
+
+.tc-values-row dd {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--fs-mono);
+  color: var(--muted);
+}
+
+.tc-values-value {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tc-values-uses {
+  flex: none;
+  color: var(--faint);
+}
+
+/* Where a value line starts and ends: not a port, never drawn or hit. */
+.react-flow__handle.tc-value-handle {
+  width: 1px;
+  height: 1px;
+  min-width: 0;
+  min-height: 0;
+  border: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.tc-node.kind-trigger,
+.tc-node.kind-start {
+  --node-kind: var(--kind-trigger);
+}
+
+.tc-node.kind-condition {
+  --node-kind: var(--kind-condition);
+}
+
+.tc-node.kind-action {
+  --node-kind: var(--kind-action);
+}
+
+.tc-node.kind-finish,
+.tc-node.kind-end {
+  --node-kind: var(--kind-finish);
+}
+
+.tc-node.kind-data {
+  --node-kind: var(--kind-data);
+}
+
+.tc-node-head {
+  height: 50px;
+  padding: var(--sp-2) var(--sp-3);
+  border-bottom: 1px solid var(--node-head-line);
+}
+
+.tc-node-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  font-weight: 600;
+  color: var(--node-kind);
+  text-transform: uppercase;
+}
+
+.tc-node-skipped {
+  margin-left: auto;
+  color: var(--faint);
+}
+
+.tc-node-title {
+  overflow: hidden;
+  font-size: var(--fs-body);
+  font-weight: 700;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.tc-port {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 30px;
+  padding: 0 var(--sp-4);
+  border-bottom: 1px solid var(--line);
+  font-size: var(--fs-mono);
+  color: var(--muted);
+}
+
+.tc-port.is-data {
+  color: var(--kind-data);
+}
+
+.tc-port-out {
+  margin-left: auto;
+}
+
+/* N2 branch rows: Yes (the `pass` port) in lime, No (`else`) faint. The words carry the meaning,
+   colour is the backup. The trace's is-taken / is-dimmed (later in the file, same specificity)
+   and the progress fill's copy win over these. */
+.tc-port-out.is-branch-pass {
+  color: var(--accent-text);
+}
+
+.tc-port-out.is-branch-else {
+  color: var(--faint);
+}
+
+/* A branch row names the type it passes: "Yes · file". The type word reads like the input
+   row's "file" (muted; the data colour on a data row); the dot is drawn here and hidden from
+   assistive tech, which reads "Yes, file" (the sr-only comma). */
+.tc-port-type {
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.tc-port.is-data .tc-port-type {
+  color: var(--kind-data);
+}
+
+.tc-port-type::before {
+  content: "·" / "";
+  margin: 0 var(--sp-1);
+}
+
+.tc-node-row {
+  display: flex;
+  align-items: center;
+  height: 40px;
+  padding: 0 var(--sp-3);
+  font-size: var(--fs-mono);
+  color: var(--st-needs-setting);
+}
+
+/* N12: the on-node row (editor spec 02). A control or a summary fills the 40 px slot; below
+   75 % zoom only the summary text is left (`.tc-node-summary`, same slot height). */
+.tc-onnode {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: var(--sp-2);
+  min-width: 0;
+  height: 100%;
+  color: var(--text);
+}
+
+.tc-onnode.is-missing {
+  color: var(--st-needs-setting);
+}
+
+.tc-onnode-label {
+  overflow: hidden;
+  font-size: var(--fs-mono);
+  color: var(--muted);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.tc-onnode-input,
+.tc-onnode-select {
+  flex: none;
+  height: 28px;
+  margin-left: auto;
+  padding: 0 var(--sp-2);
+  border: 1px solid var(--line-control);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: var(--fs-mono);
+}
+
+.tc-onnode-input {
+  width: 56px;
+}
+
+.tc-onnode-select {
+  max-width: 110px;
+}
+
+.tc-onnode-input:focus-visible,
+.tc-onnode-select:focus-visible,
+.tc-onnode-summary:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.tc-onnode-input[aria-invalid="true"] {
+  border-color: var(--st-needs-setting);
+}
+
+/* The summary is a real button over the whole slot (40 px drawn; ::before makes it 44 px). */
+.tc-onnode-summary {
+  position: relative;
+  margin: 0 calc(-1 * var(--sp-2));
+  padding: 0 var(--sp-2);
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  font: inherit;
+  font-size: var(--fs-mono);
+  text-align: left;
+  cursor: pointer;
+}
+
+.tc-onnode-summary::before {
+  content: "";
+  position: absolute;
+  inset: -2px 0;
+}
+
+@media (hover: hover) {
+  .tc-onnode-summary:hover {
+    background: var(--line);
+  }
+}
+
+.tc-onnode-text {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.chips-mini {
+  display: flex;
+  gap: var(--sp-1);
+  min-width: 0;
+  overflow: hidden;
+}
+
+.chips-mini > span {
+  flex: none;
+  padding: var(--sp-1) var(--sp-2);
+  border-radius: var(--r-sm);
+  background: var(--line);
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  color: var(--text);
+}
+
+.chips-mini > span.is-empty {
+  background: transparent;
+  color: var(--faint);
+}
+
+.tc-node-summary {
+  height: 40px;
+  line-height: 40px;
+  padding: 0 var(--sp-3);
+  overflow: hidden;
+  font-family: var(--font-mono);
+  font-size: var(--fs-mono);
+  color: var(--muted);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.tc-node-summary.is-missing {
+  color: var(--st-needs-setting);
+}
+
+/* N6: state as badge and border. */
+.tc-node.border-red {
+  background: var(--node-broken-bg);
+  box-shadow: 0 0 0 2px var(--st-failed);
+}
+
+.tc-node.border-red .tc-node-head,
+.tc-node.border-red .tc-port {
+  border-bottom-color: var(--node-broken-line);
+}
+
+.tc-node.border-amber {
+  box-shadow: 0 0 0 2px var(--st-needs-setting);
+}
+
+.tc-node.border-dashed {
+  box-shadow: none;
+  outline: 1.5px dashed var(--faint);
+}
+
+.tc-node.is-bypassed {
+  background-image: repeating-linear-gradient(
+    135deg,
+    transparent 0 8px,
+    var(--bypass-hatch) 8px 16px
+  );
+}
+
+.react-flow__node.selected > .tc-node {
+  outline: 2.5px solid var(--accent-text);
+  outline-offset: 3px;
+}
+
+.react-flow__node:focus-visible {
+  outline: none;
+}
+
+.react-flow__node:focus-visible > .tc-node {
+  box-shadow: var(--focus-ring);
+}
+
+.tc-badge {
+  position: absolute;
+  top: -12px;
+  right: -8px;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  max-width: 200px;
+  height: 24px;
+  padding: 0 var(--sp-2);
+  border-radius: var(--r-pill);
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.tc-badge.tone-red {
+  background: var(--st-failed);
+  color: var(--st-failed-ink);
+}
+
+.tc-badge.tone-amber {
+  background: var(--st-needs-setting);
+  color: var(--needs-setting-ink);
+}
+
+.tc-badge.tone-dashed {
+  background: var(--line-strong);
+  color: var(--text);
+}
+
+.tc-badge-bang {
+  font-family: var(--font-ui);
+  font-size: var(--fs-ui);
+  font-weight: 800;
+}
+
+/* N2/N5 handles: file in ring, file out dot, data in hollow diamond, data out filled diamond. */
+.tc-node .tc-handle {
+  position: absolute;
+  top: 50%;
+  width: 14px;
+  height: 14px;
+  min-width: 0;
+  min-height: 0;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 2.5px solid var(--muted);
+  --handle-turn: 0deg;
+  --handle-scale: 1;
+  transform: translate(-50%, -50%) rotate(var(--handle-turn)) scale(var(--handle-scale));
+  transition:
+    transform var(--dur-fast) var(--ease-out),
+    opacity var(--dur-fast) var(--ease-out);
+}
+
+.tc-node .tc-handle.react-flow__handle-left {
+  left: 0;
+}
+
+.tc-node .tc-handle.react-flow__handle-right {
+  left: 100%;
+  right: auto;
+}
+
+.tc-node .tc-handle-file-out {
+  background: var(--text);
+  border: 2px solid var(--surface);
+}
+
+/* N2: the No (`else`) branch's dot is grey, the colour of a path not taken. */
+.tc-node .tc-handle-file-out.is-branch-else {
+  background: var(--edge-untaken);
+}
+
+.tc-node .tc-handle-data-in,
+.tc-node .tc-handle-data-out {
+  width: 13px;
+  height: 13px;
+  border-radius: 2px;
+  --handle-turn: 45deg;
+}
+
+.tc-node .tc-handle-data-in {
+  border-color: var(--kind-data);
+}
+
+.tc-node .tc-handle-data-out {
+  background: var(--kind-data);
+  border: 2px solid var(--surface);
+}
+
+.tc-node.border-red .tc-handle-file-in {
+  border-color: var(--st-failed);
+}
+
+.tc-node .tc-handle.is-compatible {
+  --handle-scale: 1.4;
+  box-shadow: 0 0 0 3px var(--accent-text);
+}
+
+/* A data port that takes the dragged edge gets the data-yellow halo, not the lime ring. */
+.tc-node .tc-handle-data-in.is-compatible,
+.tc-node .tc-handle-data-out.is-compatible {
+  box-shadow: 0 0 0 5px color-mix(in srgb, var(--kind-data) 22%, transparent);
+}
+
+.tc-node .tc-handle.is-incompatible {
+  opacity: 0.35;
+}
+
+/* N5: a card none of whose handles can take the dragged edge. Faded once, never multiplied:
+   the card's opacity replaces the inline dim of a "not on this server" state (TcNode drops it
+   while faded), and its incompatible handles stay at full strength inside the faded card. */
+.tc-node.is-faded {
+  opacity: 0.4;
+  transition: opacity var(--dur-fast) var(--ease-out);
+}
+
+.tc-node.is-faded .tc-handle.is-incompatible {
+  opacity: 1;
+}
+
+/* N5: the line being dragged, in the style of the edge it will become. */
+.tc-connection-line.edge-file {
+  stroke: var(--edge-file);
+  stroke-width: 3px;
+}
+
+.tc-connection-line.edge-data {
+  stroke: var(--edge-data);
+  stroke-width: 2px;
+  stroke-dasharray: 0.01 6;
+  stroke-linecap: round;
+}
+
+/* Over a handle that accepts the drop: a file line turns the accepted lime (the colour of the
+   compatible handle's ring); a data line keeps its data yellow, as its port's halo does, and
+   thickens. The glowing handle under the pointer carries the meaning; this is the backup. */
+.tc-connection-line.edge-file.is-valid {
+  stroke: var(--accent-text);
+}
+
+.tc-connection-line.edge-data.is-valid {
+  stroke-width: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tc-node .tc-handle,
+  .tc-node.is-faded {
+    transition: none;
+  }
+}
+
+/* A 26 px invisible hit area around each 14 px handle, so drags land on it (React Flow reads the
+   handle from the element under the pointer; the pseudo-element counts as the handle). */
+.tc-node .tc-handle::after {
+  content: "";
+  position: absolute;
+  inset: -8px;
+  border-radius: 50%;
+}
+
+/* N4: "+" on a free output; a 44 px (or larger, --tc-hit) target right of the card.
+   --tc-hit, on the "+" and the group toggle: 44 canvas px, grown as the canvas zooms out so the
+   target never drops below 24 px on screen (WCAG 2.5.8). ZoomVar writes --tc-zoom.
+   The target starts 15 px right of the card edge, where the handle's hit area ends (7 px half
+   handle plus its 8 px ::after), and grows away from the card. However far the canvas zooms out,
+   the "+" never covers the handle, so a drag from the handle always starts a connection. */
+.tc-plus {
+  --tc-hit: max(var(--target-min), calc(24px / var(--tc-zoom, 1)));
+  position: absolute;
+  top: 50%;
+  right: calc(-15px - var(--tc-hit));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--tc-hit);
+  height: var(--tc-hit);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  transform: translateY(-50%);
+  cursor: pointer;
+}
+
+.tc-plus-dot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid var(--surface);
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+@media (hover: hover) {
+  .tc-plus:hover .tc-plus-dot {
+    background: var(--accent-hover);
+  }
+}
+
+.tc-plus:focus-visible {
+  outline: none;
+}
+
+.tc-plus:focus-visible .tc-plus-dot {
+  box-shadow: var(--focus-ring);
+}
+
+/* N7 edge styles (values from the token comments). */
+.react-flow__edge-path.tc-link-edge {
+  stroke: var(--faint);
+  stroke-width: 1.5;
+  stroke-dasharray: 1 6;
+  stroke-linecap: round;
+  pointer-events: none;
+}
+
+.react-flow__edge-path.tc-edge {
+  fill: none;
+}
+
+.tc-edge.edge-file {
+  stroke: var(--edge-file);
+  --edge-w: 3px;
+  stroke-width: var(--edge-w);
+}
+
+.tc-edge.edge-path {
+  stroke: var(--edge-path);
+  --edge-w: 3.5px;
+  stroke-width: var(--edge-w);
+  stroke-dasharray: 10 6;
+  stroke-linecap: round;
+  animation: tc-dash 0.6s linear infinite;
+}
+
+.tc-edge.edge-data {
+  stroke: var(--edge-data);
+  --edge-w: 2px;
+  stroke-width: var(--edge-w);
+  stroke-dasharray: 0.01 6;
+  stroke-linecap: round;
+}
+
+.tc-edge.edge-untaken {
+  stroke: var(--edge-untaken);
+  --edge-w: 2px;
+  stroke-width: var(--edge-w);
+  stroke-dasharray: 6 6;
+}
+
+.tc-edge.edge-broken {
+  stroke: var(--edge-broken);
+  --edge-w: 2.5px;
+  stroke-width: var(--edge-w);
+  stroke-dasharray: 6 5;
+}
+
+/* Selected: the line itself gets 2px heavier (no glow). */
+.react-flow__edge.selected .tc-edge {
+  stroke-width: calc(var(--edge-w, 3px) + 2px);
+}
+
+.tc-arrow.edge-file path {
+  fill: var(--edge-file);
+}
+
+.tc-arrow.edge-path path {
+  fill: var(--edge-path);
+}
+
+.tc-arrow.edge-data path {
+  fill: var(--edge-data);
+}
+
+.tc-arrow.edge-untaken path {
+  fill: var(--edge-untaken);
+}
+
+.tc-arrow.edge-broken path {
+  fill: var(--edge-broken);
+}
+
+.tc-edge-label {
+  position: absolute;
+  padding: 1px var(--sp-2);
+  border-radius: var(--r-sm);
+  background: var(--data-chip-bg);
+  color: var(--kind-data);
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  font-weight: 600;
+  pointer-events: all;
+}
+
+@keyframes tc-dash {
+  to {
+    stroke-dashoffset: -16;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tc-edge.edge-path {
+    animation: none;
+  }
+}

@@ -1,0 +1,66 @@
+/* The web app's one stylesheet entry (imported once, from main.tsx). The files below were cut from
+   one styles.css along its section banners and are imported in the order they were in, so the
+   cascade is the same: later files win ties, as later rules did. Never reorder these imports.
+
+   Where a new rule goes:
+   - A value (a named colour, a type or spacing step that is not in tokens.css): variables.css.
+     tokens.css is a vendored copy of the design handoff; never edit it.
+   - Element defaults and the bare utility classes (.mono, .muted, .sr-only, .icon): base.css.
+   - A shared component: its own file (buttons, forms, menus, dialogs, toasts, chips, disclosure,
+     conventions for headings, page headers and row links). Page-level layout: page.css.
+   - A page or panel: that page's file (shell, settings, workflows, jobs, job-page, libraries,
+     library-page, plugins, recycle...). The editor's files start with editor- (plus canvas.css,
+     inspector-fields.css and shell-rail.css).
+   - Global rules that must win over everything above (target size, tabular numerals, the help
+     text measure): utilities.css, last.
+   - assorted.css holds older late additions across pages; do not add to it, put a new rule in its
+     area's file. A new area gets a new file, imported where its specificity needs it (usually just
+     before utilities.css).
+   The design guard tests (css-source.ts) read these files in this order; a new file is picked up
+   from this list. */
+
+@import "./tokens.css";
+@import "./variables.css";
+@import "./base.css";
+@import "./buttons.css";
+@import "./forms.css";
+@import "./inspector-fields.css";
+@import "./auth.css";
+@import "./shell.css";
+@import "./canvas.css";
+@import "./page.css";
+@import "./conventions.css";
+@import "./api-tokens.css";
+@import "./settings.css";
+@import "./disclosure.css";
+@import "./settings-about.css";
+@import "./workflows.css";
+@import "./menus.css";
+@import "./new-workflow.css";
+@import "./dialogs.css";
+@import "./toasts.css";
+@import "./activation.css";
+@import "./chips.css";
+@import "./editor-nodes.css";
+@import "./editor-zoom.css";
+@import "./editor-palette.css";
+@import "./shell-rail.css";
+@import "./editor-page.css";
+@import "./editor-issues.css";
+@import "./editor-banners.css";
+@import "./editor-legend.css";
+@import "./editor-inspector.css";
+@import "./editor-subworkflows.css";
+@import "./jobs.css";
+@import "./libraries.css";
+@import "./run-summary.css";
+@import "./dry-run.css";
+@import "./job-page.css";
+@import "./plugins.css";
+@import "./tmdb.css";
+@import "./folder-picker.css";
+@import "./library-run-hours.css";
+@import "./assorted.css";
+@import "./recycle.css";
+@import "./library-page.css";
+@import "./utilities.css";
