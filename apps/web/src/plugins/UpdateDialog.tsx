@@ -3,7 +3,7 @@ import { type RefObject, useId } from 'react';
 import { Dialog } from '../components/Dialog.tsx';
 import { Icon } from '../components/Icon.tsx';
 import { NetworkHosts } from './NetworkHosts.tsx';
-import { type NetworkEntry, networkEntryText } from './pluginText.ts';
+import { type NetworkEntry, networkEntryText } from './plugin-text.ts';
 
 /**
  * What an update would do to workflows, before it happens: the check's answer in words, with

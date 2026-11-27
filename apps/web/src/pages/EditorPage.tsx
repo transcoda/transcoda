@@ -23,10 +23,10 @@ import { Loading } from '../components/Loading.tsx';
 import { NotFound } from '../components/NotFound.tsx';
 import { useToast } from '../components/Toast.tsx';
 import { type EditorActions, EditorActionsContext } from '../editor/flow/actions-context.ts';
-import { fitPaddingPx } from '../editor/flow/openViewport.ts';
+import { fitPaddingPx } from '../editor/flow/open-viewport.ts';
 import { SubworkflowsContext } from '../editor/flow/subworkflows-context.ts';
 import { TRY_BLOCKED } from '../editor/flow/TcToolbar.tsx';
-import { withViewCollapse } from '../editor/flow/toFlow.ts';
+import { withViewCollapse } from '../editor/flow/to-flow.ts';
 import { freeOutputs, nextNodeRule } from '../editor/model/connection.ts';
 import {
   type EditorAction,
@@ -65,17 +65,17 @@ import { IssuesPanel, type IssueTarget, subjectOf } from '../editor/ui/IssuesPan
 import { LeaveDialog } from '../editor/ui/LeaveDialog.tsx';
 import { NodeSearch } from '../editor/ui/NodeSearch.tsx';
 import { Palette, type PaletteItem } from '../editor/ui/Palette.tsx';
-import { useEditorKeys } from '../editor/ui/useEditorKeys.ts';
-import { useLeaveGuard } from '../editor/ui/useLeaveGuard.ts';
-import { useValidation } from '../editor/ui/useValidation.ts';
-import { useViewportMemory } from '../editor/ui/useViewportMemory.ts';
+import { useEditorKeys } from '../editor/ui/use-editor-keys.ts';
+import { useLeaveGuard } from '../editor/ui/use-leave-guard.ts';
+import { useValidation } from '../editor/ui/use-validation.ts';
+import { useViewportMemory } from '../editor/ui/use-viewport-memory.ts';
 import { useVersionList, VersionsPanel } from '../editor/ui/VersionsPanel.tsx';
-import { type Catalog, type PortSpec, useCatalog } from '../hooks/useCatalog.ts';
-import { useLibraries } from '../hooks/useLibraries.ts';
-import { useWorkflows } from '../hooks/useWorkflows.ts';
-import { runBlocked, useRunOnFile } from '../jobs/useRunOnFile.tsx';
-import { useTryOnFile } from '../jobs/useTryOnFile.ts';
-import { usePageTitle } from '../lib/pageTitle.ts';
+import { type Catalog, type PortSpec, useCatalog } from '../hooks/use-catalog.ts';
+import { useLibraries } from '../hooks/use-libraries.ts';
+import { useWorkflows } from '../hooks/use-workflows.ts';
+import { runBlocked, useRunOnFile } from '../jobs/use-run-on-file.tsx';
+import { useTryOnFile } from '../jobs/use-try-on-file.ts';
+import { usePageTitle } from '../lib/page-title.ts';
 
 /** Horizontal step between a node and the one added after it. */
 const NEXT_STEP_X = NODE_SIZE.width + 70;

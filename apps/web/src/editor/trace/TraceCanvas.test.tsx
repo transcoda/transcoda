@@ -12,9 +12,9 @@ import {
   traceMain,
   traceSub,
 } from '../../test/fixtures/trace.ts';
-import { READABLE_ZOOM } from '../flow/openViewport.ts';
+import { READABLE_ZOOM } from '../flow/open-viewport.ts';
 import { fitTrace, type NodeRef, refitTrace, TraceCanvas } from './TraceCanvas.tsx';
-import type { TraceSource } from './traceOverlay.ts';
+import type { TraceSource } from './trace-overlay.ts';
 
 afterEach(cleanup);
 

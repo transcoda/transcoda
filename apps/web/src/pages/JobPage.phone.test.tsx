@@ -23,10 +23,10 @@ vi.mock('../api/client.ts', async () => {
 });
 
 import { Route, Switch } from 'wouter';
-import { resetCatalogCache } from '../hooks/useCatalog.ts';
-import { EventsProvider } from '../hooks/useEvents.ts';
-import { PHONE_QUERY } from '../lib/usePhone.ts';
-import { fakeEventSource } from '../test/fakeEventStream.ts';
+import { resetCatalogCache } from '../hooks/use-catalog.ts';
+import { EventsProvider } from '../hooks/use-events.ts';
+import { PHONE_QUERY } from '../lib/use-phone.ts';
+import { fakeEventSource } from '../test/fake-event-stream.ts';
 import { nodesFixture } from '../test/fixtures/catalog.ts';
 import { jobDetail } from '../test/fixtures/trace.ts';
 import { renderAt } from '../test/render.tsx';

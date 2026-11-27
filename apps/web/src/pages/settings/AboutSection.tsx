@@ -1,13 +1,13 @@
 import { api } from '../../api/client.ts';
 import { Icon } from '../../components/Icon.tsx';
 import { Loading } from '../../components/Loading.tsx';
-import { useAppUpdate } from '../../hooks/useAppUpdate.ts';
-import { useAsync } from '../../hooks/useAsync.ts';
+import { useAppUpdate } from '../../hooks/use-app-update.ts';
+import { useAsync } from '../../hooks/use-async.ts';
 import { GuardedLink } from '../../lib/navigation.tsx';
 import { AppUpdatePanel } from './AppUpdatePanel.tsx';
 import { BackupsPanel } from './BackupsPanel.tsx';
-import { useSettings } from './useSettings.ts';
-import { versionLink } from './versionLink.ts';
+import { useSettings } from './use-settings.ts';
+import { versionLink } from './version-link.ts';
 
 const notRead = 'Could not be read';
 

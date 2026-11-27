@@ -1,7 +1,7 @@
 // Plugin API answers for the Plugins page tests, built on one base so a test overrides only what
 // it is about.
 import type { PluginDetail, PluginSummary } from '@transcoda/contract';
-import type { PluginCatalogOutput } from '../../plugins/usePlugins.ts';
+import type { PluginCatalogOutput } from '../../plugins/use-plugins.ts';
 
 const at = '2026-10-17T09:00:00.000Z';
 

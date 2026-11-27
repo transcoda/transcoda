@@ -1,4 +1,4 @@
-import type { NodeKind } from '../hooks/useCatalog.ts';
+import type { NodeKind } from '../hooks/use-catalog.ts';
 import { Icon, type IconName, isIconName } from './Icon.tsx';
 
 const KIND_ICON: Record<NodeKind, IconName> = {
