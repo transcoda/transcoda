@@ -14,10 +14,8 @@ export const SIZE_GATE_TYPE = 'core:size-gate';
 export const SIZE_GATE_ELSE_PORT = 'else';
 export {
   CHECK_SOURCE_DAMAGED_PORT,
-  CHECK_SOURCE_OK_PORT,
   CHECK_SOURCE_TYPE,
   RENDER_DAMAGED_PORT,
-  RENDER_DONE_PORT,
   RENDER_TYPE,
 } from '@transcoda/shared';
 

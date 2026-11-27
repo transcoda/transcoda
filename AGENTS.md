@@ -15,7 +15,7 @@ Dependencies point one way: `packages/shared` ← `packages/sdk` ← `packages/c
 
 ## What done means
 
-- `pnpm check` passes (typecheck, Biome, dependency and licence checks, all tests).
+- `pnpm check` passes (typecheck, Biome with warnings as errors, knip, dependency and licence checks, all tests).
 - **Release note:** a note in `.changes/` ([format](.changes/README.md)). Use the `no user-facing change` label instead when users will not notice the change.
 - **Tests** are in the right tier ([testing.md](docs/dev/testing.md)), and a bug fix comes with a test that failed before the fix.
   - Run `pnpm fixtures` once per checkout. Without it, the real-ffmpeg tests skip silently.
