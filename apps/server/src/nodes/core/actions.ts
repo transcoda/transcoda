@@ -23,7 +23,7 @@ import {
   resolveEncoder,
   streamsOf,
   TEXT_SUBTITLES,
-} from '../../engine/build-model.ts';
+} from '../../engine/model/model.ts';
 import {
   containerPlaysOn,
   defaultTracks,
@@ -31,7 +31,7 @@ import {
   streamLabel,
   type TargetIssue,
   targetWarnings,
-} from '../../engine/targets.ts';
+} from '../../engine/model/targets.ts';
 import { retitle } from './audio-title.ts';
 import { filePort, LanguageCodeSchema, languageInput } from './common.ts';
 import {

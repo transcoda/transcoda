@@ -10,8 +10,8 @@ import { createTestApp, type TestApp } from '../app/test-app.ts';
 import { findJob, findJobResult, type JobRow } from '../db/repos/jobs.ts';
 import { type FsOps, nodeFsOps } from '../platform/fs-ops.ts';
 import { chain, node } from '../workflows/test-helpers.ts';
+import { defaultRecycleFolder } from './files/recycle.ts';
 import { fixturesAvailable, realCapabilities, tempDir, toolPaths } from './fixtures.ts';
-import { defaultRecycleFolder } from './recycle.ts';
 
 const execFileAsync = promisify(execFile);
 const FINAL: JobState[] = ['done', 'kept_original', 'failed', 'cancelled', 'skipped', 'dry_run'];

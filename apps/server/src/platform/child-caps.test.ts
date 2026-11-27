@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { makeExec } from '../capabilities/ffmpeg.ts';
-import { nodeSpawner } from '../engine/process.ts';
+import { nodeSpawner } from '../engine/encode/process.ts';
 import {
   capDroppedCommand,
   hasAmbientCaps,

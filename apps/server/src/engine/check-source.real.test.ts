@@ -8,7 +8,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { makeExec } from '../capabilities/ffmpeg.ts';
 import { checkSource } from './check-source.ts';
 import { tempDir, toolPaths } from './fixtures.ts';
-import { probeFile } from './probe.ts';
+import { probeFile } from './media/probe.ts';
 import { confirmSourceDamage } from './verify.ts';
 
 const execFileAsync = promisify(execFile);

@@ -14,9 +14,9 @@ import { type FsOps, nodeFsOps } from '../platform/fs-ops.ts';
 import type { Logger } from '../platform/logger.ts';
 import type { PluginHooksRunner } from '../plugins/hooks.ts';
 import { edge, mainGraph, node, testRegistry } from '../workflows/test-helpers.ts';
+import { FakeSpawner } from './encode/process.ts';
 import type { EngineEvent } from './events.ts';
 import { tempDir } from './fixtures.ts';
-import { FakeSpawner } from './process.ts';
 import { packetRows, probeOf, withSidecar } from './test-helpers.ts';
 
 /** How long `until` waits; well above any healthy run, below the raised test timeout. */

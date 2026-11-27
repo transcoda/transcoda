@@ -6,7 +6,7 @@ import {
   type ProbeResult,
 } from '@transcoda/sdk';
 import { describe, expect, it } from 'vitest';
-import { modelFromProbe } from '../../engine/build-model.ts';
+import { modelFromProbe } from '../../engine/model/model.ts';
 import { capsOf, fileOf, probeOf } from '../../engine/test-helpers.ts';
 import { keepLanguages, remux, setDefaultTrack } from './actions.ts';
 import { createEmbedSidecarSubtitles, embedSidecarSubtitles } from './embed-subtitles.ts';

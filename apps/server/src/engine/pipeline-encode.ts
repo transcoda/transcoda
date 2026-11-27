@@ -7,9 +7,18 @@ import { join } from 'node:path';
 import type { ProbeResult, StreamPlan } from '@transcoda/sdk';
 import type { JobRow } from '../db/repos/jobs.ts';
 import { errorCode } from '../platform/fs-ops.ts';
-import { isMkvCover, kept, outputOrder } from './build-model.ts';
-import { classifyErrorLine, READ_FAILURE, sourceDecoderNames } from './decoder-names.ts';
-import { ffmpegFailure, looksLikeGpuFailure, softwareFallback } from './fallback.ts';
+import type { ProgressSample } from './encode/progress.ts';
+import { toJobProgress, withFrameTime } from './encode/progress.ts';
+import {
+  noOutputReason,
+  OutputStallGuard,
+  stoppedOutputReason,
+  watchForStall,
+} from './encode/stall-guard.ts';
+import { classifyErrorLine, READ_FAILURE, sourceDecoderNames } from './media/decoder-names.ts';
+import { ffmpegFailure, looksLikeGpuFailure, softwareFallback } from './model/fallback.ts';
+import { isMkvCover, kept, outputOrder } from './model/model.ts';
+import { renderCommandLine, renderEncoders } from './model/render.ts';
 import { sourceDamaged } from './pipeline-branches.ts';
 import type { PipelineCore } from './pipeline-core.ts';
 import { pictureOf } from './pipeline-plan.ts';
@@ -23,16 +32,7 @@ import {
   retryable,
   TRYING_ANOTHER_GPU,
 } from './pipeline-types.ts';
-import type { ProgressSample } from './progress.ts';
-import { toJobProgress, withFrameTime } from './progress.ts';
-import { renderCommandLine, renderEncoders } from './render.ts';
 import type { JobControl } from './scheduler.ts';
-import {
-  noOutputReason,
-  OutputStallGuard,
-  stoppedOutputReason,
-  watchForStall,
-} from './stall-guard.ts';
 import { confirmSourceDamage } from './verify.ts';
 
 /** Error lines kept for a reason or a warning. */

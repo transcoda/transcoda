@@ -24,14 +24,14 @@ import type { Logger } from '../platform/logger.ts';
 import type { PluginHooksRunner } from '../plugins/hooks.ts';
 import type { PluginRestartGate } from '../plugins/restart-gate.ts';
 import type { WorkflowService } from '../workflows/service.ts';
+import type { ProcessSpawner } from './encode/process.ts';
 import type { CurrentNode, EngineEvents } from './events.ts';
-import { jobProbeOf } from './probe.ts';
-import type { ProcessSpawner } from './process.ts';
-import type { RenderInput } from './render.ts';
-import type { ReplaceDeps } from './replace.ts';
+import type { ReplaceDeps } from './files/replace.ts';
+import type { SpaceWaits } from './files/space-waits.ts';
+import type { TestOutputStore } from './files/test-outputs.ts';
+import { jobProbeOf } from './media/probe.ts';
+import type { RenderInput } from './model/render.ts';
 import type { JobControl, SlotFit } from './scheduler.ts';
-import type { SpaceWaits } from './space-waits.ts';
-import type { TestOutputStore } from './test-outputs.ts';
 import type { ActionNode, DamagedBranch, GateBranch } from './walk.ts';
 
 /** Job progress is written at most this often. */

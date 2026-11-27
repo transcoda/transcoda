@@ -4,13 +4,13 @@ import { isPicture } from '@transcoda/shared';
 import type { Exec } from '../capabilities/ffmpeg.ts';
 import type { CheckSourceResult } from '../nodes/core-tools.ts';
 import { isMemoryLimitError, memoryLimitMessage } from '../platform/memory-guard.ts';
+import { progressReader } from './encode/progress.ts';
 import {
   classifyErrorLine,
   NULL_TIMESTAMPS,
   READ_FAILURE,
   sourceDecoderNames,
-} from './decoder-names.ts';
-import { progressReader } from './progress.ts';
+} from './media/decoder-names.ts';
 import type { VerifyFailure } from './verify.ts';
 
 /** A stream counts as cut off only when it ends more than this short of the declared end… */

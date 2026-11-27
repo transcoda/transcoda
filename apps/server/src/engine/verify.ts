@@ -4,13 +4,13 @@ import type { BuildModel, ProbeResult, StreamPlan } from '@transcoda/sdk';
 import { DEVICE_PROFILES, isPicture, type ProbeStream, sameLanguage } from '@transcoda/shared';
 import { type Exec, makeExec } from '../capabilities/ffmpeg.ts';
 import { isMemoryLimitError, memoryLimitMessage } from '../platform/memory-guard.ts';
-import { extraInputOf, isExtraStream, isMkvCover, outputOrder } from './build-model.ts';
-import { NULL_TIMESTAMPS, READ_FAILURE } from './decoder-names.ts';
-import { probeFile } from './probe.ts';
-import { type ProgressSample, progressReader, type VerifyProgress } from './progress.ts';
-import { containerPlaysOn, streamPlaysOn, type TargetIssue } from './targets.ts';
+import { type ProgressSample, progressReader, type VerifyProgress } from './encode/progress.ts';
+import { NULL_TIMESTAMPS, READ_FAILURE } from './media/decoder-names.ts';
+import { probeFile } from './media/probe.ts';
+import { extraInputOf, isExtraStream, isMkvCover, outputOrder } from './model/model.ts';
+import { containerPlaysOn, streamPlaysOn, type TargetIssue } from './model/targets.ts';
 
-export type { VerifyProgress } from './progress.ts';
+export type { VerifyProgress } from './encode/progress.ts';
 
 export type VerifyFailure = {
   check:

@@ -3,7 +3,7 @@
 import { constants, open } from 'node:fs/promises';
 import { basename, dirname, extname, join } from 'node:path';
 import { fmtBytes, LANGUAGES, normalizeLanguage } from '@transcoda/shared';
-import { MAX_SIDECAR_BYTES, MEDIA_EXTENSIONS } from '../../engine/paths.ts';
+import { MAX_SIDECAR_BYTES, MEDIA_EXTENSIONS } from '../../engine/files/paths.ts';
 import { errorCode, type FsOps } from '../../platform/fs-ops.ts';
 
 /** Sidecar extension → the subtitle codec ffmpeg reads it as. */

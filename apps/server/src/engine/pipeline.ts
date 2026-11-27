@@ -6,8 +6,10 @@ import { basename, dirname } from 'node:path';
 import { finishPhaseRank, type Lane, TRACE_CANCELED } from '@transcoda/shared';
 import { type EncodeSlot, slotGpuLabel } from '../capabilities/devices.ts';
 import { findJob, hasReplaceJournal, type JobRow } from '../db/repos/jobs.ts';
-import { encoderUsable, kept } from './build-model.ts';
-import { isWithin, MAX_SIDECAR_BYTES } from './paths.ts';
+import { isWithin, MAX_SIDECAR_BYTES } from './files/paths.ts';
+import { encoderUsable, kept } from './model/model.ts';
+import { coverExtractArgs, deviceVendor, renderArgs, renderCommandLine } from './model/render.ts';
+import { retarget } from './model/retarget.ts';
 import { takeElse } from './pipeline-branches.ts';
 import { PipelineCore } from './pipeline-core.ts';
 import { coverFailure, coverTimeoutMs, encode } from './pipeline-encode.ts';
@@ -33,8 +35,6 @@ import {
   stoppedBefore,
   type Written,
 } from './pipeline-types.ts';
-import { coverExtractArgs, deviceVendor, renderArgs, renderCommandLine } from './render.ts';
-import { retarget } from './retarget.ts';
 import type { ExecuteOutcome, JobControl, JobExecutor, SlotFit } from './scheduler.ts';
 import { actionNode } from './walk.ts';
 

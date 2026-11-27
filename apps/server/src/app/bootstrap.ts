@@ -9,7 +9,7 @@ import { backupOnBuildChange, hashBuildFile } from '../db/build-backup.ts';
 import { migrate } from '../db/migrate.ts';
 import { migrations } from '../db/migrations/index.ts';
 import { openDatabase } from '../db/open.ts';
-import { TEST_OUTPUT_SWEEP_MS } from '../engine/test-outputs.ts';
+import { TEST_OUTPUT_SWEEP_MS } from '../engine/files/test-outputs.ts';
 import { setChildCapDrop } from '../platform/child-caps.ts';
 import { type Config, requireIsolationInProduction } from '../platform/config.ts';
 import type { Logger } from '../platform/logger.ts';

@@ -7,9 +7,10 @@ import { fingerprintKey } from '../db/repos/files.ts';
 import { findJob, findJobResult, insertJob, insertJobResult, listTrace } from '../db/repos/jobs.ts';
 import { nodeFsOps } from '../platform/fs-ops.ts';
 import { edge, mainGraph, node } from '../workflows/test-helpers.ts';
-import { modelFromProbe } from './build-model.ts';
-import { contentHash } from './content-hash.ts';
-import { fingerprintOf } from './fingerprint.ts';
+import type { RunnerProcess, SpawnOptions } from './encode/process.ts';
+import { fingerprintOf } from './files/fingerprint.ts';
+import { contentHash } from './media/content-hash.ts';
+import { modelFromProbe } from './model/model.ts';
 import { laneFor } from './pipeline-plan.ts';
 import {
   base,
@@ -39,7 +40,6 @@ import {
   until,
   workflow,
 } from './pipeline-test-harness.ts';
-import type { RunnerProcess, SpawnOptions } from './process.ts';
 import { probeOf, withStream } from './test-helpers.ts';
 
 describe('pipeline', () => {

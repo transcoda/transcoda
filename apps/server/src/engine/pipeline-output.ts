@@ -7,8 +7,19 @@ import { type FailureCode, RENDER_DONE_PORT } from '@transcoda/shared';
 import { durably } from '../db/open.ts';
 import { findJob, type JobRow, updateJob } from '../db/repos/jobs.ts';
 import { ClobberRefused, errorCode, renameNoClobber } from '../platform/fs-ops.ts';
-import { extraInputOf } from './build-model.ts';
-import { checkPath, isWithin } from './paths.ts';
+import { toVerifyProgress, type VerifyProgress } from './encode/progress.ts';
+import { checkPath, isWithin } from './files/paths.ts';
+import { defaultRecycleFolder } from './files/recycle.ts';
+// Two functions are named replaceOriginal: the finish node (nodes/core/finish.ts) and this one.
+import {
+  durableReplaceWrites,
+  pollForSpace,
+  replaceOriginal as replaceOriginalFile,
+  spaceWaitText,
+} from './files/replace.ts';
+import { recycleSidecars } from './files/sidecar-recycle.ts';
+import { settleReplaceNow } from './files/sweep.ts';
+import { extraInputOf } from './model/model.ts';
 import { sourceDamaged } from './pipeline-branches.ts';
 import type { PipelineCore } from './pipeline-core.ts';
 import { traceFinish } from './pipeline-trace.ts';
@@ -24,18 +35,7 @@ import {
   Stop,
   type Written,
 } from './pipeline-types.ts';
-import { toVerifyProgress, type VerifyProgress } from './progress.ts';
-import { defaultRecycleFolder } from './recycle.ts';
-// Two functions are named replaceOriginal: the finish node (nodes/core/finish.ts) and this one.
-import {
-  durableReplaceWrites,
-  pollForSpace,
-  replaceOriginal as replaceOriginalFile,
-  spaceWaitText,
-} from './replace.ts';
 import type { JobControl } from './scheduler.ts';
-import { recycleSidecars } from './sidecar-recycle.ts';
-import { settleReplaceNow } from './sweep.ts';
 import { verifyOutput } from './verify.ts';
 
 /**

@@ -9,8 +9,8 @@ import { findWorkflow } from '../db/repos/workflows.ts';
 import { setOrder } from '../nodes/core/stream-rules.ts';
 import { nodeFsOps } from '../platform/fs-ops.ts';
 import { edge, mainGraph, node } from '../workflows/test-helpers.ts';
-import { fitToContainer, modelFromProbe, normalizeDefaults } from './build-model.ts';
-import { fingerprintOf } from './fingerprint.ts';
+import { fingerprintOf } from './files/fingerprint.ts';
+import { fitToContainer, modelFromProbe, normalizeDefaults } from './model/model.ts';
 import { estimateBytes, planOf } from './pipeline-plan.ts';
 import { redactUrl } from './pipeline-steps.ts';
 import {

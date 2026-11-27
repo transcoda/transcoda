@@ -9,7 +9,7 @@ import type { Database } from '../db/open.ts';
 import { findLibrary, type LibraryRow, listLibraries } from '../db/repos/libraries.ts';
 import { findFeeder } from '../db/repos/workflows.ts';
 import type { Logger } from '../platform/logger.ts';
-import { isRecycleOrTemp, SETTLE_MINUTES } from './paths.ts';
+import { isRecycleOrTemp, SETTLE_MINUTES } from './files/paths.ts';
 import type { QueueService } from './queue-service.ts';
 
 /** `runs.created_by` of a catch-up run. */

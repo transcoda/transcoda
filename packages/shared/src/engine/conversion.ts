@@ -8,7 +8,7 @@ export function fmtKbps(kbps: number): string {
 /**
  * What a plan note says an encode does. The engine writes a converted stream's note as
  * `convert <from>→<to> (<encoder>[ <crf|qp|cq|q> <n>][ <preset>][ <profile>][ [max ]<n>k][ <n>ch][ <pix_fmt>])`
- * (apps/server/src/engine/build-model.ts `conversion()`); this reads it back for the job page.
+ * (apps/server/src/engine/model/model.ts `conversion()`); this reads it back for the job page.
  */
 export type Conversion = {
   encoder: string;

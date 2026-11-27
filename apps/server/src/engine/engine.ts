@@ -54,29 +54,29 @@ import type { PluginRestartGate } from '../plugins/restart-gate.ts';
 import { graphUpgrade, type WorkflowService } from '../workflows/service.ts';
 import { migratePinned } from '../workflows/validate.ts';
 import { LibraryCatchUp } from './catch-up.ts';
-import { contentHash } from './content-hash.ts';
+import { readCondensedTail } from './encode/log-condense.ts';
+import type { ProcessSpawner } from './encode/process.ts';
 import { EngineEvents } from './events.ts';
-import { readCondensedTail } from './log-condense.ts';
-import { MediaPass } from './media-pass.ts';
-import { logPathFor, Pipeline } from './pipeline.ts';
-import { PosterStore, type Thumbnail } from './poster-store.ts';
-import { type JobProbe, jobProbeOf } from './probe.ts';
-import type { ProcessSpawner } from './process.ts';
-import { QueueService } from './queue-service.ts';
 import {
   deleteRecycledEntry,
   emptyRecycle,
   pruneRecycle,
   type RecycleView,
   recycleView,
-} from './recycle.ts';
-import { fingerprintFromStats, type ReplaceDeps } from './replace.ts';
-import { type RestoreResult, restoreRecycled } from './restore.ts';
+} from './files/recycle.ts';
+import { fingerprintFromStats, type ReplaceDeps } from './files/replace.ts';
+import { type RestoreResult, restoreRecycled } from './files/restore.ts';
+import { SpaceWaits } from './files/space-waits.ts';
+import { type SweepResult, startupSweep } from './files/sweep.ts';
+import { type TestOutputRow, TestOutputStore } from './files/test-outputs.ts';
+import { contentHash } from './media/content-hash.ts';
+import { PosterStore, type Thumbnail } from './media/poster-store.ts';
+import { type JobProbe, jobProbeOf } from './media/probe.ts';
+import { MediaPass } from './media-pass.ts';
+import { logPathFor, Pipeline } from './pipeline.ts';
+import { QueueService } from './queue-service.ts';
 import { closedLibraries, type RunHoursHold, runHoursHold, serverTimeZone } from './run-hours.ts';
 import { pickSlot, Scheduler } from './scheduler.ts';
-import { SpaceWaits } from './space-waits.ts';
-import { type SweepResult, startupSweep } from './sweep.ts';
-import { type TestOutputRow, TestOutputStore } from './test-outputs.ts';
 
 /** The part of a job log `jobLog` returns: its tail. */
 export const JOB_LOG_TAIL_BYTES = 64 * 1024;

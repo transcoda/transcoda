@@ -1,6 +1,6 @@
 import type { Capabilities } from '@transcoda/contract';
 import { describe, expect, it } from 'vitest';
-import { deviceVendor } from '../engine/render.ts';
+import { deviceVendor } from '../engine/model/render.ts';
 import {
   devicePlan,
   effectiveCapabilities,
