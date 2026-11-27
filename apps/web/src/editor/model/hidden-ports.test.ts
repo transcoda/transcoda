@@ -1,6 +1,6 @@
 import type { NodeInstance, WorkflowGraph } from '@transcoda/shared';
 import { describe, expect, it } from 'vitest';
-import { catalogFixture as catalog } from '../../test/fixtures/catalog.ts';
+import { catalogFixture as catalog } from '../../testing/fixtures/catalog.ts';
 import {
   dropHiddenPortEdges,
   hiddenPortEdges,

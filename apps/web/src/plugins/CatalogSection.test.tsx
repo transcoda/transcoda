@@ -6,8 +6,8 @@ vi.mock('../api/client.ts', async () => {
   return { api: { plugins: {} }, isDefinedError: orpc.isDefinedError, safe: orpc.safe };
 });
 
-import { catalogOutput } from '../test/fixtures/plugins.ts';
-import { renderAt } from '../test/render.tsx';
+import { catalogOutput } from '../testing/fixtures/plugins.ts';
+import { renderAt } from '../testing/render.tsx';
 import { CatalogGroups, catalogCards, compareVersions, matchesQuery } from './CatalogSection.tsx';
 import type { CatalogView } from './use-plugins.ts';
 

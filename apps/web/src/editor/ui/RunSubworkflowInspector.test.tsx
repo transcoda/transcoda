@@ -12,8 +12,8 @@ import {
 } from '@transcoda/shared';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { setBeforeNavigate } from '../../lib/navigation.tsx';
-import { catalogFixture } from '../../test/fixtures/catalog.ts';
-import { otterFinchSub } from '../../test/fixtures/graphs.ts';
+import { catalogFixture } from '../../testing/fixtures/catalog.ts';
+import { otterFinchSub } from '../../testing/fixtures/graphs.ts';
 import { nodeStateFor } from '../model/issues.ts';
 import type { ApplyOptions, GraphOp } from './Canvas.tsx';
 import { OverridesEditor } from './OverridesEditor.tsx';

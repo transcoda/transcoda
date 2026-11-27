@@ -2,8 +2,8 @@ import { cleanup, fireEvent, render, screen, within } from '@testing-library/rea
 import type { WorkflowSummary } from '@transcoda/contract';
 import type { Issue, JsonValue, NodeInstance, WorkflowGraph } from '@transcoda/shared';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { catalogFixture, nodesFixture } from '../../test/fixtures/catalog.ts';
-import { chainMainReplace } from '../../test/fixtures/graphs.ts';
+import { catalogFixture, nodesFixture } from '../../testing/fixtures/catalog.ts';
+import { chainMainReplace } from '../../testing/fixtures/graphs.ts';
 import { type EditorState, editorReducer } from '../model/editor-state.ts';
 import { nodeStateFor } from '../model/issues.ts';
 import { defaultSettings } from '../model/schema-fields.ts';

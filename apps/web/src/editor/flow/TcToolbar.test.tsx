@@ -2,7 +2,7 @@ import { cleanup, fireEvent, screen } from '@testing-library/react';
 import type { Node, NodeProps } from '@xyflow/react';
 import { Position } from '@xyflow/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { renderFlow } from '../../test/flow.tsx';
+import { renderFlow } from '../../testing/flow.tsx';
 import { TcToolbar, toolbarPlacement } from './TcToolbar.tsx';
 
 afterEach(cleanup);

@@ -8,7 +8,7 @@ import {
   ReactFlowProvider,
 } from '@xyflow/react';
 import { afterEach, describe, expect, it } from 'vitest';
-import { catalogFixture } from '../../test/fixtures/catalog.ts';
+import { catalogFixture } from '../../testing/fixtures/catalog.ts';
 import { TcConnectionLine } from './TcConnectionLine.tsx';
 import type { TcGroupNode, TcNode } from './types.ts';
 

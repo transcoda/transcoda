@@ -3,7 +3,7 @@ import type { WorkflowGraph } from '@transcoda/shared';
 import { useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { stylesCss } from '../../styles/css-source.ts';
-import { catalogFixture } from '../../test/fixtures/catalog.ts';
+import { catalogFixture } from '../../testing/fixtures/catalog.ts';
 import {
   entry,
   PATH,
@@ -11,7 +11,7 @@ import {
   TRACE,
   traceMain,
   traceSub,
-} from '../../test/fixtures/trace.ts';
+} from '../../testing/fixtures/trace.ts';
 import { READABLE_ZOOM } from '../flow/open-viewport.ts';
 import { fitTrace, type NodeRef, refitTrace, TraceCanvas } from './TraceCanvas.tsx';
 import type { TraceSource } from './trace-overlay.ts';

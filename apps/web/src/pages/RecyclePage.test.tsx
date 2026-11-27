@@ -12,7 +12,7 @@ vi.mock('../api/client.ts', async () => {
 import { ORPCError } from '@orpc/client';
 import type { RecycledEntry, RecycleListOutput } from '@transcoda/contract';
 import { fmtDate } from '../lib/time.ts';
-import { renderAt } from '../test/render.tsx';
+import { renderAt } from '../testing/render.tsx';
 import { RecyclePage } from './RecyclePage.tsx';
 
 const BIN = '/media/Shows/.transcoda-recycle';

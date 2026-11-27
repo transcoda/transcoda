@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AuthContext, type AuthValue } from '../../auth/AuthProvider.tsx';
-import { renderAt } from '../../test/render.tsx';
+import { renderAt } from '../../testing/render.tsx';
 
 const mocks = vi.hoisted(() => ({ versions: vi.fn() }));
 vi.mock('../../api/client.ts', async () => {

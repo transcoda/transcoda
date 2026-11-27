@@ -12,7 +12,7 @@
       "!**/.superpowers",
       "!docs/design",
       "!apps/web/src/styles/tokens.css",
-      "!apps/web/src/test/fixtures/nodes.json",
+      "!apps/web/src/testing/fixtures/nodes.json",
       "!apps/web/src/assets/tmdb.svg",
       "!apps/server/src/engine/media/fixtures/*.json",
       "!apps/server/third-party.json",

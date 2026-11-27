@@ -2,7 +2,7 @@ import { cleanup, fireEvent, screen, within } from '@testing-library/react';
 import type { TraceChanges } from '@transcoda/shared';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Decision } from '../editor/trace/trace-overlay.ts';
-import { renderAt } from '../test/render.tsx';
+import { renderAt } from '../testing/render.tsx';
 import { JobSteps } from './JobSteps.tsx';
 import type { StepContext } from './steps.ts';
 

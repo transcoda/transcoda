@@ -16,8 +16,8 @@ vi.mock('../api/client.ts', async () => {
   return { api: mocks, isDefinedError: orpc.isDefinedError, safe: orpc.safe };
 });
 
-import { SERVICE_SCHEMA, serviceDetail } from '../test/fixtures/plugins.ts';
-import { renderAt } from '../test/render.tsx';
+import { SERVICE_SCHEMA, serviceDetail } from '../testing/fixtures/plugins.ts';
+import { renderAt } from '../testing/render.tsx';
 import {
   IntegrationSettings,
   payloadOf,

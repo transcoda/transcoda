@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { stylesCss } from '../../styles/css-source.ts';
+import { stylesCss } from './css-source.ts';
 
 const css = stylesCss;
 

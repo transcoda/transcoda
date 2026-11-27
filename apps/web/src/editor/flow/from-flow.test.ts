@@ -1,8 +1,8 @@
 import type { WorkflowGraph } from '@transcoda/shared';
 import type { NodeChange } from '@xyflow/react';
 import { describe, expect, it } from 'vitest';
-import { catalogFixture } from '../../test/fixtures/catalog.ts';
-import { chainMainReplace, otterFinchMain, otterFinchSub } from '../../test/fixtures/graphs.ts';
+import { catalogFixture } from '../../testing/fixtures/catalog.ts';
+import { chainMainReplace, otterFinchMain, otterFinchSub } from '../../testing/fixtures/graphs.ts';
 import { graphEquals } from '../model/equality.ts';
 import { type FlowChangeResult, fromEdgeChanges, fromNodeChanges } from './from-flow.ts';
 import { toFlow } from './to-flow.ts';

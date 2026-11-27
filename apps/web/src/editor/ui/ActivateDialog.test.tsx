@@ -6,8 +6,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AuthContext, type AuthValue } from '../../auth/AuthProvider.tsx';
 import { ToastProvider } from '../../components/Toast.tsx';
 import { resetCatalogCache } from '../../hooks/use-catalog.ts';
-import { nodesFixture } from '../../test/fixtures/catalog.ts';
-import { renderAt } from '../../test/render.tsx';
+import { nodesFixture } from '../../testing/fixtures/catalog.ts';
+import { renderAt } from '../../testing/render.tsx';
 
 const mocks = vi.hoisted(() => ({
   activate: vi.fn(),

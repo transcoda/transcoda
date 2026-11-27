@@ -25,4 +25,4 @@ jobs:
             apps/web/index.html
             apps/web/public/**
             !**/*.test.{ts,tsx}
-            !apps/web/src/test/**
+            !apps/web/src/testing/**

@@ -109,7 +109,7 @@ main.ts          the process entry
 
 ```
 main.tsx, App.tsx   providers and routes
-shell/              app chrome that knows features: Shell, ActivityButton
+shell/              app chrome: Shell, ActivityButton, AuthLayout
 auth/               the auth provider, use-auth, LoginPage, SetupPage, HostNotAllowedPage
 workflows/          WorkflowsPage, NewWorkflowPage, EmptyWorkflows, the bundled examples
   activation/       ActivateDialog, ActivationControl
@@ -213,7 +213,7 @@ A move pull request updates the paths in the allowlists and the "today" entries 
 
 ## Migration status
 
-Steps 1 (the check and this doc), 2, 3, 4, 5, 6, 7 and 8 are done. Each later pull request ticks its line.
+Steps 1 (the check and this doc), 2, 3, 4, 5, 6, 7, 8 and 9 are done. Each later pull request ticks its line.
 
 - [x] 2. Server: `platform/`, `app/` and `system/`; `host-check.ts` and `request-info.ts` into `auth/`.
 - [x] 3. Server: fix the upward imports (`fingerprintKey` into the repository layer, the official plugin constants out of `plugins/`, `CoreTools` into `nodes/`).
@@ -222,7 +222,7 @@ Steps 1 (the check and this doc), 2, 3, 4, 5, 6, 7 and 8 are done. Each later pu
 - [x] 6. Server: `plugins/` sub-folders (`trust/`, `runtime/`, `network/`) and its test support into `testing/`.
 - [x] 7. Server splits, one pull request each: `db/repos/jobs.ts`, `plugins/service.ts`, `workflows/validate.ts`, `engine/verify/verify.ts`.
 - [x] 8. Server: test names in the dot form; split the over-budget tests.
-- [ ] 9. Web: `shell/`, `test/` to `testing/`, the CSS guard tests into `styles/`.
+- [x] 9. Web: `shell/`, `test/` to `testing/`, the CSS guard tests into `styles/`.
 - [ ] 10. Web: pages into their features, in three pull requests; then delete `pages/`.
 - [ ] 11. Web splits: the editor page's hooks, the jobs page, the over-budget page tests, the two largest stylesheets.
 - [ ] 12. Packages: `shared/src/workflow` to `workflows`; split `contract.test.ts` per router.

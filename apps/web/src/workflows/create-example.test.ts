@@ -1,7 +1,7 @@
 import type { ApiClient } from '@transcoda/contract';
 import { emptyGraph } from '@transcoda/shared';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { tvCleanupSub } from '../test/fixtures/tv-cleanup.ts';
+import { tvCleanupSub } from '../testing/fixtures/tv-cleanup.ts';
 import { createFromGraph } from './create-example.ts';
 
 const create = vi.fn();

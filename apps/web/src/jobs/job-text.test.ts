@@ -1,7 +1,7 @@
 import { JOB_STATES } from '@transcoda/shared';
 import { describe, expect, it } from 'vitest';
 import { fmtDate } from '../lib/time.ts';
-import { fx, job } from '../test/fixtures/jobs.ts';
+import { fx, job } from '../testing/fixtures/jobs.ts';
 import {
   activityLine,
   dependsOnSizeText,

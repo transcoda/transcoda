@@ -1,7 +1,7 @@
 import { act, cleanup, renderHook } from '@testing-library/react';
 import type { Issue, WorkflowGraph } from '@transcoda/shared';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { chainMainReplace } from '../../test/fixtures/graphs.ts';
+import { chainMainReplace } from '../../testing/fixtures/graphs.ts';
 import type { EditorAction } from '../model/editor-state.ts';
 import { setLabel } from '../model/graph-ops.ts';
 

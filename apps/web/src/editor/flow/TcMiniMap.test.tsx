@@ -1,8 +1,8 @@
 import { cleanup, screen } from '@testing-library/react';
 import type { Group, Issue, NodeInstance } from '@transcoda/shared';
 import { afterEach, describe, expect, it } from 'vitest';
-import { catalogFixture } from '../../test/fixtures/catalog.ts';
-import { renderFlow } from '../../test/flow.tsx';
+import { catalogFixture } from '../../testing/fixtures/catalog.ts';
+import { renderFlow } from '../../testing/flow.tsx';
 import { nodeStateFor } from '../model/issues.ts';
 import { nodeTypes } from './node-types.ts';
 import { minimapLabel, miniNodeClass, TcMiniMap } from './TcMiniMap.tsx';

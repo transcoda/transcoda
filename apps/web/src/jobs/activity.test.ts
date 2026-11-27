@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { catalogFixture } from '../test/fixtures/catalog.ts';
-import { fx, job } from '../test/fixtures/jobs.ts';
-import { ELSE_PATH, ELSE_TRACE, PATH, RUNNING_TRACE, traceMain } from '../test/fixtures/trace.ts';
+import { catalogFixture } from '../testing/fixtures/catalog.ts';
+import { fx, job } from '../testing/fixtures/jobs.ts';
+import {
+  ELSE_PATH,
+  ELSE_TRACE,
+  PATH,
+  RUNNING_TRACE,
+  traceMain,
+} from '../testing/fixtures/trace.ts';
 import { activitySummary, progressLine, ringState, stepLine } from './activity.ts';
 
 const encoding = (over: Parameters<typeof job>[0] = {}) =>

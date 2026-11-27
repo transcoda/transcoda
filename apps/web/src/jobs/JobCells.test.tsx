@@ -1,6 +1,6 @@
 import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
-import { fx } from '../test/fixtures/jobs.ts';
+import { fx } from '../testing/fixtures/jobs.ts';
 import { ResultCell, TitleSub } from './JobCells.tsx';
 
 afterEach(cleanup);

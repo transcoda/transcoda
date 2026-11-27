@@ -1,8 +1,8 @@
 import { cleanup, screen, within } from '@testing-library/react';
 import type { LibraryTitle } from '@transcoda/contract';
 import { afterEach, describe, expect, it } from 'vitest';
-import { fx } from '../test/fixtures/jobs.ts';
-import { renderAt } from '../test/render.tsx';
+import { fx } from '../testing/fixtures/jobs.ts';
+import { renderAt } from '../testing/render.tsx';
 import { outcomeLine, SeasonGrid, TitleGrid } from './TitleGrid.tsx';
 
 afterEach(cleanup);

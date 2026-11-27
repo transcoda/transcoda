@@ -3,11 +3,11 @@ import type { JobDetail, WorkflowDetail } from '@transcoda/contract';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Route } from 'wouter';
 import { resetCatalogCache } from '../hooks/use-catalog.ts';
-import * as example from '../test/fixtures/before-after.ts';
-import { nodesFixture } from '../test/fixtures/catalog.ts';
-import { chainMainReplace } from '../test/fixtures/graphs.ts';
-import { mapleLanePlan, mapleLaneProbe, mapleLaneResult } from '../test/fixtures/plan.ts';
-import { renderAt } from '../test/render.tsx';
+import * as example from '../testing/fixtures/before-after.ts';
+import { nodesFixture } from '../testing/fixtures/catalog.ts';
+import { chainMainReplace } from '../testing/fixtures/graphs.ts';
+import { mapleLanePlan, mapleLaneProbe, mapleLaneResult } from '../testing/fixtures/plan.ts';
+import { renderAt } from '../testing/render.tsx';
 
 const mocks = vi.hoisted(() => ({
   jobGet: vi.fn(),

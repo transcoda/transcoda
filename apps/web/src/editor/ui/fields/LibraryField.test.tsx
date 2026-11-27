@@ -3,7 +3,7 @@ import type { NodeInfo } from '@transcoda/contract';
 import type { JsonValue } from '@transcoda/shared';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { resetLibrariesCache } from '../../../hooks/use-libraries.ts';
-import { catalogFixture } from '../../../test/fixtures/catalog.ts';
+import { catalogFixture } from '../../../testing/fixtures/catalog.ts';
 import { nodeStateFor } from '../../model/issues.ts';
 import { NodeForm } from '../NodeForm.tsx';
 import { OnNodeRow } from '../OnNodeRow.tsx';

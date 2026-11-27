@@ -2,9 +2,9 @@ import { useState } from 'react';
 import { useLocation } from 'wouter';
 import { api, isDefinedError, safe } from '../api/client.ts';
 import { useAuth } from '../auth/use-auth.ts';
-import { AuthLayout } from '../components/AuthLayout.tsx';
 import { CredentialsForm } from '../components/CredentialsForm.tsx';
 import { usePageTitle } from '../lib/page-title.ts';
+import { AuthLayout } from '../shell/AuthLayout.tsx';
 
 export function SetupPage() {
   usePageTitle('Set up');

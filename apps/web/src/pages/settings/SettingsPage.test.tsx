@@ -16,7 +16,7 @@ vi.mock('./sections.ts', () => ({
   ],
 }));
 
-import { renderAt } from '../../test/render.tsx';
+import { renderAt } from '../../testing/render.tsx';
 import { SettingsPage } from './SettingsPage.tsx';
 
 afterEach(cleanup);

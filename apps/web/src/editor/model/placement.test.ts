@@ -1,6 +1,6 @@
 import type { WorkflowGraph } from '@transcoda/shared';
 import { describe, expect, it } from 'vitest';
-import { chainMainReplace } from '../../test/fixtures/graphs.ts';
+import { chainMainReplace } from '../../testing/fixtures/graphs.ts';
 import { NODE_SIZE } from './graph-ops.ts';
 import { freeSpot } from './placement.ts';
 

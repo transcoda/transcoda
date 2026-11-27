@@ -15,7 +15,7 @@ vi.mock('../api/client.ts', () => ({
   },
 }));
 
-import { fakeEventSource, jobChanged, ping, queueSnapshot } from '../test/fake-event-stream.ts';
+import { fakeEventSource, jobChanged, ping, queueSnapshot } from '../testing/fake-event-stream.ts';
 import { EventsProvider } from './use-events.ts';
 import { useRefetchOn } from './use-refetch-on.ts';
 

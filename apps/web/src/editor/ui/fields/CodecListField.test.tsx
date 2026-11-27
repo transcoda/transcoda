@@ -2,7 +2,7 @@ import { cleanup, fireEvent, render, screen, within } from '@testing-library/rea
 import type { JsonValue } from '@transcoda/shared';
 import { useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { catalogFixture } from '../../../test/fixtures/catalog.ts';
+import { catalogFixture } from '../../../testing/fixtures/catalog.ts';
 import { type FieldDef, fieldsFor } from '../../model/schema-fields.ts';
 import { SettingField } from './SettingField.tsx';
 

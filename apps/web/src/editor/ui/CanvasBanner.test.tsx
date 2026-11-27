@@ -2,9 +2,9 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import type { WorkflowSummary } from '@transcoda/contract';
 import type { Issue } from '@transcoda/shared';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { catalogFixture } from '../../test/fixtures/catalog.ts';
-import { chainMainReplace } from '../../test/fixtures/graphs.ts';
-import { renderAt } from '../../test/render.tsx';
+import { catalogFixture } from '../../testing/fixtures/catalog.ts';
+import { chainMainReplace } from '../../testing/fixtures/graphs.ts';
+import { renderAt } from '../../testing/render.tsx';
 import { CanvasBanner, PastVersionBanner } from './CanvasBanner.tsx';
 
 afterEach(cleanup);

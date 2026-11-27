@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { renderAt } from '../test/render.tsx';
+import { renderAt } from '../testing/render.tsx';
 import { GuardedLink, guardedRun, type NavTarget, setBeforeNavigate } from './navigation.tsx';
 
 afterEach(cleanup);

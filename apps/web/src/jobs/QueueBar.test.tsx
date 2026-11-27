@@ -12,8 +12,8 @@ vi.mock('../api/client.ts', async () => {
 
 import { EventsProvider } from '../hooks/use-events.ts';
 import { REFETCH_COALESCE_MS } from '../hooks/use-refetch-on.ts';
-import { fakeEventSource, queueSnapshot } from '../test/fake-event-stream.ts';
-import { renderAt } from '../test/render.tsx';
+import { fakeEventSource, queueSnapshot } from '../testing/fake-event-stream.ts';
+import { renderAt } from '../testing/render.tsx';
 import { QueueBar } from './QueueBar.tsx';
 import { useQueue } from './use-queue.ts';
 

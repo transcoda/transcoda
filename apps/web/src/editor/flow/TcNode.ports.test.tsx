@@ -1,8 +1,8 @@
 import { cleanup, screen } from '@testing-library/react';
 import type { NodeInstance } from '@transcoda/shared';
 import { afterEach, describe, expect, it } from 'vitest';
-import { catalogFixture } from '../../test/fixtures/catalog.ts';
-import { renderFlow } from '../../test/flow.tsx';
+import { catalogFixture } from '../../testing/fixtures/catalog.ts';
+import { renderFlow } from '../../testing/flow.tsx';
 import { nodeStateFor } from '../model/issues.ts';
 import { edgeTypes, nodeTypes } from './node-types.ts';
 import type { TcNode } from './types.ts';

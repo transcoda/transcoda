@@ -1,7 +1,7 @@
 import { cleanup, render } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { Icon } from '../components/Icon.tsx';
-import { fx, job } from '../test/fixtures/jobs.ts';
+import { fx, job } from '../testing/fixtures/jobs.ts';
 import { JobStateChip } from './JobStateChip.tsx';
 
 afterEach(cleanup);

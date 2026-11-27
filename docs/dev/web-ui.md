@@ -8,11 +8,13 @@ The rules in force today for `apps/web/**`. History is in the decision files lin
 - `pages/`: one component per route (`WorkflowsPage`, `EditorPage`, `JobsPage`, `JobPage`, `RunPage`, `LibrariesPage`, `LibraryPage`, `LibraryFilePage`, `RecyclePage`, `PluginsPage`, `NewWorkflowPage`, `LoginPage`, `SetupPage`). `pages/settings/` holds Settings and its sections.
 - `editor/`: the workflow editor. `model/` is pure (no React, no React Flow), `flow/` adapts it to React Flow, `ui/` is the panels, dialogs and hooks around the canvas, `trace/` is the read-only canvas on the job page.
 - `jobs/`: job and run pieces (steps, plan view, result, queue bar, process again) and their wording modules (`steps.ts`, `job-text.ts`, `plan-text.ts`, `media-text.ts`).
-- `libraries/`, `plugins/`, `recycle/`, `examples/`: the parts of those pages that are big enough to stand alone.
-- `components/`: shared primitives (`Shell`, `Dialog`, `Toast`, `Chips`, `Icon`, `Loading`, `NotFound`, `Headings`, `RowMenu`, `ListboxSelect`, `Disclosure`, `FilePath`, ...).
+- `shell/`: the app chrome that knows features: `Shell` (nav and layout), `ActivityButton`, `AuthLayout` (the sign-in pages' frame).
+- `workflows/`: the empty Workflows state and the bundled examples (`bundled.ts`, `create-example.ts`).
+- `libraries/`, `plugins/`, `recycle/`: the parts of those pages that are big enough to stand alone.
+- `components/`: shared primitives that know no feature (`Dialog`, `Toast`, `Chips`, `Icon`, `Loading`, `NotFound`, `Headings`, `RowMenu`, `ListboxSelect`, `Disclosure`, `FilePath`, ...).
 - `api/` (client, CSRF, error mapping), `hooks/` (data and event hooks), `lib/` (formatting, page title, guarded navigation, breakpoints, theme), `data/` (codec and language tables).
-- `styles/`: `tokens.css` (vendored from the design handoff, excluded from Biome, never hand-edited except the additions DESIGN.md lists), the design guard tests and their one exceptions file.
-- `test/`: setup, helpers and fixtures for the web tests.
+- `styles/`: `tokens.css` (vendored from the design handoff, excluded from Biome, never hand-edited except the additions DESIGN.md lists), the design guard tests (each named after the stylesheet it reads, `shell.activity.test.ts`) and their one exceptions file.
+- `testing/`: setup, helpers and fixtures for the web tests.
 
 ## Talking to the server
 
@@ -24,7 +26,7 @@ The rules in force today for `apps/web/**`. History is in the decision files lin
 ## Adding a page
 
 - Register the route in `App.tsx` inside `<RequireAuth><Shell>...</Shell></RequireAuth>` (the editor uses `<Shell rail>`). A Settings section goes in `pages/settings/sections.ts`, not in `App.tsx`. Keep old URLs working with a `<Redirect>`.
-- Nav items live in `components/Shell.tsx` (`NavLink`).
+- Nav items live in `shell/Shell.tsx` (`NavLink`).
 - Name the tab with `usePageTitle(...)` from `lib/page-title.ts`; never set `document.title` yourself. The title reads "Page · server name · Transcoda".
 - Loading: the shared `Loading` component (a test fails if a page types its own "Loading…"). Missing item: `NotFound` (it sets its own title with `useOverrideTitle`). Load errors: a `role="alert"` line with the `describeError` message and "Try again".
 - An error from an action inside a dialog shows inline in the dialog, not as a toast (toasts are inert under a modal).
@@ -82,8 +84,8 @@ The rules in force today for `apps/web/**`. History is in the decision files lin
 
 - Unit tests sit beside the code (`*.test.ts(x)`), Vitest in jsdom with Testing Library. Find elements by role and accessible name. Which tier a test belongs in: [testing.md](testing.md).
 - Vitest globals are off, so every file that imports `render` or `renderHook` has a top-level `afterEach(cleanup)` (Biome rule `test-cleanup.grit` from `@transcoda/dev-config`; one inside a `describe` does not count).
-- Render a page with `renderAt(path, ui)` from `test/render.tsx` (a wouter memory router plus `ToastProvider`). Bare React Flow: `renderFlow` from `test/flow.tsx`. The event stream: `test/fake-event-stream.ts`. `test/setup.ts` gives jsdom the layout React Flow needs.
-- Node definitions in tests come from `catalogFixture` / `nodesFixture` (`test/fixtures/catalog.ts`), never from `nodes.json` directly. `test/fixtures/nodes.json` is generated: `pnpm --filter @transcoda/server dump-nodes > apps/web/src/test/fixtures/nodes.json` (`apps/server/scripts/dump-nodes.ts`), then re-add the hand-written `test:unavailable` entry. `apps/server/src/nodes/web-fixture.test.ts` fails when the core nodes in it drift from the server.
+- Render a page with `renderAt(path, ui)` from `testing/render.tsx` (a wouter memory router plus `ToastProvider`). Bare React Flow: `renderFlow` from `testing/flow.tsx`. The event stream: `testing/fake-event-stream.ts`. `testing/setup.ts` gives jsdom the layout React Flow needs.
+- Node definitions in tests come from `catalogFixture` / `nodesFixture` (`testing/fixtures/catalog.ts`), never from `nodes.json` directly. `testing/fixtures/nodes.json` is generated: `pnpm --filter @transcoda/server dump-nodes > apps/web/src/testing/fixtures/nodes.json` (`apps/server/scripts/dump-nodes.ts`), then re-add the hand-written `test:unavailable` entry. `apps/server/src/nodes/web-fixture.test.ts` fails when the core nodes in it drift from the server.
 - No `toMatchSnapshot` of component HTML. Assert what a user sees.
 - A change to a page the browser tests cover: run `pnpm e2e:docker`, and update screenshot baselines with `pnpm e2e:update` when the change is on purpose (see [AGENTS.md](../../AGENTS.md)).
 

@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { renderAt } from '../test/render.tsx';
+import { renderAt } from '../testing/render.tsx';
 import { UpdateDialog } from './UpdateDialog.tsx';
 
 afterEach(cleanup);

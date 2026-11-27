@@ -9,6 +9,8 @@ import {
 } from 'react';
 import { useLocation, useRoute } from 'wouter';
 import { useAuth } from '../auth/use-auth.ts';
+import { Icon, type IconName } from '../components/Icon.tsx';
+import { Mark, Wordmark } from '../components/Logo.tsx';
 import { useAppUpdate } from '../hooks/use-app-update.ts';
 import { useJobsCounts } from '../jobs/use-jobs-list.ts';
 import { GuardedLink, guardedRun } from '../lib/navigation.tsx';
@@ -16,8 +18,6 @@ import { usePhone } from '../lib/use-phone.ts';
 import { TmdbAttribution } from '../plugins/TmdbAttribution.tsx';
 import { usePluginsNav } from '../plugins/use-plugins-nav.ts';
 import { ActivityButton } from './ActivityButton.tsx';
-import { Icon, type IconName } from './Icon.tsx';
-import { Mark, Wordmark } from './Logo.tsx';
 
 function NavLink({
   href,

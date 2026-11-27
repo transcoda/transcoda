@@ -38,9 +38,9 @@ import {
   NETWORK_NOTE,
   NETWORK_UNLISTED,
 } from '../plugins/plugin-text.ts';
-import { fakeEventSource } from '../test/fake-event-stream.ts';
-import { catalogOutput, plugin, pluginDetail, serviceDetail } from '../test/fixtures/plugins.ts';
-import { renderAt } from '../test/render.tsx';
+import { fakeEventSource } from '../testing/fake-event-stream.ts';
+import { catalogOutput, plugin, pluginDetail, serviceDetail } from '../testing/fixtures/plugins.ts';
+import { renderAt } from '../testing/render.tsx';
 import { PluginsPage, updateAllSummary } from './PluginsPage.tsx';
 
 let fake: ReturnType<typeof fakeEventSource>;

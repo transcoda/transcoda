@@ -74,8 +74,7 @@ export const LAYERS: Record<string, Layer[]> = {
         'plugins/',
         'recycle/',
         'settings/',
-        // today: examples/ moves into workflows/, pages/ into the features.
-        'examples/',
+        // today: pages/ moves into the features.
         'pages/',
       ],
     },

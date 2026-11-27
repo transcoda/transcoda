@@ -1,5 +1,5 @@
-import type { BundledExample } from '../examples/bundled.ts';
-import { Icon } from './Icon.tsx';
+import { Icon } from '../components/Icon.tsx';
+import type { BundledExample } from './bundled.ts';
 
 /** Screen 02's empty state, shown on the workflow list when there are no workflows at all. */
 export function EmptyWorkflows({

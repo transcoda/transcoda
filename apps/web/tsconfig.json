@@ -14,7 +14,7 @@
   },
   "include": [
     "src",
-    "src/test/fixtures/*.json",
+    "src/testing/fixtures/*.json",
     "../../examples/workflows/*.json",
     "vite.config.ts"
   ],

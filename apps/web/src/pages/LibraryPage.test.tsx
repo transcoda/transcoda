@@ -19,9 +19,9 @@ vi.mock('../api/client.ts', async () => {
 import { EventsProvider } from '../hooks/use-events.ts';
 import { REFETCH_COALESCE_MS } from '../hooks/use-refetch-on.ts';
 import { LIBRARY_VIEW_KEY } from '../libraries/view-pref.ts';
-import { fakeEventSource, jobChanged, queueSnapshot } from '../test/fake-event-stream.ts';
-import { fx } from '../test/fixtures/jobs.ts';
-import { renderAt } from '../test/render.tsx';
+import { fakeEventSource, jobChanged, queueSnapshot } from '../testing/fake-event-stream.ts';
+import { fx } from '../testing/fixtures/jobs.ts';
+import { renderAt } from '../testing/render.tsx';
 import { LibraryPage } from './LibraryPage.tsx';
 
 const at = '2026-10-16T18:00:00.000Z';

@@ -17,8 +17,8 @@ vi.mock('../api/client.ts', async () => {
 import { ORPCError } from '@orpc/client';
 import { Route } from 'wouter';
 import { EventsProvider } from '../hooks/use-events.ts';
-import { fakeEventSource } from '../test/fake-event-stream.ts';
-import { renderAt } from '../test/render.tsx';
+import { fakeEventSource } from '../testing/fake-event-stream.ts';
+import { renderAt } from '../testing/render.tsx';
 import { RunPage } from './RunPage.tsx';
 
 const zero = {

@@ -5,8 +5,8 @@ import { type Edge, type NodeProps, Position, useReactFlowStoreApi } from '@xyfl
 import { useEffect } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { PortSpec } from '../../hooks/use-catalog.ts';
-import { catalogFixture } from '../../test/fixtures/catalog.ts';
-import { renderFlow } from '../../test/flow.tsx';
+import { catalogFixture } from '../../testing/fixtures/catalog.ts';
+import { renderFlow } from '../../testing/flow.tsx';
 import { NEEDS_A_SETTING, nodeStateFor } from '../model/issues.ts';
 import {
   DEFAULT_EDITOR_ACTIONS,

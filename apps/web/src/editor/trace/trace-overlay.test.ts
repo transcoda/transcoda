@@ -1,7 +1,7 @@
 import type { WalkStep } from '@transcoda/contract';
 import { RENDER_TYPE, type WorkflowGraph } from '@transcoda/shared';
 import { describe, expect, it } from 'vitest';
-import { catalogFixture } from '../../test/fixtures/catalog.ts';
+import { catalogFixture } from '../../testing/fixtures/catalog.ts';
 import {
   ELSE_PATH,
   ELSE_TRACE,
@@ -11,7 +11,7 @@ import {
   TRACE,
   traceMain,
   traceSub,
-} from '../../test/fixtures/trace.ts';
+} from '../../testing/fixtures/trace.ts';
 import {
   buildTraceOverlay,
   currentNodeOf,

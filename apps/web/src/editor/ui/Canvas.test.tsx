@@ -1,9 +1,9 @@
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { ReactFlowProvider } from '@xyflow/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { catalogFixture } from '../../test/fixtures/catalog.ts';
-import { chainMainReplace } from '../../test/fixtures/graphs.ts';
-import { transformOf } from '../../test/transform.ts';
+import { catalogFixture } from '../../testing/fixtures/catalog.ts';
+import { chainMainReplace } from '../../testing/fixtures/graphs.ts';
+import { transformOf } from '../../testing/transform.ts';
 import { tidyUp } from '../model/layout.ts';
 import { Canvas, type GraphOp } from './Canvas.tsx';
 

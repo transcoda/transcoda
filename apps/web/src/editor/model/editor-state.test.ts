@@ -3,8 +3,8 @@ import type { WorkflowSummary } from '@transcoda/contract';
 import type { Issue } from '@transcoda/shared';
 import { useReducer } from 'react';
 import { afterEach, describe, expect, it } from 'vitest';
-import { catalogFixture as catalog } from '../../test/fixtures/catalog.ts';
-import { chainMainReplace } from '../../test/fixtures/graphs.ts';
+import { catalogFixture as catalog } from '../../testing/fixtures/catalog.ts';
+import { chainMainReplace } from '../../testing/fixtures/graphs.ts';
 import {
   type EditorAction,
   type EditorState,

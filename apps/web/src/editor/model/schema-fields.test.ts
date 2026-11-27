@@ -1,7 +1,7 @@
 import type { NodeInfo } from '@transcoda/contract';
 import type { JsonValue } from '@transcoda/shared';
 import { describe, expect, it } from 'vitest';
-import { nodesFixture } from '../../test/fixtures/catalog.ts';
+import { nodesFixture } from '../../testing/fixtures/catalog.ts';
 import {
   clientIssue,
   coerce,

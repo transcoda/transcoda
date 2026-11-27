@@ -8,8 +8,8 @@ vi.mock('../jobs/use-queue.ts', () => ({
 }));
 
 import { stylesCss } from '../styles/css-source.ts';
-import { fx } from '../test/fixtures/jobs.ts';
-import { renderAt } from '../test/render.tsx';
+import { fx } from '../testing/fixtures/jobs.ts';
+import { renderAt } from '../testing/render.tsx';
 import { LibraryFileTable } from './LibraryFileTable.tsx';
 import { SelectionBar } from './SelectionBar.tsx';
 import { useSelection } from './use-selection.ts';

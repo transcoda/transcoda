@@ -16,7 +16,7 @@ vi.mock('../api/client.ts', () => ({
 }));
 
 import { LiveDot } from '../components/LiveDot.tsx';
-import { fakeEventSource, jobChanged, ping, queueSnapshot } from '../test/fake-event-stream.ts';
+import { fakeEventSource, jobChanged, ping, queueSnapshot } from '../testing/fake-event-stream.ts';
 import { EventsProvider, useEvents, useOnReconnect, useStreamStatus } from './use-events.ts';
 
 let fake: ReturnType<typeof fakeEventSource>;
