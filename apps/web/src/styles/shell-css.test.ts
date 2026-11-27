@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { BP_DESKTOP_MAX, BP_PHONE_MAX, BP_TABLET_MAX } from '../lib/breakpoints.ts';
 import { stylesCss } from './css-source.ts';
 
 const css = stylesCss;
@@ -55,6 +56,6 @@ describe('shell css (UI review H1, M15, L10, L15)', () => {
     const widths = new Set(
       [...css.matchAll(/@media[^{]*max-width:\s*(\d+)px/g)].map((m) => Number(m[1])),
     );
-    for (const w of widths) expect([639, 899, 1023, 1280]).toContain(w);
+    for (const w of widths) expect([BP_PHONE_MAX, 899, BP_TABLET_MAX, BP_DESKTOP_MAX]).toContain(w);
   });
 });

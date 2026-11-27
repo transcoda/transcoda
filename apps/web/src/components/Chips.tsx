@@ -1,5 +1,5 @@
 import type { NodeSource } from '@transcoda/contract';
-import type { NodeKind } from '../hooks/useCatalog.ts';
+import type { NodeKind } from '../hooks/use-catalog.ts';
 import { Icon, type IconName } from './Icon.tsx';
 
 // Colour never carries meaning alone: every badge and chip pairs an icon with a word.

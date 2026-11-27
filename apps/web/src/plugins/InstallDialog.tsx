@@ -7,7 +7,7 @@ import { useToast } from '../components/Toast.tsx';
 import { copyShortcut, copyText } from '../lib/clipboard.ts';
 import { pluginFailure } from './errors.ts';
 import { NetworkHosts } from './NetworkHosts.tsx';
-import { cardDescription } from './pluginGroups.ts';
+import { cardDescription } from './plugin-groups.ts';
 import {
   ATTESTATION_TIP,
   CUSTOM_CATALOG_WARNING,
@@ -17,8 +17,8 @@ import {
   SECURITY_PROMISE,
   SERVER_LOG_DOCS,
   webLink,
-} from './pluginText.ts';
-import type { CatalogView } from './usePlugins.ts';
+} from './plugin-text.ts';
+import type { CatalogView } from './use-plugins.ts';
 
 export type Entry = CatalogView['plugins'][number];
 export type Version = Entry['versions'][number];

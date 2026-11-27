@@ -11,7 +11,7 @@ import { api } from '../../api/client.ts';
 import { describeError } from '../../api/errors.ts';
 import { Icon } from '../../components/Icon.tsx';
 import { Loading } from '../../components/Loading.tsx';
-import { useAsync } from '../../hooks/useAsync.ts';
+import { useAsync } from '../../hooks/use-async.ts';
 import { GuardedLink } from '../../lib/navigation.tsx';
 import { setOverride, setPinnedVersion, setSettings } from '../model/graph-ops.ts';
 import type { NodeState } from '../model/issues.ts';

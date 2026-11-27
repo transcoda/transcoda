@@ -15,18 +15,18 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { Catalog } from '../../hooks/useCatalog.ts';
-import { usePhone } from '../../lib/usePhone.ts';
+import type { Catalog } from '../../hooks/use-catalog.ts';
+import { usePhone } from '../../lib/use-phone.ts';
 import { DEFAULT_EDITOR_ACTIONS, EditorActionsContext } from '../flow/actions-context.ts';
-import { ARIA_LABELS, edgeTypes, nodeTypes } from '../flow/nodeTypes.ts';
-import { READABLE_ZOOM } from '../flow/openViewport.ts';
-import { toFlow, withViewCollapse } from '../flow/toFlow.ts';
+import { ARIA_LABELS, edgeTypes, nodeTypes } from '../flow/node-types.ts';
+import { READABLE_ZOOM } from '../flow/open-viewport.ts';
+import { toFlow, withViewCollapse } from '../flow/to-flow.ts';
 import type { TcFlowEdge, TcFlowNode, TraceOverlay } from '../flow/types.ts';
 import { ZoomVar } from '../flow/ZoomVar.tsx';
 import { CONTROLS_FIT_VIEW, MIN_ZOOM } from '../ui/Canvas.tsx';
 import { TraceActionsContext } from './trace-context.ts';
-import { spreadCards, spreadMembers } from './traceLayout.ts';
-import { buildTraceOverlay, pathKey, type TraceSource } from './traceOverlay.ts';
+import { spreadCards, spreadMembers } from './trace-layout.ts';
+import { buildTraceOverlay, pathKey, type TraceSource } from './trace-overlay.ts';
 
 type FlowNode = TcFlowNode;
 

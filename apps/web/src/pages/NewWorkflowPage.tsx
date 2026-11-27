@@ -4,7 +4,7 @@ import { Link, useLocation, useSearch } from 'wouter';
 import { api, safe } from '../api/client.ts';
 import { RequiredMark } from '../components/Form.tsx';
 import { Icon } from '../components/Icon.tsx';
-import { usePageTitle } from '../lib/pageTitle.ts';
+import { usePageTitle } from '../lib/page-title.ts';
 
 /** What the page promises under its title; a sub-workflow has no versions to activate. */
 const SUBTITLE: Record<WorkflowKind, string> = {

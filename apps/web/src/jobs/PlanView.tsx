@@ -16,7 +16,7 @@ import {
   sizeLine,
   trackLabel,
   wouldDo,
-} from './planText.ts';
+} from './plan-text.ts';
 
 const RESULT: Record<PlanStream['action'], { word: string; icon: 'check' | 'cross' | 'replace' }> =
   {

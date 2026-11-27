@@ -11,7 +11,7 @@ import {
   type WorkflowGraph,
   type WorkflowKind,
 } from '@transcoda/shared';
-import type { Catalog, PortSpec, PortType } from '../../hooks/useCatalog.ts';
+import type { Catalog, PortSpec, PortType } from '../../hooks/use-catalog.ts';
 import { shownOutputs } from './hidden-ports.ts';
 
 export type ConnectionCheck = { ok: true } | { ok: false; reason: string };

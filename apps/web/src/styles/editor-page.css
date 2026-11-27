@@ -225,6 +225,14 @@
   background: var(--line);
 }
 
+.editor-head-end {
+  margin-left: auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
 /* Compact (below 1024 px): the name and the menu share one row; the version pill is a muted
    status line below them. */
 .editor-head.is-compact {
@@ -256,14 +264,6 @@
   background: none;
   font-family: inherit;
   font-size: var(--fs-small);
-}
-
-.editor-head-end {
-  margin-left: auto;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--sp-3);
 }
 
 .editor-head .btn {

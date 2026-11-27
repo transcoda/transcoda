@@ -1,4 +1,3 @@
-import { join } from 'node:path';
 import { act, cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -23,11 +22,11 @@ vi.mock('../api/client.ts', async () => {
 
 import type { JobDetail } from '@transcoda/contract';
 import { Route } from 'wouter';
-import { resetCatalogCache } from '../hooks/useCatalog.ts';
-import { EventsProvider } from '../hooks/useEvents.ts';
-import { REFETCH_COALESCE_MS } from '../hooks/useRefetchOn.ts';
+import { resetCatalogCache } from '../hooks/use-catalog.ts';
+import { EventsProvider } from '../hooks/use-events.ts';
+import { REFETCH_COALESCE_MS } from '../hooks/use-refetch-on.ts';
 import { stylesCss } from '../styles/css-source.ts';
-import { fakeEventSource, queueSnapshot } from '../test/fakeEventStream.ts';
+import { fakeEventSource, queueSnapshot } from '../test/fake-event-stream.ts';
 import { nodesFixture } from '../test/fixtures/catalog.ts';
 import {
   COMMAND,

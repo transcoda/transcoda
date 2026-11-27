@@ -49,10 +49,10 @@ vi.mock('../api/client.ts', () => ({
   },
 }));
 
-import { EventsProvider } from '../hooks/useEvents.ts';
-import { REFETCH_COALESCE_MS } from '../hooks/useRefetchOn.ts';
-import { jobTitle } from '../jobs/mediaText.ts';
-import { fakeEventSource, jobChanged } from '../test/fakeEventStream.ts';
+import { EventsProvider } from '../hooks/use-events.ts';
+import { REFETCH_COALESCE_MS } from '../hooks/use-refetch-on.ts';
+import { jobTitle } from '../jobs/media-text.ts';
+import { fakeEventSource, jobChanged } from '../test/fake-event-stream.ts';
 import { counts, fx } from '../test/fixtures/jobs.ts';
 import { renderAt } from '../test/render.tsx';
 import { JobsPage } from './JobsPage.tsx';

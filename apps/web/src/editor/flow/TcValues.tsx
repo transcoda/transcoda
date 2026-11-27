@@ -1,7 +1,7 @@
 import { Handle, type NodeProps, Position } from '@xyflow/react';
 import { Icon } from '../../components/Icon.tsx';
 import { valueText } from '../ui/SettingLink.tsx';
-import { VALUES_HANDLE } from './toFlow.ts';
+import { VALUES_HANDLE } from './to-flow.ts';
 import type { TcValuesNode } from './types.ts';
 
 const uses = (n: number) => (n === 0 ? 'unused' : `${n} ${n === 1 ? 'node' : 'nodes'}`);

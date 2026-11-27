@@ -4,7 +4,7 @@ import type { Issue, NodeInstance } from '@transcoda/shared';
 import { type Edge, type NodeProps, Position, useReactFlowStoreApi } from '@xyflow/react';
 import { useEffect } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { PortSpec } from '../../hooks/useCatalog.ts';
+import type { PortSpec } from '../../hooks/use-catalog.ts';
 import { catalogFixture } from '../../test/fixtures/catalog.ts';
 import { renderFlow } from '../../test/flow.tsx';
 import { NEEDS_A_SETTING, nodeStateFor } from '../model/issues.ts';
@@ -13,7 +13,7 @@ import {
   type EditorActions,
   EditorActionsContext,
 } from './actions-context.ts';
-import { edgeTypes, nodeTypes } from './nodeTypes.ts';
+import { edgeTypes, nodeTypes } from './node-types.ts';
 import { SubworkflowsContext } from './subworkflows-context.ts';
 import { branchType, namesFileOutputs, portLabel } from './TcHandle.tsx';
 import { TcNode as TcNodeCard } from './TcNode.tsx';
