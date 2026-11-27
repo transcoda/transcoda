@@ -321,7 +321,9 @@ export function reasonOf(job: Pick<Job, 'state' | 'reason'>): string | null {
 
 /** "40 s", "3 min", "1 h 23 min": a time left, rounded to what a person reads. */
 export function fmtTimeLeft(seconds: number): string {
-  if (seconds < 60) return `${Math.max(0, Math.round(seconds))} s`;
+  // Rounded first, so 59.6 s reads as 1 min, not 60 s.
+  const whole = Math.round(seconds);
+  if (whole < 60) return `${Math.max(0, whole)} s`;
   const minutes = Math.round(seconds / 60);
   if (minutes < 60) return `${minutes} min`;
   const h = Math.floor(minutes / 60);

@@ -14,6 +14,13 @@ A change gets its test in the lowest tier that can catch the bug.
 | Render snapshots | `toMatchSnapshot` on generated output, such as the ffmpeg argv in `apps/server/src/engine/render.test.ts` | Text output that must not change by accident | UI markup: a snapshot of a component's HTML breaks on every harmless change and nobody reviews it | Part of `pnpm test` |
 | Browser | `e2e/*.e2e.ts` (Playwright, Chromium) against the built server and the fixture media (`e2e/server.mjs`) | A few key flows end to end, and screenshots of the main pages | Every state of every page; those are unit tests | `e2e` CI job, under 10 min |
 
+## Property tests
+
+- Parsers and pure functions that take outside input (ffmpeg's output, HTTP headers, file paths, numbers to format) also get a property test with [fast-check](https://fast-check.dev): `<module>.property.test.ts` beside the code, in the unit tier, importing `fc from 'fast-check'`.
+- Each `fc.assert` passes a fixed `seed` and a small `numRuns` (200 to 300), so `pnpm test` stays fast and fails the same way every time.
+- A property states what must hold for every input (never throws, stays in range, round-trips), not one example. When it finds a bug, the fix also gets a plain example test with the shrunk counterexample.
+- These are what OpenSSF Scorecard's Fuzzing check counts: it looks for a TypeScript file that imports `fast-check`.
+
 ## Helpers to use
 
 Use these instead of writing your own:
@@ -57,4 +64,4 @@ Use these instead of writing your own:
 - `.github/workflows/nightly.yml` runs once a night when `main` moved since the last finished nightly (a manual run always runs): the unit tests with fixtures in the e2e container (`pnpm test:docker`), and the browser and screenshot tests.
 - A failing test gets a GitHub issue labelled `nightly`, titled `Nightly: <file> > <test>` (the org's `nightly-issues` action, from `transcoda/.github`). A test that fails again gets a comment, a test that passes again gets its issue closed, more than 10 new failures get one "many tests fail" issue, and a run that fails outside its tests gets one "the run failed outside its tests" issue.
 
-History: [2026-11](../decisions/2026-11.md) ("Test tiers", "Nightly tests and their issues"), [M2 editor](../decisions/2026-10-m2-editor.md) ("M2 Task 1").
+History: [2026-11](../decisions/2026-11.md) ("Test tiers", "Nightly tests and their issues", "Property tests with fast-check"), [M2 editor](../decisions/2026-10-m2-editor.md) ("M2 Task 1").

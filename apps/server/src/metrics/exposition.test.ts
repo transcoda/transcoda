@@ -71,6 +71,12 @@ describe('renderExposition', () => {
     ]);
   });
 
+  it('reads back help text with a backslash before an n (found by fast-check)', () => {
+    const help = 'C:\\new folder\nline';
+    const text = renderExposition([{ name: 'transcoda_x', type: 'gauge', help, samples: [] }]);
+    expect(parseExposition(text).help.get('transcoda_x')).toBe(help);
+  });
+
   it('writes a family with no samples as HELP and TYPE only', () => {
     const text = renderExposition([
       { name: 'transcoda_x', type: 'counter', help: 'X.', samples: [] },
