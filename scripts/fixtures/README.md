@@ -1,6 +1,6 @@
 # Test media fixtures
 
-`generate.mjs` builds tiny (3 s, 320×180 — `h264-big.mkv` 640×360 — `testsrc2` + `sine`)
+`generate.ts` builds tiny (3 s, 320×180 — `h264-big.mkv` 640×360 — `testsrc2` + `sine`)
 media files for the engine tests into `.local/fixtures/` (git-ignored — never commit media),
 verifies each with `ffprobe` and writes `.local/fixtures/manifest.json` with what it found.
 

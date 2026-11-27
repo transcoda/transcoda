@@ -2,8 +2,8 @@ name: Nightly
 
 # Every test, every night, when main has changed since the last nightly: the unit tests with the
 # fixture media (pull requests skip the real-ffmpeg ones), and the browser and screenshot tests.
-# A failing test gets a GitHub issue labelled `nightly` (scripts/nightly-issues.ts); one that passes
-# again gets its issue closed. Run it by hand from the Actions tab: that always runs.
+# A failing test gets a GitHub issue labelled `nightly`; one that passes again gets its issue closed
+# (the org's nightly-issues action). Run it by hand from the Actions tab: that always runs.
 
 on:
   schedule:
@@ -25,27 +25,12 @@ jobs:
     permissions:
       actions: read
     outputs:
-      run: ${{ steps.check.outputs.run }}
+      run: ${{ steps.changed.outputs.run }}
     steps:
-      - id: check
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -eu
-          if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then
-            echo run=true >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          # The commit the last finished nightly tested (any outcome: a failure on the same commit
-          # would only fail again).
-          last=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/nightly.yml/runs?branch=main&status=completed&per_page=1" \
-            --jq '.workflow_runs[0].head_sha // ""')
-          if [ "$last" = "$GITHUB_SHA" ]; then
-            echo "main is still at ${GITHUB_SHA:0:7}, as in the last nightly: nothing to test"
-            echo run=false >> "$GITHUB_OUTPUT"
-          else
-            echo run=true >> "$GITHUB_OUTPUT"
-          fi
+      # 'true' when main moved since the last finished nightly (any outcome: a failure on the same
+      # commit would only fail again), when there is none, or on a manual run.
+      - id: changed
+        uses: transcoda/.github/actions/nightly-changed@43cbb990910eca37108711aedaa1b939835a1941 # v1.1.0
 
   unit:
     needs: changed
@@ -91,23 +76,15 @@ jobs:
     permissions:
       issues: write
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version-file: .node-version
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: nightly-*
           path: .local/artifacts
-      - name: Open, update and close the nightly issues
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          SHA: ${{ github.sha }}
-          RUN_FAILED: ${{ needs.unit.result != 'success' || needs.e2e.result != 'success' }}
-          # The tests ran in the container's copy of the repo.
-          TEST_ROOT: /work/repo
-        run: |
-          node scripts/nightly-issues.ts \
-            .local/artifacts/nightly-unit/vitest.json \
+      - uses: transcoda/.github/actions/nightly-issues@43cbb990910eca37108711aedaa1b939835a1941 # v1.1.0
+        with:
+          reports: |
+            .local/artifacts/nightly-unit/vitest.json
             .local/artifacts/nightly-e2e/nightly/playwright.json
+          run-failed: ${{ needs.unit.result != 'success' || needs.e2e.result != 'success' }}
+          # The tests ran in the container's copy of the repo.
+          test-root: /work/repo

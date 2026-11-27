@@ -1,6 +1,6 @@
 // Generates tiny, reproducible test media for the M1 engine into .local/fixtures/ (git-ignored),
 // verifies every file with ffprobe and writes .local/fixtures/manifest.json.
-// Usage: node scripts/fixtures/generate.mjs [--check] [fixture-name ...]
+// Usage: node scripts/fixtures/generate.ts [--check] [fixture-name ...]
 //   --check  only verify existing files (no generation, no manifest write); exits 1 on mismatch.
 // Env: TRANSCODA_FIXTURE_HEVC=libx265|hevc_videotoolbox forces the HEVC encoder;
 //      TRANSCODA_FIXTURE_FONT=/path/to/font.ttf picks the font attached to ass-fonts.mkv.
@@ -27,22 +27,35 @@ const BIG_HEIGHT = 360;
 
 // --- ffmpeg helpers -------------------------------------------------------------------------
 
-async function ffmpeg(args) {
+async function ffmpeg(args: string[]): Promise<void> {
   await run('ffmpeg', ['-nostdin', '-hide_banner', '-loglevel', 'error', '-y', ...args], {
     maxBuffer: 16 * 1024 * 1024,
   });
 }
 
-async function ffprobe(file) {
+/** The parts of `ffprobe -show_format -show_streams -of json` this script reads. */
+interface ProbeStream {
+  index: number;
+  codec_type: string;
+  codec_name?: string;
+  tags?: Record<string, string>;
+  disposition?: Record<string, number>;
+}
+interface Probe {
+  streams: ProbeStream[];
+  format: { format_name: string; duration?: string };
+}
+
+async function ffprobe(file: string): Promise<Probe> {
   const { stdout } = await run(
     'ffprobe',
     ['-v', 'error', '-show_format', '-show_streams', '-of', 'json', file],
     { maxBuffer: 16 * 1024 * 1024 },
   );
-  return JSON.parse(stdout);
+  return JSON.parse(stdout) as Probe;
 }
 
-async function pickHevcEncoder() {
+async function pickHevcEncoder(): Promise<string> {
   const { stdout } = await run('ffmpeg', ['-hide_banner', '-encoders']);
   const available = new Set(stdout.split('\n').map((line) => line.trim().split(/\s+/)[1]));
   const forced = process.env.TRANSCODA_FIXTURE_HEVC;
@@ -54,7 +67,7 @@ async function pickHevcEncoder() {
   throw new Error('ffmpeg has neither libx265 nor hevc_videotoolbox');
 }
 
-function hevcArgs(encoder, spec = 'v:0') {
+function hevcArgs(encoder: string, spec = 'v:0'): string[] {
   const common = [`-c:${spec}`, encoder, `-pix_fmt:${spec}`, 'yuv420p'];
   if (encoder === 'libx265') {
     return [...common, `-preset:${spec}`, 'ultrafast', `-x265-params:${spec}`, 'log-level=error'];
@@ -73,12 +86,18 @@ const AAC = ['-c:a', 'aac', '-b:a', '32k', '-ac', '1'];
 /** Oversized H.264 (an HEVC downsize saves well over 20 %). */
 const H264_BIG = ['-c:v', 'libx264', '-crf', '10', '-preset', 'ultrafast', '-pix_fmt', 'yuv420p'];
 
-function srt(text) {
+function srt(text: string): string {
   return `1\n00:00:00,500 --> 00:00:01,500\n${text} (1)\n\n2\n00:00:01,800 --> 00:00:02,800\n${text} (2)\n`;
 }
 
 // Per-stream metadata/disposition args. tracks: [{ lang?, default? , forced? }] for one type.
-function trackArgs(type, tracks) {
+interface Track {
+  lang?: string | null;
+  default?: boolean;
+  forced?: boolean;
+}
+
+function trackArgs(type: string, tracks: Track[]): string[] {
   return tracks.flatMap((t, i) => {
     const flags = [t.default && 'default', t.forced && 'forced'].filter(Boolean);
     // biome-ignore format: flag/value pairs
@@ -94,7 +113,7 @@ function trackArgs(type, tracks) {
 // ffmpeg cannot render text subtitles to bitmaps, so a minimal valid PGS stream is written by
 // hand: one display set showing a 64x16 white box at 0.5 s, one clearing it at 2.5 s.
 
-function pgsSegment(pts, type, data) {
+function pgsSegment(pts: number, type: number, data: Buffer): Buffer {
   const header = Buffer.alloc(13);
   header.write('PG', 0, 'latin1');
   header.writeUInt32BE(pts, 2);
@@ -104,7 +123,7 @@ function pgsSegment(pts, type, data) {
   return Buffer.concat([header, data]);
 }
 
-function pgsDisplaySet(pts, compositionNumber, show) {
+function pgsDisplaySet(pts: number, compositionNumber: number, show: boolean): Buffer {
   const objW = 64;
   const objH = 16;
   const x = (WIDTH - objW) / 2;
@@ -161,13 +180,13 @@ function pgsFile() {
 // expect: streams in ffprobe order. language null = untagged ("und" counts as untagged).
 
 const v = (codec = 'hevc') => ({ type: 'video', codec, default: true });
-const a = (language, isDefault = false) => ({
+const a = (language: string | null, isDefault = false) => ({
   type: 'audio',
   codec: 'aac',
   language,
   default: isDefault,
 });
-const s = (codec, language, isDefault = false) => ({
+const s = (codec: string, language: string | null, isDefault = false) => ({
   type: 'subtitle',
   codec,
   language,
@@ -199,7 +218,28 @@ function findFont() {
   return font;
 }
 
-const FIXTURES = [
+/** What one stream should look like; `describe()` makes the same shape from ffprobe. */
+type StreamFacts = Record<string, string | number | boolean | null>;
+
+interface BuildContext {
+  /** The HEVC encoder (libx265 or hevc_videotoolbox). */
+  hevc: string;
+  /** Writes a file into the work directory and returns its path. */
+  text(name: string, content: string): Promise<string>;
+}
+
+interface Fixture {
+  name: string;
+  file: string;
+  format: 'mp4' | 'matroska';
+  purpose: string;
+  /** The ffmpeg arguments before `-t <duration> <output>`. */
+  build(ctx: BuildContext): Promise<string[]>;
+  /** The streams in ffprobe order. */
+  expect: StreamFacts[];
+}
+
+const FIXTURES: Fixture[] = [
   {
     name: 'otter-finch',
     file: 'otter-finch.mp4',
@@ -461,9 +501,9 @@ const FIXTURES = [
 
 // --- verification ---------------------------------------------------------------------------
 
-function describe(stream) {
+function describe(stream: ProbeStream): StreamFacts {
   const lang = stream.tags?.language;
-  const d = {
+  const d: StreamFacts = {
     index: stream.index,
     type: stream.codec_type,
     codec: stream.codec_name ?? null,
@@ -480,8 +520,8 @@ function describe(stream) {
   return d;
 }
 
-function verify(fixture, probe) {
-  const errors = [];
+function verify(fixture: Fixture, probe: Probe) {
+  const errors: string[] = [];
   const streams = probe.streams.map(describe);
   const formatNames = probe.format.format_name.split(',');
   const wantFormat = fixture.format === 'mp4' ? 'mp4' : 'matroska';
@@ -507,12 +547,12 @@ function verify(fixture, probe) {
     if (got.attached_pic && !want.attached_pic)
       errors.push(`stream ${i} unexpectedly attached_pic`);
   });
-  const counts = {};
-  for (const st of streams) counts[st.type] = (counts[st.type] ?? 0) + 1;
+  const counts: Record<string, number> = {};
+  for (const st of streams) counts[String(st.type)] = (counts[String(st.type)] ?? 0) + 1;
   return { errors, streams, counts, duration, formatName: probe.format.format_name };
 }
 
-async function sha256(file) {
+async function sha256(file: string): Promise<string> {
   return createHash('sha256')
     .update(await readFile(file))
     .digest('hex');
@@ -534,21 +574,22 @@ async function main() {
 
   const { stdout: versionOut } = await run('ffmpeg', ['-version']);
   const ffmpegVersion = versionOut.split('\n')[0];
-  let hevc = null;
+  let hevc: string | null = null;
   if (!checkOnly) {
     hevc = await pickHevcEncoder();
     await mkdir(WORK, { recursive: true });
   }
-  const ctx = {
-    hevc,
-    async text(name, content) {
+  // Only generation builds, and it has picked the encoder by then.
+  const ctx: BuildContext = {
+    hevc: hevc ?? '',
+    async text(name: string, content: string) {
       const path = join(WORK, name);
       await writeFile(path, content);
       return path;
     },
   };
 
-  const results = [];
+  const results: Record<string, unknown>[] = [];
   let failed = false;
   try {
     for (const fixture of selected) {
@@ -596,11 +637,12 @@ async function main() {
   if (!checkOnly) {
     const manifestPath = join(OUT, 'manifest.json');
     // keep entries of fixtures not regenerated this run
-    let previous = [];
+    let previous: { name: string }[] = [];
     if (names.length && existsSync(manifestPath)) {
-      previous = JSON.parse(await readFile(manifestPath, 'utf8')).fixtures.filter(
-        (f) => !names.includes(f.name),
-      );
+      const old = JSON.parse(await readFile(manifestPath, 'utf8')) as {
+        fixtures: { name: string }[];
+      };
+      previous = old.fixtures.filter((f) => !names.includes(f.name));
     }
     const manifest = {
       generatedAt: new Date().toISOString(),
@@ -617,7 +659,7 @@ async function main() {
   if (failed) process.exitCode = 1;
 }
 
-main().catch((error) => {
+main().catch((error: { stderr?: unknown; message?: string }) => {
   console.error(error.stderr?.toString() || error.message);
   process.exitCode = 1;
 });

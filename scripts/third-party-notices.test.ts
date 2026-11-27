@@ -1,8 +1,7 @@
-import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { it } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { expect, it } from 'vitest';
 import {
   ALLOWED,
   collect,
@@ -55,7 +54,7 @@ const fixtureEntries = (): Entry[] => [
 
 const byId = (entries: Entry[], id: string): Entry => {
   const found = entries.find((e) => `${e.name}@${e.version}` === id);
-  assert.ok(found, `${id} is collected`);
+  if (!found) throw new Error(`${id} is not collected`);
   return found;
 };
 
@@ -78,25 +77,22 @@ it('licenceAllowed: SPDX expressions against the allow-list', () => {
     ['MIT OR', false],
   ];
   for (const [expr, expected] of table) {
-    assert.equal(licenceAllowed(expr), expected, expr);
+    expect(licenceAllowed(expr), expr).toBe(expected);
   }
-  for (const id of ALLOWED) assert.equal(licenceAllowed(id), true, id);
+  for (const id of ALLOWED) expect(licenceAllowed(id), id).toBe(true);
 });
 
 it('collect skips @transcoda/*, finds LICENCE.md case-insensitively, appends NOTICE', () => {
   const entries = collect(sources());
-  assert.equal(
-    entries.some((e) => e.name.startsWith('@transcoda/')),
-    false,
-  );
+  expect(entries.some((e) => e.name.startsWith('@transcoda/'))).toBe(false);
   const a = byId(entries, 'pkg-a@1.0.0');
-  assert.match(a.text ?? '', /^Apache-ish licence of pkg-a\n/);
-  assert.match(a.text ?? '', /\n\npkg-a NOTICE: includes code by Someone\n$/);
-  assert.equal(a.homepage, 'https://example.org/pkg-a');
-  assert.deepEqual(a.usedBy, ['web']);
-  assert.equal(byId(entries, 'pkg-b@2.0.0').homepage, null);
-  assert.deepEqual(byId(entries, 'pkg-b@10.0.0').usedBy, ['web', 'server']);
-  assert.equal(byId(entries, 'pkg-d@3.0.0').text, null);
+  expect(a.text ?? '').toMatch(/^Apache-ish licence of pkg-a\n/);
+  expect(a.text ?? '').toMatch(/\n\npkg-a NOTICE: includes code by Someone\n$/);
+  expect(a.homepage).toBe('https://example.org/pkg-a');
+  expect(a.usedBy).toEqual(['web']);
+  expect(byId(entries, 'pkg-b@2.0.0').homepage).toBe(null);
+  expect(byId(entries, 'pkg-b@10.0.0').usedBy).toEqual(['web', 'server']);
+  expect(byId(entries, 'pkg-d@3.0.0').text).toBe(null);
 });
 
 it('collect applies overrides: a hand text, a corrected licence, an accepted exception', () => {
@@ -108,9 +104,9 @@ it('collect applies overrides: a hand text, a corrected licence, an accepted exc
       'pkg-a': { reason: 'accepted after review', licence: 'LGPL-2.1', allow: true },
     },
   });
-  assert.equal(byId(entries, 'pkg-d@3.0.0').text, 'Hand-supplied licence text for pkg-d\n');
-  assert.equal(byId(entries, 'pkg-c@0.1.0').licence, 'GPL-3.0-only');
-  assert.deepEqual(problems(entries), ["pkg-c@0.1.0: license 'GPL-3.0-only' is not allowed"]);
+  expect(byId(entries, 'pkg-d@3.0.0').text).toBe('Hand-supplied licence text for pkg-d\n');
+  expect(byId(entries, 'pkg-c@0.1.0').licence).toBe('GPL-3.0-only');
+  expect(problems(entries)).toEqual(["pkg-c@0.1.0: license 'GPL-3.0-only' is not allowed"]);
 });
 
 it('render dedups identical texts to one key', () => {
@@ -119,29 +115,28 @@ it('render dedups identical texts to one key', () => {
     texts: Record<string, string>;
   };
   const keyOf = (name: string) => parsed.packages.find((p) => p.name === name)?.textKey;
-  assert.ok(keyOf('pkg-b'));
-  assert.equal(keyOf('pkg-b'), keyOf('pkg-c'));
-  assert.equal(
-    new Set(parsed.packages.map((p) => p.textKey)).size,
+  expect(keyOf('pkg-b')).toBeTruthy();
+  expect(keyOf('pkg-b')).toBe(keyOf('pkg-c'));
+  expect(new Set(parsed.packages.map((p) => p.textKey)).size).toBe(
     Object.keys(parsed.texts).length,
   );
-  assert.match(keyOf('pkg-a') ?? '', /^sha256:[0-9a-f]{64}$/);
+  expect(keyOf('pkg-a') ?? '').toMatch(/^sha256:[0-9a-f]{64}$/);
 });
 
 it('render is byte-identical on two runs, sorted, and carries no local path', () => {
   const first = render(fixtureEntries());
   const second = render(fixtureEntries().reverse());
-  assert.equal(first.json, second.json);
-  assert.equal(first.notices, second.notices);
+  expect(first.json).toBe(second.json);
+  expect(first.notices).toBe(second.notices);
   for (const out of [first.json, first.notices]) {
-    assert.doesNotMatch(out, /\/Users\/|\/home\/|node_modules/);
+    expect(out).not.toMatch(/\/Users\/|\/home\/|node_modules/);
   }
   const names = (JSON.parse(first.json) as { packages: { name: string; version: string }[] })
     .packages;
-  assert.deepEqual(
-    names.filter((p) => p.name === 'pkg-b').map((p) => p.version),
-    ['2.0.0', '10.0.0'],
-  );
+  expect(names.filter((p) => p.name === 'pkg-b').map((p) => p.version)).toEqual([
+    '2.0.0',
+    '10.0.0',
+  ]);
 });
 
 it('render matches the shared fixture (the shape system.licences serves)', () => {
@@ -149,16 +144,16 @@ it('render matches the shared fixture (the shape system.licences serves)', () =>
   const expected: unknown = JSON.parse(
     readFileSync(join(fixtures, 'expected-third-party.json'), 'utf8'),
   );
-  assert.deepEqual(JSON.parse(render(fixtureEntries()).json), expected);
+  expect(JSON.parse(render(fixtureEntries()).json)).toEqual(expected);
 });
 
 it('the notices file names Transcoda licence, then each component with its full text', () => {
   const { notices } = render(fixtureEntries());
-  assert.match(notices, /^Transcoda: third-party notices\n/);
-  assert.match(notices, /GPL-3\.0-only/);
-  assert.match(notices, /\npkg-a 1\.0\.0 — ISC \(https:\/\/example\.org\/pkg-a\)\n/);
-  assert.match(notices, /\njellyfin-ffmpeg 8\.1\.3-1-bookworm — GPL-3\.0-or-later .*\[image\]\n/);
-  assert.match(notices, /Hand-supplied licence text for pkg-d/);
+  expect(notices).toMatch(/^Transcoda: third-party notices\n/);
+  expect(notices).toMatch(/GPL-3\.0-only/);
+  expect(notices).toMatch(/\npkg-a 1\.0\.0 — ISC \(https:\/\/example\.org\/pkg-a\)\n/);
+  expect(notices).toMatch(/\njellyfin-ffmpeg 8\.1\.3-1-bookworm — GPL-3\.0-or-later .*\[image\]\n/);
+  expect(notices).toMatch(/Hand-supplied licence text for pkg-d/);
 });
 
 it('imageEntries reads both ARGs from the real Dockerfile', () => {
@@ -167,36 +162,30 @@ it('imageEntries reads both ARGs from the real Dockerfile', () => {
   const ffmpeg = entries.find((e) => e.name === 'jellyfin-ffmpeg');
   const nodeArg = realDockerfile.match(/^ARG NODE_IMAGE=node:(\d+\.\d+(?:\.\d+)?)/m)?.[1];
   const ffmpegArg = realDockerfile.match(/^ARG JELLYFIN_FFMPEG_VERSION=(\S+)/m)?.[1];
-  assert.ok(nodeArg && ffmpegArg);
-  assert.equal(node?.version, nodeArg);
-  assert.equal(ffmpeg?.version, ffmpegArg);
-  assert.equal(ffmpeg?.licence, 'GPL-3.0-or-later');
-  assert.match(ffmpeg?.text ?? '', /github\.com\/jellyfin\/jellyfin-ffmpeg at tag v\d[\w.-]*\./);
-  assert.match(ffmpeg?.text ?? '', /hand text GPL-3\.0\.txt/);
-  assert.deepEqual(
-    entries.map((e) => [e.name, e.origin]),
+  expect(nodeArg && ffmpegArg).toBeTruthy();
+  expect(node?.version).toBe(nodeArg);
+  expect(ffmpeg?.version).toBe(ffmpegArg);
+  expect(ffmpeg?.licence).toBe('GPL-3.0-or-later');
+  expect(ffmpeg?.text ?? '').toMatch(/github\.com\/jellyfin\/jellyfin-ffmpeg at tag v\d[\w.-]*\./);
+  expect(ffmpeg?.text ?? '').toMatch(/hand text GPL-3\.0\.txt/);
+  expect(entries.map((e) => [e.name, e.origin])).toEqual([
+    ['jellyfin-ffmpeg', 'image'],
+    ['Node.js', 'image'],
     [
-      ['jellyfin-ffmpeg', 'image'],
-      ['Node.js', 'image'],
-      [
-        `Debian ${realDockerfile.match(/^ARG NODE_IMAGE=node:[\d.]+-([a-z]+)/m)?.[1]} base packages`,
-        'image',
-      ],
-      ['lucide', 'vendored'],
+      `Debian ${realDockerfile.match(/^ARG NODE_IMAGE=node:[\d.]+-([a-z]+)/m)?.[1]} base packages`,
+      'image',
     ],
-  );
+    ['lucide', 'vendored'],
+  ]);
 });
 
 it('imageEntries fails loudly when an ARG is renamed', () => {
-  assert.throws(
-    () =>
-      imageEntries(realDockerfile.replace('ARG JELLYFIN_FFMPEG_VERSION', 'ARG FFMPEG'), handTexts),
-    /ARG JELLYFIN_FFMPEG_VERSION not found/,
-  );
-  assert.throws(
-    () => imageEntries(realDockerfile.replace('ARG NODE_IMAGE', 'ARG BASE_IMAGE'), handTexts),
-    /ARG NODE_IMAGE not found/,
-  );
+  expect(() =>
+    imageEntries(realDockerfile.replace('ARG JELLYFIN_FFMPEG_VERSION', 'ARG FFMPEG'), handTexts),
+  ).toThrow(/ARG JELLYFIN_FFMPEG_VERSION not found/);
+  expect(() =>
+    imageEntries(realDockerfile.replace('ARG NODE_IMAGE', 'ARG BASE_IMAGE'), handTexts),
+  ).toThrow(/ARG NODE_IMAGE not found/);
 });
 
 it('problems names a package without text and a licence outside the list; image entries are exempt', () => {
@@ -210,17 +199,18 @@ it('problems names a package without text and a licence outside the list; image 
     usedBy: ['server'],
     text: 'GPL\n',
   };
-  assert.deepEqual(problems([...entries, gpl, ...imageEntries(fakeDockerfile, handTexts)]), [
+  expect(problems([...entries, gpl, ...imageEntries(fakeDockerfile, handTexts)])).toEqual([
     "bad@1.0.0: license 'GPL-2.0' is not allowed",
     'pkg-d@3.0.0: no license text found',
   ]);
-  assert.throws(() => render(entries), /pkg-d@3\.0\.0: no license text found/);
+  expect(() => render(entries)).toThrow(/pkg-d@3\.0\.0: no license text found/);
 });
 
 it('the real overrides file has a reason for every entry and its texts exist', () => {
   const overrides = readOverrides();
   for (const [key, o] of Object.entries(overrides)) {
-    assert.ok(o.reason.length > 10, key);
-    if (o.text) assert.ok(readFileSync(join(root, 'scripts', 'licences', o.text), 'utf8'), key);
+    expect(o.reason.length > 10, key).toBeTruthy();
+    if (o.text)
+      expect(readFileSync(join(root, 'scripts', 'licences', o.text), 'utf8'), key).toBeTruthy();
   }
 });

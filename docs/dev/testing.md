@@ -8,7 +8,7 @@ A change gets its test in the lowest tier that can catch the bug.
 
 | Tier | Where | For | Not for | Budget |
 | --- | --- | --- | --- | --- |
-| Unit | `*.test.ts(x)` beside the code (Vitest; web tests use Testing Library in jsdom) | One module's rules: planners, node logic, config parsing, a component's states and handlers | Anything that needs a real server, a real browser or a real ffmpeg | `pnpm test` whole, under 2 min |
+| Unit | `*.test.ts(x)` beside the code (Vitest; web tests use Testing Library in jsdom; the `scripts/` tests are Vitest's `scripts` project, not `node --test`) | One module's rules: planners, node logic, config parsing, a component's states and handlers | Anything that needs a real server, a real browser or a real ffmpeg | `pnpm test` whole, under 2 min |
 | Server end-to-end | `*.test.ts` built on `createTestApp` and `test-http.ts` (for example `apps/server/src/workflows/e2e.test.ts`) | A feature through the real HTTP and RPC API: auth, CSRF, validation, the database, the engine | Layout and anything only the browser does | Part of `pnpm test` |
 | Real-ffmpeg | Tests that read `.local/fixtures` through `apps/server/src/engine/fixtures.ts`, mostly `*.real.test.ts`; they skip when `pnpm fixtures` has not run | What ffmpeg really does with a plan: tracks, defaults, sizes, verify | Rules a probe object can show; those are unit tests | Part of `pnpm test` where fixtures exist |
 | Render snapshots | `toMatchSnapshot` on generated output, such as the ffmpeg argv in `apps/server/src/engine/render.test.ts` | Text output that must not change by accident | UI markup: a snapshot of a component's HTML breaks on every harmless change and nobody reviews it | Part of `pnpm test` |
@@ -27,8 +27,8 @@ Use these instead of writing your own:
 
 ## Real-ffmpeg fixtures
 
-- `pnpm fixtures` (`scripts/fixtures/generate.mjs`) makes small, reproducible test videos with your local ffmpeg into `.local/fixtures/` (git-ignored) and checks each with ffprobe. Run it once on a new checkout; without it the real-ffmpeg tests skip silently (`it.skipIf(!fixturesAvailable())`).
-- The `check` job in CI has no fixtures, so these tests skip on pull requests. They run in the e2e container in the nightly (`pnpm test:docker`), against the image's jellyfin-ffmpeg. When you change the engine, run `pnpm test:docker` (or `pnpm fixtures && pnpm test`) yourself.
+- `pnpm fixtures` (`scripts/fixtures/generate.ts`) makes small, reproducible test videos with your local ffmpeg into `.local/fixtures/` (git-ignored) and checks each with ffprobe. Run it once on a new checkout; without it the real-ffmpeg tests skip silently (`it.skipIf(!fixturesAvailable())`).
+- The `check` job in CI has no fixtures, so these tests skip there. A pull request that touches the engine (`apps/server/src/engine/`, `capabilities/`, `nodes/core/`, the fixture generator, or the Dockerfiles that pin ffmpeg) also runs `real-ffmpeg.yml`: every unit test in the e2e container with the fixtures, against the image's jellyfin-ffmpeg (`pnpm test:docker`). The nightly runs the same for every change to `main`. Run `pnpm test:docker` (or `pnpm fixtures && pnpm test`) yourself before you push an engine change.
 - Encoders in tests are software only (`libx264`, `libx265`). Hardware encoders are not tested automatically.
 
 ## Browser tests and screenshots
@@ -55,7 +55,6 @@ Use these instead of writing your own:
 ## Nightly
 
 - `.github/workflows/nightly.yml` runs once a night when `main` moved since the last finished nightly (a manual run always runs): the unit tests with fixtures in the e2e container (`pnpm test:docker`), and the browser and screenshot tests.
-- A failing test gets a GitHub issue labelled `nightly`, titled `Nightly: <file> > <test>` (`scripts/nightly-issues.ts`). A test that fails again gets a comment, a test that passes again gets its issue closed, more than 10 new failures get one "many tests fail" issue, and a run that fails before any report gets one "the run failed" issue.
-- The plugins repository runs the same script against core `main`.
+- A failing test gets a GitHub issue labelled `nightly`, titled `Nightly: <file> > <test>` (the org's `nightly-issues` action, from `transcoda/.github`). A test that fails again gets a comment, a test that passes again gets its issue closed, more than 10 new failures get one "many tests fail" issue, and a run that fails outside its tests gets one "the run failed outside its tests" issue.
 
 History: [2026-11](../decisions/2026-11.md) ("Test tiers", "Nightly tests and their issues"), [M2 editor](../decisions/2026-10-m2-editor.md) ("M2 Task 1").

@@ -1,0 +1,24 @@
+name: Main red
+
+# One issue (label `main-red`) per workflow whose push run on main fails; a comment for each further
+# failing run, and closed when that workflow passes on main again. GitHub reads `workflow_run`
+# workflows from the default branch only. No concurrency group: GitHub would cancel the pending runs.
+
+on:
+  workflow_run:
+    workflows: [CI, Docker] # the `name:` of each workflow to watch
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  alert:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    permissions:
+      actions: read
+      issues: write
+    steps:
+      - uses: transcoda/.github/actions/main-red@43cbb990910eca37108711aedaa1b939835a1941 # v1.1.0
