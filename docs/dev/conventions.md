@@ -11,7 +11,7 @@ Today's rules for how code is written here. Most of them are checked by `pnpm ch
 
 ## Checked by Biome
 
-`biome.json` extends the shared base, `@transcoda/dev-config/biome` from the org's `.github` repository: the formatter, Biome's recommended preset and the rules below that both repositories share. `biome.json` adds this repository's files, its own rules (file names, CSS) and exceptions as `overrides`, and turns on the base's two GritQL rules for its paths. All are errors:
+`biome.json` extends the shared base, `@transcoda/dev-config/biome` from the org's `.github` repository: the formatter, Biome's recommended preset and the rules below that both repositories share. `biome.json` adds this repository's files, its own rules (file names, CSS) and exceptions as `overrides`, and turns on the base's two GritQL rules for its paths. `pnpm lint` runs `biome check --error-on-warnings`, so a warning fails CI like an error. The rules added on top of the preset:
 
 - **Imports:** extensions on relative imports (`useImportExtensions`); no import cycles (`noImportCycles`); no deprecated imports (`noDeprecatedImports`).
 - **Exports:** no default exports (`noDefaultExport`). Exempt: tool config files (`*.config.{ts,mts,js,mjs}`, in the shared base), plugin fixtures (the plugin format is a default export) and Vitest's `globalSetup`.
@@ -29,7 +29,13 @@ Today's rules for how code is written here. Most of them are checked by `pnpm ch
 - **Web test cleanup** (`test-cleanup.grit` from the shared package): a web test file that imports `render` or `renderHook` has a top-level `afterEach(cleanup)`, or an `afterEach` whose callback calls `cleanup()`. Web tests run without Vitest globals, so Testing Library cannot clean up by itself.
 - Formatting: two spaces, single quotes, 100 columns. `pnpm format` fixes it.
 - A rule both repositories should follow goes in the shared base (`biome/base.json` in `transcoda/.github`), not here; a rule only this repository needs goes in `biome.json`'s `overrides`.
-- A suppression (`biome-ignore`) always says why. Don't add one to get past a rule you could follow.
+- A suppression (`biome-ignore`) always says why. Don't add one to get past a rule you could follow. `scripts/biome-suppressions.test.ts` holds a budget per rule: a new suppression fails it, and so does a removed one until its count is lowered, so the budget only goes down. Raising a count is a decision a reviewer has to see in the pull request.
+
+## Dead code
+
+- `pnpm knip` (part of `pnpm check`, about 2 s) reports unused files, unused dependencies and exports nothing imports, in every workspace. Config: `knip.jsonc`.
+- Tests count as users: an export only a test imports is not reported. An export used in its own file is not reported either (`ignoreExportsUsedInFile`); drop the `export` when nothing else needs it anyway.
+- A finding is fixed by deleting the dead code or the dependency. One that must stay goes in `ignoreIssues` in `knip.jsonc`, with its reason in a comment above it.
 
 ## Checked by tests
 
@@ -43,6 +49,5 @@ Today's rules for how code is written here. Most of them are checked by `pnpm ch
 - **Words.** Every size a person reads or types is SI (1 kB = 1000 B), printed by `fmtBytes` from `@transcoda/shared`; binary units stay in internal byte math only. Times are stored and logged in UTC. UI text is short, plain and says what happened; match the words existing pages use (see [web-ui.md](web-ui.md)).
 - **Names in public text.** Fixtures, tests, docs, screenshots and commit messages use invented titles (Otter and Finch, Harbor Lights, ...). Never a real show or film, a real person, an email address, a hostname or a private IP.
 - **Comments** say why, not what. A comment that cites a decision points to the topic doc in `docs/dev/` or to the log entry by its heading (`docs/decisions/<file>.md`, "M1 engine Task 13: replace").
-- **Biome warnings** do not fail CI yet. Don't add new ones.
 
 History: [2026-11](../decisions/2026-11.md) ("Code consistency checks", "Design rule checks", "SI units everywhere"), [M0](../decisions/2026-10-m0.md) ("M0 tooling", "Task 5").

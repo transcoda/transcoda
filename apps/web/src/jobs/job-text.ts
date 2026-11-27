@@ -578,9 +578,6 @@ export function phoneLine(job: Job): string {
   return job.dryRun ? `Dry run · ${line}` : line;
 }
 
-/** The one accessible name of a job's link on the Jobs and Run pages: "Details for <file>". */
-export const detailsLinkName = (fileName: string) => `Details for ${fileName}`;
-
 /** "v7" */
 export function versionText(job: Job): string {
   return `v${job.workflowVersion}`;

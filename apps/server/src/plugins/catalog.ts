@@ -10,7 +10,6 @@ import { type SigningKey, verifySignature } from './signature.ts';
 import { fetchSigned, SignatureError } from './signed-fetch.ts';
 
 export { OFFICIAL_CATALOG_URL } from './catalog-url.ts';
-export { CATALOG_TOKEN_HOSTS, tokenAllowedFor } from './token-hosts.ts';
 
 /** Largest catalog index body accepted. */
 export const MAX_CATALOG_BYTES = 4 * 1024 * 1024;
