@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { parseProgressBlock, progressReader, toJobProgress, toVerifyProgress } from './progress.ts';
+import {
+  parseProgressBlock,
+  progressReader,
+  toJobProgress,
+  toVerifyProgress,
+  withFrameTime,
+} from './progress.ts';
 
 const BLOCK = [
   'frame=10',
@@ -45,14 +51,60 @@ describe('parseProgressBlock', () => {
     expect(parseProgressBlock(['out_time_us=-577', 'progress=continue'])?.outTimeSeconds).toBe(0);
   });
 
-  it('returns null for an incomplete block or one without an out time', () => {
+  it('returns null for an incomplete block', () => {
     expect(parseProgressBlock(['frame=1', 'out_time_us=1000000'])).toBeNull();
-    expect(parseProgressBlock(['out_time_us=N/A', 'speed=N/A', 'progress=continue'])).toBeNull();
     expect(parseProgressBlock([])).toBeNull();
+  });
+
+  it('keeps a block without an out time: ffmpeg 8 with a copied image track says N/A throughout', () => {
+    expect(
+      parseProgressBlock([
+        'frame=84',
+        'total_size=12730',
+        'out_time_us=N/A',
+        'out_time=N/A',
+        'speed=N/A',
+        'progress=continue',
+      ]),
+    ).toEqual({ outTimeSeconds: null, speed: null, fps: null, sizeBytes: 12730, frames: 84 });
+  });
+});
+
+describe('withFrameTime', () => {
+  const at = (outTimeSeconds: number | null, frames?: number) => ({
+    outTimeSeconds,
+    speed: null,
+    fps: null,
+    sizeBytes: null,
+    ...(frames === undefined ? {} : { frames }),
+  });
+
+  it('reads a missing or lagging out time from the frames written', () => {
+    expect(withFrameTime(at(null, 240), 24).outTimeSeconds).toBe(10);
+    expect(withFrameTime(at(0, 240), 24).outTimeSeconds).toBe(10);
+  });
+
+  it('keeps an out time that is already as far, and a sample it cannot improve', () => {
+    expect(withFrameTime(at(12, 240), 24).outTimeSeconds).toBe(12);
+    expect(withFrameTime(at(null, 240), null).outTimeSeconds).toBeNull();
+    expect(withFrameTime(at(null, 0), 24).outTimeSeconds).toBeNull();
+    expect(withFrameTime(at(null), 24).outTimeSeconds).toBeNull();
   });
 });
 
 describe('toJobProgress', () => {
+  it('has no percent or eta without an out time', () => {
+    expect(toJobProgress({ ...at(), speed: 2 }, 60)).toMatchObject({
+      percent: null,
+      etaSeconds: null,
+      outTimeSeconds: 0,
+      sizeBytes: 12730,
+    });
+    function at() {
+      return { outTimeSeconds: null, speed: null, fps: null, sizeBytes: 12730 };
+    }
+  });
+
   it('computes percent and eta from the duration and speed', () => {
     const sample = parseProgressBlock(BLOCK);
     if (!sample) throw new Error('no sample');
@@ -85,7 +137,7 @@ describe('toJobProgress', () => {
 
 describe('progressReader', () => {
   it('turns stdout chunks, split anywhere, into one sample per block', () => {
-    const samples: number[] = [];
+    const samples: (number | null)[] = [];
     const read = progressReader((s) => samples.push(s.outTimeSeconds));
     read('out_time_us=1000000\nspeed=2x\npro');
     read('gress=continue\r\nout_time_us=2500000\n');

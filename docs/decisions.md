@@ -2163,6 +2163,22 @@ Which kind of test covers what. A change gets its test in the lowest tier that c
   - a test missing from a report (its job died) keeps its issue open.
 - Pull requests keep their fast checks; the nightly is where slow and environment-bound tests (real ffmpeg, the container's ffmpeg version) show up.
 
+## 2026-11-26 ffmpeg 8 timestamps: verify's decode and progress (#154, #155)
+
+The first nightly ran the real-ffmpeg tests against jellyfin-ffmpeg 8.1.3, the version the image ships; until then they ran on ffmpeg 9 only. Two differences showed.
+
+- **Decoding to the null muxer (#155).** ffmpeg 8 moves decoded video frames to the frame rate's time base (1/24) on their way to the null muxer. With Matroska's millisecond timestamps and B-frames, two frames round onto one, and the muxer logs "non monotonically increasing dts … 2 >= 2" at error level. That is about ffmpeg's own discarded output, not the file, but verify and the source check take error lines as damage: an MKV copy of an ordinary B-frame video failed verify.
+  - Fix: `-enc_time_base:v demux` (`NULL_TIMESTAMPS` in `decoder-names.ts`) on every null decode: verify's decodes, and the source check's read and locating pass.
+  - Video only. With audio in milliseconds, a frame a seek trims (decode-end from 0.021 s) and the next one round to the same timestamp the same way.
+  - A truncated file is still caught; ffmpeg 9 accepts the option and never logged the lines.
+- **Progress with a copied image track (#154).** ffmpeg 8 reports `out_time` as the earliest stream's last dts, and `N/A` while any unfinished stream has none (`trailing_dts` in `ffmpeg_sched.c`). A copied image track has one packet, which in Matroska carries no dts, so `out_time` is `N/A` for the whole encode. From an MP4 the packet has a dts and `out_time` stays at about 0. ffmpeg 9 reports the furthest stream instead.
+  - Before, a block without an out time was dropped. Such an encode sent no progress (no percent, no ETA), and the stall guard got no sample at all, so after `TRANSCODA_ENCODE_STALL_MINUTES` (60) it would have stopped a healthy long encode as "wrote no output". The frame-count check also read a stale block.
+  - Now every complete block is a sample, with `outTimeSeconds` null for `N/A`.
+    - The stall guard counts size growth as before; an encode that never starts still sends no block at all, in both versions, so "no output" keeps its meaning.
+    - The job's progress takes the further of the out time and `frame=` over the first video stream's frame rate (`withFrameTime`).
+    - A source decoder error is placed at that same furthest position, which the confirming decode reads around. With no position known (no out time and no frame rate), it is ignored with a warning rather than placed at 0, where the confirming decode would read the wrong part of the source.
+  - ffmpeg 8 also holds a copied image track's packets for up to 10 s of media (`-max_interleave_delta`) before writing. The real-ffmpeg test of the image track therefore checks that the copied run's progress starts within the limit, not that it grows.
+
 ## Follow-ups (2026-10-17)
 
 - **mp4 video default normalization.** `normalizeDefaults` treats video like subtitle when the output container is mp4: extra default video flags are cleared and the first kept non-cover video is flagged when none is (note `mp4 cannot have no default video`). The mp4 muxer enables a video track that was told "not default", which verify would report as a stream mismatch. Matroska passes the flag through, so mkv output is unchanged; cover pictures are never touched.

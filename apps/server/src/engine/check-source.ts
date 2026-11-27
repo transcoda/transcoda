@@ -3,7 +3,12 @@ import type { ProbeResult } from '@transcoda/sdk';
 import { isPicture } from '@transcoda/shared';
 import type { Exec } from '../capabilities/ffmpeg.ts';
 import type { AlreadyProcessedAnswer, AlreadyProcessedQuery } from './already-processed.ts';
-import { classifyErrorLine, READ_FAILURE, sourceDecoderNames } from './decoder-names.ts';
+import {
+  classifyErrorLine,
+  NULL_TIMESTAMPS,
+  READ_FAILURE,
+  sourceDecoderNames,
+} from './decoder-names.ts';
 import { isMemoryLimitError, memoryLimitMessage } from './memory-guard.ts';
 import { progressReader } from './progress.ts';
 import type { VerifyFailure } from './verify.ts';
@@ -73,6 +78,7 @@ export function checkSourceArgs(path: string, probe: ProbeResult, decodeVideo: b
     '-i',
     path,
     ...decodedStreams(probe, decodeVideo).flatMap((s) => ['-map', `0:${s.index}`]),
+    ...NULL_TIMESTAMPS,
     '-f',
     'null',
     '-',
@@ -112,7 +118,7 @@ export function locateArgs(path: string, probe: ProbeResult, decodeVideo: boolea
       `${select},${audio ? 'ashowinfo' : 'showinfo'}@s${s.index}`,
     );
   });
-  args.push('-f', 'null', '-');
+  args.push(...NULL_TIMESTAMPS, '-f', 'null', '-');
   return args;
 }
 
@@ -289,7 +295,7 @@ export async function checkSource(input: {
   let readTo: number | null = null;
   const seen: Seen[] = [];
   const onStdout = progressReader((s) => {
-    readTo = s.outTimeSeconds;
+    if (s.outTimeSeconds !== null) readTo = s.outTimeSeconds;
   });
   let rest = '';
   const take = (line: string) => {

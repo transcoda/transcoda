@@ -159,7 +159,7 @@ describe('nodeSpawner (sh stand-ins for ffmpeg)', () => {
 
   it('a throwing progress callback is logged and later samples still arrive', async () => {
     const log = fakeLogger();
-    const seen: number[] = [];
+    const seen: (number | null)[] = [];
     const p = sh(
       'throwing',
       'printf "out_time_us=1000000\\nprogress=continue\\nout_time_us=2000000\\nprogress=end\\n"',
@@ -179,7 +179,7 @@ describe('nodeSpawner (sh stand-ins for ffmpeg)', () => {
   });
 
   it('a long run of lines without progress= does not break the next block', async () => {
-    const seen: number[] = [];
+    const seen: (number | null)[] = [];
     const p = sh(
       'junk',
       'i=0; while [ $i -lt 500 ]; do echo junk=$i; i=$((i+1)); done; printf "out_time_us=4000000\\nprogress=end\\n"',

@@ -62,8 +62,9 @@ export class OutputStallGuard {
   sample(s: ProgressSample): void {
     this.sampled = true;
     const size = s.sizeBytes ?? 0;
-    if (s.outTimeSeconds > this.bestTime || size > this.bestSize) {
-      this.bestTime = Math.max(this.bestTime, s.outTimeSeconds);
+    const time = s.outTimeSeconds ?? 0;
+    if (time > this.bestTime || size > this.bestSize) {
+      this.bestTime = Math.max(this.bestTime, time);
       this.bestSize = Math.max(this.bestSize, size);
       this.lastAdvance = this.now();
     }

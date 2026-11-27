@@ -87,3 +87,13 @@ export const READ_FAILURE = new RegExp(
   ].join('|'),
   'i',
 );
+
+/**
+ * Decoded video frames keep the input's time base on their way to the null muxer. Without it
+ * ffmpeg 8 moves them to the frame rate's (1/24), and Matroska's millisecond timestamps of a
+ * B-frame video round two frames onto one: "non monotonically increasing dts to muxer … 2 >= 2",
+ * at error level, about ffmpeg's own discarded output and not the file. ffmpeg 9 does not say it.
+ * Video only: audio keeps its sample-rate time base, since in milliseconds a frame trimmed by a seek
+ * and the next one round to the same timestamp the same way.
+ */
+export const NULL_TIMESTAMPS = ['-enc_time_base:v', 'demux'] as const;

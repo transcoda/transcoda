@@ -4,7 +4,7 @@ import type { BuildModel, ProbeResult, StreamPlan } from '@transcoda/sdk';
 import { DEVICE_PROFILES, isPicture, type ProbeStream, sameLanguage } from '@transcoda/shared';
 import { type Exec, makeExec } from '../capabilities/ffmpeg.ts';
 import { extraInputOf, isExtraStream, isMkvCover, outputOrder } from './build-model.ts';
-import { READ_FAILURE } from './decoder-names.ts';
+import { NULL_TIMESTAMPS, READ_FAILURE } from './decoder-names.ts';
 import { isMemoryLimitError, memoryLimitMessage } from './memory-guard.ts';
 import { probeFile } from './probe.ts';
 import { type ProgressSample, progressReader, type VerifyProgress } from './progress.ts';
@@ -685,7 +685,7 @@ type Decoded = { failure: VerifyFailure; decodeError: boolean };
 /**
  * Decodes the run and reports a failure for a non-zero exit or any error-level message: ffmpeg
  * exits 0 on a truncated file and only reports `File ended prematurely`. `-copyts` keeps the null
- * muxer quiet about timestamps after a seek.
+ * muxer quiet about timestamps after a seek, and {@link NULL_TIMESTAMPS} about rounded ones.
  */
 async function decode(
   exec: Exec,
@@ -703,6 +703,7 @@ async function decode(
     ...r.input,
     ...r.maps.flatMap((m) => ['-map', m]),
     '-copyts',
+    ...NULL_TIMESTAMPS,
     ...(r.output ?? []),
     '-f',
     'null',

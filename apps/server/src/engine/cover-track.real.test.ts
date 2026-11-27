@@ -173,12 +173,13 @@ describe.skipIf(!toolsAvailable())('an image stored as a video track, with real 
     const file = await sample(dir);
     /**
      * The sample through ffmpeg at real time (the `realtime` filter on the main video: about 4 s),
-     * with the image track encoded or copied, watched by a 1.5 s stall guard.
+     * with the image track encoded or copied, watched by a stall guard of `limitMs`.
      */
-    const encode = async (imageTrack: 'libx265' | 'copy') => {
+    const encode = async (imageTrack: 'libx265' | 'copy', limitMs: number) => {
       const output = join(dir, `out-${imageTrack}.mkv`);
-      const limitMs = 1500;
       const guard = new OutputStallGuard(limitMs, Date.now);
+      const start = Date.now();
+      let firstSampleMs: number | null = null;
       let samples = 0;
       let stalled = false;
       // biome-ignore format: flag/value pairs
@@ -191,6 +192,7 @@ describe.skipIf(!toolsAvailable())('an image stored as a video track, with real 
       ], {
         logPath: join(dir, `${imageTrack}.log`),
         onProgress: (s) => {
+          firstSampleMs ??= Date.now() - start;
           samples += 1;
           guard.sample(s);
         },
@@ -200,16 +202,22 @@ describe.skipIf(!toolsAvailable())('an image stored as a video track, with real 
       });
       const result = await proc.done;
       watch.stop();
-      return { result, stalled, samples, size: (await stat(output)).size };
+      return { result, stalled, samples, firstSampleMs, size: (await stat(output)).size };
     };
 
-    const stuck = await encode('libx265');
+    const stuck = await encode('libx265', 1500);
     expect(stuck).toMatchObject({ stalled: true, samples: 0, size: 0 });
     expect(stuck.result.signal).toBe('SIGKILL');
 
-    const copied = await encode('copy');
+    // Copied, the output starts at once: progress arrives well within the 1.5 s the encoded track
+    // never got past. Its growth is not timed: ffmpeg 8 holds packets for up to 10 s of media
+    // (-max_interleave_delta) waiting on the image track, all of this sample, and reports no out
+    // time while that track has no next packet.
+    const copied = await encode('copy', 60_000);
     expect(copied.stalled).toBe(false);
     expect(copied.result.code).toBe(0);
+    expect(copied.firstSampleMs).not.toBeNull();
+    expect(copied.firstSampleMs).toBeLessThan(1500);
     expect(copied.samples).toBeGreaterThan(10);
     expect(copied.size).toBeGreaterThan(0);
   }, 120_000);
