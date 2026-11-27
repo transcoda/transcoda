@@ -10,7 +10,7 @@ import { insertLibrary } from '../../db/repos/libraries.ts';
 import { insertRun } from '../../db/repos/runs.ts';
 import { insertWorkflow } from '../../db/repos/workflows.ts';
 import { fingerprintOf } from '../../engine/files/fingerprint.ts';
-import { tempDir } from '../../engine/fixtures.ts';
+import { tempDir } from '../../engine/testing/fixtures.ts';
 
 const recycledAt = '2026-01-01T00:00:00.000Z';
 const jobId = 'j1';

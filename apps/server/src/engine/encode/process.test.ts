@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { promisify } from 'node:util';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { Logger } from '../../platform/logger.ts';
-import { fixturePath, fixturesAvailable, tempDir, toolPaths } from '../fixtures.ts';
+import { fixturePath, fixturesAvailable, tempDir, toolPaths } from '../testing/fixtures.ts';
 import {
   FakeSpawner,
   liveProcessGroups,

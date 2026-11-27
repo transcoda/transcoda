@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 import { createTestApp } from '../app/test-app.ts';
 import { SESSION_COOKIE } from '../auth/cookies.ts';
 import { createUser } from '../db/repos/users.ts';
-import { tempDir } from '../engine/fixtures.ts';
+import { tempDir } from '../engine/testing/fixtures.ts';
 import {
   type Exec,
   makeExec,

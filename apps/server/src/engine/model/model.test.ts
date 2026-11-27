@@ -1,7 +1,7 @@
 import type { StreamPlan } from '@transcoda/sdk';
 import { parseConversion } from '@transcoda/shared';
 import { describe, expect, it } from 'vitest';
-import { capsOf, probeOf, withSidecar, withStream } from '../test-helpers.ts';
+import { capsOf, probeOf, withSidecar, withStream } from '../testing/builders.ts';
 import {
   containerCanHold,
   conversion,

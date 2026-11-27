@@ -7,7 +7,7 @@ import { PassThrough } from 'node:stream';
 import { promisify } from 'node:util';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { Logger } from '../../platform/logger.ts';
-import { tempDir, toolPaths } from '../fixtures.ts';
+import { tempDir, toolPaths } from '../testing/fixtures.ts';
 import { PosterStore, runThumb } from './poster-store.ts';
 
 const execFileAsync = promisify(execFile);

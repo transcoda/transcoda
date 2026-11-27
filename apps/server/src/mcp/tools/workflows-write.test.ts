@@ -7,7 +7,7 @@ import { createTestApp, type TestApp } from '../../app/test-app.ts';
 import { asSession, createToken, login, type Session, send } from '../../app/test-http.ts';
 import type { Exec } from '../../capabilities/ffmpeg.ts';
 import { FakeSpawner } from '../../engine/encode/process.ts';
-import { tempDir } from '../../engine/fixtures.ts';
+import { tempDir } from '../../engine/testing/fixtures.ts';
 import { type FsOps, nodeFsOps } from '../../platform/fs-ops.ts';
 import { bumpV1, chain, childGraph, node, testRegistry } from '../../workflows/test-helpers.ts';
 import { mcpClient } from '../test-client.ts';

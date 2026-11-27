@@ -21,7 +21,7 @@ import {
 import { describe, expect, it } from 'vitest';
 import { parseProbe } from '../../engine/media/probe.ts';
 import { kept, modelFromProbe, streamsOf } from '../../engine/model/model.ts';
-import { capsOf, fileOf, probeOf, withStream } from '../../engine/test-helpers.ts';
+import { capsOf, fileOf, probeOf, withStream } from '../../engine/testing/builders.ts';
 import type { CheckSourceResult, CoreTools } from '../core-tools.ts';
 import {
   coverAttachments,

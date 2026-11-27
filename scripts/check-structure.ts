@@ -36,36 +36,14 @@ export const LAYERS: Record<string, Layer[]> = {
     { name: 'engine/files', paths: ['engine/files/'] },
     { name: 'engine/media', paths: ['engine/media/'] },
     { name: 'engine/encode', paths: ['engine/encode/'] },
-    // `engine/verify` matches today's verify.ts and the verify/ folder.
-    { name: 'engine/verify', paths: ['engine/verify'] },
+    { name: 'engine/verify', paths: ['engine/verify/'] },
     { name: 'nodes', paths: ['nodes/'] },
     { name: 'workflows', paths: ['workflows/'] },
     { name: 'plugin-host', paths: ['plugin-host/'] },
     { name: 'plugins', paths: ['plugins/'] },
-    {
-      name: 'engine/walk',
-      paths: [
-        'engine/walk',
-        // today:
-        'engine/check-source.ts',
-        'engine/already-processed.ts',
-        'engine/load-workflow.ts',
-        'engine/plugin-context.ts',
-      ],
-    },
-    {
-      name: 'engine/queue',
-      paths: [
-        'engine/queue',
-        // today:
-        'engine/scheduler.ts',
-        'engine/catch-up.ts',
-        'engine/media-pass.ts',
-        'engine/run-hours.ts',
-      ],
-    },
-    // `engine/pipeline` matches today's pipeline*.ts files and the pipeline/ folder.
-    { name: 'engine/pipeline', paths: ['engine/pipeline'] },
+    { name: 'engine/walk', paths: ['engine/walk/'] },
+    { name: 'engine/queue', paths: ['engine/queue/'] },
+    { name: 'engine/pipeline', paths: ['engine/pipeline/'] },
     // engine.ts (EngineService) and anything else left directly in engine/.
     { name: 'engine', paths: ['engine/'] },
     { name: 'metrics', paths: ['metrics/'] },

@@ -8,7 +8,7 @@ import {
   RUN_SUBWORKFLOW_TYPE,
   type WorkflowGraph,
 } from '@transcoda/shared';
-import { redactUrl } from '../engine/pipeline.ts';
+import { redactUrl } from '../engine/pipeline/pipeline.ts';
 import { isSecretOverride, NOTIFY_NODE } from '../workflows/webhook-urls.ts';
 
 type JsonObject = { [key: string]: JsonValue };

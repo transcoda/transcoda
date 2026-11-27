@@ -19,8 +19,8 @@ import { insertJob } from '../db/repos/jobs.ts';
 import { insertLibrary } from '../db/repos/libraries.ts';
 import { insertRun } from '../db/repos/runs.ts';
 import { insertWorkflow } from '../db/repos/workflows.ts';
-import { tempDir } from '../engine/fixtures.ts';
-import { logPathFor } from '../engine/pipeline.ts';
+import { logPathFor } from '../engine/pipeline/pipeline.ts';
+import { tempDir } from '../engine/testing/fixtures.ts';
 
 const LOG = 'ffmpeg version 7\nset_mempolicy: Operation not permitted\nframe=100\n';
 

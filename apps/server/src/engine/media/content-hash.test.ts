@@ -1,7 +1,7 @@
 import { copyFile, open, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { tempDir } from '../fixtures.ts';
+import { tempDir } from '../testing/fixtures.ts';
 import { chunkOffsets, contentHash, HASH_CHUNK_BYTES, HashAborted } from './content-hash.ts';
 
 const CHUNK = 16;

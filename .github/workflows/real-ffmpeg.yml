@@ -9,6 +9,7 @@ on:
   pull_request:
     paths:
       - apps/server/src/engine/**
+      - docs/dev/engine.md
       - apps/server/src/platform/fs-ops*
       - apps/server/src/platform/child-caps*
       - apps/server/src/platform/memory-guard*

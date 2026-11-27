@@ -10,7 +10,7 @@ import type { ProbeStream } from '@transcoda/shared';
 import { describe, expect, it } from 'vitest';
 import { kept, modelFromProbe, streamsOf } from '../../engine/model/model.ts';
 import { renderArgs } from '../../engine/model/render.ts';
-import { capsOf, fileOf, probeOf } from '../../engine/test-helpers.ts';
+import { capsOf, fileOf, probeOf } from '../../engine/testing/builders.ts';
 import { encodeAudio, keepLanguages } from './actions.ts';
 import { removeDuplicateAudio } from './remove-duplicate-audio.ts';
 

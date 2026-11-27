@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { isPicture } from '@transcoda/shared';
 import { describe, expect, it } from 'vitest';
-import { fixturePath, fixturesAvailable, toolPaths } from '../fixtures.ts';
+import { fixturePath, fixturesAvailable, toolPaths } from '../testing/fixtures.ts';
 import {
   jobProbeOf,
   languageOf,

@@ -25,7 +25,7 @@ import { createTestDb } from '../../db/test-db.ts';
 import { type FsOps, failingAt, nodeFsOps } from '../../platform/fs-ops.ts';
 import type { Logger } from '../../platform/logger.ts';
 import { edge, mainGraph, node } from '../../workflows/test-helpers.ts';
-import { tempDir, toolPaths } from '../fixtures.ts';
+import { tempDir, toolPaths } from '../testing/fixtures.ts';
 import { fingerprintOf } from './fingerprint.ts';
 import { recyclePathFor, tmpPathFor } from './replace.ts';
 import { killStaleFfmpeg, requeueOnce, type SweepDeps, startupSweep } from './sweep.ts';

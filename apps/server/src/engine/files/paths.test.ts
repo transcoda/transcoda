@@ -9,7 +9,7 @@ import { insertLibrary, type LibraryRow } from '../../db/repos/libraries.ts';
 import { insertWorkflow } from '../../db/repos/workflows.ts';
 import { createTestDb } from '../../db/test-db.ts';
 import { type FsOps, nodeFsOps } from '../../platform/fs-ops.ts';
-import { tempDir } from '../fixtures.ts';
+import { tempDir } from '../testing/fixtures.ts';
 import { checkPath, isRecycleOrTemp, listMediaFiles, skipReasonFor } from './paths.ts';
 
 const NOW = new Date('2026-10-16T20:00:00.000Z');

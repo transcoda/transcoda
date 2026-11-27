@@ -10,7 +10,7 @@ A change gets its test in the lowest tier that can catch the bug.
 | --- | --- | --- | --- | --- |
 | Unit | `*.test.ts(x)` beside the code (Vitest; web tests use Testing Library in jsdom; the `scripts/` tests are Vitest's `scripts` project, not `node --test`) | One module's rules: planners, node logic, config parsing, a component's states and handlers | Anything that needs a real server, a real browser or a real ffmpeg | `pnpm test` whole, under 2 min |
 | Server end-to-end | `*.test.ts` built on `createTestApp` and `test-http.ts` (for example `apps/server/src/workflows/e2e.test.ts`) | A feature through the real HTTP and RPC API: auth, CSRF, validation, the database, the engine | Layout and anything only the browser does | Part of `pnpm test` |
-| Real-ffmpeg | Tests that read `.local/fixtures` through `apps/server/src/engine/fixtures.ts`, mostly `*.real.test.ts`; they skip when `pnpm fixtures` has not run | What ffmpeg really does with a plan: tracks, defaults, sizes, verify | Rules a probe object can show; those are unit tests | Part of `pnpm test` where fixtures exist |
+| Real-ffmpeg | Tests that read `.local/fixtures` through `apps/server/src/engine/testing/fixtures.ts`, mostly `*.real.test.ts`; they skip when `pnpm fixtures` has not run | What ffmpeg really does with a plan: tracks, defaults, sizes, verify | Rules a probe object can show; those are unit tests | Part of `pnpm test` where fixtures exist |
 | Render snapshots | `toMatchSnapshot` on generated output, such as the ffmpeg argv in `apps/server/src/engine/model/render.test.ts` | Text output that must not change by accident | UI markup: a snapshot of a component's HTML breaks on every harmless change and nobody reviews it | Part of `pnpm test` |
 | Browser | `e2e/*.e2e.ts` (Playwright, Chromium) against the built server and the fixture media (`e2e/server.mjs`) | A few key flows end to end, and screenshots of the main pages | Every state of every page; those are unit tests | `e2e` CI job, under 10 min |
 
@@ -34,7 +34,7 @@ Use these instead of writing your own:
 - **Server app and HTTP:** `createTestApp` (`apps/server/src/app/test-app.ts`) builds the whole app over a migrated in-memory database, with a fixed secret key and a manual clock. `apps/server/src/app/test-http.ts` has `send`, `login`, `withCsrf`, `secondUser`, `createToken`, `bearer` and the file-handle leak check (`trackFileHandles`, `expectAllClosed`).
 - **Database:** `createTestDb` (`apps/server/src/db/test-db.ts`), a migrated in-memory SQLite.
 - **Workflow graphs and registries:** `apps/server/src/workflows/test-helpers.ts`: `node`, `edge`, `mainGraph`, `subGraph`, `chain`, `testRegistry`, `withSetting` and the test node definitions. Don't re-declare graph builders in a test file.
-- **Engine inputs:** `apps/server/src/engine/test-helpers.ts`: `probeOf`, `fileOf`, `capsOf`, `withStream`, `withSidecar`, `packetRows`.
+- **Engine inputs:** `apps/server/src/engine/testing/builders.ts`: `probeOf`, `fileOf`, `capsOf`, `withStream`, `withSidecar`, `packetRows`.
 - **MCP:** `apps/server/src/mcp/test-client.ts`.
 - **Web:** `renderAt` (`apps/web/src/test/render.tsx`) renders inside a router on an in-memory location, with the toast provider; `renderFlow` (`apps/web/src/test/flow.tsx`) renders a bare React Flow for canvas tests; `apps/web/src/test/fake-event-stream.ts` for the live event stream. The node catalogue fixture is `apps/web/src/test/fixtures/nodes.json` (see "Fixtures that are checked" below).
 

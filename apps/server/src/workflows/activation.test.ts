@@ -8,8 +8,8 @@ import type { Database } from '../db/open.ts';
 import { findFeeder, findWorkflow, VersionConflictError } from '../db/repos/workflows.ts';
 import { createTestDb } from '../db/test-db.ts';
 import { EngineEvents } from '../engine/events.ts';
-import { tempDir } from '../engine/fixtures.ts';
-import { type QueueResult, QueueService } from '../engine/queue-service.ts';
+import { type QueueResult, QueueService } from '../engine/queue/queue-service.ts';
+import { tempDir } from '../engine/testing/fixtures.ts';
 import { WorkflowService } from './service.ts';
 import { bumpV1, bumpV2, bumpV3, chain, node, testRegistry } from './test-helpers.ts';
 

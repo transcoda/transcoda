@@ -8,8 +8,8 @@ import type { Exec } from '../../capabilities/ffmpeg.ts';
 import { softDeleteLibrary } from '../../db/repos/libraries.ts';
 import { filePathsOf, showKey } from '../../db/repos/library-files.ts';
 import { FakeSpawner } from '../../engine/encode/process.ts';
-import { tempDir } from '../../engine/fixtures.ts';
-import { packetRows } from '../../engine/test-helpers.ts';
+import { packetRows } from '../../engine/testing/builders.ts';
+import { tempDir } from '../../engine/testing/fixtures.ts';
 import { type FsOps, nodeFsOps } from '../../platform/fs-ops.ts';
 import { chain, node } from '../../workflows/test-helpers.ts';
 
