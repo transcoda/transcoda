@@ -6,7 +6,7 @@
 //   node scripts/nightly-issues.ts <report.json>...
 // Each report is vitest's or Playwright's JSON report (told apart by their shape).
 // Env: GITHUB_TOKEN, GITHUB_REPOSITORY (owner/name), RUN_URL, SHA, RUN_FAILED ("true" when a step
-// failed), TEST_ROOT (where the tests ran, to make vitest's paths relative; default: here).
+// failed), STEP_FAILED ("true" when a step that is not a test failed, whatever the tests did), TEST_ROOT (where the tests ran, to make vitest's paths relative; default: here).
 // A missing report counts as "nothing ran there": none of its issues are closed, and the run counts
 // as failed. DRY_RUN=true prints what it would do and writes nothing.
 import { existsSync, readFileSync } from 'node:fs';
@@ -135,12 +135,13 @@ export function titleOf(id: string): string {
 /**
  * What to do with GitHub: create an issue for a failing test without one, comment on one that has
  * one, close the open issue of a test that passed. `runFailed` without a failing test means the run
- * broke before its tests (or a report is missing): that gets the run issue. A passing run closes it.
+ * broke outside its tests (or a report is missing): that gets the run issue. `stepFailed` (a step
+ * that is not a test failed) gets it even when tests fail too. A passing run closes it.
  */
 export function plan(
   results: TestResult[],
   open: OpenIssue[],
-  ctx: { runFailed: boolean; runUrl: string; sha: string },
+  ctx: { runFailed: boolean; stepFailed?: boolean; runUrl: string; sha: string },
 ): Action[] {
   const actions: Action[] = [];
   const byId = new Map(open.map((i) => [i.id, i.number]));
@@ -179,10 +180,10 @@ export function plan(
   } else {
     for (const r of failing) fail(r.id, r.error);
   }
-  if (ctx.runFailed && failing.length === 0) fail(RUN_ID, '');
+  if ((ctx.runFailed && failing.length === 0) || ctx.stepFailed) fail(RUN_ID, '');
 
   const passed = new Set(results.filter((r) => r.passed).map((r) => r.id));
-  if (!ctx.runFailed) passed.add(RUN_ID);
+  if (!ctx.runFailed && !ctx.stepFailed) passed.add(RUN_ID);
   if (failing.length === 0 && !ctx.runFailed) passed.add(MANY_ID);
   for (const issue of open) {
     if (passed.has(issue.id)) {
@@ -269,6 +270,7 @@ async function main() {
   const runFailed = process.env.RUN_FAILED === 'true' || missing;
   const actions = plan(results, await openIssues(), {
     runFailed,
+    stepFailed: process.env.STEP_FAILED === 'true',
     runUrl: process.env.RUN_URL ?? '',
     sha: process.env.SHA ?? '',
   });

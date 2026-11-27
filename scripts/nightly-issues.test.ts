@@ -191,6 +191,15 @@ describe('plan', () => {
     ).toMatchObject([{ kind: 'create', id: 'a > no' }]);
   });
 
+  it('a failed step that is not a test gets the run issue even when tests fail too', () => {
+    const both = plan([fail('a > no')], [], { ...ctx, runFailed: true, stepFailed: true });
+    expect(both.map((a) => (a.kind === 'create' ? a.id : a.kind))).toEqual(['a > no', RUN_ID]);
+    // Still failing: a comment, and the run issue stays open.
+    expect(
+      plan([pass('a > ok')], [{ number: 3, id: RUN_ID }], { ...ctx, stepFailed: true }),
+    ).toMatchObject([{ kind: 'comment', number: 3 }]);
+  });
+
   it(`more than ${MAX_NEW} new failures get one issue listing them; known ones still get comments`, () => {
     const many = Array.from({ length: MAX_NEW + 1 }, (_, i) => fail(`t${i}`));
     const actions = plan([...many, fail('known')], [{ number: 5, id: 'known' }], ctx);
