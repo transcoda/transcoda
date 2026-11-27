@@ -55,7 +55,19 @@ jobs:
           node-version-file: .node-version
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
+      # The ffmpeg the image ships (jellyfin-ffmpeg, same version as JELLYFIN_FFMPEG_VERSION in
+      # docker/Dockerfile, built for the runner's Ubuntu): the distro ffmpeg fails the capability probe.
+      - name: Install jellyfin-ffmpeg
+        run: |
+          set -eu
+          version=$(sed -n 's/^ARG JELLYFIN_FFMPEG_VERSION=//p' docker/Dockerfile)
+          codename=$(. /etc/os-release && echo "$VERSION_CODENAME")
+          curl -fsSL https://repo.jellyfin.org/jellyfin_team.gpg.key | sudo gpg --dearmor -o /usr/share/keyrings/jellyfin.gpg
+          echo "deb [signed-by=/usr/share/keyrings/jellyfin.gpg] https://repo.jellyfin.org/ubuntu $codename main" \
+            | sudo tee /etc/apt/sources.list.d/jellyfin.list
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends "jellyfin-ffmpeg8=${version%-*}-$codename"
+          echo /usr/lib/jellyfin-ffmpeg >> "$GITHUB_PATH"
       - run: pnpm build
       - run: pnpm fixtures
       - run: pnpm exec playwright install --with-deps chromium

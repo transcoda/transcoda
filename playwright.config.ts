@@ -13,7 +13,8 @@ export default defineConfig({
   fullyParallel: false,
   workers: 1,
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 1 : 0,
+  // No retries: the specs share one server's state, so a second try starts from the wrong place.
+  retries: 0,
   timeout: 30_000,
   expect: { timeout: 10_000 },
   reporter: process.env.CI
