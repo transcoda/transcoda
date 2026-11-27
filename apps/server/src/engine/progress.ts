@@ -75,23 +75,25 @@ export function withFrameTime(sample: ProgressSample, frameRate: number | null):
 /**
  * Job progress from a sample: percent = min(100, out/duration × 100) to one decimal (null without
  * a positive duration or an out time); eta = (duration − out) / speed to one decimal, never
- * negative (null without a positive speed, a duration or an out time).
+ * negative (null without a positive speed, a duration or an out time, or when it would be infinite).
  */
 export function toJobProgress(sample: ProgressSample, durationSeconds: number): JobProgress {
   const hasDuration =
     Number.isFinite(durationSeconds) && durationSeconds > 0 && sample.outTimeSeconds !== null;
   const outTimeSeconds = sample.outTimeSeconds ?? 0;
   const { speed } = sample;
+  // A speed near zero (or a huge duration) would give an infinite ETA: no ETA then.
+  const eta =
+    hasDuration && speed !== null && speed > 0
+      ? round1(Math.max(0, durationSeconds - outTimeSeconds) / speed)
+      : null;
   return {
     percent: hasDuration ? Math.min(100, round1((outTimeSeconds / durationSeconds) * 100)) : null,
     outTimeSeconds,
     speed,
     fps: sample.fps,
     sizeBytes: sample.sizeBytes,
-    etaSeconds:
-      hasDuration && speed !== null && speed > 0
-        ? round1(Math.max(0, durationSeconds - outTimeSeconds) / speed)
-        : null,
+    etaSeconds: eta !== null && Number.isFinite(eta) ? eta : null,
   };
 }
 
