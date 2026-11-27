@@ -21,8 +21,10 @@ docker build -q --platform "$platform" -t "$image" -f e2e/Dockerfile \
   e2e >/dev/null
 
 tty=; [ -t 1 ] && tty=-t
+# SYS_NICE lets libx265 set its NUMA memory policy: without it, on a host with NUMA nodes (the CI
+# runner) ffmpeg logs "set_mempolicy" and the job page gains a note the baselines do not have.
 # shellcheck disable=SC2016 # expanded inside the container
-docker run --rm --platform "$platform" $tty --init -u "$(id -u):$(id -g)" --ipc=host -e CI -e GITHUB_ACTIONS \
+docker run --rm --platform "$platform" $tty --init -u "$(id -u):$(id -g)" --cap-add SYS_NICE --ipc=host -e CI -e GITHUB_ACTIONS \
   -v "$PWD:/src" -v transcoda-e2e-pnpm-store:/pnpm-store \
   "$image" sh -euc '
     mkdir /work/repo && cd /work/repo
