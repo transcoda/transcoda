@@ -7,6 +7,7 @@ import {
   parseVitest,
   plan,
   RUN_ID,
+  readReports,
   type TestResult,
   titleOf,
 } from './nightly-issues.ts';
@@ -14,6 +15,45 @@ import {
 const ctx = { runFailed: false, runUrl: 'https://example.test/run/1', sha: 'abcdef0123' };
 const pass = (id: string): TestResult => ({ id, passed: true, error: '' });
 const fail = (id: string, error = 'boom'): TestResult => ({ id, passed: false, error });
+
+describe('readReports', () => {
+  const vitest = {
+    testResults: [
+      {
+        name: '/repo/plugins/a/src/a.test.ts',
+        status: 'passed',
+        assertionResults: [{ fullName: 'a works', title: 'works', status: 'passed' }],
+      },
+    ],
+  };
+  const playwright = {
+    suites: [
+      {
+        title: 'x.e2e.ts',
+        specs: [
+          {
+            title: 't',
+            file: 'x.e2e.ts',
+            tests: [{ projectName: 'p', status: 'expected' as const, results: [{}] }],
+          },
+        ],
+      },
+    ],
+  };
+
+  it('reads each report by its shape, in any number (the plugins nightly has only vitest)', () => {
+    expect(readReports([vitest], '/repo')).toEqual({
+      results: [{ id: 'plugins/a/src/a.test.ts > works', passed: true, error: '' }],
+      missing: false,
+    });
+    expect(readReports([vitest, playwright], '/repo').results).toHaveLength(2);
+  });
+
+  it('a missing or unknown report marks the run failed', () => {
+    expect(readReports([vitest, null], '/repo').missing).toBe(true);
+    expect(readReports([{ nope: 1 }], '/repo')).toEqual({ results: [], missing: true });
+  });
+});
 
 describe('parseVitest', () => {
   it('names each test by its file and full name, and a file that did not load as one failure', () => {
@@ -140,7 +180,7 @@ describe('plan', () => {
 
   it('a run that failed without a failing test gets the run issue; a good run closes it', () => {
     expect(plan([pass('a > ok')], [], { ...ctx, runFailed: true })).toMatchObject([
-      { kind: 'create', id: RUN_ID, title: 'Nightly: the run failed before its tests' },
+      { kind: 'create', id: RUN_ID, title: 'Nightly: the run failed outside its tests' },
     ]);
     expect(plan([pass('a > ok')], [{ number: 3, id: RUN_ID }], ctx)).toMatchObject([
       { kind: 'close', number: 3 },

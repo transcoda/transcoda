@@ -2162,6 +2162,7 @@ Which kind of test covers what. A change gets its test in the lowest tier that c
   - a run that fails before any report (install, build, fixtures) gets one "the run failed" issue, closed by the next good run;
   - a test missing from a report (its job died) keeps its issue open.
 - Pull requests keep their fast checks; the nightly is where slow and environment-bound tests (real ffmpeg, the container's ffmpeg version) show up.
+- **transcoda-plugins has a nightly too**, against core `main`: it runs when either repo's `main` moved, and files its issues in the plugins repo with this script, from its checkout of core. The script takes any number of reports (vitest's or Playwright's, told apart by shape). A step that is not a test failing (a type error, the host check) gets the "the run failed outside its tests" issue.
 
 ## Follow-ups (2026-10-17)
 
