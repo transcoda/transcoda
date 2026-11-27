@@ -35,6 +35,11 @@ export function parseNvidiaSmiList(stdout: string): Gpu[] {
 export interface SysFs {
   /** Names of the render nodes (`renderD128`, …). */
   listRenderNodes(): Promise<string[]>;
+  /**
+   * Names of the render nodes in `/dev/dri`: what this process was given, which sysfs (the host's,
+   * in a container, or hidden) may not show. Without it, {@link listRenderNodes} stands in.
+   */
+  listDeviceNodes?(): Promise<string[]>;
   readFile(path: string): Promise<string>;
   realpath(path: string): Promise<string>;
   /** Whether the node can be opened for reading (it is closed again at once). */
@@ -44,6 +49,7 @@ export interface SysFs {
 const realSysFs: SysFs = {
   listRenderNodes: async () =>
     (await readdir('/sys/class/drm')).filter((n) => /^renderD\d+$/.test(n)),
+  listDeviceNodes: async () => (await readdir('/dev/dri')).filter((n) => /^renderD\d+$/.test(n)),
   readFile: (path) => readFile(path, 'utf8'),
   realpath: (path) => realpath(path),
   canOpen: async (path) => {
@@ -184,11 +190,14 @@ async function nvencFailure(caps: Capabilities, exec: Exec): Promise<string | nu
   }
 }
 
-/** Whether any render node can be opened (sysfs may list the host's nodes inside a container). */
+/**
+ * Whether any render node in `/dev/dri` can be opened. Listed from `/dev/dri` itself, not sysfs:
+ * inside a container sysfs may show the host's nodes, or none while the device was passed in.
+ */
 async function anyRenderNode(fs: SysFs): Promise<boolean> {
   let nodes: string[];
   try {
-    nodes = await fs.listRenderNodes();
+    nodes = await (fs.listDeviceNodes ?? fs.listRenderNodes)();
   } catch {
     return false;
   }

@@ -384,6 +384,16 @@ describe('steps: one sentence and a badge per node', () => {
       'Video is re-encoded to HEVC on the GPU (NVENC, CQ 23, at most 3.3 Mb/s)',
     );
     expect(videoConversionOf(null)).toBeNull();
+    // An earlier attempt (the GPU one that failed) keeps its own encoder; the last one says what ran.
+    const [first, second] = steps(
+      [
+        { ...decision, key: 'a1', attempt: 1 },
+        { ...decision, key: 'a2', attempt: 2 },
+      ],
+      { ...DRY, videoConversion: ran },
+    );
+    expect(first?.sentence).toContain('on the GPU (NVENC');
+    expect(second?.sentence).toContain('in software (libx265');
   });
 
   it('Encode video that copies says why; with a targets check and no targets it adds an action note', () => {

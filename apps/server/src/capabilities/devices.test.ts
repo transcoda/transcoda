@@ -400,7 +400,10 @@ describe('usableHardware', () => {
   const works: Exec = async () => ({ stdout: '', stderr: '' });
   /** A /dev/dri with these render nodes, of which `open` can be opened. */
   const dri = (nodes: string[], open: string[] = nodes): SysFs => ({
-    listRenderNodes: async () => nodes,
+    listRenderNodes: async () => {
+      throw new Error('ENOENT: /sys/class/drm');
+    },
+    listDeviceNodes: async () => nodes,
     readFile: async () => '',
     realpath: async (p) => p,
     canOpen: async (p) => open.some((n) => p === `/dev/dri/${n}`),
@@ -446,6 +449,12 @@ describe('usableHardware', () => {
       ]);
       expect(capabilities.available && capabilities.hwaccels).toEqual(['cuda']);
     }
+  });
+
+  it('keeps Quick Sync and VA-API for an openable /dev/dri node while sysfs is hidden', async () => {
+    // dri() has no /sys/class/drm: the device nodes alone decide.
+    const { dropped } = await usableHardware(caps([rtx]), failing, dri(['renderD128']));
+    expect(dropped).toEqual([]);
   });
 
   it('with neither, auto encodes in software on the plain slot', async () => {

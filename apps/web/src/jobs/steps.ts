@@ -939,7 +939,9 @@ function step(d: Decision, ctx: StepContext, around: Around): Step {
   }
   const changing = changesFile(d.changes);
   const wording = d.type ? ACTIONS[d.type] : undefined;
-  const words: Words = wording ? wording(d, d.changes, ctx, past) : { sentence: reasonSentence(d) };
+  // The plan is the last attempt's: an earlier attempt keeps the encoder its trace names.
+  const own = around.earlier ? { ...ctx, videoConversion: null } : ctx;
+  const words: Words = wording ? wording(d, d.changes, own, past) : { sentence: reasonSentence(d) };
   return {
     ...base,
     badge: changing ? 'change' : 'same',
