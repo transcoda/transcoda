@@ -13,13 +13,13 @@ import {
 } from '../db/repos/jobs.ts';
 import { findLibrary, insertLibrary, type LibraryRow } from '../db/repos/libraries.ts';
 import { createTestDb } from '../db/test-db.ts';
-import type { Logger } from '../logger.ts';
+import { type FsOps, nodeFsOps } from '../platform/fs-ops.ts';
+import type { Logger } from '../platform/logger.ts';
 import { WorkflowService } from '../workflows/service.ts';
 import { bumpV1, bumpV3, chain, node, testRegistry } from '../workflows/test-helpers.ts';
 import { type EngineEvent, EngineEvents } from './events.ts';
 import { fingerprintKey, fingerprintOf } from './fingerprint.ts';
 import { tempDir } from './fixtures.ts';
-import { type FsOps, nodeFsOps } from './fs-ops.ts';
 import type { MediaResolver } from './media-info.ts';
 import {
   HELD_BY_ANOTHER_RUN,

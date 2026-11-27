@@ -37,11 +37,11 @@ import {
 } from '../db/repos/libraries.ts';
 import { findRun, insertRun, listRuns, type RunRow, runCounts } from '../db/repos/runs.ts';
 import { findFeeder, findWorkflow } from '../db/repos/workflows.ts';
-import type { Logger } from '../logger.ts';
+import { errorCode, type FsOps, nodeFsOps } from '../platform/fs-ops.ts';
+import type { Logger } from '../platform/logger.ts';
 import type { WorkflowService } from '../workflows/service.ts';
 import type { EngineEvents } from './events.ts';
 import { type Fingerprint, fingerprintKey } from './fingerprint.ts';
-import { errorCode, type FsOps, nodeFsOps } from './fs-ops.ts';
 import { createMediaResolver, type MediaResolver } from './media-info.ts';
 import {
   checkPath,

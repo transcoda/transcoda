@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { makeExec } from '../capabilities/ffmpeg.ts';
+import { nodeSpawner } from '../engine/process.ts';
 import {
   capDroppedCommand,
   hasAmbientCaps,
@@ -12,7 +13,6 @@ import {
   setOffModeSetpriv,
   wrapChild,
 } from './child-caps.ts';
-import { nodeSpawner } from './process.ts';
 
 describe('capDroppedCommand', () => {
   it('is the command itself without setpriv', () => {

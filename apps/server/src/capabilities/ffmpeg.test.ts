@@ -3,10 +3,10 @@ import { readFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { CapabilitiesSchema, FfmpegCapabilitiesSchema } from '@transcoda/contract';
 import { describe, expect, it } from 'vitest';
+import { createTestApp } from '../app/test-app.ts';
 import { SESSION_COOKIE } from '../auth/cookies.ts';
 import { createUser } from '../db/repos/users.ts';
 import { tempDir } from '../engine/fixtures.ts';
-import { createTestApp } from '../test-app.ts';
 import {
   type Exec,
   makeExec,

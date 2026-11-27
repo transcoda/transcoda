@@ -24,7 +24,7 @@ COPY apps/web/package.json apps/web/
 RUN pnpm install --frozen-lockfile
 COPY . .
 # A release tag's build passes TRANSCODA_RELEASE=true (version 0.4.0); any other build reports
-# <version>-dev+<commit> (see apps/server/src/build-version.ts). .git is not in the context.
+# <version>-dev+<commit> (see apps/server/src/platform/build-version.ts). .git is not in the context.
 ARG TRANSCODA_RELEASE=false
 ARG TRANSCODA_COMMIT=
 # The fixtures flag also builds the sandbox denial plugin the image's CI job checks. `pnpm notices`

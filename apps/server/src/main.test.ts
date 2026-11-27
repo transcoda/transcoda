@@ -3,12 +3,12 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createDeps } from './bootstrap.ts';
-import { type Config, ConfigError, loadConfig } from './config.ts';
+import { createDeps } from './app/bootstrap.ts';
+import { exitCodeFor } from './app/exit-code.ts';
 import { SchemaTooNewError } from './db/migrate.ts';
 import { openDatabase } from './db/open.ts';
-import { exitCodeFor } from './exit-code.ts';
-import { createLogger } from './logger.ts';
+import { type Config, ConfigError, loadConfig } from './platform/config.ts';
+import { createLogger } from './platform/logger.ts';
 import { IsolationError } from './plugins/isolation.ts';
 
 let dir: string;

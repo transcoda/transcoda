@@ -3,13 +3,7 @@ import { copyFile, mkdir, rm, symlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { emptyGraph, type StoredJobMedia } from '@transcoda/shared';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { insertJob } from '../db/repos/jobs.ts';
-import { insertLibrary, softDeleteLibrary } from '../db/repos/libraries.ts';
-import { insertRun } from '../db/repos/runs.ts';
-import { insertWorkflow } from '../db/repos/workflows.ts';
-import { tempDir } from '../engine/fixtures.ts';
-import { PosterStore, type ThumbRunner } from '../engine/poster-store.ts';
-import { createTestApp, type TestApp } from '../test-app.ts';
+import { createTestApp, type TestApp } from '../app/test-app.ts';
 import {
   asSession,
   bearer,
@@ -20,7 +14,13 @@ import {
   type Session,
   send,
   trackFileHandles,
-} from '../test-http.ts';
+} from '../app/test-http.ts';
+import { insertJob } from '../db/repos/jobs.ts';
+import { insertLibrary, softDeleteLibrary } from '../db/repos/libraries.ts';
+import { insertRun } from '../db/repos/runs.ts';
+import { insertWorkflow } from '../db/repos/workflows.ts';
+import { tempDir } from '../engine/fixtures.ts';
+import { PosterStore, type ThumbRunner } from '../engine/poster-store.ts';
 
 /** Starts with a JPEG signature, so the store's source check passes. */
 const SOURCE = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0, 0x10, 0x4a, 0x46, 0x49, 0x46, 0, 1]);

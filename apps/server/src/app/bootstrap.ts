@@ -1,24 +1,24 @@
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { loadOrCreateSecretKey } from './auth/secret-key.ts';
-import { probeGpus, usableHardware } from './capabilities/devices.ts';
-import { probeFfmpeg } from './capabilities/ffmpeg.ts';
-import { type Config, requireIsolationInProduction } from './config.ts';
-import { backupDirOf } from './db/backup.ts';
-import { backupOnBuildChange, hashBuildFile } from './db/build-backup.ts';
-import { migrate } from './db/migrate.ts';
-import { migrations } from './db/migrations/index.ts';
-import { openDatabase } from './db/open.ts';
+import { loadOrCreateSecretKey } from '../auth/secret-key.ts';
+import { probeGpus, usableHardware } from '../capabilities/devices.ts';
+import { probeFfmpeg } from '../capabilities/ffmpeg.ts';
+import { backupDirOf } from '../db/backup.ts';
+import { backupOnBuildChange, hashBuildFile } from '../db/build-backup.ts';
+import { migrate } from '../db/migrate.ts';
+import { migrations } from '../db/migrations/index.ts';
+import { openDatabase } from '../db/open.ts';
+import { TEST_OUTPUT_SWEEP_MS } from '../engine/test-outputs.ts';
+import { setChildCapDrop } from '../platform/child-caps.ts';
+import { type Config, requireIsolationInProduction } from '../platform/config.ts';
+import type { Logger } from '../platform/logger.ts';
+import { setDecodeMemoryLimit } from '../platform/memory-guard.ts';
+import { VERSION } from '../platform/version.ts';
+import { assertIsolationUsable } from '../plugins/isolation.ts';
+import type { AppDeps } from '../rpc/context.ts';
+import { getDummyHash } from '../rpc/procedures/auth.ts';
 import { createAppDeps } from './deps.ts';
-import { setChildCapDrop } from './engine/child-caps.ts';
-import { setDecodeMemoryLimit } from './engine/memory-guard.ts';
-import { TEST_OUTPUT_SWEEP_MS } from './engine/test-outputs.ts';
-import type { Logger } from './logger.ts';
-import { assertIsolationUsable } from './plugins/isolation.ts';
-import type { AppDeps } from './rpc/context.ts';
-import { getDummyHash } from './rpc/procedures/auth.ts';
-import { VERSION } from './version.ts';
 
 const MAINTENANCE_INTERVAL_MS = 10 * 60 * 1000;
 
@@ -29,6 +29,7 @@ const MAINTENANCE_INTERVAL_MS = 10 * 60 * 1000;
 export async function createDeps(
   config: Config,
   log: Logger,
+  installDir?: string,
 ): Promise<AppDeps & { close(): void }> {
   // Outside the degraded-mode try/catch around `plugins.start()` below: configured isolation that
   // cannot work stops the server (exit code as for a ConfigError); it never runs plugins same-uid.
@@ -103,7 +104,15 @@ export async function createDeps(
     log.warn('official plugin catalog is refused: no signing key is pinned in this build');
   }
 
-  const deps = createAppDeps({ config, db, secretKey, version: VERSION, capabilities, log });
+  const deps = createAppDeps({
+    config,
+    db,
+    secretKey,
+    version: VERSION,
+    capabilities,
+    log,
+    ...(installDir !== undefined ? { installDir } : {}),
+  });
   // Plugin nodes must be registered before workflows are validated or upgraded. A plugin that
   // fails shows its reason on the Plugins page. If start() itself throws (an unusable plugins
   // directory) the server runs degraded: no plugin nodes are registered, so workflows using one

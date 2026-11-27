@@ -2,7 +2,7 @@
 // flood of one line never pushes the rest out of the tail.
 import { open } from 'node:fs/promises';
 import { createInterface } from 'node:readline';
-import { errorCode } from './fs-ops.ts';
+import { errorCode } from '../platform/fs-ops.ts';
 
 /**
  * libnuma via libx265 where it may not set a memory policy (Docker without CAP_SYS_NICE): printed

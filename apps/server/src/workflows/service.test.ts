@@ -8,9 +8,9 @@ import { insertLibrary, softDeleteLibrary } from '../db/repos/libraries.ts';
 import { getSetting } from '../db/repos/settings.ts';
 import { NotFoundError, VersionConflictError } from '../db/repos/workflows.ts';
 import { createTestDb } from '../db/test-db.ts';
-import type { Logger } from '../logger.ts';
 import { filePort } from '../nodes/core/common.ts';
 import type { NodeRegistry, RegisteredNode } from '../nodes/registry.ts';
+import type { Logger } from '../platform/logger.ts';
 import { CorruptGraphError, FORMAT_2_NOTE, KindMismatchError, WorkflowService } from './service.ts';
 import {
   bumpNoPath,

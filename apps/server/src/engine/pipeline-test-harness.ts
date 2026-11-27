@@ -5,17 +5,17 @@ import { type AnyNodeDefinition, defineNode, type ProbeResult } from '@transcoda
 import type { JobState, WorkflowGraph } from '@transcoda/shared';
 import { afterEach, beforeEach, expect, vi } from 'vitest';
 import { z } from 'zod';
+import { createTestApp, type TestApp } from '../app/test-app.ts';
 import type { Exec } from '../capabilities/ffmpeg.ts';
 import { findJob, type JobRow } from '../db/repos/jobs.ts';
 import type { LibraryRow } from '../db/repos/libraries.ts';
-import type { Logger } from '../logger.ts';
 import type { RegisteredNode } from '../nodes/registry.ts';
+import { type FsOps, nodeFsOps } from '../platform/fs-ops.ts';
+import type { Logger } from '../platform/logger.ts';
 import type { PluginHooksRunner } from '../plugins/hooks.ts';
-import { createTestApp, type TestApp } from '../test-app.ts';
 import { edge, mainGraph, node, testRegistry } from '../workflows/test-helpers.ts';
 import type { EngineEvent } from './events.ts';
 import { tempDir } from './fixtures.ts';
-import { type FsOps, nodeFsOps } from './fs-ops.ts';
 import { FakeSpawner } from './process.ts';
 import { packetRows, probeOf, withSidecar } from './test-helpers.ts';
 

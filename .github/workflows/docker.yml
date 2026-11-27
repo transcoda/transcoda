@@ -295,7 +295,7 @@ jobs:
         run: |
           set -eu
           image="$(printf '%s\n' "$TAGS" | head -n 1)"
-          # The argv mirrors apps/server/src/engine/child-caps.ts; keep them in sync.
+          # The argv mirrors apps/server/src/platform/child-caps.ts; keep them in sync.
           # The same setpriv line the server uses for engine children, run under the real entrypoint.
           docker run --rm --security-opt no-new-privileges:true --cap-drop ALL \
             --cap-add CHOWN --cap-add DAC_OVERRIDE --cap-add FOWNER --cap-add FSETID \

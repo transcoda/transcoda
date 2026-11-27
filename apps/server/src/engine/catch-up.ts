@@ -8,7 +8,7 @@ import { join } from 'node:path';
 import type { Database } from '../db/open.ts';
 import { findLibrary, type LibraryRow, listLibraries } from '../db/repos/libraries.ts';
 import { findFeeder } from '../db/repos/workflows.ts';
-import type { Logger } from '../logger.ts';
+import type { Logger } from '../platform/logger.ts';
 import { isRecycleOrTemp, SETTLE_MINUTES } from './paths.ts';
 import type { QueueService } from './queue-service.ts';
 

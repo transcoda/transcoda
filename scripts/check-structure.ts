@@ -27,21 +27,7 @@ export interface Layer {
  */
 export const LAYERS: Record<string, Layer[]> = {
   'apps/server/src': [
-    {
-      name: 'platform',
-      paths: [
-        'platform/',
-        // today:
-        'logger.ts',
-        'config.ts',
-        'process-guards.ts',
-        'build-version.ts',
-        'version.ts',
-        'engine/fs-ops.ts',
-        'engine/child-caps.ts',
-        'engine/memory-guard.ts',
-      ],
-    },
+    { name: 'platform', paths: ['platform/'] },
     {
       name: 'engine/model',
       paths: [
@@ -58,11 +44,7 @@ export const LAYERS: Record<string, Layer[]> = {
     { name: 'db', paths: ['db/'] },
     { name: 'engine/events', paths: ['engine/events.ts'] },
     { name: 'capabilities', paths: ['capabilities/'] },
-    {
-      name: 'auth',
-      // today: the two caller checks in http/.
-      paths: ['auth/', 'http/host-check.ts', 'http/request-info.ts'],
-    },
+    { name: 'auth', paths: ['auth/'] },
     {
       name: 'engine/files',
       paths: [
@@ -138,27 +120,11 @@ export const LAYERS: Record<string, Layer[]> = {
     { name: 'engine', paths: ['engine/'] },
     { name: 'metrics', paths: ['metrics/'] },
     { name: 'settings', paths: ['settings.ts', 'settings/'] },
-    {
-      name: 'system',
-      // today: health.ts, updates/ and fs/.
-      paths: ['system/', 'health.ts', 'updates/', 'fs/'],
-    },
+    { name: 'system', paths: ['system/'] },
     { name: 'rpc', paths: ['rpc/'] },
     { name: 'http', paths: ['http/'] },
     { name: 'mcp', paths: ['mcp/'] },
-    {
-      name: 'app',
-      paths: [
-        'app/',
-        // today:
-        'app.ts',
-        'bootstrap.ts',
-        'deps.ts',
-        'exit-code.ts',
-        'test-app.ts',
-        'test-http.ts',
-      ],
-    },
+    { name: 'app', paths: ['app/'] },
     { name: 'main', paths: ['main.ts'] },
   ],
   'apps/web/src': [
@@ -399,7 +365,7 @@ export function findProblems(root: string, allowlist: Allowlist): Findings {
   }
   walkFiles(root, 'e2e', importerOnly);
   walkFiles(root, 'scripts', importerOnly);
-  // Config files next to each package.json (tsdown.config.ts imports src/build-version.ts).
+  // Config files next to each package.json (tsdown.config.ts imports src/platform/build-version.ts).
   for (const group of ['apps', 'packages']) {
     if (!existsSync(join(root, group))) continue;
     for (const name of readdirSync(join(root, group))) {

@@ -31,7 +31,7 @@ A change gets its test in the lowest tier that can catch the bug.
 
 Use these instead of writing your own:
 
-- **Server app and HTTP:** `createTestApp` (`apps/server/src/test-app.ts`) builds the whole app over a migrated in-memory database, with a fixed secret key and a manual clock. `apps/server/src/test-http.ts` has `send`, `login`, `withCsrf`, `secondUser`, `createToken`, `bearer` and the file-handle leak check (`trackFileHandles`, `expectAllClosed`).
+- **Server app and HTTP:** `createTestApp` (`apps/server/src/app/test-app.ts`) builds the whole app over a migrated in-memory database, with a fixed secret key and a manual clock. `apps/server/src/app/test-http.ts` has `send`, `login`, `withCsrf`, `secondUser`, `createToken`, `bearer` and the file-handle leak check (`trackFileHandles`, `expectAllClosed`).
 - **Database:** `createTestDb` (`apps/server/src/db/test-db.ts`), a migrated in-memory SQLite.
 - **Workflow graphs and registries:** `apps/server/src/workflows/test-helpers.ts`: `node`, `edge`, `mainGraph`, `subGraph`, `chain`, `testRegistry`, `withSetting` and the test node definitions. Don't re-declare graph builders in a test file.
 - **Engine inputs:** `apps/server/src/engine/test-helpers.ts`: `probeOf`, `fileOf`, `capsOf`, `withStream`, `withSidecar`, `packetRows`.
@@ -41,7 +41,7 @@ Use these instead of writing your own:
 ## Real-ffmpeg fixtures
 
 - `pnpm fixtures` (`scripts/fixtures/generate.ts`) makes small, reproducible test videos with your local ffmpeg into `.local/fixtures/` (git-ignored) and checks each with ffprobe. Run it once on a new checkout; without it the real-ffmpeg tests skip silently (`it.skipIf(!fixturesAvailable())`).
-- The `check` job in CI has no fixtures, so these tests skip there. A pull request that touches the engine (`apps/server/src/engine/`, `capabilities/`, `nodes/core/`, the fixture generator, or the Dockerfiles that pin ffmpeg) also runs `real-ffmpeg.yml`: every unit test in the e2e container with the fixtures, against the image's jellyfin-ffmpeg (`pnpm test:docker`). The nightly runs the same for every change to `main`. Run `pnpm test:docker` (or `pnpm fixtures && pnpm test`) yourself before you push an engine change.
+- The `check` job in CI has no fixtures, so these tests skip there. A pull request that touches the engine (`apps/server/src/engine/`, the disk, child-process and memory helpers in `platform/`, `capabilities/`, `nodes/core/`, the fixture generator, or the Dockerfiles that pin ffmpeg) also runs `real-ffmpeg.yml`: every unit test in the e2e container with the fixtures, against the image's jellyfin-ffmpeg (`pnpm test:docker`). The nightly runs the same for every change to `main`. Run `pnpm test:docker` (or `pnpm fixtures && pnpm test`) yourself before you push an engine change.
 - Encoders in tests are software only (`libx264`, `libx265`). Hardware encoders are not tested automatically.
 
 ## Browser tests and screenshots
@@ -58,7 +58,7 @@ Use these instead of writing your own:
 
 - `apps/web/src/test/fixtures/nodes.json` must match the live core node catalogue (`apps/server/src/nodes/web-fixture.test.ts`). Regenerate it with `pnpm --filter @transcoda/server dump-nodes > apps/web/src/test/fixtures/nodes.json`, then re-add the hand-written `test:unavailable` entry (see `apps/web/src/test/fixtures/catalog.ts`).
 - `docs/metrics.md` and the Grafana example must match the metrics catalogue (`apps/server/src/metrics/sync.test.ts`).
-- `docs/env.md`'s tables must name every environment variable `config.ts` reads, and no variable nothing reads (`apps/server/src/config-docs.test.ts`). Its "Settings in the database" table must list `SETTING_KEYS` with their defaults (`apps/server/src/settings/settings-docs.test.ts`).
+- `docs/env.md`'s tables must name every environment variable `config.ts` reads, and no variable nothing reads (`apps/server/src/platform/config-docs.test.ts`). Its "Settings in the database" table must list `SETTING_KEYS` with their defaults (`apps/server/src/settings/settings-docs.test.ts`).
 - `docs/mcp.md`'s Tools table and tool count must match `ALL_TOOLS`, with each tool's scopes (`apps/server/src/mcp/mcp-docs.test.ts`).
 - DESIGN.md's quoted values must match the stylesheets (the guard tests in `apps/web/src/styles/`).
 - Every migration has its own test (`apps/server/src/db/migration-conventions.test.ts`).

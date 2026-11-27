@@ -3,10 +3,10 @@ import { join } from 'node:path';
 import type { BuildModel } from '@transcoda/sdk';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { RecycledInsert } from '../db/repos/jobs.ts';
-import type { Logger } from '../logger.ts';
+import { type FsOps, nodeFsOps } from '../platform/fs-ops.ts';
+import type { Logger } from '../platform/logger.ts';
 import { modelFromProbe } from './build-model.ts';
 import { tempDir } from './fixtures.ts';
-import { type FsOps, nodeFsOps } from './fs-ops.ts';
 import { recycleSidecars } from './sidecar-recycle.ts';
 import { probeOf, withSidecar } from './test-helpers.ts';
 

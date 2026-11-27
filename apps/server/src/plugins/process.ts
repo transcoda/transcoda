@@ -19,9 +19,9 @@ import {
   type ServerMessage,
   type SupervisorLimits,
 } from '@transcoda/shared';
-import type { PluginIsolation } from '../config.ts';
-import { offModeSetpriv } from '../engine/child-caps.ts';
-import type { Logger } from '../logger.ts';
+import { offModeSetpriv } from '../platform/child-caps.ts';
+import type { PluginIsolation } from '../platform/config.ts';
+import type { Logger } from '../platform/logger.ts';
 import { redactJson } from '../plugin-host/redact.ts';
 import { CHANNEL_ENV, openChannel } from './channel.ts';
 

@@ -1,14 +1,14 @@
 import type { Capabilities } from '@transcoda/contract';
 import { RUNNING_JOB_STATES } from '@transcoda/shared';
 import { z } from 'zod';
-import type { Config } from './config.ts';
-import type { Database } from './db/open.ts';
-import { getSetting, getSettingOr, SETTING_KEYS, setSetting } from './db/repos/settings.ts';
-import type { FsOps } from './engine/fs-ops.ts';
-import { spaceWaitText } from './engine/replace.ts';
-import type { JobSpaceWait } from './engine/space-waits.ts';
-import { scratchMinFreeBytes } from './engine/test-outputs.ts';
-import type { Logger } from './logger.ts';
+import type { Database } from '../db/open.ts';
+import { getSetting, getSettingOr, SETTING_KEYS, setSetting } from '../db/repos/settings.ts';
+import { spaceWaitText } from '../engine/replace.ts';
+import type { JobSpaceWait } from '../engine/space-waits.ts';
+import { scratchMinFreeBytes } from '../engine/test-outputs.ts';
+import type { Config } from '../platform/config.ts';
+import type { FsOps } from '../platform/fs-ops.ts';
+import type { Logger } from '../platform/logger.ts';
 
 /** A deep check runs at most once per this window; callers inside it get the last answer. */
 export const DEEP_HEALTH_CACHE_MS = 10_000;

@@ -7,9 +7,9 @@ import type { Database } from '../db/open.ts';
 import { insertLibrary, type LibraryRow } from '../db/repos/libraries.ts';
 import { insertWorkflow } from '../db/repos/workflows.ts';
 import { createTestDb } from '../db/test-db.ts';
+import { type FsOps, nodeFsOps } from '../platform/fs-ops.ts';
 import type { Fingerprint } from './fingerprint.ts';
 import { tempDir } from './fixtures.ts';
-import { type FsOps, nodeFsOps } from './fs-ops.ts';
 import { checkPath, isRecycleOrTemp, listMediaFiles, skipReasonFor } from './paths.ts';
 
 const NOW = new Date('2026-10-16T20:00:00.000Z');

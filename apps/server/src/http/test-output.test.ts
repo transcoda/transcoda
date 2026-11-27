@@ -5,16 +5,24 @@ import { join } from 'node:path';
 import { promisify } from 'node:util';
 import { emptyGraph } from '@transcoda/shared';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { createTestApp, type TestApp } from '../app/test-app.ts';
+import {
+  asSession,
+  bearer,
+  createToken,
+  HOST,
+  login,
+  type Session,
+  send,
+} from '../app/test-http.ts';
 import { insertJob, insertJobResult } from '../db/repos/jobs.ts';
 import { insertLibrary } from '../db/repos/libraries.ts';
 import { insertRun } from '../db/repos/runs.ts';
 import { insertWorkflow } from '../db/repos/workflows.ts';
 import { fixturePath, fixturesAvailable, tempDir, toolPaths } from '../engine/fixtures.ts';
-import { type FsOps, nodeFsOps } from '../engine/fs-ops.ts';
 import { buildPreview } from '../engine/preview.ts';
 import { scratchMinFreeBytes, TEST_OUTPUT_DIR } from '../engine/test-outputs.ts';
-import { createTestApp, type TestApp } from '../test-app.ts';
-import { asSession, bearer, createToken, HOST, login, type Session, send } from '../test-http.ts';
+import { type FsOps, nodeFsOps } from '../platform/fs-ops.ts';
 
 vi.mock('../engine/preview.ts', async (importOriginal) => {
   const real = await importOriginal<typeof import('../engine/preview.ts')>();

@@ -18,8 +18,8 @@ import {
   setLastTest,
   upsertPluginSettings,
 } from '../db/repos/plugins.ts';
-import type { Logger } from '../logger.ts';
 import { serverSettingsSchema } from '../nodes/plugin-settings-schema.ts';
+import type { Logger } from '../platform/logger.ts';
 import { createRedactor } from '../plugin-host/redact.ts';
 import {
   isEncrypted,

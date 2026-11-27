@@ -1,8 +1,8 @@
 import { isAbsolute, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { OFFICIAL_BLOCKLIST_URL, OFFICIAL_CATALOG_URL } from './plugins/catalog-url.ts';
-import { OFFICIAL_SIGNING_KEYS } from './plugins/official-keys.ts';
-import { parseSigningKeys, type SigningKey } from './plugins/signature.ts';
+import { OFFICIAL_BLOCKLIST_URL, OFFICIAL_CATALOG_URL } from '../plugins/catalog-url.ts';
+import { OFFICIAL_SIGNING_KEYS } from '../plugins/official-keys.ts';
+import { parseSigningKeys, type SigningKey } from '../plugins/signature.ts';
 
 export class ConfigError extends Error {
   override readonly name = 'ConfigError';

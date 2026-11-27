@@ -1,6 +1,6 @@
-import { ConfigError } from './config.ts';
-import { SchemaTooNewError } from './db/migrate.ts';
-import { IsolationError } from './plugins/isolation.ts';
+import { SchemaTooNewError } from '../db/migrate.ts';
+import { ConfigError } from '../platform/config.ts';
+import { IsolationError } from '../plugins/isolation.ts';
 
 /** Process exit code for a startup failure: 2 bad config (plugin isolation that cannot work counts), 3 database newer than this server, 1 anything else. */
 export function exitCodeFor(err: unknown): number {

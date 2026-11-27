@@ -5,15 +5,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.setConfig({ testTimeout: 30_000 });
 
+import { createTestApp, type TestApp } from '../../app/test-app.ts';
+import { createToken, login } from '../../app/test-http.ts';
 import type { Exec } from '../../capabilities/ffmpeg.ts';
 import { findJob, insertJobResult, updateJob } from '../../db/repos/jobs.ts';
 import { tempDir } from '../../engine/fixtures.ts';
-import { type FsOps, nodeFsOps } from '../../engine/fs-ops.ts';
 import { logPathFor } from '../../engine/pipeline.ts';
 import { FakeSpawner } from '../../engine/process.ts';
 import { packetRows } from '../../engine/test-helpers.ts';
-import { createTestApp, type TestApp } from '../../test-app.ts';
-import { createToken, login } from '../../test-http.ts';
+import { type FsOps, nodeFsOps } from '../../platform/fs-ops.ts';
 import { chain, node } from '../../workflows/test-helpers.ts';
 import { mcpClient } from '../test-client.ts';
 import { jobTools } from './jobs.ts';

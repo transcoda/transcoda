@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { createTestApp, type TestApp } from '../../app/test-app.ts';
+import { createToken, login, type Session } from '../../app/test-http.ts';
 import { fixturePluginPath } from '../../plugins/testing/build.ts';
-import { createTestApp, type TestApp } from '../../test-app.ts';
-import { createToken, login, type Session } from '../../test-http.ts';
 import { mcpClient } from '../test-client.ts';
 
 vi.setConfig({ testTimeout: 30_000 });

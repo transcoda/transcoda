@@ -3,8 +3,8 @@ import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/
 import { createRouterClient, ORPCError } from '@orpc/server';
 import type { Context } from 'hono';
 import { z } from 'zod';
-import { checkOrigin } from '../http/host-check.ts';
-import type { Logger } from '../logger.ts';
+import { checkOrigin } from '../auth/host-check.ts';
+import type { Logger } from '../platform/logger.ts';
 import type { AppDeps, ServerContext } from '../rpc/context.ts';
 import type { Router } from '../rpc/router.ts';
 import { INSTRUCTIONS } from './instructions.ts';

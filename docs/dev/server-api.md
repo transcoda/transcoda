@@ -16,7 +16,7 @@ Today's rules for the server outside the encode engine. The engine is in [engine
 4. **MCP, only if an agent should have it.** Add a tool with `defineTool` (`mcp/tool.ts`) in `apps/server/src/mcp/tools/<group>.ts`, add it to `ALL_TOOLS` in `mcp/tools/index.ts`, and to `EXPECTED_TOOLS` in `mcp/never.test.ts`. Describe it in `docs/mcp.md` (tool count and table; `mcp/mcp-docs.test.ts` checks both and the scopes).
 5. **Web.** Call it through `api` from `apps/web/src/api/client.ts` (a typed oRPC client over `/rpc`), usually from a hook in `apps/web/src/hooks/` or a page's own hook.
 
-- Routes that stream a file or plain text are plain Hono routes beside the contract, in `apps/server/src/http/` and mounted in `app.ts`: backup download, test output, job log, job poster, `/metrics`. They are not in the OpenAPI document or the RPC client.
+- Routes that stream a file or plain text are plain Hono routes beside the contract, in `apps/server/src/http/` and mounted in `app/app.ts`: backup download, test output, job log, job poster, `/metrics`. They are not in the OpenAPI document or the RPC client.
 - A GET is a read. Any other method (or none) is a mutation and gets the CSRF check.
 - Public operations in the OpenAPI document set `spec: publicSpec` (`packages/contract/src/openapi.ts`). The document's default security is `bearerAuth`.
 
@@ -29,11 +29,11 @@ Today's rules for the server outside the encode engine. The engine is in [engine
   - `requireSameOrigin`: setup and login, which have no session yet.
   - `publicProcedure`: marks a procedure as public on purpose (`auth.me`).
 - `resolveAuth` (`http/auth-context.ts`) resolves the caller once per request. A `Bearer` header is authoritative: an invalid bearer is unauthenticated and the cookie is not used.
-- Sessions (`auth/sessions.ts`): cookie `tcd_session`, 30 days, sliding (renewed at most once an hour). `app.ts` re-sends or clears the cookie unless the procedure set it.
+- Sessions (`auth/sessions.ts`): cookie `tcd_session`, 30 days, sliding (renewed at most once an hour). `app/app.ts` re-sends or clears the cookie unless the procedure set it.
 - CSRF (`auth/csrf.ts`): cookie mutations need an allowed Origin/Referer (or none plus `Sec-Fetch-Site: same-origin|none`) and the session-bound `X-CSRF-Token`. Bearer requests are exempt.
 - Tokens (`auth/tokens.ts`): prefix `tcd_`, stored hashed. Scopes are `TOKEN_SCOPES` in `packages/shared/src/scopes.ts`. Scopes are exact and never imply each other; a session has every scope. `metrics` unlocks only `/metrics` and `system.status`. Unknown scopes are dropped on read.
-- Host check (`http/host-check.ts`, in `app.ts`): `/api`, `/rpc`, `/mcp` and `/metrics` answer 403 `HOST_NOT_ALLOWED` for a host that is not allowed. Allowed: the hosts recorded at setup, `TRANSCODA_ALLOWED_HOSTS`, and `localhost`, `127.0.0.1`, `::1`. The check is skipped until the first user exists.
-- Proxies (`http/request-info.ts`): `X-Forwarded-For`, `-Proto` and `-Host` are honoured only from a peer in `TRANSCODA_TRUSTED_PROXIES`.
+- Host check (`auth/host-check.ts`, in `app/app.ts`): `/api`, `/rpc`, `/mcp` and `/metrics` answer 403 `HOST_NOT_ALLOWED` for a host that is not allowed. Allowed: the hosts recorded at setup, `TRANSCODA_ALLOWED_HOSTS`, and `localhost`, `127.0.0.1`, `::1`. The check is skipped until the first user exists.
+- Proxies (`auth/request-info.ts`): `X-Forwarded-For`, `-Proto` and `-Host` are honoured only from a peer in `TRANSCODA_TRUSTED_PROXIES`.
 - Login rate limit (`auth/rate-limit.ts`): in memory, keyed by client IP and by user name, 5 failures a minute, then growing lockouts up to 15 minutes. `RATE_LIMITED` carries `retryAfterSeconds`.
 - The secret key (`auth/secret-key.ts`) comes from `TRANSCODA_SECRET_KEY` or `<config>/secret.key`. It signs CSRF tokens and encrypts plugin secrets.
 
@@ -54,14 +54,14 @@ Today's rules for the server outside the encode engine. The engine is in [engine
   - Register it in order in `db/migrations/index.ts`, and give it its own `NNNN_snake_case.test.ts`. `db/migration-conventions.test.ts` checks all of this.
   - Write frozen SQL: literal names and values, no imports of application constants, so the file never changes after it ships. Never edit a shipped migration; write a new one.
   - Keep data. A table rebuild sets `foreignKeys: 'off'`; `migrate()` then refuses to commit while `foreign_key_check` reports a violation.
-- `bootstrap.ts` runs `migrate()` at start. A schema newer than the build refuses to start (`SchemaTooNewError`) and names the backup to restore.
+- `app/bootstrap.ts` runs `migrate()` at start. A schema newer than the build refuses to start (`SchemaTooNewError`) and names the backup to restore.
 - Backups (`db/backup.ts`, `db/build-backup.ts`): a `VACUUM INTO` copy in `<config>/backups` before migrations, when the build changes, and on "Back up now" (`system.backups.create`, session only). Five are kept per reason. Restore steps are in `docs/env.md`.
 
 ## Settings and environment variables
 
 - **Database settings** are things a person changes in the UI without a restart. Keys and defaults are `SETTING_KEYS` and `SETTING_DEFAULTS` in `db/repos/settings.ts`. `settings/service.ts` reads them; a row that fails its schema reads as the default. `settings.update` is session only and allow-lists its fields in `SettingsUpdateInputSchema`. No MCP tool reads or changes settings.
-- **Environment variables** are deployment facts that need a restart. They are parsed only in `loadConfig()` (`apps/server/src/config.ts`) into `Config`, with a `ConfigError` for a bad value. Document each in a table row in `docs/env.md`; `config-docs.test.ts` compares the rows with the variables `config.ts` reads.
-- The Settings page shows some variables read-only (`source.kind: 'env'`) with their effective values from `Config`. The service learns which variables are set by name only (`transcodaEnvNames` in `deps.ts`), and `settings.get` never returns a secret.
+- **Environment variables** are deployment facts that need a restart. They are parsed only in `loadConfig()` (`apps/server/src/platform/config.ts`) into `Config`, with a `ConfigError` for a bad value. Document each in a table row in `docs/env.md`; `config-docs.test.ts` compares the rows with the variables `config.ts` reads.
+- The Settings page shows some variables read-only (`source.kind: 'env'`) with their effective values from `Config`. The service learns which variables are set by name only (`transcodaEnvNames` in `app/deps.ts`), and `settings.get` never returns a secret.
 
 ## Workflows and activation
 
@@ -87,7 +87,7 @@ Today's rules for the server outside the encode engine. The engine is in [engine
 
 ## Logging
 
-- Log through the `Logger` from `apps/server/src/logger.ts` (JSON lines in production, plain text otherwise). It is the only server file allowed to use `console`.
+- Log through the `Logger` from `apps/server/src/platform/logger.ts` (JSON lines in production, plain text otherwise). It is the only server file allowed to use `console`.
 - Pass `{ msg, ...fields }`. Never log a secret, token, webhook URL, request body or procedure input.
 
 History: [M0](../decisions/2026-10-m0.md), [M1 workflows](../decisions/2026-10-m1-workflows.md), [activation and MCP](../decisions/2026-10-activation-mcp.md), [October](../decisions/2026-10.md) (library trigger, backup on build change), [November](../decisions/2026-11.md) (metrics, failure codes, code consistency checks).

@@ -198,9 +198,9 @@ A move pull request updates the paths in the allowlists and the "today" entries 
 
 ## Migration status
 
-Step 1, the check and this doc, is done. Each later pull request ticks its line.
+Steps 1 (the check and this doc) and 2 are done. Each later pull request ticks its line.
 
-- [ ] 2. Server: `platform/`, `app/` and `system/`; `host-check.ts` and `request-info.ts` into `auth/`.
+- [x] 2. Server: `platform/`, `app/` and `system/`; `host-check.ts` and `request-info.ts` into `auth/`.
 - [ ] 3. Server: fix the upward imports (`fingerprintKey` into the repository layer, the official plugin constants out of `plugins/`, `CoreTools` into `nodes/`).
 - [ ] 4. Server: `engine/` sub-areas, part 1: `model/`, `files/`, `media/`, `encode/`.
 - [ ] 5. Server: `engine/` sub-areas, part 2: `verify/`, `walk/`, `queue/`, `pipeline/`, `testing.ts`.

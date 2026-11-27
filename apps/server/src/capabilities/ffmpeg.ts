@@ -1,8 +1,8 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import type { Capabilities } from '@transcoda/contract';
-import { wrapChild } from '../engine/child-caps.ts';
-import { decodeMemoryLimit, MemoryLimitError, watchMemory } from '../engine/memory-guard.ts';
+import { wrapChild } from '../platform/child-caps.ts';
+import { decodeMemoryLimit, MemoryLimitError, watchMemory } from '../platform/memory-guard.ts';
 
 /** Runs a tool; `signal` aborts the run and SIGKILLs the child (no orphaned ffmpeg). */
 export type Exec = (

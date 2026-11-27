@@ -3,9 +3,9 @@
 import type { BuildModel, ProbeResult, StreamPlan } from '@transcoda/sdk';
 import { DEVICE_PROFILES, isPicture, type ProbeStream, sameLanguage } from '@transcoda/shared';
 import { type Exec, makeExec } from '../capabilities/ffmpeg.ts';
+import { isMemoryLimitError, memoryLimitMessage } from '../platform/memory-guard.ts';
 import { extraInputOf, isExtraStream, isMkvCover, outputOrder } from './build-model.ts';
 import { NULL_TIMESTAMPS, READ_FAILURE } from './decoder-names.ts';
-import { isMemoryLimitError, memoryLimitMessage } from './memory-guard.ts';
 import { probeFile } from './probe.ts';
 import { type ProgressSample, progressReader, type VerifyProgress } from './progress.ts';
 import { containerPlaysOn, streamPlaysOn, type TargetIssue } from './targets.ts';

@@ -1,7 +1,7 @@
 import type { Database } from 'better-sqlite3';
 import { z } from 'zod';
-import type { Config } from '../config.ts';
 import { getSetting } from '../db/repos/settings.ts';
+import type { Config } from '../platform/config.ts';
 
 export const ALWAYS_ALLOWED_HOSTS = ['localhost', '127.0.0.1', '::1'];
 

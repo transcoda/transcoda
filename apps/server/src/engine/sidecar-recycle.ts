@@ -2,9 +2,9 @@
 import { basename, dirname } from 'node:path';
 import type { BuildModel } from '@transcoda/sdk';
 import type { RecycledInsert } from '../db/repos/jobs.ts';
-import type { Logger } from '../logger.ts';
+import { type FsOps, renameNoClobber, syncDirs, why } from '../platform/fs-ops.ts';
+import type { Logger } from '../platform/logger.ts';
 import { extraInputOf, isExtraStream } from './build-model.ts';
-import { type FsOps, renameNoClobber, syncDirs, why } from './fs-ops.ts';
 import { isWithin } from './paths.ts';
 import { recyclePathFor } from './replace.ts';
 

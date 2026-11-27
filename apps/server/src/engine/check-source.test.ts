@@ -1,8 +1,8 @@
 import type { ProbeResult } from '@transcoda/sdk';
 import { describe, expect, it } from 'vitest';
 import type { Exec } from '../capabilities/ffmpeg.ts';
+import { MemoryLimitError } from '../platform/memory-guard.ts';
 import { checkSource, checkSourceArgs, checkSourceTimeoutMs, locateArgs } from './check-source.ts';
-import { MemoryLimitError } from './memory-guard.ts';
 import { probeOf } from './test-helpers.ts';
 import type { VerifyFailure } from './verify.ts';
 

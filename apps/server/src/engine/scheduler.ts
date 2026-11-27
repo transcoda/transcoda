@@ -17,7 +17,7 @@ import {
 } from '../db/repos/jobs.ts';
 import { findRun } from '../db/repos/runs.ts';
 import { getSettingOr, SETTING_DEFAULTS, SETTING_KEYS, setSetting } from '../db/repos/settings.ts';
-import type { Logger } from '../logger.ts';
+import type { Logger } from '../platform/logger.ts';
 import { type CurrentNode, type EngineEvents, jobChangedEvent } from './events.ts';
 import type { RunnerProcess } from './process.ts';
 import { deviceVendor } from './render.ts';

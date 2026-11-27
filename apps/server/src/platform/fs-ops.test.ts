@@ -2,9 +2,9 @@ import { execFileSync } from 'node:child_process';
 import { mkdir, readFile, rm, stat, symlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import type { Logger } from '../logger.ts';
-import { tempDir } from './fixtures.ts';
+import { tempDir } from '../engine/fixtures.ts';
 import { ClobberRefused, type FsOps, nodeFsOps, renameNoClobber, syncDir } from './fs-ops.ts';
+import type { Logger } from './logger.ts';
 
 const hasMkfifo = (() => {
   try {

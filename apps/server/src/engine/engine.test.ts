@@ -3,6 +3,7 @@ import { dirname, join } from 'node:path';
 import type { Capabilities } from '@transcoda/contract';
 import type { JobState } from '@transcoda/shared';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { createTestApp, type TestApp } from '../app/test-app.ts';
 import type { Exec } from '../capabilities/ffmpeg.ts';
 import {
   findJob,
@@ -12,11 +13,10 @@ import {
   updateJob,
 } from '../db/repos/jobs.ts';
 import { setSetting } from '../db/repos/settings.ts';
-import { createTestApp, type TestApp } from '../test-app.ts';
+import { type FsOps, nodeFsOps } from '../platform/fs-ops.ts';
 import { chain, node } from '../workflows/test-helpers.ts';
 import { fingerprintOf } from './fingerprint.ts';
 import { tempDir } from './fixtures.ts';
-import { type FsOps, nodeFsOps } from './fs-ops.ts';
 import { FakeSpawner } from './process.ts';
 import { packetRows } from './test-helpers.ts';
 

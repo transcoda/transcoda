@@ -1,13 +1,15 @@
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { serve } from '@hono/node-server';
-import { createApp } from './app.ts';
-import { createDeps } from './bootstrap.ts';
-import { ConfigError, loadConfig } from './config.ts';
-import { exitCodeFor } from './exit-code.ts';
-import { createLogger } from './logger.ts';
+import { createApp } from './app/app.ts';
+import { createDeps } from './app/bootstrap.ts';
+import { exitCodeFor } from './app/exit-code.ts';
+import { ConfigError, loadConfig } from './platform/config.ts';
+import { createLogger } from './platform/logger.ts';
+import { installProcessGuards } from './platform/process-guards.ts';
+import { VERSION } from './platform/version.ts';
 import { runCheckPlugin } from './plugins/check-plugin.ts';
 import { IsolationError } from './plugins/isolation.ts';
-import { installProcessGuards } from './process-guards.ts';
-import { VERSION } from './version.ts';
 
 const SHUTDOWN_TIMEOUT_MS = 10_000;
 
@@ -19,7 +21,13 @@ async function main(): Promise<void> {
   const config = loadConfig();
   startupNodeEnv = config.nodeEnv;
   const log = createLogger(config.nodeEnv);
-  const deps = await createDeps(config, log);
+  // One up from this file is the install folder: `apps/server/` under `pnpm dev`, `/app/` in the
+  // image (main.js is bundled to `/app/server/`).
+  const deps = await createDeps(
+    config,
+    log,
+    resolve(dirname(fileURLToPath(import.meta.url)), '..'),
+  );
   closeDeps = () => deps.close();
   const app = createApp({ deps, log });
   const ffmpeg = deps.capabilities();

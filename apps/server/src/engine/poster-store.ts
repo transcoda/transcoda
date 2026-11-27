@@ -9,8 +9,8 @@ import type { Stats } from 'node:fs';
 import * as fsp from 'node:fs/promises';
 import { join } from 'node:path';
 import type { Readable } from 'node:stream';
-import type { Logger } from '../logger.ts';
-import { errorCode, openRegular, why } from './fs-ops.ts';
+import { errorCode, openRegular, why } from '../platform/fs-ops.ts';
+import type { Logger } from '../platform/logger.ts';
 import { isWithin } from './paths.ts';
 
 export type PosterDemuxer = 'jpeg_pipe' | 'png_pipe' | 'webp_pipe';

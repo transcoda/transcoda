@@ -4,10 +4,10 @@ import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import type { PluginManifest } from '@transcoda/shared';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { createTestApp, type TestApp } from '../../app/test-app.ts';
+import { asSession, bearer, createToken, login, type Session, send } from '../../app/test-http.ts';
 import { checkPluginBundle } from '../../plugins/check-plugin.ts';
 import { fixturePluginPath, hostPath } from '../../plugins/testing/build.ts';
-import { createTestApp, type TestApp } from '../../test-app.ts';
-import { asSession, bearer, createToken, login, type Session, send } from '../../test-http.ts';
 
 const KEY = 'sk-live-REST-secret-4821';
 const ALL_SCOPES = ['read', 'plan', 'jobs:create', 'jobs:manage', 'workflows:write'];

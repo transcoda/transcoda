@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { PLUGIN_NAME_PATTERN, PluginNetworkSchema } from '@transcoda/shared';
 import semver from 'semver';
 import { z } from 'zod';
-import type { Logger } from '../logger.ts';
+import type { Logger } from '../platform/logger.ts';
 import { httpFetch } from './http-get.ts';
 import { type SigningKey, verifySignature } from './signature.ts';
 import { fetchSigned, SignatureError } from './signed-fetch.ts';

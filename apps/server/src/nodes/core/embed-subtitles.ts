@@ -2,7 +2,7 @@ import type { ExtraInput, StreamPlan } from '@transcoda/sdk';
 import { defineNode } from '@transcoda/sdk';
 import { normalizeLanguage } from '@transcoda/shared';
 import { z } from 'zod';
-import { nodeFsOps } from '../../engine/fs-ops.ts';
+import { nodeFsOps } from '../../platform/fs-ops.ts';
 import { filePort, LanguageCodeSchema } from './common.ts';
 import { fsSidecarSource, readHead, SIDECAR_EXTENSIONS, type SidecarSource } from './sidecars.ts';
 import { copyModel, matchesLanguage } from './stream-rules.ts';

@@ -21,9 +21,16 @@ import {
 } from '../db/repos/jobs.ts';
 import { findLibrary } from '../db/repos/libraries.ts';
 import { findRestore, insertRestore, markRestoreUndone } from '../db/repos/restores.ts';
-import type { Logger } from '../logger.ts';
+import {
+  ClobberRefused,
+  errorCode,
+  type FsOps,
+  renameNoClobber,
+  syncDirs,
+  why,
+} from '../platform/fs-ops.ts';
+import type { Logger } from '../platform/logger.ts';
 import { fingerprintKey } from './fingerprint.ts';
-import { ClobberRefused, errorCode, type FsOps, renameNoClobber, syncDirs, why } from './fs-ops.ts';
 import { fingerprintFromStats, recyclePathFor } from './replace.ts';
 
 export interface RestoreDeps {

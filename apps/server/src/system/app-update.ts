@@ -6,7 +6,7 @@ import { ReleaseNotesSchema } from '@transcoda/contract';
 import semver from 'semver';
 import { z } from 'zod';
 import type { EngineEvents } from '../engine/events.ts';
-import type { Logger } from '../logger.ts';
+import type { Logger } from '../platform/logger.ts';
 import { readLimited } from '../plugins/token-hosts.ts';
 
 const REPO = 'transcoda/transcoda';

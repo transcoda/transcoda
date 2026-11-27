@@ -1,13 +1,13 @@
 import { type Capabilities, type Gpu, SettingsUpdateInputSchema } from '@transcoda/contract';
 import { DEFAULT_LIMITS, emptyGraph, type WorkflowGraph } from '@transcoda/shared';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { type Config, loadConfig } from '../config.ts';
 import type { Database } from '../db/open.ts';
 import { insertRecycled } from '../db/repos/jobs.ts';
 import { setSetting } from '../db/repos/settings.ts';
 import { appendVersion, insertWorkflow, setActiveVersion } from '../db/repos/workflows.ts';
 import { createTestDb } from '../db/test-db.ts';
-import type { Logger } from '../logger.ts';
+import { type Config, loadConfig } from '../platform/config.ts';
+import type { Logger } from '../platform/logger.ts';
 import { readAppearance, readSettings, type SettingsDeps, updateSettings } from './service.ts';
 
 const NOW = new Date('2026-10-19T10:00:00.000Z');

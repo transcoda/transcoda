@@ -12,7 +12,7 @@ import {
   type SupervisorLimits,
 } from '@transcoda/shared';
 import semver from 'semver';
-import { type PluginIsolation, parseIsolation } from '../config.ts';
+import { type PluginIsolation, parseIsolation } from '../platform/config.ts';
 import { processIdentity } from './isolation.ts';
 import {
   defaultRssOf,

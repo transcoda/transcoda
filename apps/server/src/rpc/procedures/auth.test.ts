@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
+import { createTestApp, type TestApp } from '../../app/test-app.ts';
 import { SESSION_COOKIE } from '../../auth/cookies.ts';
 import { getSetting, setSetting } from '../../db/repos/settings.ts';
 import { countUsers } from '../../db/repos/users.ts';
-import { createTestApp, type TestApp } from '../../test-app.ts';
 
 const HOST = 'localhost:8080';
 const ORIGIN = 'http://localhost:8080';

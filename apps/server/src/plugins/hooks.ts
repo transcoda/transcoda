@@ -3,7 +3,7 @@
 // change to the job.
 import type { HookJob } from '@transcoda/sdk';
 import type { JobRow } from '../db/repos/jobs.ts';
-import type { Logger } from '../logger.ts';
+import type { Logger } from '../platform/logger.ts';
 
 export type HookName = 'onJobDone' | 'onJobFailed' | 'afterReplace';
 

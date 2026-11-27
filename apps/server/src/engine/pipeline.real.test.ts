@@ -6,11 +6,11 @@ import { join, relative } from 'node:path';
 import { promisify } from 'node:util';
 import type { JobState } from '@transcoda/shared';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import { createTestApp, type TestApp } from '../app/test-app.ts';
 import { findJob, findJobResult, type JobRow } from '../db/repos/jobs.ts';
-import { createTestApp, type TestApp } from '../test-app.ts';
+import { type FsOps, nodeFsOps } from '../platform/fs-ops.ts';
 import { chain, node } from '../workflows/test-helpers.ts';
 import { fixturesAvailable, realCapabilities, tempDir, toolPaths } from './fixtures.ts';
-import { type FsOps, nodeFsOps } from './fs-ops.ts';
 import { defaultRecycleFolder } from './recycle.ts';
 
 const execFileAsync = promisify(execFile);

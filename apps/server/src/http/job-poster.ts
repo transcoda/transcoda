@@ -1,10 +1,10 @@
 import fs from 'node:fs';
 import { Readable } from 'node:stream';
 import type { Context } from 'hono';
+import { requestHost } from '../auth/request-info.ts';
 import type { AppDeps } from '../rpc/context.ts';
 import { sameOriginOk } from '../rpc/middleware.ts';
 import type { ResolvedAuth } from './auth-context.ts';
-import { requestHost } from './request-info.ts';
 import { closeHandleQuietly, type OpenedHandle, openRegularFile } from './test-output.ts';
 
 /** Route of a job's poster thumbnail, under /api/v1 (outside the oRPC contract: it returns bytes). */

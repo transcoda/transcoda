@@ -11,6 +11,7 @@ import {
 } from '@transcoda/contract';
 import { DEFAULT_LIMITS } from '@transcoda/shared';
 import { type ZodType, z } from 'zod';
+import { ALWAYS_ALLOWED_HOSTS } from '../auth/host-check.ts';
 import {
   devicePlan,
   encodeSlots,
@@ -18,7 +19,6 @@ import {
   parseEncodeDevice,
   usableGpus,
 } from '../capabilities/devices.ts';
-import type { Config } from '../config.ts';
 import type { Database } from '../db/open.ts';
 import { recycledTotals } from '../db/repos/jobs.ts';
 import {
@@ -30,8 +30,8 @@ import {
   setSetting,
 } from '../db/repos/settings.ts';
 import { listCurrentVersions } from '../db/repos/workflows.ts';
-import { ALWAYS_ALLOWED_HOSTS } from '../http/host-check.ts';
-import type { Logger } from '../logger.ts';
+import type { Config } from '../platform/config.ts';
+import type { Logger } from '../platform/logger.ts';
 import { LIMIT_BOUNDS } from '../plugins/limits.ts';
 
 /**

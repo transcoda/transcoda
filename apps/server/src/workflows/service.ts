@@ -29,7 +29,6 @@ import {
   WorkflowGraphSchema,
   type WorkflowKind,
 } from '@transcoda/shared';
-import type { Config } from '../config.ts';
 import type { Database } from '../db/open.ts';
 import { findLibrary, listLibraries } from '../db/repos/libraries.ts';
 import {
@@ -50,9 +49,10 @@ import {
   VersionConflictError,
   type WorkflowRow,
 } from '../db/repos/workflows.ts';
-import type { Logger } from '../logger.ts';
 import { nodeAvailability } from '../nodes/availability.ts';
 import type { NodeRegistry } from '../nodes/registry.ts';
+import type { Config } from '../platform/config.ts';
+import type { Logger } from '../platform/logger.ts';
 import { applyOverrides, dropStaleOverrides, subworkflowSettings } from './subworkflow-settings.ts';
 import { applyPluginUpgrades, comparePinChange, planNodeUpgrades } from './upgrade.ts';
 import {

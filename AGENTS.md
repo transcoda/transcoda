@@ -11,7 +11,7 @@ Where a new file or folder goes, the layer order and the naming rules: [docs/dev
 Dependencies point one way: `packages/shared` ← `packages/sdk` ← `packages/contract` ← `apps/server` and `apps/web`. `pnpm check-deps` enforces this and refuses relative imports across packages.
 
 - **`packages/`**: `shared` (types and pure helpers both sides use), `sdk` (the published plugin and node SDK, `defineNode`), `contract` (every API procedure's route, input, output and errors, oRPC).
-- **`apps/server/src`**: `rpc/` (procedures, guards), `http/` (plain routes), `auth/`; `db/` (SQLite, migrations, repos, backups), `settings/`, `config.ts` (environment variables); `engine/` (probe, build model, ffmpeg, verify, replace, queue, the pipeline), `capabilities/` (ffmpeg and GPU probes), `nodes/` (core nodes, registry), `workflows/` (validation, versions, activation); `plugins/` and `plugin-host/` (sandboxed plugin processes), `mcp/`, `metrics/`.
+- **`apps/server/src`**: `app/` (the composition root: app, bootstrap, deps wiring), `platform/` (logger, `config.ts` with the environment variables, process guards, disk and child-process helpers); `rpc/` (procedures, guards), `http/` (plain routes), `auth/` (sessions, tokens, host check, proxies); `db/` (SQLite, migrations, repos, backups), `settings/`, `system/` (health, app update, folder browsing); `engine/` (probe, build model, ffmpeg, verify, replace, queue, the pipeline), `capabilities/` (ffmpeg and GPU probes), `nodes/` (core nodes, registry), `workflows/` (validation, versions, activation); `plugins/` and `plugin-host/` (sandboxed plugin processes), `mcp/`, `metrics/`.
 - **`apps/web/src`**: `App.tsx` (routes), `pages/`, `jobs/` (job page wording), `editor/` (`model/` pure, `flow/` React Flow, `ui/`, `trace/`), `api/`, `hooks/`, `components/`, `lib/`, `styles/` (tokens, per-area stylesheets, design guard tests), `test/`.
 - **Elsewhere**: `e2e/` (Playwright flows, screenshot baselines), `docker/` (the image), `examples/` (shipped workflows, Grafana dashboard), `scripts/` (repo checks, fixtures, release tooling).
 
@@ -88,8 +88,8 @@ A code comment cites the topic doc, or a log entry by file and heading.
 - Docs: the "Settings in the database" table in `docs/env.md`, with the default. `apps/server/src/settings/settings-docs.test.ts` checks its keys and defaults against `SETTING_KEYS` and `SETTING_DEFAULTS`.
 
 **Add an environment variable**
-- Parse it only in `loadConfig()` in `apps/server/src/config.ts`, tested in `config.test.ts`.
-- Document it in a table row in `docs/env.md`. `apps/server/src/config-docs.test.ts` fails when a variable `config.ts` reads has no row, or a row names one nothing reads.
+- Parse it only in `loadConfig()` in `apps/server/src/platform/config.ts`, tested in `config.test.ts`.
+- Document it in a table row in `docs/env.md`. `apps/server/src/platform/config-docs.test.ts` fails when a variable `config.ts` reads has no row, or a row names one nothing reads.
 - If Settings shows it read-only, see `apps/server/src/settings/service.ts` and `apps/web/src/pages/settings/source-text.ts`.
 
 **Add a metric**
@@ -99,7 +99,7 @@ A code comment cites the topic doc, or a log entry by file and heading.
 
 ## Test helpers
 
-Use these rather than re-declaring them ([more](docs/dev/testing.md#helpers-to-use)): `createTestApp` (`apps/server/src/test-app.ts`); `send`, `login`, `withCsrf`, `createToken` (`apps/server/src/test-http.ts`); `createTestDb` (`apps/server/src/db/test-db.ts`); `node`, `edge`, `mainGraph`, `testRegistry` (`apps/server/src/workflows/test-helpers.ts`); `probeOf`, `fileOf`, `capsOf` (`apps/server/src/engine/test-helpers.ts`); `fixturesAvailable` (`apps/server/src/engine/fixtures.ts`); `renderAt` (`apps/web/src/test/render.tsx`).
+Use these rather than re-declaring them ([more](docs/dev/testing.md#helpers-to-use)): `createTestApp` (`apps/server/src/app/test-app.ts`); `send`, `login`, `withCsrf`, `createToken` (`apps/server/src/app/test-http.ts`); `createTestDb` (`apps/server/src/db/test-db.ts`); `node`, `edge`, `mainGraph`, `testRegistry` (`apps/server/src/workflows/test-helpers.ts`); `probeOf`, `fileOf`, `capsOf` (`apps/server/src/engine/test-helpers.ts`); `fixturesAvailable` (`apps/server/src/engine/fixtures.ts`); `renderAt` (`apps/web/src/test/render.tsx`).
 
 ## UI changes
 

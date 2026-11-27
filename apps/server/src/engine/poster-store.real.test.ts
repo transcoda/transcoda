@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { PassThrough } from 'node:stream';
 import { promisify } from 'node:util';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import type { Logger } from '../logger.ts';
+import type { Logger } from '../platform/logger.ts';
 import { tempDir, toolPaths } from './fixtures.ts';
 import { PosterStore, runThumb } from './poster-store.ts';
 

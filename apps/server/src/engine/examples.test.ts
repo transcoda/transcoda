@@ -12,9 +12,10 @@ import {
   WorkflowGraphSchema,
 } from '@transcoda/shared';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { createTestApp, type TestApp } from '../app/test-app.ts';
 import { type JobResultRow, listRecycled } from '../db/repos/jobs.ts';
-import type { Logger } from '../logger.ts';
-import { createTestApp, type TestApp } from '../test-app.ts';
+import { nodeFsOps } from '../platform/fs-ops.ts';
+import type { Logger } from '../platform/logger.ts';
 import {
   copyFixture,
   type FixtureName,
@@ -24,7 +25,6 @@ import {
   tempDir,
   toolPaths,
 } from './fixtures.ts';
-import { nodeFsOps } from './fs-ops.ts';
 import { probeFile } from './probe.ts';
 import { nodeSpawner } from './process.ts';
 import type { RunDetail } from './queue-service.ts';

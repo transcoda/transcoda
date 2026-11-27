@@ -1,9 +1,9 @@
 import type { Context } from 'hono';
+import { requestHost } from '../auth/request-info.ts';
 import { findJob } from '../db/repos/jobs.ts';
 import type { AppDeps } from '../rpc/context.ts';
 import { sameOriginOk } from '../rpc/middleware.ts';
 import type { ResolvedAuth } from './auth-context.ts';
-import { requestHost } from './request-info.ts';
 import { fileResponse, jobDownloadName, openRegularFile } from './test-output.ts';
 
 /**
