@@ -1,7 +1,7 @@
 import { NodeToolbar, Position } from '@xyflow/react';
 import type { KeyboardEvent } from 'react';
 import { Icon } from '../../components/Icon.tsx';
-import { type FlowState, useFlowState } from './useFlowState.ts';
+import { type FlowState, useFlowState } from './use-flow-state.ts';
 
 /** The toolbar's drawn size (Try this node + three icon buttons; 34 px tall + padding) and gaps. */
 const BAR_WIDTH = 300;

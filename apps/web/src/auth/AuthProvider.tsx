@@ -3,7 +3,7 @@ import { createContext, type ReactNode, useCallback, useEffect, useMemo, useStat
 import { api } from '../api/client.ts';
 import { setCsrfToken } from '../api/csrf.ts';
 import { blockedHost as blockedHostOf, onHostNotAllowed } from '../api/host-guard.ts';
-import { setServerTitle } from '../lib/pageTitle.ts';
+import { setServerTitle } from '../lib/page-title.ts';
 import { applyTheme, cachedTheme } from '../lib/theme.ts';
 
 export type AuthStatus = 'loading' | 'setup' | 'anonymous' | 'authenticated' | 'host-not-allowed';

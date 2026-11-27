@@ -8,7 +8,7 @@ import type {
   WorkflowKind,
 } from '@transcoda/shared';
 import type { Edge, Node } from '@xyflow/react';
-import type { PortType } from '../../hooks/useCatalog.ts';
+import type { PortType } from '../../hooks/use-catalog.ts';
 import type { GroupProblem } from '../model/group-state.ts';
 import type { NodeState } from '../model/issues.ts';
 

@@ -1,6 +1,6 @@
 import type { Settings, Theme } from '@transcoda/contract';
 import { useEffect, useId, useRef } from 'react';
-import { useAuth } from '../../auth/useAuth.ts';
+import { useAuth } from '../../auth/use-auth.ts';
 import { applyTheme } from '../../lib/theme.ts';
 import {
   type Draft,
@@ -17,7 +17,7 @@ import {
   SettingRow,
   shownSource,
 } from './SettingRow.tsx';
-import { sourceText } from './sourceText.ts';
+import { sourceText } from './source-text.ts';
 
 interface GeneralDraft extends Draft {
   serverName: string | null;

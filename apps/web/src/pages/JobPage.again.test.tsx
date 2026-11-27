@@ -22,9 +22,9 @@ vi.mock('../api/client.ts', async () => {
 });
 
 import { Route, Switch } from 'wouter';
-import { resetCatalogCache } from '../hooks/useCatalog.ts';
-import { EventsProvider } from '../hooks/useEvents.ts';
-import { fakeEventSource } from '../test/fakeEventStream.ts';
+import { resetCatalogCache } from '../hooks/use-catalog.ts';
+import { EventsProvider } from '../hooks/use-events.ts';
+import { fakeEventSource } from '../test/fake-event-stream.ts';
 import { nodesFixture } from '../test/fixtures/catalog.ts';
 import {
   COMMAND,

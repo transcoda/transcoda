@@ -15,7 +15,7 @@ Dependencies point one way: `packages/shared` ← `packages/sdk` ← `packages/c
 
 ## What done means
 
-- `pnpm check` passes (typecheck, Biome, dependency and licence checks, all tests).
+- `pnpm check` passes (typecheck, Biome with warnings as errors, knip, dependency and licence checks, all tests).
 - **Release note:** a note in `.changes/` ([format](.changes/README.md)). Use the `no user-facing change` label instead when users will not notice the change.
 - **Tests** are in the right tier ([testing.md](docs/dev/testing.md)), and a bug fix comes with a test that failed before the fix.
   - Run `pnpm fixtures` once per checkout. Without it, the real-ffmpeg tests skip silently.
@@ -82,13 +82,13 @@ A code comment cites the topic doc, or a log entry by file and heading.
 **Add a setting** (stored in the database, edited in Settings)
 - Contract: `SettingsSchema` and `SettingsUpdateInputSchema` in `packages/contract/src/schemas/settings.ts`.
 - Server: `SETTING_KEYS` and `SETTING_DEFAULTS` in `apps/server/src/db/repos/settings.ts`, and `apps/server/src/settings/service.ts` with `service.test.ts`.
-- Web: the section in `apps/web/src/pages/settings/`, and `settingsFixture.ts`.
+- Web: the section in `apps/web/src/pages/settings/`, and `settings-fixture.ts`.
 - Docs: the "Settings in the database" table in `docs/env.md`, with the default. `apps/server/src/settings/settings-docs.test.ts` checks its keys and defaults against `SETTING_KEYS` and `SETTING_DEFAULTS`.
 
 **Add an environment variable**
 - Parse it only in `loadConfig()` in `apps/server/src/config.ts`, tested in `config.test.ts`.
 - Document it in a table row in `docs/env.md`. `apps/server/src/config-docs.test.ts` fails when a variable `config.ts` reads has no row, or a row names one nothing reads.
-- If Settings shows it read-only, see `apps/server/src/settings/service.ts` and `apps/web/src/pages/settings/sourceText.ts`.
+- If Settings shows it read-only, see `apps/server/src/settings/service.ts` and `apps/web/src/pages/settings/source-text.ts`.
 
 **Add a metric**
 - Define it in `METRICS` in `apps/server/src/metrics/catalog.ts`.

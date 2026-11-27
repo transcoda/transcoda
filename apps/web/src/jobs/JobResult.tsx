@@ -3,7 +3,7 @@ import { type ReactNode, useId } from 'react';
 import { Icon, type IconName } from '../components/Icon.tsx';
 import { fmtBytes, fmtPercent } from '../lib/bytes.ts';
 import { VERDICT_ICON } from './JobStateChip.tsx';
-import { failureCause, RESULT_TONE } from './jobOutcome.ts';
+import { failureCause, RESULT_TONE } from './job-outcome.ts';
 import {
   dependsWord,
   reasonOf,
@@ -12,7 +12,7 @@ import {
   testEncodeOutcome,
   type Verdict,
   verdictOf,
-} from './jobText.ts';
+} from './job-text.ts';
 
 /** The icon in the card's tinted circle: an outcome that changed nothing is a plain minus. */
 const RESULT_ICON: Record<Verdict, IconName> = {

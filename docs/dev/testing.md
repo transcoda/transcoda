@@ -23,7 +23,7 @@ Use these instead of writing your own:
 - **Workflow graphs and registries:** `apps/server/src/workflows/test-helpers.ts`: `node`, `edge`, `mainGraph`, `subGraph`, `chain`, `testRegistry`, `withSetting` and the test node definitions. Don't re-declare graph builders in a test file.
 - **Engine inputs:** `apps/server/src/engine/test-helpers.ts`: `probeOf`, `fileOf`, `capsOf`, `withStream`, `withSidecar`, `packetRows`.
 - **MCP:** `apps/server/src/mcp/test-client.ts`.
-- **Web:** `renderAt` (`apps/web/src/test/render.tsx`) renders inside a router on an in-memory location, with the toast provider; `renderFlow` (`apps/web/src/test/flow.tsx`) renders a bare React Flow for canvas tests; `apps/web/src/test/fakeEventStream.ts` for the live event stream. The node catalogue fixture is `apps/web/src/test/fixtures/nodes.json` (see "Fixtures that are checked" below).
+- **Web:** `renderAt` (`apps/web/src/test/render.tsx`) renders inside a router on an in-memory location, with the toast provider; `renderFlow` (`apps/web/src/test/flow.tsx`) renders a bare React Flow for canvas tests; `apps/web/src/test/fake-event-stream.ts` for the live event stream. The node catalogue fixture is `apps/web/src/test/fixtures/nodes.json` (see "Fixtures that are checked" below).
 
 ## Real-ffmpeg fixtures
 

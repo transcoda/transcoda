@@ -1,4 +1,4 @@
-import type { LibraryChoice } from '../../../hooks/useLibraries.ts';
+import type { LibraryChoice } from '../../../hooks/use-libraries.ts';
 
 export const MISSING_LIBRARY = 'Missing library';
 

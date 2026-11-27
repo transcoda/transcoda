@@ -2,8 +2,8 @@ import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/re
 import type { JobDetail, WorkflowDetail } from '@transcoda/contract';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Route } from 'wouter';
-import { resetCatalogCache } from '../hooks/useCatalog.ts';
-import * as example from '../test/fixtures/beforeAfter.ts';
+import { resetCatalogCache } from '../hooks/use-catalog.ts';
+import * as example from '../test/fixtures/before-after.ts';
 import { nodesFixture } from '../test/fixtures/catalog.ts';
 import { chainMainReplace } from '../test/fixtures/graphs.ts';
 import { mapleLanePlan, mapleLaneProbe, mapleLaneResult } from '../test/fixtures/plan.ts';

@@ -5,7 +5,7 @@ import { Disclosure } from '../../components/Disclosure.tsx';
 import { Icon } from '../../components/Icon.tsx';
 import { useToast } from '../../components/Toast.tsx';
 import { QUEUE_PAUSED_TEXT } from '../../jobs/QueueBar.tsx';
-import { useQueue } from '../../jobs/useQueue.ts';
+import { useQueue } from '../../jobs/use-queue.ts';
 import { fmtBytes } from '../../lib/bytes.ts';
 import {
   type Draft,
@@ -24,7 +24,7 @@ import {
   SettingsGroup,
   shownSource,
 } from './SettingRow.tsx';
-import { useSettings } from './useSettings.ts';
+import { useSettings } from './use-settings.ts';
 
 const hours = (n: number) => `${n} ${n === 1 ? 'hour' : 'hours'}`;
 
