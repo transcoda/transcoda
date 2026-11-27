@@ -21,10 +21,10 @@ vi.mock('../api/client.ts', () => ({
   },
 }));
 
-import { EventsProvider } from '../hooks/useEvents.ts';
-import { REFETCH_COALESCE_MS } from '../hooks/useRefetchOn.ts';
+import { EventsProvider } from '../hooks/use-events.ts';
+import { REFETCH_COALESCE_MS } from '../hooks/use-refetch-on.ts';
 import { fmtDate, fmtStamp } from '../lib/time.ts';
-import { fakeEventSource, jobChanged, queueSnapshot } from '../test/fakeEventStream.ts';
+import { fakeEventSource, jobChanged, queueSnapshot } from '../test/fake-event-stream.ts';
 import { renderAt } from '../test/render.tsx';
 import { RunPage } from './RunPage.tsx';
 

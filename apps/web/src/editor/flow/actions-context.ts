@@ -1,6 +1,6 @@
 import type { JsonValue } from '@transcoda/shared';
 import { createContext, useContext } from 'react';
-import type { PortSpec } from '../../hooks/useCatalog.ts';
+import type { PortSpec } from '../../hooks/use-catalog.ts';
 
 /** What the canvas components may ask the editor page to do (provided by the page, Task 10). */
 export interface EditorActions {

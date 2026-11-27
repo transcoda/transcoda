@@ -1,6 +1,6 @@
 import type { Issue, WorkflowGraph } from '@transcoda/shared';
 import { Icon } from '../../components/Icon.tsx';
-import type { Catalog } from '../../hooks/useCatalog.ts';
+import type { Catalog } from '../../hooks/use-catalog.ts';
 import { countIssues } from '../model/issues.ts';
 import { fieldsFor } from '../model/schema-fields.ts';
 

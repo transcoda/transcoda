@@ -12,7 +12,7 @@ import { type CSSProperties, useCallback, useMemo } from 'react';
 import { KIND_WORD } from '../../components/Chips.tsx';
 import { Icon } from '../../components/Icon.tsx';
 import { NodeIcon } from '../../components/NodeIcon.tsx';
-import type { PortSpec } from '../../hooks/useCatalog.ts';
+import type { PortSpec } from '../../hooks/use-catalog.ts';
 import { DEFAULT_GROUP_NAME } from '../model/graph-ops.ts';
 import type { NodeState } from '../model/issues.ts';
 import { onNodeControlKeys } from '../model/schema-fields.ts';
@@ -21,7 +21,7 @@ import { OnNodeRow } from '../ui/OnNodeRow.tsx';
 import { OnNodeSubworkflow, runSummary } from '../ui/OnNodeSubworkflow.tsx';
 import { useEditorActions } from './actions-context.ts';
 import { BADGE_ICON } from './badges.ts';
-import { connectionFit, type Fit, type HandleRef, nodeFaded } from './connectionFit.ts';
+import { connectionFit, type Fit, type HandleRef, nodeFaded } from './connection-fit.ts';
 import { useSubworkflowList } from './subworkflows-context.ts';
 import {
   branchClass,
@@ -32,10 +32,10 @@ import {
   TcHandle,
 } from './TcHandle.tsx';
 import { TcSelectionToolbar, TcToolbar } from './TcToolbar.tsx';
-import { VALUE_LINK_HANDLE } from './toFlow.ts';
+import { VALUE_LINK_HANDLE } from './to-flow.ts';
 import type { TcNode as TcNodeType, TraceNodeData } from './types.ts';
-import { type FlowState, useFlowState } from './useFlowState.ts';
-import { useIconScale, useZoomLevel } from './useZoomLevel.ts';
+import { type FlowState, useFlowState } from './use-flow-state.ts';
+import { useIconScale, useZoomLevel } from './use-zoom-level.ts';
 
 /** The card's colour class: its kind, Start/End as trigger/finish, `kind-unknown` without a def. */
 export function kindClassOf(def: NodeInfo | null): string {

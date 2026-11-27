@@ -1,6 +1,6 @@
 import type { ProbeStream, ProbeSummary, TraceChanges, WorkflowGraph } from '@transcoda/shared';
 import { describe, expect, it } from 'vitest';
-import type { Decision } from '../editor/trace/traceOverlay.ts';
+import type { Decision } from '../editor/trace/trace-overlay.ts';
 import {
   badgeWord,
   damagedSideOf,

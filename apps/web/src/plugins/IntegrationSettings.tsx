@@ -19,7 +19,7 @@ import { Field } from '../editor/ui/fields/Field.tsx';
 import { SettingField } from '../editor/ui/fields/SettingField.tsx';
 import { isNotRunning, pluginFailure, settingsIssuesOf } from './errors.ts';
 import { PathMappingsField } from './PathMappingsField.tsx';
-import { testSentence } from './pluginText.ts';
+import { testSentence } from './plugin-text.ts';
 
 type Values = Record<string, JsonValue | undefined>;
 

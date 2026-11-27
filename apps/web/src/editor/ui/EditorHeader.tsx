@@ -11,7 +11,7 @@ import {
 } from 'react';
 import { Dialog } from '../../components/Dialog.tsx';
 import { Icon } from '../../components/Icon.tsx';
-import { tryLabel } from '../../jobs/useTryOnFile.ts';
+import { tryLabel } from '../../jobs/use-try-on-file.ts';
 import { GuardedLink } from '../../lib/navigation.tsx';
 import { fmtAgoLong } from '../../lib/time.ts';
 import { hasActivation } from './ActivationControl.tsx';

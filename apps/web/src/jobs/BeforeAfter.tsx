@@ -1,6 +1,6 @@
 import { useId } from 'react';
 import { Icon } from '../components/Icon.tsx';
-import { type AfterSource, type BeforeAfterJob, compareJob, type Side } from './compareJob.ts';
+import { type AfterSource, type BeforeAfterJob, compareJob, type Side } from './compare-job.ts';
 
 const AFTER_HEADER: Record<AfterSource, string> = {
   measured: 'After',

@@ -1,6 +1,6 @@
 import { useId } from 'react';
 import { Link, useLocation } from 'wouter';
-import { useOverrideTitle } from '../lib/pageTitle.ts';
+import { useOverrideTitle } from '../lib/page-title.ts';
 
 /**
  * The one "not found" state: a page, workflow, job or run that does not exist (or no longer

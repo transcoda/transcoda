@@ -5,7 +5,7 @@ import type { NodeInstance, WorkflowGraph } from '@transcoda/shared';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AuthContext, type AuthValue } from '../../auth/AuthProvider.tsx';
 import { ToastProvider } from '../../components/Toast.tsx';
-import { resetCatalogCache } from '../../hooks/useCatalog.ts';
+import { resetCatalogCache } from '../../hooks/use-catalog.ts';
 import { nodesFixture } from '../../test/fixtures/catalog.ts';
 import { renderAt } from '../../test/render.tsx';
 

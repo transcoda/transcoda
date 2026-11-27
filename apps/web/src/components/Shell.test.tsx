@@ -27,15 +27,15 @@ vi.mock('../api/client.ts', () => ({
     },
   },
 }));
-vi.mock('../auth/useAuth.ts', () => ({
+vi.mock('../auth/use-auth.ts', () => ({
   useAuth: () => ({ user: { username: 'admin' }, logout, appearance: appearance.current }),
 }));
 
-import { resetAppUpdate } from '../hooks/useAppUpdate.ts';
-import { EventsProvider } from '../hooks/useEvents.ts';
+import { resetAppUpdate } from '../hooks/use-app-update.ts';
+import { EventsProvider } from '../hooks/use-events.ts';
 import { setBeforeNavigate } from '../lib/navigation.tsx';
-import { resetPluginsNav } from '../plugins/usePluginsNav.ts';
-import { fakeEventSource } from '../test/fakeEventStream.ts';
+import { resetPluginsNav } from '../plugins/use-plugins-nav.ts';
+import { fakeEventSource } from '../test/fake-event-stream.ts';
 import { counts, fx } from '../test/fixtures/jobs.ts';
 import { plugin } from '../test/fixtures/plugins.ts';
 import { renderAt } from '../test/render.tsx';

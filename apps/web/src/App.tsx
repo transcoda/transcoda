@@ -1,10 +1,10 @@
 import type { ReactNode } from 'react';
 import { Redirect, Route, Switch } from 'wouter';
-import { useAuth } from './auth/useAuth.ts';
+import { useAuth } from './auth/use-auth.ts';
 import { Loading } from './components/Loading.tsx';
 import { NotFound } from './components/NotFound.tsx';
 import { Shell } from './components/Shell.tsx';
-import { EventsProvider } from './hooks/useEvents.ts';
+import { EventsProvider } from './hooks/use-events.ts';
 import { EditorPage } from './pages/EditorPage.tsx';
 import { HostNotAllowedPage } from './pages/HostNotAllowedPage.tsx';
 import { JobPage } from './pages/JobPage.tsx';

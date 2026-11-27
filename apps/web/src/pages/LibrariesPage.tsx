@@ -14,10 +14,10 @@ import { RowMenu } from '../components/RowMenu.tsx';
 import { useToast } from '../components/Toast.tsx';
 import { ActivateDialog } from '../editor/ui/ActivateDialog.tsx';
 import { ActivationPill } from '../editor/ui/ActivationControl.tsx';
-import { useAsync } from '../hooks/useAsync.ts';
-import { usePageTitle } from '../lib/pageTitle.ts';
+import { useAsync } from '../hooks/use-async.ts';
+import { usePageTitle } from '../lib/page-title.ts';
 import { DEFAULT_RUN_HOURS, RunHoursCard, type ServerClock } from '../libraries/RunHoursCard.tsx';
-import { useScanNow } from '../libraries/useScanNow.tsx';
+import { useScanNow } from '../libraries/use-scan-now.tsx';
 
 type FieldErrors = Partial<Record<'name' | 'path' | 'recycle', string>>;
 

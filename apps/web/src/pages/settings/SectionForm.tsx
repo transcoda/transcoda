@@ -8,7 +8,7 @@ import { Icon } from '../../components/Icon.tsx';
 import { Loading } from '../../components/Loading.tsx';
 import { useToast } from '../../components/Toast.tsx';
 import { changedFields, sectionDirty } from './dirty.ts';
-import { useSettings } from './useSettings.ts';
+import { useSettings } from './use-settings.ts';
 
 /** A section's form values: text while typed, numbers and null as loaded. */
 export type Draft = Record<string, string | number | string[] | null>;

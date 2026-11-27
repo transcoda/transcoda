@@ -1,6 +1,6 @@
 import type { NodeInfo } from '@transcoda/contract';
 import { type Edge, type NodeInstance, portShown, type WorkflowGraph } from '@transcoda/shared';
-import type { Catalog, PortSpec } from '../../hooks/useCatalog.ts';
+import type { Catalog, PortSpec } from '../../hooks/use-catalog.ts';
 
 /**
  * The outputs a node shows for its settings: an output with `shownWhen` exists only while its

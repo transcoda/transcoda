@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { settingsFixture } from './settingsFixture.ts';
+import { settingsFixture } from './settings-fixture.ts';
 
 const mocks = vi.hoisted(() => ({ get: vi.fn(), update: vi.fn() }));
 vi.mock('../../api/client.ts', () => ({
