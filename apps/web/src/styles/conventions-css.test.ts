@@ -1,5 +1,4 @@
 // The shared conventions of the UI consistency pass, pinned in the stylesheet.
-import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { stylesCss } from './css-source.ts';
 
