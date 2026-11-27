@@ -29,4 +29,4 @@ Each plugin runs in its own sandboxed process: call timeout 30 s (decide, build,
 
 ## Dev mode
 
-`TRANSCODA_DEV_PLUGINS=/abs/a.js,/abs/b.js` loads bundles from arbitrary paths (still sandboxed, read grant for that file); `TRANSCODA_PLUGIN_INSPECT=1` adds `--allow-inspector --inspect` to the host. Both are refused when `NODE_ENV=production`.
+`TRANSCODA_DEV_PLUGINS=/abs/a.js,/abs/b.js` loads bundles from arbitrary paths: under Node's permission model with the usual limits (read grant for that file), but not isolated (they run as the server's user, never checksum- or signature-checked, never blocklisted); `TRANSCODA_PLUGIN_INSPECT=1` adds `--allow-inspector --inspect` to the host. Both are refused when `NODE_ENV=production`.
