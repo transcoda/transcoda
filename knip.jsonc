@@ -11,7 +11,7 @@
     },
     "apps/server": {
       // Bundled on their own (tsdown): the denial fixture plugin, and the dev scripts.
-      "entry": ["src/plugins/fixtures/*.ts", "scripts/*.ts"],
+      "entry": ["src/plugins/testing/fixtures/*.ts", "scripts/*.ts"],
       "project": ["src/**/*.ts", "scripts/**/*.ts"]
     },
     "apps/web": {

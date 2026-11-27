@@ -5,7 +5,7 @@ import {
   PROTOCOL_VERSION,
 } from '@transcoda/shared';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { type FakeChild, fakeFork, TEST_MANIFEST } from './fake-child.ts';
+import { type FakeChild, fakeFork, TEST_MANIFEST } from '../testing/fake-child.ts';
 import {
   classifyExit,
   describeExit,

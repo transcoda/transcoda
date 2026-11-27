@@ -8,8 +8,8 @@ import { ConfigError, loadConfig } from './platform/config.ts';
 import { createLogger } from './platform/logger.ts';
 import { installProcessGuards } from './platform/process-guards.ts';
 import { VERSION } from './platform/version.ts';
-import { runCheckPlugin } from './plugins/check-plugin.ts';
-import { IsolationError } from './plugins/isolation.ts';
+import { runCheckPlugin } from './plugins/runtime/check-plugin.ts';
+import { IsolationError } from './plugins/runtime/isolation.ts';
 
 const SHUTDOWN_TIMEOUT_MS = 10_000;
 

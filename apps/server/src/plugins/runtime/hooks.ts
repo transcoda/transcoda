@@ -2,8 +2,8 @@
 // declares the hook is told, in parallel and bounded. A failing hook is one log line, never a
 // change to the job.
 import type { HookJob } from '@transcoda/sdk';
-import type { JobRow } from '../db/repos/jobs.ts';
-import type { Logger } from '../platform/logger.ts';
+import type { JobRow } from '../../db/repos/jobs.ts';
+import type { Logger } from '../../platform/logger.ts';
 
 export type HookName = 'onJobDone' | 'onJobFailed' | 'afterReplace';
 

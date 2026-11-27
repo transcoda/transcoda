@@ -15,7 +15,7 @@ import { type Config, requireIsolationInProduction } from '../platform/config.ts
 import type { Logger } from '../platform/logger.ts';
 import { setDecodeMemoryLimit } from '../platform/memory-guard.ts';
 import { VERSION } from '../platform/version.ts';
-import { assertIsolationUsable } from '../plugins/isolation.ts';
+import { assertIsolationUsable } from '../plugins/runtime/isolation.ts';
 import type { AppDeps } from '../rpc/context.ts';
 import { getDummyHash } from '../rpc/procedures/auth.ts';
 import { createAppDeps } from './deps.ts';

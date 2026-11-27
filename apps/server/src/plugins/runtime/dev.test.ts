@@ -1,7 +1,7 @@
 import { realpathSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import { fixturePluginPath, hostPath } from '../testing/build.ts';
 import { devPluginRuntimes } from './dev.ts';
-import { fixturePluginPath, hostPath } from './testing/build.ts';
 
 const run = (paths: string[], installed: string[] = [], sdkVersion?: string) =>
   devPluginRuntimes(paths, hostPath(), { installed, sdkVersion });

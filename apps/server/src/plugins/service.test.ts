@@ -30,8 +30,7 @@ import type { PluginIsolation } from '../platform/config.ts';
 import { OFFICIAL_BLOCKLIST_URL } from '../platform/official-plugins.ts';
 import type { SigningKey } from '../platform/signing-keys.ts';
 import { chain, edge, mainGraph, node } from '../workflows/test-helpers.ts';
-import { checkPluginBundle } from './check-plugin.ts';
-import { BLOCKLIST_INERT_WARNING } from './official-keys.ts';
+import { checkPluginBundle } from './runtime/check-plugin.ts';
 import {
   type PluginServiceDeps,
   PluginServiceError,
@@ -40,6 +39,7 @@ import {
 } from './service.ts';
 import { type FixtureName, fixturePluginPath, hostPath } from './testing/build.ts';
 import { signText } from './testing/sign.ts';
+import { BLOCKLIST_INERT_WARNING } from './trust/official-keys.ts';
 
 const { readFileSync } = await import('node:fs');
 

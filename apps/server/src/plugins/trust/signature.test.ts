@@ -1,6 +1,6 @@
 import { generateKeyPairSync, sign } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
-import type { SigningKey } from '../platform/signing-keys.ts';
+import type { SigningKey } from '../../platform/signing-keys.ts';
 import { publicKeyFromHex, verifySignature } from './signature.ts';
 
 function makeKey(id: string) {

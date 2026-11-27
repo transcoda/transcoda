@@ -15,7 +15,7 @@ import type { RegisteredNode } from '../nodes/registry.ts';
 import { type Config, loadConfig } from '../platform/config.ts';
 import type { FsOps } from '../platform/fs-ops.ts';
 import { createLogger, type Logger } from '../platform/logger.ts';
-import type { PluginHooksRunner } from '../plugins/hooks.ts';
+import type { PluginHooksRunner } from '../plugins/runtime/hooks.ts';
 import type { PluginServiceDeps } from '../plugins/service.ts';
 import { hostPath } from '../plugins/testing/build.ts';
 import type { AppDeps } from '../rpc/context.ts';

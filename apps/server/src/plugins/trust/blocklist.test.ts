@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { SigningKey } from '../platform/signing-keys.ts';
+import type { SigningKey } from '../../platform/signing-keys.ts';
 import {
   BlocklistClient,
   type BlocklistClientDeps,

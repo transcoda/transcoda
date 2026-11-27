@@ -10,7 +10,7 @@ import { insertJobResult, type JobPatch, type JobRow, updateJob } from '../../db
 import { findWorkflow } from '../../db/repos/workflows.ts';
 import type { CheckSourceResult } from '../../nodes/core-tools.ts';
 import { errorCode } from '../../platform/fs-ops.ts';
-import { type HookName, hookJobOf } from '../../plugins/hooks.ts';
+import { type HookName, hookJobOf } from '../../plugins/runtime/hooks.ts';
 import type { EngineEvents } from '../events.ts';
 import { SETTLE_MINUTES } from '../files/paths.ts';
 import { contentHash } from '../media/content-hash.ts';

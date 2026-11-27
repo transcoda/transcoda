@@ -4,7 +4,7 @@ import type { AddressInfo } from 'node:net';
 import { createServer as createNetServer } from 'node:net';
 import { DEFAULT_LIMITS, type FetchInput } from '@transcoda/shared';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { secretToken } from '../plugin-host/redact.ts';
+import { secretToken } from '../../plugin-host/redact.ts';
 import { type AddressKind, classifyAddress } from './address-policy.ts';
 import { FetchProxy, type FetchProxyDeps, resolveAllowedOrigins } from './fetch-proxy.ts';
 

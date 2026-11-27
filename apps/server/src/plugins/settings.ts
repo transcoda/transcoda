@@ -29,8 +29,8 @@ import {
   sealSettings,
 } from './crypto.ts';
 import { PluginServiceError } from './errors.ts';
-import { resolveAllowedOrigins } from './fetch-proxy.ts';
-import type { PluginSupervisor } from './supervisor.ts';
+import { resolveAllowedOrigins } from './network/fetch-proxy.ts';
+import type { PluginSupervisor } from './runtime/supervisor.ts';
 
 type JsonObject = Record<string, JsonValue>;
 

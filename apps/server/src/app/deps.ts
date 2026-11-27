@@ -22,9 +22,9 @@ import { createCoreRegistry, NodeRegistry, type RegisteredNode } from '../nodes/
 import type { Config } from '../platform/config.ts';
 import { type FsOps, nodeFsOps } from '../platform/fs-ops.ts';
 import type { Logger } from '../platform/logger.ts';
-import { PluginHooksRunner } from '../plugins/hooks.ts';
-import { loadLimits } from '../plugins/limits.ts';
-import { PluginRestartGate } from '../plugins/restart-gate.ts';
+import { PluginHooksRunner } from '../plugins/runtime/hooks.ts';
+import { loadLimits } from '../plugins/runtime/limits.ts';
+import { PluginRestartGate } from '../plugins/runtime/restart-gate.ts';
 import { PluginService, type PluginServiceDeps } from '../plugins/service.ts';
 import type { AppDeps } from '../rpc/context.ts';
 import { AppUpdateChecker } from '../system/app-update.ts';

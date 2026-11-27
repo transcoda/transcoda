@@ -1,7 +1,7 @@
 import { DEFAULT_LIMITS } from '@transcoda/shared';
 import { describe, expect, it } from 'vitest';
-import { setSetting } from '../db/repos/settings.ts';
-import { createTestDb } from '../db/test-db.ts';
+import { setSetting } from '../../db/repos/settings.ts';
+import { createTestDb } from '../../db/test-db.ts';
 import { hostLimits, loadLimits } from './limits.ts';
 
 describe('loadLimits', () => {
