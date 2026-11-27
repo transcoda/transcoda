@@ -1,5 +1,6 @@
-// Dev mode (TRANSCODA_DEV_PLUGINS): bundles loaded from arbitrary absolute paths, still sandboxed.
-// Never persisted, never from a catalog, refused in production (config.ts).
+// Dev mode (TRANSCODA_DEV_PLUGINS): bundles loaded from arbitrary absolute paths, under Node's
+// permission model but not isolated (the server's user, no staging, no signature check). Never
+// persisted, never from a catalog, refused in production (config.ts).
 import { createHash } from 'node:crypto';
 import { readFile, realpath } from 'node:fs/promises';
 import type { SupervisorLimits } from '@transcoda/shared';
