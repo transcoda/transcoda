@@ -14,7 +14,7 @@ export const LIMIT_BOUNDS: Readonly<SupervisorLimits> = {
   hookTimeoutMs: HOUR_MS,
   startTimeoutMs: HOUR_MS,
   heapMb: 4096,
-  // A host past 2 GB RSS is a runaway, not a plugin that needs room (see docs/decisions.md 2026-10-21).
+  // A host past 2 GB RSS is a runaway, not a plugin that needs room (docs/dev/plugins-host.md, Limits).
   rssMb: 2048,
   backoffMinMs: HOUR_MS,
   backoffMaxMs: HOUR_MS,

@@ -1,4 +1,4 @@
-// Guard test for the migration conventions (docs/decisions.md, 2026-11-23): one file per
+// Guard test for the migration conventions (docs/dev/conventions.md): one file per
 // migration named NNNN_snake_case.ts, numbered 1..N without gaps, registered in index.ts in order
 // with a matching version and name, and each with its own NNNN_*.test.ts.
 import { readdirSync } from 'node:fs';

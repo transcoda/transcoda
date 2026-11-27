@@ -1,6 +1,8 @@
 # Integrations gate: subtitles, deep health, Bazarr and Seerr
 
-The manual run on a real server that closes the integrations work: the API facts the Bazarr and Seerr plugins were written against (from memory of those projects, not checked against a running server), a real subtitle job end to end, and the deep health check from a monitor. The plugins' tests use hand-written fictional fixtures, so this run is the first time either plugin talks to the real thing. User-facing docs: [`plugins.md`](plugins.md) (Bazarr, Seerr, "Subtitles from Bazarr into the file") and [`env.md`](env.md#monitoring) (deep health).
+> **Historical record.** This is the checklist for the manual run that closed the integrations work (Bazarr, Seerr, sidecar subtitles, deep health) in October 2026. The plugins have since moved on; their current docs are in [`docs/plugins.md`](../plugins.md). It is kept as a record and is not updated.
+
+The manual run on a real server that closes the integrations work: the API facts the Bazarr and Seerr plugins were written against (from memory of those projects, not checked against a running server), a real subtitle job end to end, and the deep health check from a monitor. The plugins' tests use hand-written fictional fixtures, so this run is the first time either plugin talks to the real thing. User-facing docs: [`plugins.md`](../plugins.md) (Bazarr, Seerr, "Subtitles from Bazarr into the file") and [`env.md`](../env.md#monitoring) (deep health).
 
 Fill in the **Outcome** column. A fact that turns out wrong is a finding: note what the server answered, and whether the coded fallback covered it.
 

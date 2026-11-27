@@ -406,7 +406,10 @@ export async function removeOrigCopy(
   }
 }
 
-/** Decides one journaled job from the disk (see the table in docs/decisions.md, Task 13). */
+/**
+ * Decides one journaled job from the disk (the table in docs/decisions/2026-10-m1-engine.md,
+ * "M1 engine Task 13: replace").
+ */
 async function settleJournal(
   db: Database,
   deps: SettleDeps,

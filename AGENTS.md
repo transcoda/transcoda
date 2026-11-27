@@ -1,13 +1,129 @@
 # Agent instructions
 
-For coding agents working in this repository. Everything in [CONTRIBUTING.md](CONTRIBUTING.md) applies; this file adds the rules that agents tend to skip.
+For coding agents working in this repository. Everything in [CONTRIBUTING.md](CONTRIBUTING.md) applies, and setup is there too. This file adds the rules agents tend to skip.
+
+Today's rules for each area are in [`docs/dev/`](docs/dev/): [testing](docs/dev/testing.md), [engine](docs/dev/engine.md), [server and API](docs/dev/server-api.md), [plugin host](docs/dev/plugins-host.md), [web UI](docs/dev/web-ui.md), [conventions](docs/dev/conventions.md), [CI and releases](docs/dev/ci-release.md). [`docs/decisions/`](docs/decisions/README.md) is the dated history behind them. Where it disagrees with `docs/dev/` or the code, the history is out of date.
+
+## Repo map
+
+Dependencies point one way: `packages/shared` ← `packages/sdk` ← `packages/contract` ← `apps/server` and `apps/web`. `pnpm check-deps` enforces this and refuses relative imports across packages.
+
+- **`packages/`**
+  - `shared`: types and pure helpers both sides use (engine vocabulary, formatting).
+  - `sdk`: the published plugin and node SDK (`defineNode`).
+  - `contract`: every API procedure's route, input, output and errors (oRPC).
+- **`apps/server/src`**
+  - API: `rpc/` (procedures, guards), `http/` (plain routes), `auth/`.
+  - Data: `db/` (SQLite, migrations, repos, backups), `settings/`, `config.ts` (environment variables).
+  - Encoding: `engine/` (probe, build model, ffmpeg, verify, replace, queue, the pipeline), `capabilities/` (ffmpeg and GPU probes), `nodes/` (core nodes, registry), `workflows/` (validation, versions, activation).
+  - Integrations: `plugins/` and `plugin-host/` (sandboxed plugin processes), `mcp/`, `metrics/`.
+- **`apps/web/src`**
+  - `App.tsx` (routes), `pages/`, `jobs/` (job page wording).
+  - `editor/`: `model/` is pure, `flow/` is React Flow, plus `ui/` and `trace/`.
+  - `api/`, `hooks/`, `components/`, `lib/`, `test/`.
+  - `styles/`: tokens, stylesheets, design guard tests.
+- **Elsewhere**
+  - `e2e/`: Playwright flows and screenshot baselines.
+  - `docker/`: the image.
+  - `examples/`: shipped workflows and the Grafana dashboard.
+  - `scripts/`: repo checks, fixtures, release tooling.
+
+## What done means
+
+- `pnpm check` passes (typecheck, Biome, dependency and licence checks, all tests).
+- **Release note:** a note in `.changes/` ([format](.changes/README.md)). Use the `no user-facing change` label instead when users will not notice the change.
+- **Tests** are in the right tier ([testing.md](docs/dev/testing.md)), and a bug fix comes with a test that failed before the fix.
+  - Run `pnpm fixtures` once per checkout. Without it, the real-ffmpeg tests skip silently.
+  - After engine changes, run `pnpm test:docker`.
+- **Docs:** update `README.md` and `docs/` for users, and the topic doc in `docs/dev/` when a rule changes.
+- **UI changes:** add the screenshots described under "UI changes".
+- **Pull request title:** `Area: what changed`, e.g. `Engine: drop hardware encoders that cannot run here`.
+  - Areas in use: Engine, Jobs, Libraries, Workflows, Editor, Plugins, Settings, Metrics, Design, UI, Docker, CI, Tests, Docs, Release, Dependencies.
+  - No `feat:` or `fix(x):`, and no full stop ([details](CONTRIBUTING.md#pr-titles)).
+- **Names:** fixtures, docs and screenshots use invented titles and names only. Never a real show, film, person, host or address.
+
+## New decisions
+
+A decision that changes how things work goes in two places:
+
+1. **The rule**, as it stands now, in its topic doc in `docs/dev/`.
+2. **The history:** a dated entry in the newest file of `docs/decisions/`, plus one index line in [its README](docs/decisions/README.md). `scripts/decisions-index.test.ts` checks both.
+
+A code comment cites the topic doc, or a log entry by file and heading.
+
+## Recipes
+
+**Add a core node**
+1. Define it with `defineNode` in `apps/server/src/nodes/core/<file>.ts`, with a test beside it. It needs:
+   - type `core:<kebab-name>` and a `kind`;
+   - an `icon` that `apps/web/src/components/NodeIcon.tsx` can draw;
+   - a settings schema and its hooks.
+2. Add it to `coreNodes` in `apps/server/src/nodes/core/index.ts` and to the list in `apps/server/src/nodes/core/core.test.ts`.
+3. Regenerate the web fixture. `apps/server/src/nodes/web-fixture.test.ts` fails until you do.
+   - Run `pnpm --filter @transcoda/server dump-nodes > apps/web/src/test/fixtures/nodes.json`.
+   - Re-add the hand-written `test:unavailable` entry (see `apps/web/src/test/fixtures/catalog.ts`).
+4. Give an action node its job-page sentence in `ACTIONS` in `apps/web/src/jobs/steps.ts`, tested in `steps.test.ts`. Condition and data nodes show the engine's reason.
+5. To change an existing node's settings, bump its `version` and add a step to its `migrations` (`NodeMigration` in `packages/sdk/src/node.ts`); saved workflows must keep working. Update `docs/plugins.md` or `examples/` if they show the node.
+
+**Add a migration**
+- Write `apps/server/src/db/migrations/NNNN_snake_case.ts` with the next number. Use frozen SQL and keep existing data.
+- Give it its own `NNNN_snake_case.test.ts`.
+- Register it, in order, in `apps/server/src/db/migrations/index.ts`.
+- `apps/server/src/db/migration-conventions.test.ts` checks all three. Never edit a shipped migration.
+
+**Add an RPC procedure**
+1. Contract:
+   - `packages/contract/src/routers/<area>.ts`: route, input, output, `.errors(...)`.
+   - Schemas go in `packages/contract/src/schemas/<area>.ts`; a new error code in `packages/contract/src/errors.ts`.
+   - Update `packages/contract/src/contract.test.ts`.
+2. Server:
+   - Implement it in `apps/server/src/rpc/procedures/<area>.ts` with a guard from `rpc/middleware.ts`, with a test beside it.
+   - Register it in `createRouter()` in `apps/server/src/rpc/router.ts`.
+   - REST (`/api/v1`) and OpenAPI come from the contract; nothing else to add.
+3. MCP, if agents should have it:
+   - Add it with `defineTool` in `apps/server/src/mcp/tools/<group>.ts`, with a test.
+   - Add it to `ALL_TOOLS` in `mcp/tools/index.ts` and to `EXPECTED_TOOLS` in `mcp/never.test.ts`.
+   - Update `docs/mcp.md` by hand; no test checks it.
+   - Activation and other human-only actions get no tool.
+4. Web: call it through `api` (`apps/web/src/api/client.ts`) from a hook.
+
+**Add a page**
+- A component in `apps/web/src/pages/` and its route in `apps/web/src/App.tsx`.
+- A nav item in `apps/web/src/components/Shell.tsx` if it needs one.
+- `usePageTitle` for the tab title, and the shared `Loading` and `NotFound` states.
+- Its styles in the stylesheet for that page.
+- A unit test with `renderAt`. Add a browser flow or screenshot only for a key page ([web-ui.md](docs/dev/web-ui.md)).
+
+**Add a setting** (stored in the database, edited in Settings)
+- Contract: `SettingsSchema` and `SettingsUpdateInputSchema` in `packages/contract/src/schemas/settings.ts`.
+- Server: `SETTING_KEYS` and `SETTING_DEFAULTS` in `apps/server/src/db/repos/settings.ts`, and `apps/server/src/settings/service.ts` with `service.test.ts`.
+- Web: the section in `apps/web/src/pages/settings/`, and `settingsFixture.ts`.
+- Docs: the "Settings in the database" table in `docs/env.md`.
+
+**Add an environment variable**
+- Parse it only in `loadConfig()` in `apps/server/src/config.ts`, tested in `config.test.ts`.
+- Document it in `docs/env.md`. No test compares the two, so check the table yourself.
+- If Settings shows it read-only, see `apps/server/src/settings/service.ts` and `apps/web/src/pages/settings/sourceText.ts`.
+
+**Add a metric**
+- Define it in `METRICS` in `apps/server/src/metrics/catalog.ts`.
+- Fill its value in `metrics/service.ts`, `metrics/recorder.ts` or `db/repos/metrics.ts`.
+- Add it to `docs/metrics.md` in catalogue order. `apps/server/src/metrics/sync.test.ts` checks the doc and `examples/grafana/transcoda-dashboard.json`.
+
+## Test helpers
+
+Use these rather than re-declaring them ([more](docs/dev/testing.md#helpers-to-use)):
+
+- `createTestApp` (`apps/server/src/test-app.ts`).
+- `send`, `login`, `withCsrf`, `createToken` (`apps/server/src/test-http.ts`).
+- `createTestDb` (`apps/server/src/db/test-db.ts`).
+- `node`, `edge`, `mainGraph`, `testRegistry` (`apps/server/src/workflows/test-helpers.ts`).
+- `probeOf`, `fileOf`, `capsOf` (`apps/server/src/engine/test-helpers.ts`).
+- `fixturesAvailable` (`apps/server/src/engine/fixtures.ts`).
+- `renderAt` (`apps/web/src/test/render.tsx`).
 
 ## UI changes
 
 - A UI fix or change counts as done only with **before and after screenshots** of the affected page, at the widths and in the themes it touches. Put both in the pull request.
 - Run the browser tests (`pnpm e2e:docker`) when a change touches a page or a flow they cover. When a page changes on purpose, update its screenshot baselines with `pnpm e2e:update`, look at every changed image, and commit them in the same pull request.
 - Follow [DESIGN.md](DESIGN.md) for colours, type, spacing and icons.
-
-## Tests
-
-Which tier a test belongs in: [docs/decisions.md](docs/decisions.md), "Test tiers". Run `pnpm check` before opening a pull request.

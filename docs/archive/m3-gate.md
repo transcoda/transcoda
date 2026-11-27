@@ -1,6 +1,8 @@
 # M3 phase-1 gate
 
-The manual run that closes phase 1 of M3 (plugins): the example plugin installed from a local catalog, run in a workflow, a plugin crash, the crash loop and the sandbox suite. Performed on 2026-10-17 on branch `m3-plugins` (core) with the plugins repo's `m3-plugins` branch. Rulings and the open findings are in [`decisions.md`](decisions.md) under "M3 plugins (phase 1)". The security hardening that followed (plugin user, signatures, blocklist) is under "M3 security hardening" there; this record is the state before it, so its 17 probes are 19 today.
+> **Historical record.** This is the manual run that closed phase 1 of M3 on 2026-10-17, before the security hardening. For today's plugin host rules see [`docs/dev/plugins-host.md`](../dev/plugins-host.md). It is kept as a record and is not updated.
+
+The manual run that closes phase 1 of M3 (plugins): the example plugin installed from a local catalog, run in a workflow, a plugin crash, the crash loop and the sandbox suite. Performed on 2026-10-17 on branch `m3-plugins` (core) with the plugins repo's `m3-plugins` branch. Rulings and the open findings are in [the decision log](../decisions/2026-10-m3-plugins.md) under "M3 plugins (phase 1)". The security hardening that followed (plugin user, signatures, blocklist) is under "M3 security hardening" there; this record is the state before it, so its 17 probes are 19 today.
 
 ## Setup
 
@@ -64,5 +66,5 @@ Not run: the GitHub jobs (`ci.yml`, `docker.yml`, plugins `ci.yml`, `release.yml
 
 ## Findings
 
-1. **Docker Desktop bind mounts do not enforce uid permissions.** With `./config:/config` as a host bind mount (virtiofs), the plugin user (65001) could `ls /config` although the entrypoint had set mode 750, so check 2 failed. With named volumes (ext4-like semantics, as on the CI runner) the same check passes: `Permission denied` for `/config`, `/config/secret.key` and `/transcode`. Local macOS runs of check 2 need named volumes; CT 111 (Linux bind mounts) is unaffected.
+1. **Docker Desktop bind mounts do not enforce uid permissions.** With `./config:/config` as a host bind mount (virtiofs), the plugin user (65001) could `ls /config` although the entrypoint had set mode 750, so check 2 failed. With named volumes (ext4-like semantics, as on the CI runner) the same check passes: `Permission denied` for `/config`, `/config/secret.key` and `/transcode`. Local macOS runs of check 2 need named volumes; a Linux host (bind mounts) is unaffected.
 2. **A catalog refresh does not stop a running blocklisted plugin.** `service.catalog(refresh)` refreshes the list (so `blocked` shows on the card and in `list_plugins`), but only start, the hourly recheck and the next start of the plugin call `recheckBlocklist()`; the doc comment on `recheckBlocklist` says "whenever a catalog refresh is asked for". The plan's Task 11 wording (card shows `stopped: blocklisted` after the refresh) does not match Task 5's spec or code. Effect: up to an hour (the recheck interval) of a flagged plugin running after the server has the list. Suggested fix: `catalog(true)` also awaits `recheckBlocklist()`.

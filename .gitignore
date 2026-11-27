@@ -15,5 +15,5 @@ docs/design/
 apps/server/third-party.json
 apps/server/THIRD_PARTY_NOTICES.txt
 
-# Built by `pnpm release-notes` for the GitHub Release body
+# Built by `pnpm release` for the GitHub Release body
 /release-notes.md

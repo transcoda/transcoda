@@ -1,6 +1,8 @@
 # M2 gate: Otter & Finch from an empty instance
 
-The manual run that closes M2 (editor and job screens): the Otter & Finch cleanup built and run from the browser, end to end, from an empty instance. Performed on 2026-10-17 on branch `m2-editor`. Decisions and the findings list are in [`decisions.md`](decisions.md) under "M2 Phase B: jobs" and "M2 gate".
+> **Historical record.** This is the manual run that closed M2 on 2026-10-17. It shows the UI and words of that day; activation, for example, has since replaced the dry-run/enabled switch. It is kept as a record and is not updated.
+
+The manual run that closes M2 (editor and job screens): the Otter & Finch cleanup built and run from the browser, end to end, from an empty instance. Performed on 2026-10-17 on branch `m2-editor`. Decisions and the findings list are in [the decision log](../decisions/2026-10-m2-jobs.md) under "M2 Phase B: jobs" and "M2 gate".
 
 ## Setup
 
@@ -36,7 +38,7 @@ Everything below was done in the UI; nothing was created through the API by hand
 
 ## Bugs found
 
-Fixed in this task, with tests: decisions listed in trace order instead of walk order (else branch); raw "already nothing_to_do on <ISO time>" reasons; "—" for nothing-to-do rows; the size tile showing the original size as the estimate when there is none ("no estimate yet"); the unexplained mp4 default subtitle; the enable dialog's "kept for 14 days" (the engine keeps 7 days at most). Left for later, listed in `decisions.md`: the job detail's probe is the file's latest one (old plans show the new file's track numbers), plus smaller editor and job-page items.
+Fixed in this task, with tests: decisions listed in trace order instead of walk order (else branch); raw "already nothing_to_do on <ISO time>" reasons; "—" for nothing-to-do rows; the size tile showing the original size as the estimate when there is none ("no estimate yet"); the unexplained mp4 default subtitle; the enable dialog's "kept for 14 days" (the engine keeps 7 days at most). Left for later, listed in the decision log: the job detail's probe is the file's latest one (old plans show the new file's track numbers), plus smaller editor and job-page items.
 
 ## Screenshots
 

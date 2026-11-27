@@ -38,7 +38,7 @@ export interface AppDepsInput {
   secretKey: Buffer;
   version: string;
   now?: () => Date;
-  /** Result of the startup ffmpeg probe; until Task 20 wires it, defaults to "not probed". */
+  /** Result of the startup ffmpeg probe; "not probed" when not injected (tests). */
   capabilities?: Capabilities;
   /** The complete node list (core included); defaults to the core registry. */
   nodes?: RegisteredNode[];
