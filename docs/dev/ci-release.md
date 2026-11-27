@@ -40,7 +40,7 @@ The plugins repository's nightly uses the same two actions.
 - Users: the entrypoint (`docker/entrypoint.sh`, under tini) starts as root, prepares ids and directories, then runs the server as `PUID:PGID` (default 1000) with only `SETUID`, `SETGID` and `KILL`. Plugin hosts run as `PLUGIN_UID:PLUGIN_GID` (default 65001) with no capabilities; ffmpeg and ffprobe children get none either. There is no `useradd`: ids are numeric, so the root filesystem can be read-only.
 - `docker/docker-compose.yml` is the shipped hardening: `cap_drop: ALL` plus a short `cap_add` list, `no-new-privileges`, `read_only: true`, tmpfs for `/tmp` and `/run/transcoda`. The `hardening` job tests this file as shipped, so a change to it is a change to CI too.
 - The healthcheck calls `/api/v1/system/health` with `Host: localhost` on `TRANSCODA_PORT`.
-- Every pushed image gets keyless (Sigstore) build provenance and an SPDX SBOM attestation, pushed to GHCR next to it. A release also gets both as files on the GitHub Release. How to verify: [`SECURITY.md`](../../SECURITY.md#verifying-the-image).
+- Every pushed image gets keyless (Sigstore) build provenance and an SPDX SBOM attestation, pushed to GHCR next to it. A release also gets both as files on the GitHub Release: `transcoda-v<version>.sigstore.json` (the Sigstore bundle), `transcoda-v<version>.intoto.jsonl` (its signed DSSE envelope, one line, which Scorecard's Signed-Releases check needs for a 10) and `transcoda-v<version>.spdx.json`. How to verify: [`SECURITY.md`](../../SECURITY.md#verifying-the-image).
 - Signed plugin catalogs are signed in the plugins repo's CI, not here. This repo only pins the public keys (`apps/server/src/plugins/official-keys.ts`).
 
 ## Release notes and PR titles
