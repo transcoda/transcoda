@@ -28,64 +28,14 @@ export interface Layer {
 export const LAYERS: Record<string, Layer[]> = {
   'apps/server/src': [
     { name: 'platform', paths: ['platform/'] },
-    {
-      name: 'engine/model',
-      paths: [
-        'engine/model/',
-        // today:
-        'engine/build-model.ts',
-        'engine/model-changes.ts',
-        'engine/render.ts',
-        'engine/targets.ts',
-        'engine/retarget.ts',
-        'engine/fallback.ts',
-      ],
-    },
+    { name: 'engine/model', paths: ['engine/model/'] },
     { name: 'db', paths: ['db/'] },
     { name: 'engine/events', paths: ['engine/events.ts'] },
     { name: 'capabilities', paths: ['capabilities/'] },
     { name: 'auth', paths: ['auth/'] },
-    {
-      name: 'engine/files',
-      paths: [
-        'engine/files/',
-        // today:
-        'engine/fingerprint.ts',
-        'engine/paths.ts',
-        'engine/replace.ts',
-        'engine/recycle.ts',
-        'engine/sidecar-recycle.ts',
-        'engine/restore.ts',
-        'engine/sweep.ts',
-        'engine/space-waits.ts',
-        'engine/test-outputs.ts',
-        'engine/preview.ts',
-      ],
-    },
-    {
-      name: 'engine/media',
-      paths: [
-        'engine/media/',
-        // today:
-        'engine/probe.ts',
-        'engine/media-info.ts',
-        'engine/nfo.ts',
-        'engine/poster-store.ts',
-        'engine/content-hash.ts',
-        'engine/decoder-names.ts',
-      ],
-    },
-    {
-      name: 'engine/encode',
-      paths: [
-        'engine/encode/',
-        // today:
-        'engine/process.ts',
-        'engine/progress.ts',
-        'engine/stall-guard.ts',
-        'engine/log-condense.ts',
-      ],
-    },
+    { name: 'engine/files', paths: ['engine/files/'] },
+    { name: 'engine/media', paths: ['engine/media/'] },
+    { name: 'engine/encode', paths: ['engine/encode/'] },
     // `engine/verify` matches today's verify.ts and the verify/ folder.
     { name: 'engine/verify', paths: ['engine/verify'] },
     { name: 'nodes', paths: ['nodes/'] },

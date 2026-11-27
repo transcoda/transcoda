@@ -7,10 +7,12 @@ import { fingerprintKey } from '../db/repos/files.ts';
 import { findJobResult, hasReplaceJournal, listRecycled } from '../db/repos/jobs.ts';
 import { nodeFsOps } from '../platform/fs-ops.ts';
 import { node } from '../workflows/test-helpers.ts';
-import { modelFromProbe } from './build-model.ts';
-import { contentHash } from './content-hash.ts';
-import { classifyErrorLine, sourceDecoderNames } from './decoder-names.ts';
-import { fingerprintOf } from './fingerprint.ts';
+import type { RunnerProcess, SpawnOptions } from './encode/process.ts';
+import { fingerprintOf } from './files/fingerprint.ts';
+import { contentHash } from './media/content-hash.ts';
+import { classifyErrorLine, sourceDecoderNames } from './media/decoder-names.ts';
+import { modelFromProbe } from './model/model.ts';
+import { renderEncoders } from './model/render.ts';
 import {
   base,
   configDir,
@@ -43,8 +45,6 @@ import {
   until,
   workflow,
 } from './pipeline-test-harness.ts';
-import type { RunnerProcess, SpawnOptions } from './process.ts';
-import { renderEncoders } from './render.ts';
 import { probeOf, withStream } from './test-helpers.ts';
 
 describe('pipeline: the verified output probe (before/after)', () => {

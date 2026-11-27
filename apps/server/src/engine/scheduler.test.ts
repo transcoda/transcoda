@@ -10,9 +10,9 @@ import { getSetting, SETTING_KEYS } from '../db/repos/settings.ts';
 import { insertWorkflow } from '../db/repos/workflows.ts';
 import { createTestDb } from '../db/test-db.ts';
 import type { Logger } from '../platform/logger.ts';
+import type { ProcessResult, RunnerProcess } from './encode/process.ts';
 import { type EngineEvent, EngineEvents, MAX_BUFFERED_EVENTS } from './events.ts';
-import type { ProcessResult, RunnerProcess } from './process.ts';
-import type { RenderDevice } from './render.ts';
+import type { RenderDevice } from './model/render.ts';
 import {
   type ExecuteOutcome,
   type JobControl,

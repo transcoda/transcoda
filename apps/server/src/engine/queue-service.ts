@@ -42,7 +42,6 @@ import { errorCode, type FsOps, nodeFsOps } from '../platform/fs-ops.ts';
 import type { Logger } from '../platform/logger.ts';
 import type { WorkflowService } from '../workflows/service.ts';
 import type { EngineEvents } from './events.ts';
-import { createMediaResolver, type MediaResolver } from './media-info.ts';
 import {
   checkPath,
   isMediaFile,
@@ -53,8 +52,9 @@ import {
   SETTLE_MINUTES,
   type SkipReason,
   skipReasonFor,
-} from './paths.ts';
-import { fingerprintFromStats } from './replace.ts';
+} from './files/paths.ts';
+import { fingerprintFromStats } from './files/replace.ts';
+import { createMediaResolver, type MediaResolver } from './media/media-info.ts';
 
 export interface QueueInput {
   path: string;

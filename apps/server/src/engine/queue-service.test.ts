@@ -19,9 +19,9 @@ import type { Logger } from '../platform/logger.ts';
 import { WorkflowService } from '../workflows/service.ts';
 import { bumpV1, bumpV3, chain, node, testRegistry } from '../workflows/test-helpers.ts';
 import { type EngineEvent, EngineEvents } from './events.ts';
-import { fingerprintOf } from './fingerprint.ts';
+import { fingerprintOf } from './files/fingerprint.ts';
 import { tempDir } from './fixtures.ts';
-import type { MediaResolver } from './media-info.ts';
+import type { MediaResolver } from './media/media-info.ts';
 import {
   HELD_BY_ANOTHER_RUN,
   type QueueFilesInput,

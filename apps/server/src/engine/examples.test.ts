@@ -16,6 +16,7 @@ import { createTestApp, type TestApp } from '../app/test-app.ts';
 import { type JobResultRow, listRecycled } from '../db/repos/jobs.ts';
 import { nodeFsOps } from '../platform/fs-ops.ts';
 import type { Logger } from '../platform/logger.ts';
+import { nodeSpawner } from './encode/process.ts';
 import {
   copyFixture,
   type FixtureName,
@@ -25,8 +26,7 @@ import {
   tempDir,
   toolPaths,
 } from './fixtures.ts';
-import { probeFile } from './probe.ts';
-import { nodeSpawner } from './process.ts';
+import { probeFile } from './media/probe.ts';
 import type { RunDetail } from './queue-service.ts';
 
 const EXAMPLES_DIR = fileURLToPath(new URL('../../../../examples/workflows/', import.meta.url));

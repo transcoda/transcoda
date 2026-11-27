@@ -7,7 +7,7 @@ import { type Capabilities, type Gpu, GpuIdSchema } from '@transcoda/contract';
 import { z } from 'zod';
 import type { Database } from '../db/open.ts';
 import { getSetting, SETTING_DEFAULTS, SETTING_KEYS } from '../db/repos/settings.ts';
-import type { RenderDevice } from '../engine/render.ts';
+import type { RenderDevice } from '../engine/model/render.ts';
 import { defaultExec, type Exec } from './ffmpeg.ts';
 
 export type { Gpu };

@@ -9,7 +9,9 @@ import {
 import { fingerprintKey } from '../db/repos/files.ts';
 import { findJob, type JobRow } from '../db/repos/jobs.ts';
 import { hookJobOf } from '../plugins/hooks.ts';
-import { contentHash } from './content-hash.ts';
+// Two functions are named replaceOriginal: the finish node (nodes/core/finish.ts) and this one.
+import { fingerprintFromStats } from './files/replace.ts';
+import { contentHash } from './media/content-hash.ts';
 import type { PipelineCore } from './pipeline-core.ts';
 import { traceFinish } from './pipeline-trace.ts';
 import {
@@ -23,8 +25,6 @@ import {
   type Written,
 } from './pipeline-types.ts';
 import { finishRunContext, jobUrl } from './plugin-context.ts';
-// Two functions are named replaceOriginal: the finish node (nodes/core/finish.ts) and this one.
-import { fingerprintFromStats } from './replace.ts';
 import type { JobControl } from './scheduler.ts';
 import { actionNode } from './walk.ts';
 

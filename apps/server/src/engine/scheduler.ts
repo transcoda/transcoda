@@ -18,9 +18,9 @@ import {
 import { findRun } from '../db/repos/runs.ts';
 import { getSettingOr, SETTING_DEFAULTS, SETTING_KEYS, setSetting } from '../db/repos/settings.ts';
 import type { Logger } from '../platform/logger.ts';
+import type { RunnerProcess } from './encode/process.ts';
 import { type CurrentNode, type EngineEvents, jobChangedEvent } from './events.ts';
-import type { RunnerProcess } from './process.ts';
-import { deviceVendor } from './render.ts';
+import { deviceVendor } from './model/render.ts';
 import { closedLibraries, serverTimeZone } from './run-hours.ts';
 
 /**

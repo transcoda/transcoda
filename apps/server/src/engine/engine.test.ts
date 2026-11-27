@@ -15,9 +15,9 @@ import {
 import { setSetting } from '../db/repos/settings.ts';
 import { type FsOps, nodeFsOps } from '../platform/fs-ops.ts';
 import { chain, node } from '../workflows/test-helpers.ts';
-import { fingerprintOf } from './fingerprint.ts';
+import { FakeSpawner } from './encode/process.ts';
+import { fingerprintOf } from './files/fingerprint.ts';
 import { tempDir } from './fixtures.ts';
-import { FakeSpawner } from './process.ts';
 import { packetRows } from './test-helpers.ts';
 
 /** How long `until` waits; well above any healthy run, below the raised test timeout. */

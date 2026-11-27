@@ -19,8 +19,8 @@ import {
   RENDER_TYPE,
 } from '@transcoda/shared';
 import { describe, expect, it } from 'vitest';
-import { kept, modelFromProbe, streamsOf } from '../../engine/build-model.ts';
-import { parseProbe } from '../../engine/probe.ts';
+import { parseProbe } from '../../engine/media/probe.ts';
+import { kept, modelFromProbe, streamsOf } from '../../engine/model/model.ts';
 import { capsOf, fileOf, probeOf, withStream } from '../../engine/test-helpers.ts';
 import type { CheckSourceResult, CoreTools } from '../core-tools.ts';
 import {
@@ -40,7 +40,7 @@ import { NodeHookError } from './stream-rules.ts';
 const otter: ProbeResult = parseProbe(
   JSON.parse(
     readFileSync(
-      new URL('../../engine/fixtures/ffprobe-otter-finch.json', import.meta.url),
+      new URL('../../engine/media/fixtures/ffprobe-otter-finch.json', import.meta.url),
       'utf8',
     ),
   ),

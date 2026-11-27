@@ -13,7 +13,7 @@ import {
 import type { FsOps } from '../platform/fs-ops.ts';
 import type { Logger } from '../platform/logger.ts';
 import type { EngineEvent } from './events.ts';
-import { createMediaResolver, type MediaResolver } from './media-info.ts';
+import { createMediaResolver, type MediaResolver } from './media/media-info.ts';
 
 /** Files resolved at once (the same bound as queueing). */
 const MEDIA_CONCURRENCY = 8;

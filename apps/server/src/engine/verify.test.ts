@@ -6,7 +6,6 @@ import type { BuildModel, ProbeResult } from '@transcoda/sdk';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { Exec } from '../capabilities/ffmpeg.ts';
 import { MemoryLimitError } from '../platform/memory-guard.ts';
-import { fitToContainer, modelFromProbe } from './build-model.ts';
 import {
   type FixtureName,
   fixturePath,
@@ -14,8 +13,9 @@ import {
   tempDir,
   toolPaths,
 } from './fixtures.ts';
-import { probeFile } from './probe.ts';
-import { coverExtractArgs, renderArgs } from './render.ts';
+import { probeFile } from './media/probe.ts';
+import { fitToContainer, modelFromProbe } from './model/model.ts';
+import { coverExtractArgs, renderArgs } from './model/render.ts';
 import { packetRows, probeOf, withSidecar, withStream } from './test-helpers.ts';
 import {
   confirmSourceDamage,

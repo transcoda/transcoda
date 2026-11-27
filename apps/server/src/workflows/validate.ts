@@ -33,13 +33,13 @@ import {
   valueNamed,
   type WorkflowGraph,
 } from '@transcoda/shared';
-import { resolveEncoder } from '../engine/build-model.ts';
+import { resolveEncoder } from '../engine/model/model.ts';
 import {
   checkEncodeAudioSettings,
   checkEncodeVideoSettings,
   checkRemuxSettings,
   type TargetIssue,
-} from '../engine/targets.ts';
+} from '../engine/model/targets.ts';
 import {
   MOVE_COPY_TYPE,
   nodeAvailability,

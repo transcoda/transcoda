@@ -15,9 +15,9 @@ import { WorkflowService } from '../workflows/service.ts';
 import { chain, node, testRegistry } from '../workflows/test-helpers.ts';
 import { CATCH_UP_BY, LibraryCatchUp, type WatchFn } from './catch-up.ts';
 import { EngineEvents } from './events.ts';
-import { fingerprintOf } from './fingerprint.ts';
+import { fingerprintOf } from './files/fingerprint.ts';
 import { tempDir } from './fixtures.ts';
-import type { MediaResolver } from './media-info.ts';
+import type { MediaResolver } from './media/media-info.ts';
 import { QueueService } from './queue-service.ts';
 
 const caps: Capabilities = {

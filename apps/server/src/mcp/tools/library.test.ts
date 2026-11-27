@@ -7,8 +7,8 @@ import { asSession, createToken, login, type Session, send } from '../../app/tes
 import type { Exec } from '../../capabilities/ffmpeg.ts';
 import { findJob } from '../../db/repos/jobs.ts';
 import { findRun } from '../../db/repos/runs.ts';
+import { FakeSpawner } from '../../engine/encode/process.ts';
 import { tempDir } from '../../engine/fixtures.ts';
-import { FakeSpawner } from '../../engine/process.ts';
 import { packetRows } from '../../engine/test-helpers.ts';
 import { type FsOps, nodeFsOps } from '../../platform/fs-ops.ts';
 import { chain, node } from '../../workflows/test-helpers.ts';

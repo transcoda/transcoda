@@ -19,13 +19,13 @@ import { insertJob, insertJobResult } from '../db/repos/jobs.ts';
 import { insertLibrary } from '../db/repos/libraries.ts';
 import { insertRun } from '../db/repos/runs.ts';
 import { insertWorkflow } from '../db/repos/workflows.ts';
+import { buildPreview } from '../engine/files/preview.ts';
+import { scratchMinFreeBytes, TEST_OUTPUT_DIR } from '../engine/files/test-outputs.ts';
 import { fixturePath, fixturesAvailable, tempDir, toolPaths } from '../engine/fixtures.ts';
-import { buildPreview } from '../engine/preview.ts';
-import { scratchMinFreeBytes, TEST_OUTPUT_DIR } from '../engine/test-outputs.ts';
 import { type FsOps, nodeFsOps } from '../platform/fs-ops.ts';
 
-vi.mock('../engine/preview.ts', async (importOriginal) => {
-  const real = await importOriginal<typeof import('../engine/preview.ts')>();
+vi.mock('../engine/files/preview.ts', async (importOriginal) => {
+  const real = await importOriginal<typeof import('../engine/files/preview.ts')>();
   return { ...real, buildPreview: vi.fn(real.buildPreview) };
 });
 

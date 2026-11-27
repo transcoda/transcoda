@@ -11,7 +11,7 @@ import {
   type ProbeStream,
 } from '@transcoda/shared';
 import { z } from 'zod';
-import { isExtraStream, streamsOf } from '../../engine/build-model.ts';
+import { isExtraStream, streamsOf } from '../../engine/model/model.ts';
 import { CODEC_NAMES } from './audio-title.ts';
 import { filePort } from './common.ts';
 import { copyModel } from './stream-rules.ts';

@@ -4,11 +4,11 @@ The rules in force today for `apps/server/src/engine/`, `apps/server/src/capabil
 
 ## A job's path
 
-1. **Queue** (`queue-service.ts`, `paths.ts`). A scan, the catch-up watcher (`catch-up.ts`) or a person queues a path. `checkPath` resolves it by realpath under a live library root; only `MEDIA_EXTENSIONS` are listed, the recycle folder and `.transcoda-<job>.tmp` files never are. `skipReasonFor` skips files that are still growing (`SETTLE_MINUTES`, 3), hardlinked or unreadable. `resolveWorkflow` pins the active version (a real run with nothing active becomes a dry run of the newest version). One transaction per run.
+1. **Queue** (`queue-service.ts`, `files/paths.ts`). A scan, the catch-up watcher (`catch-up.ts`) or a person queues a path. `checkPath` resolves it by realpath under a live library root; only `MEDIA_EXTENSIONS` are listed, the recycle folder and `.transcoda-<job>.tmp` files never are. `skipReasonFor` skips files that are still growing (`SETTLE_MINUTES`, 3), hardlinked or unreadable. `resolveWorkflow` pins the active version (a real run with nothing active becomes a dry run of the newest version). One transaction per run.
 2. **Schedule** (`scheduler.ts`). Probe, decide and build run outside the lanes, at most `prepWorkers` (2) at once and at most `MAX_READY` (4) jobs preparing or ready. Then a job waits for its lane: `encode` (one slot per usable GPU, see below) or `quick` (one job).
-3. **Prepare.** The path is checked again, a real job re-pins to the version active now (`loadWorkflowForJob`) and re-checks history, the file is probed (`probe.ts`) and fingerprinted (`fingerprint.ts`, plus a sampled `content-hash.ts`). The walk (`walk.ts`: `walkDecide`, then `walkBuild`) runs each node's hook and records a trace entry per node; Build gives a `BuildModel` (`build-model.ts`, `normalizeDefaults`), which `render.ts` turns into an ffmpeg argv (`renderArgs`). An identity model is `nothing_to_do`; a plan-only dry run ends here as `dry_run`.
-4. **Execute.** The pipeline (the `Pipeline` class and its phase modules under `apps/server/src/engine/`) re-renders for the granted slot's device, extracts covers, runs ffmpeg (`process.ts`, progress from `progress.ts`), then verifies (`verify.ts`), then runs the finish steps in order: size gate, the write (`replace.ts` or move-copy), plugin steps, notify. Results go to `job_results`.
-5. **Start-up** (`engine.ts`, `sweep.ts`). `startupSweep` settles every job with a replace or restore journal from what is on disk, kills stale ffmpeg groups by their `ffmpeg.pid`, empties the transcode dir (except `<transcodeDir>/test-outputs/`), then `pruneRecycle` runs and the scheduler starts.
+3. **Prepare.** The path is checked again, a real job re-pins to the version active now (`loadWorkflowForJob`) and re-checks history, the file is probed (`media/probe.ts`) and fingerprinted (`files/fingerprint.ts`, plus a sampled `media/content-hash.ts`). The walk (`walk.ts`: `walkDecide`, then `walkBuild`) runs each node's hook and records a trace entry per node; Build gives a `BuildModel` (`model/model.ts`, `normalizeDefaults`), which `model/render.ts` turns into an ffmpeg argv (`renderArgs`). An identity model is `nothing_to_do`; a plan-only dry run ends here as `dry_run`.
+4. **Execute.** The pipeline (the `Pipeline` class and its phase modules under `apps/server/src/engine/`) re-renders for the granted slot's device, extracts covers, runs ffmpeg (`encode/process.ts`, progress from `encode/progress.ts`), then verifies (`verify.ts`), then runs the finish steps in order: size gate, the write (`files/replace.ts` or move-copy), plugin steps, notify. Results go to `job_results`.
+5. **Start-up** (`engine.ts`, `files/sweep.ts`). `startupSweep` settles every job with a replace or restore journal from what is on disk, kills stale ffmpeg groups by their `ffmpeg.pid`, empties the transcode dir (except `<transcodeDir>/test-outputs/`), then `pruneRecycle` runs and the scheduler starts.
 
 ## Safety rules that must hold
 
@@ -20,16 +20,16 @@ The rules in force today for `apps/server/src/engine/`, `apps/server/src/capabil
 - **Free space.** A replace waits, cancellable, until the original's filesystem has the output size plus `FREE_SPACE_MARGIN_BYTES` (5 GB) free; the job's reason says so. The encode slot is already free by then; a quick-lane job keeps its lane while it waits.
 - **Done after any write.** Once a replace installed the result or a move-copy finished, the job ends `done` whatever happens next (`finished with a problem: …`). Never retry after a write.
 - **Fingerprint checks.** The original's fingerprint is checked after any space wait and right before it moves; a change discards the output and requeues once (`requeueOnce`), then fails with `source_changed`.
-- **Dry runs change nothing in the library.** A plan-only dry run writes nothing at all. A test-encode dry run encodes and verifies for real into the transcode dir, stops at the first write step, and may keep the output in `<transcodeDir>/test-outputs/` (`test-outputs.ts`). `apps/server/src/mcp/never.test.ts` pins that the library stays byte-identical. Dry-run results never count as history.
+- **Dry runs change nothing in the library.** A plan-only dry run writes nothing at all. A test-encode dry run encodes and verifies for real into the transcode dir, stops at the first write step, and may keep the output in `<transcodeDir>/test-outputs/` (`files/test-outputs.ts`). `apps/server/src/mcp/never.test.ts` pins that the library stays byte-identical. Dry-run results never count as history.
 - **Never re-run a processed file.** `findPriorRun` makes a file `already_processed` when a real job of the same workflow, at any version, ended `done`, `nothing_to_do` or `kept_original` with it as source or as output. A `failed` result counts for its own version only. Only Process again (`force`) overrides it. A dry run checks its own version only (`sameVersion`). A file moved back from the recycle folder matches its old `done` source and stays processed.
-- **Restore** (`restore.ts`, `restoreRecycled`) has its own journal, moves with `renameNoClobber` and is a person's session only. Recycle rows are removed only through `removeRecycledRow`, which never touches a row whose job has a replace or restore journal. `insertRecycled` replaces a stale row for the same path.
-- **Sidecar media info** (`nfo.ts`, `media-info.ts`, `poster-store.ts`) is read at queue time, never through a symlink, never outside the library, and nothing is ever written into a library for it.
+- **Restore** (`files/restore.ts`, `restoreRecycled`) has its own journal, moves with `renameNoClobber` and is a person's session only. Recycle rows are removed only through `removeRecycledRow`, which never touches a row whose job has a replace or restore journal. `insertRecycled` replaces a stale row for the same path.
+- **Sidecar media info** (`media/nfo.ts`, `media/media-info.ts`, `media/poster-store.ts`) is read at queue time, never through a symlink, never outside the library, and nothing is ever written into a library for it.
 - **Child processes.** ffmpeg runs from an argv array, no shell, in its own process group; every ffprobe/ffmpeg call outside the encode takes the job's abort signal (`makeExec` SIGKILLs on abort). `platform/child-caps.ts` drops the server's ambient capabilities for every ffmpeg and ffprobe child.
 
 ## Verify
 
 - `verifyOutput` runs every check and reports them all: `probe`, per-stream ends against the source's (bounded `-read_intervals` reads, 0.25 s plus the longer last packet), stream match in output order, default flags (exactly one default audio when there is audio, at most one default subtitle), `decode-start`, `decode-end` from a keyframe, `SAMPLE_SPOTS` (10) one-second spot decodes, and the targets.
-- A decode passes only when ffmpeg exits 0 **and prints nothing**. Every null decode carries `NULL_TIMESTAMPS` (`-enc_time_base:v demux`, in `decoder-names.ts`).
+- A decode passes only when ffmpeg exits 0 **and prints nothing**. Every null decode carries `NULL_TIMESTAMPS` (`-enc_time_base:v demux`, in `media/decoder-names.ts`).
 - `verifyFullDecode` on a library adds a whole-file decode (6 h timeout); other verify calls get 300 s.
 - In-pass checks read ffmpeg's stderr live: `classifyErrorLine` sorts each error line to source or output. A source error must be reproduced on the source before the original is kept (`kept_original`, never retried); otherwise it is output-invalid and retried once. The frame count is compared with `nb_frames` only.
 - `source-damaged` needs proof on the source stream by stream; duration failures are always `output-invalid`.
@@ -40,9 +40,9 @@ The rules in force today for `apps/server/src/engine/`, `apps/server/src/capabil
 - `usableHardware` (`capabilities/devices.ts`) drops encoders that are listed but cannot run: NVENC without nvidia-smi must pass a one-frame test encode; QSV and VA-API need an openable `/dev/dri/renderD*`.
 - `engine.encodeDevice` (`auto`, `cpu`, `nvidia:<n>`, `intel:<pci>`) filters capabilities through `effectiveCapabilities`. `engine.gpuOrder` sets GPU order (default NVIDIA by index, then Intel by PCI address).
 - `encodeSlots` gives one encode slot per usable GPU under `auto` with two or more GPUs, else one slot. `slotFitOf` says what a job needs (`gpu`, `nvidia`, `intel`, `software`); a software job takes the last free slot.
-- Auto order in `build-model.ts` is NVENC, QSV, then software. VA-API is never picked by `auto`: the render sets up no VA-API device or `hwupload`, so it runs only when named, with the model's own device arguments; `retarget.ts` moves an auto-picked stream to the slot's vendor at execute. A named encoder never moves.
+- Auto order in `model/model.ts` is NVENC, QSV, then software. VA-API is never picked by `auto`: the render sets up no VA-API device or `hwupload`, so it runs only when named, with the model's own device arguments; `model/retarget.ts` moves an auto-picked stream to the slot's vendor at execute. A named encoder never moves.
 - NVENC encodes decode with `-hwaccel cuda`; a QSV slot opens its render node and, for 8/10-bit 4:2:0 sources, decodes on the GPU too. A model that brings its own `-hwaccel` or `-init_hw_device` keeps it.
-- A GPU failure (`looksLikeGpuFailure`, `fallback.ts`) requeues the job with that GPU in `failedGpus`; only when no other GPU fits does `softwareFallback` run it in software.
+- A GPU failure (`looksLikeGpuFailure`, `model/fallback.ts`) requeues the job with that GPU in `failedGpus`; only when no other GPU fits does `softwareFallback` run it in software.
 
 ## Queue and scheduler
 
@@ -50,7 +50,7 @@ The rules in force today for `apps/server/src/engine/`, `apps/server/src/capabil
 - Pause frees the lane and SIGSTOPs ffmpeg; a resumed job gets its own slot back first. A pause outside ffmpeg holds the job before verify and before the finish steps. The queue pause persists across restarts.
 - **Run hours** (`run-hours.ts`, `closedLibraries`): jobs of `library` runs in a closed library are not prepared and get no lane; a running job is never stopped. Manual runs start at once. Times are the server's zone.
 - **Retry once, inside the job** (`attempt 2`): ffmpeg failure, output-side errors, verify `output-invalid`, move-copy I/O before a write. Deterministic failures (workflow, walk, render, probe, path checks, every replace failure) end at once.
-- **Stall guard** (`stall-guard.ts`): an encode whose output stops growing for `TRANSCODA_ENCODE_STALL_MINUTES` (60; 0 turns it off) is stopped. No output at all is final; stopping partway is retried. Paused time does not count.
+- **Stall guard** (`encode/stall-guard.ts`): an encode whose output stops growing for `TRANSCODA_ENCODE_STALL_MINUTES` (60; 0 turns it off) is stopped. No output at all is final; stopping partway is retried. Paused time does not count.
 - Shutdown writes nothing to the database (a completed replace is still recorded `done`); the sweep picks up the rest.
 
 ## Temp files and logs
@@ -77,7 +77,7 @@ The image ships jellyfin-ffmpeg 8 (`JELLYFIN_FFMPEG_VERSION` in `docker/Dockerfi
 
 - Unit tests sit beside each module (`*.test.ts`). Build inputs with `apps/server/src/engine/test-helpers.ts` (`probeOf`, `fileOf`, `capsOf`, `withStream`, `withSidecar`, `packetRows`) instead of hand-written probes. Use `FakeSpawner` for ffmpeg runs.
 - Real-ffmpeg tests (`*.real.test.ts`, and others that call `fixturesAvailable()`) read `.local/fixtures` through `engine/fixtures.ts`; generate them with `pnpm fixtures`. They skip without fixtures, so run them before changing verify, render or progress. `pnpm test:docker` runs them against the image's jellyfin-ffmpeg, as the nightly does.
-- The ffmpeg argv is snapshot-tested in `engine/render.test.ts`; review every snapshot change. Tests use `libx264`/`libx265` only; hardware paths are covered by argv and scheduler tests.
+- The ffmpeg argv is snapshot-tested in `engine/model/render.test.ts`; review every snapshot change. Tests use `libx264`/`libx265` only; hardware paths are covered by argv and scheduler tests.
 - `engine/examples-walk.test.ts` walks every bundled example workflow.
 
 ## History

@@ -37,9 +37,9 @@ import type { NodeRegistry } from '../nodes/registry.ts';
 import { isRemoteDefinition, RemoteHookError } from '../nodes/remote.ts';
 import { migrationPath } from '../workflows/upgrade.ts';
 import { behaviourHoldText, SIZE_GATE_SHARED_TEXT } from '../workflows/validate.ts';
-import { isExtraStream, modelFromProbe } from './build-model.ts';
-import { modelChanges } from './model-changes.ts';
-import type { AutoPick } from './retarget.ts';
+import { modelChanges } from './model/changes.ts';
+import { isExtraStream, modelFromProbe } from './model/model.ts';
+import type { AutoPick } from './model/retarget.ts';
 
 /** The Encode video node, whose `auto` encoder picks the walk records (autoPicks). */
 const ENCODE_VIDEO_TYPE = 'core:encode-video';

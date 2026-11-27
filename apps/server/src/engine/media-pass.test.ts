@@ -18,7 +18,11 @@ import { type FsOps, nodeFsOps } from '../platform/fs-ops.ts';
 import type { Logger } from '../platform/logger.ts';
 import type { EngineEvent } from './events.ts';
 import { tempDir } from './fixtures.ts';
-import { createMediaResolver, type MediaResolver, type ShowPosterLookup } from './media-info.ts';
+import {
+  createMediaResolver,
+  type MediaResolver,
+  type ShowPosterLookup,
+} from './media/media-info.ts';
 import { MediaPass } from './media-pass.ts';
 
 const now = new Date('2026-01-01T00:00:00.000Z');

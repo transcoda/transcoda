@@ -20,6 +20,13 @@ import {
 import { findRun } from '../db/repos/runs.ts';
 import type { CoreTools } from '../nodes/core-tools.ts';
 import { alreadyProcessed } from './already-processed.ts';
+import { checkSource } from './check-source.ts';
+import type { CurrentNode } from './events.ts';
+import { checkPath, skipReasonFor } from './files/paths.ts';
+// Two functions are named replaceOriginal: the finish node (nodes/core/finish.ts) and this one.
+import { fingerprintFromStats } from './files/replace.ts';
+import { loadWorkflowForJob } from './load-workflow.ts';
+import { probeFile, probeLog, probeReason } from './media/probe.ts';
 import {
   copyPictures,
   coverFile,
@@ -28,11 +35,9 @@ import {
   isMkvCover,
   kept,
   normalizeDefaults,
-} from './build-model.ts';
-import { checkSource } from './check-source.ts';
-import type { CurrentNode } from './events.ts';
-import { loadWorkflowForJob } from './load-workflow.ts';
-import { checkPath, skipReasonFor } from './paths.ts';
+} from './model/model.ts';
+import { outputExtension, RenderError, renderArgs, renderCommandLine } from './model/render.ts';
+import { autoStreams, retarget } from './model/retarget.ts';
 import { sourceDamagedAtCheck } from './pipeline-branches.ts';
 import type { PipelineCore } from './pipeline-core.ts';
 import {
@@ -55,11 +60,6 @@ import {
   stepOf,
   TRYING_ANOTHER_GPU,
 } from './pipeline-types.ts';
-import { probeFile, probeLog, probeReason } from './probe.ts';
-import { outputExtension, RenderError, renderArgs, renderCommandLine } from './render.ts';
-// Two functions are named replaceOriginal: the finish node (nodes/core/finish.ts) and this one.
-import { fingerprintFromStats } from './replace.ts';
-import { autoStreams, retarget } from './retarget.ts';
 import type { ExecuteOutcome, JobControl, SlotFit } from './scheduler.ts';
 import { confirmSourceDamage } from './verify.ts';
 import { type WalkDeps, type WalkInput, walkBuild, walkDecide } from './walk.ts';

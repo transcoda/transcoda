@@ -14,10 +14,10 @@ import { makeExec } from '../capabilities/ffmpeg.ts';
 import { findJob, findJobResult, type JobRow } from '../db/repos/jobs.ts';
 import { type FsOps, nodeFsOps } from '../platform/fs-ops.ts';
 import { chain, node } from '../workflows/test-helpers.ts';
+import { nodeSpawner } from './encode/process.ts';
+import { OutputStallGuard, watchForStall } from './encode/stall-guard.ts';
 import { realCapabilities, tempDir, toolPaths } from './fixtures.ts';
-import { probeFile } from './probe.ts';
-import { nodeSpawner } from './process.ts';
-import { OutputStallGuard, watchForStall } from './stall-guard.ts';
+import { probeFile } from './media/probe.ts';
 
 const execFileAsync = promisify(execFile);
 const { ffmpegPath, ffprobePath } = toolPaths();
