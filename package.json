@@ -18,12 +18,15 @@
     "release-notes": "node scripts/release-notes.mjs",
     "check-deps": "node scripts/check-deps.mjs && node --test scripts/check-deps.test.mjs",
     "fixtures": "node scripts/fixtures/generate.mjs",
+    "e2e": "playwright test",
+    "e2e:report": "playwright show-report .local/e2e-report",
     "notices": "node scripts/third-party-notices.ts",
     "check-licences": "node --test scripts/third-party-notices.test.ts && node scripts/third-party-notices.ts --check",
     "check": "pnpm typecheck && pnpm lint && pnpm check-deps && pnpm check-licences && pnpm test"
   },
   "devDependencies": {
     "@biomejs/biome": "2.6.8",
+    "@playwright/test": "1.65.1",
     "@types/node": "26.6.6",
     "tsdown": "0.23.7",
     "tsx": "4.23.15",

@@ -36,7 +36,7 @@
   ],
   "overrides": [
     {
-      "includes": ["apps/**", "packages/**", "scripts/**"],
+      "includes": ["apps/**", "packages/**", "scripts/**", "e2e/**", "playwright.config.ts"],
       "linter": {
         "rules": {
           "correctness": { "useImportExtensions": "error" },
@@ -67,6 +67,7 @@
         "apps/server/**",
         "packages/**",
         "scripts/**",
+        "e2e/**",
         "!apps/server/src/db/migrations/**"
       ],
       "linter": {
@@ -87,6 +88,10 @@
         "apps/server/src/plugins/testing/global-setup.ts"
       ],
       "linter": { "rules": { "style": { "noDefaultExport": "off" } } }
+    },
+    {
+      "includes": ["e2e/**"],
+      "linter": { "rules": { "style": { "useConsistentTestIt": "off" } } }
     },
     {
       "includes": ["apps/server/src/logger.ts"],

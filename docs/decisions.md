@@ -2116,6 +2116,26 @@ Rules the code already followed almost everywhere are now checked, so they stay 
 - Strokes that are not icons keep their own widths: edges, charts, the activity ring, the legend and the logo.
 - The DESIGN.md sync test checks the quoted stroke against `ICON_STROKE`.
 
+## 2026-11-26 Test tiers (#147)
+
+Which kind of test covers what. A change gets its test in the lowest tier that can catch the bug.
+
+| Tier | Where | For | Not for | CI budget |
+| --- | --- | --- | --- | --- |
+| Unit | `*.test.ts(x)` beside the code (vitest; web tests use Testing Library in jsdom) | One module's rules: planners, node logic, config parsing, a component's states and handlers | Anything that needs a real server, a real browser or a real ffmpeg | `pnpm test` whole, under 2 min |
+| Server end-to-end | `*.test.ts` built on `createTestApp` and `test-http.ts` (`workflows/e2e.test.ts`) | A feature through the real HTTP and RPC API: auth, CSRF, validation, the database, the engine | Layout and anything only the browser does | Part of `pnpm test` |
+| Real-ffmpeg | Engine tests that read `.local/fixtures` (`engine/fixtures.ts`); they skip when `pnpm fixtures` has not run | What ffmpeg really does with a plan: tracks, defaults, sizes, verify | Rules that a probe object can show; those are unit tests | Part of `pnpm test` where fixtures exist |
+| Render snapshots | `toMatchSnapshot` on generated output, such as the ffmpeg argv in `engine/render.test.ts` | Text output that must not change by accident | UI markup: a snapshot of a component's HTML breaks on every harmless change and is reviewed by nobody | Part of `pnpm test` |
+| Browser | `e2e/*.e2e.ts` (Playwright, Chromium) against the built server and the fixture media (`e2e/server.mjs`) | A few key flows end to end: first run and sign-in, building and activating a workflow, a library scan running real jobs, the file and job pages | Every state of every page; those are unit tests | `e2e` CI job under 10 min |
+
+- **Browser tests run against the built server on the runner**, not the Docker image. The Docker workflow already checks the image; here the point is the UI and the API together, and a build is faster than an image.
+- **CI uses jellyfin-ffmpeg**, the version the image ships, installed from Jellyfin's Ubuntu repository. Ubuntu's own ffmpeg fails the capability probe ("missing filter pan"), so the editor reports errors and nothing runs.
+- **One server per run.** The specs share its state and run in order, one worker, with no retries: the setup spec creates the admin and saves the session, `1-workflow` builds and activates the workflow, `2-library-jobs` scans the library it feeds. The server starts from an empty config folder in `/tmp/transcoda-e2e` (`E2E_WORK`), a fixed path so pages that show a folder look the same everywhere. Nothing reaches the network: the plugin catalog and blocklist URLs point at the server itself, and the update check is off.
+- **Fixture media are invented movies** (Otter and Finch, Harbor Lights, The Paper Lantern, Quiet Meadow), copied from `pnpm fixtures` and backdated an hour so the library's settle window takes them at once.
+- **Locators by role and accessible name**, as a user finds things. A wait checks a row's own status, not text anywhere on the page: "Queued" is also a tile label on the Jobs page.
+- **Locally:** `pnpm build && pnpm fixtures && pnpm e2e`. A failure keeps a screenshot and a trace in `.local/e2e-results`; CI uploads them with the HTML report.
+- Visual baselines (light, dark, phone width) come in a second step; this record gets their part then.
+
 ## Follow-ups (2026-10-17)
 
 - **mp4 video default normalization.** `normalizeDefaults` treats video like subtitle when the output container is mp4: extra default video flags are cleared and the first kept non-cover video is flagged when none is (note `mp4 cannot have no default video`). The mp4 muxer enables a video track that was told "not default", which verify would report as a stream mismatch. Matroska passes the flag through, so mkv output is unchanged; cover pictures are never touched.
