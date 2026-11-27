@@ -1,0 +1,36 @@
+name: Real ffmpeg
+
+# The real-ffmpeg tests on pull requests that touch the engine. CI's `check` job has no fixture
+# media, so those tests skip there; this runs the unit tests in the e2e container with the fixtures
+# and the image's jellyfin-ffmpeg, as the nightly's `unit` job and `pnpm test:docker` do.
+# Rule: docs/dev/testing.md, "Real-ffmpeg fixtures".
+
+on:
+  pull_request:
+    paths:
+      - apps/server/src/engine/**
+      - apps/server/src/capabilities/**
+      - apps/server/src/nodes/core/**
+      - apps/server/src/http/test-output*
+      - scripts/fixtures/**
+      - scripts/e2e-docker.sh
+      - e2e/Dockerfile
+      - docker/Dockerfile
+      - .github/workflows/real-ffmpeg.yml
+
+concurrency:
+  group: real-ffmpeg-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  real-ffmpeg:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: sh scripts/e2e-docker.sh --unit
