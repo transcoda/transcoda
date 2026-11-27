@@ -36,11 +36,11 @@ The plugins repository's nightly uses the same two actions.
 - Built from `docker/Dockerfile` (build from the repo root). Three stages: `build`, `deps`, `runtime`.
 - Base: `ARG NODE_IMAGE`, a Node bookworm-slim image pinned by exact patch tag and multi-arch digest. CI's entrypoint checks and `scripts/e2e-docker.sh` read that same line, so change it there only.
 - ffmpeg: `jellyfin-ffmpeg8` from Jellyfin's apt repository, pinned by `ARG JELLYFIN_FFMPEG_VERSION`, at `/usr/lib/jellyfin-ffmpeg/ffmpeg`.
-- Node 26 ships no corepack. The build stages install it from npm (`ARG COREPACK_VERSION`) and then use the pnpm that `packageManager` names. The runtime stage deletes npm, npx, corepack and yarn, and removes the base image's `node` user.
+- Node 26 ships no corepack. The build stages install it with `npm ci` from `docker/corepack/` (a `package.json` and `package-lock.json` holding only corepack, so its version and hash are pinned), link its bin into `/usr/local/bin` and then use the pnpm that `packageManager` names. `e2e/Dockerfile` installs it the same way, from that folder as the `corepack` build context. Never `npm install -g` a package in a Dockerfile: Scorecard's Pinned-Dependencies check counts only `npm ci` as pinned. The runtime stage deletes npm, npx, corepack and yarn, and removes the base image's `node` user.
 - Users: the entrypoint (`docker/entrypoint.sh`, under tini) starts as root, prepares ids and directories, then runs the server as `PUID:PGID` (default 1000) with only `SETUID`, `SETGID` and `KILL`. Plugin hosts run as `PLUGIN_UID:PLUGIN_GID` (default 65001) with no capabilities; ffmpeg and ffprobe children get none either. There is no `useradd`: ids are numeric, so the root filesystem can be read-only.
 - `docker/docker-compose.yml` is the shipped hardening: `cap_drop: ALL` plus a short `cap_add` list, `no-new-privileges`, `read_only: true`, tmpfs for `/tmp` and `/run/transcoda`. The `hardening` job tests this file as shipped, so a change to it is a change to CI too.
 - The healthcheck calls `/api/v1/system/health` with `Host: localhost` on `TRANSCODA_PORT`.
-- Every pushed image gets keyless (Sigstore) build provenance and an SPDX SBOM attestation, pushed to GHCR next to it. A release also gets both as files on the GitHub Release. How to verify: [`SECURITY.md`](../../SECURITY.md#verifying-the-image).
+- Every pushed image gets keyless (Sigstore) build provenance and an SPDX SBOM attestation, pushed to GHCR next to it. A release also gets both as files on the GitHub Release: `transcoda-v<version>.sigstore.json` (the Sigstore bundle), `transcoda-v<version>.intoto.jsonl` (its signed DSSE envelope, one line, which Scorecard's Signed-Releases check needs for a 10) and `transcoda-v<version>.spdx.json`. How to verify: [`SECURITY.md`](../../SECURITY.md#verifying-the-image).
 - Signed plugin catalogs are signed in the plugins repo's CI, not here. This repo only pins the public keys (`apps/server/src/plugins/official-keys.ts`).
 
 ## Release notes and PR titles
@@ -61,7 +61,7 @@ The plugins repository's nightly uses the same two actions.
 - One weekly window, Sunday 17:00 to 23:59 New York time; security fixes skip it and get the `security` label. Releases must be 3 days old first, except our own: `@transcoda/sdk`, and the shared tooling from `transcoda/.github`. Weekly lockfile maintenance in the same window.
 - Every Renovate PR gets the `dependencies` and `no user-facing change` labels, and a house-style title (`Dependencies:`, `CI:` for actions, `FFmpeg:` for jellyfin-ffmpeg).
 - Groups: `GitHub Actions`, `npm non-major` (majors one by one), `pnpm` (the `packageManager` field, on its own, as in the plugins repository so both move in the same week), `Node.js` (`node` and `@types/node`; majors are disabled and done by hand), `Playwright` (the npm package and the container image together; run `pnpm e2e:update` on that PR and commit the new baselines), `transcoda shared tooling` (the `@transcoda/dev-config` dev dependency and every `transcoda/.github/actions/*` pin move to the same tag in one PR, titled `CI:`).
-- Regex managers keep `JELLYFIN_FFMPEG_VERSION` and `COREPACK_VERSION` in `docker/Dockerfile` current. A jellyfin-ffmpeg PR asks the reviewer to swap the label for a `.changes/` note when users would notice the update.
+- A regex manager keeps `JELLYFIN_FFMPEG_VERSION` in `docker/Dockerfile` current. corepack is an ordinary npm dependency in `docker/corepack/`: Renovate's npm manager updates its `package.json` and lockfile in their own `corepack` group, and lockfile maintenance refreshes the lockfile. A jellyfin-ffmpeg PR asks the reviewer to swap the label for a `.changes/` note when users would notice the update.
 - There is no Dependabot.
 
 ## Toolchain pins
@@ -69,7 +69,7 @@ The plugins repository's nightly uses the same two actions.
 - Node: `.node-version` is the source of truth. CI reads it through `node-version-file`. Keep `NODE_IMAGE`, root `engines` and `@types/node` on the same release; a Node bump moves all four together.
 - pnpm: `packageManager` in `package.json`, used through corepack locally and in the image, through `pnpm/action-setup` in CI.
 - npm dependencies are exact pins (`save-exact=true` in `.npmrc`, `rangeStrategy: pin` in Renovate). `engine-strict=true`.
-- Every action is pinned by full commit SHA with the version in a comment; Renovate updates both. The Dockerfile syntax and the base image are pinned by digest.
+- Every action is pinned by full commit SHA with the version in a comment; Renovate updates both. The Dockerfile syntax and the base image are pinned by digest, and corepack by its lockfile's integrity hash.
 - Workflows declare `permissions: contents: read` (Scorecard: `read-all`) at the top and grant write access per job only.
 
 History: [M0 tooling, image and Actions](../decisions/2026-10-m0.md), [plugin isolation and image hardening](../decisions/2026-10-m3-plugins.md), [versioned releases](../decisions/2026-10.md), [Node 26, test tiers, nightly](../decisions/2026-11.md).

@@ -1,0 +1,9 @@
+{
+  "name": "transcoda-image-corepack",
+  "private": true,
+  "description": "corepack for the Docker build stages and the e2e container: Node 26 no longer bundles it. Installed with npm ci from the lockfile beside this file, so it is pinned by hash. Renovate updates both.",
+  "license": "GPL-3.0",
+  "dependencies": {
+    "corepack": "0.36.0"
+  }
+}
