@@ -89,13 +89,13 @@ A code comment cites the topic doc, or a log entry by file and heading.
 
 **Add an environment variable**
 - Parse it only in `loadConfig()` in `apps/server/src/platform/config.ts`, tested in `config.test.ts`.
-- Document it in a table row in `docs/env.md`. `apps/server/src/platform/config-docs.test.ts` fails when a variable `config.ts` reads has no row, or a row names one nothing reads.
+- Document it in a table row in `docs/env.md`. `apps/server/src/platform/config.docs.test.ts` fails when a variable `config.ts` reads has no row, or a row names one nothing reads.
 - If Settings shows it read-only, see `apps/server/src/settings/service.ts` and `apps/web/src/pages/settings/source-text.ts`.
 
 **Add a metric**
 - Define it in `METRICS` in `apps/server/src/metrics/catalog.ts`.
 - Fill its value in `metrics/service.ts`, `metrics/recorder.ts` or `db/repos/metrics.ts`.
-- Add it to `docs/metrics.md` in catalogue order. `apps/server/src/metrics/sync.test.ts` checks the doc and `examples/grafana/transcoda-dashboard.json`.
+- Add it to `docs/metrics.md` in catalogue order. `apps/server/src/metrics/catalog.sync.test.ts` checks the doc and `examples/grafana/transcoda-dashboard.json`.
 
 ## Test helpers
 

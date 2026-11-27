@@ -57,8 +57,8 @@ Use these instead of writing your own:
 ## Fixtures that are checked
 
 - `apps/web/src/test/fixtures/nodes.json` must match the live core node catalogue (`apps/server/src/nodes/web-fixture.test.ts`). Regenerate it with `pnpm --filter @transcoda/server dump-nodes > apps/web/src/test/fixtures/nodes.json`, then re-add the hand-written `test:unavailable` entry (see `apps/web/src/test/fixtures/catalog.ts`).
-- `docs/metrics.md` and the Grafana example must match the metrics catalogue (`apps/server/src/metrics/sync.test.ts`).
-- `docs/env.md`'s tables must name every environment variable `config.ts` reads, and no variable nothing reads (`apps/server/src/platform/config-docs.test.ts`). Its "Settings in the database" table must list `SETTING_KEYS` with their defaults (`apps/server/src/settings/settings-docs.test.ts`).
+- `docs/metrics.md` and the Grafana example must match the metrics catalogue (`apps/server/src/metrics/catalog.sync.test.ts`).
+- `docs/env.md`'s tables must name every environment variable `config.ts` reads, and no variable nothing reads (`apps/server/src/platform/config.docs.test.ts`). Its "Settings in the database" table must list `SETTING_KEYS` with their defaults (`apps/server/src/settings/settings-docs.test.ts`).
 - `docs/mcp.md`'s Tools table and tool count must match `ALL_TOOLS`, with each tool's scopes (`apps/server/src/mcp/mcp-docs.test.ts`).
 - DESIGN.md's quoted values must match the stylesheets (the guard tests in `apps/web/src/styles/`).
 - Every migration has its own test (`apps/server/src/db/migration-conventions.test.ts`).
