@@ -32,7 +32,7 @@
     "apps/server/src/engine/pipeline/types.ts -> apps/server/src/engine/model/render.ts",
     "apps/server/src/engine/queue/scheduler.test.ts -> apps/server/src/engine/model/render.ts",
     "apps/server/src/engine/queue/scheduler.ts -> apps/server/src/engine/model/render.ts",
-    "apps/server/src/engine/verify/verify.test.ts -> apps/server/src/engine/model/render.ts",
+    "apps/server/src/engine/verify/verify.real.test.ts -> apps/server/src/engine/model/render.ts",
     "apps/server/src/engine/verify/verify.ts -> apps/server/src/engine/model/targets.ts",
     "apps/server/src/engine/walk/walk.ts -> apps/server/src/engine/model/changes.ts",
     "apps/server/src/engine/walk/walk.ts -> apps/server/src/engine/model/retarget.ts",
@@ -60,7 +60,6 @@
   ],
   "folderNames": [],
   "smallFolders": [
-    "apps/server/src/engine/verify",
     "apps/server/src/settings",
     "apps/web/src/auth",
     "apps/web/src/data",
@@ -122,7 +121,6 @@
   "softSizeLimit": {
     "apps/server/src/engine/queue/queue-service.ts": 1131,
     "apps/server/src/engine/queue/scheduler.ts": 830,
-    "apps/server/src/engine/verify/verify.ts": 1220,
     "apps/server/src/engine/walk/walk.ts": 1083,
     "apps/server/src/workflows/service.ts": 1123,
     "apps/web/src/jobs/steps.ts": 1066,
