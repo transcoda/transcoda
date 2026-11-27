@@ -2150,6 +2150,19 @@ Which kind of test covers what. A change gets its test in the lowest tier that c
   - The log names what was dropped and why ("hardware encoding unavailable: NVENC (Cannot load libcuda.so.1); jobs encode without it").
 - **The steps name the encoder that ran.** The trace keeps what the workflow built; the job's plan follows the software fallback and a retarget to the slot's GPU. Encode video's sentence and detail take the encoder and quality from the plan's video conversion when it differs (`videoConversionOf`, `ranAs` in `jobs/steps.ts`).
 
+## 2026-11-26 Nightly tests and their issues
+
+- `.github/workflows/nightly.yml` runs every test once a night, at 07:17 UTC, when `main` moved since the last finished nightly. A run started by hand always runs.
+  - **Unit tests with the fixtures** (`pnpm test:docker`), in the e2e container, so the real-ffmpeg tests that pull requests skip run against the image's jellyfin-ffmpeg.
+  - **Browser and screenshot tests**, as in CI (`scripts/e2e-docker.sh`).
+- **A failing test gets an issue**, labelled `nightly` and titled `Nightly: <file> > <test>` (`scripts/nightly-issues.ts`, from the vitest and Playwright JSON reports). Each issue carries its test id in a hidden marker:
+  - a test with an open issue gets a comment per failing night, not a second issue;
+  - a test that passes again gets its issue closed;
+  - more than 10 new failures at once get one "many tests fail" issue listing them, since one cause (a build, a shared helper, a page every screenshot shows) is likelier than ten;
+  - a run that fails before any report (install, build, fixtures) gets one "the run failed" issue, closed by the next good run;
+  - a test missing from a report (its job died) keeps its issue open.
+- Pull requests keep their fast checks; the nightly is where slow and environment-bound tests (real ffmpeg, the container's ffmpeg version) show up.
+
 ## Follow-ups (2026-10-17)
 
 - **mp4 video default normalization.** `normalizeDefaults` treats video like subtitle when the output container is mp4: extra default video flags are cleared and the first kept non-cover video is flagged when none is (note `mp4 cannot have no default video`). The mp4 muxer enables a video track that was told "not default", which verify would report as a stream mismatch. Matroska passes the flag through, so mkv output is unchanged; cover pictures are never touched.

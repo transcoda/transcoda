@@ -25,7 +25,12 @@ export default defineConfig({
   },
   snapshotPathTemplate: '{testDir}/__screenshots__/{projectName}/{arg}{ext}',
   reporter: process.env.CI
-    ? [['github'], ['html', { open: 'never', outputFolder: '.local/e2e-report' }]]
+    ? [
+        ['github'],
+        ['html', { open: 'never', outputFolder: '.local/e2e-report' }],
+        // For the nightly's issues (scripts/nightly-issues.ts).
+        ['json', { outputFile: '.local/nightly/playwright.json' }],
+      ]
     : 'list',
   outputDir: '.local/e2e-results',
   use: {

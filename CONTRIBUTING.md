@@ -27,6 +27,7 @@ pnpm --filter @transcoda/web dev       # UI with hot reload on http://localhost:
 pnpm check                             # typecheck, lint, dependency and licence rules, tests
 pnpm e2e:docker                        # browser tests and screenshots, in Docker as CI runs them
 pnpm e2e:update                        # after a UI change on purpose: new screenshot baselines
+pnpm test:docker                       # unit tests with real ffmpeg, as the nightly runs them
 ```
 
 More in the README's [Development](README.md#development) section.

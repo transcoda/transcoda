@@ -4,9 +4,13 @@
 #   pnpm e2e:docker                      # all specs
 #   pnpm e2e:update                      # rewrite the screenshot baselines (e2e/__screenshots__)
 #   pnpm e2e:docker e2e/3-visual.e2e.ts  # more Playwright arguments pass through
+#   pnpm test:docker                     # the unit tests instead, with the fixtures, so the
+#                                        # real-ffmpeg ones run against the image's jellyfin-ffmpeg
 # The repo is copied into the container (Linux node_modules, its own build); only the baselines and
-# the report come back, into e2e/__screenshots__ and .local/.
+# the reports come back, into e2e/__screenshots__ and .local/ (JSON reports in .local/nightly/).
 set -eu
+mode=e2e
+if [ "${1:-}" = --unit ]; then mode=unit; shift; fi
 cd "$(dirname "$0")/.."
 arg() { sed -n "s/^ARG $1=//p" docker/Dockerfile | head -n 1; }
 node_image=$(arg NODE_IMAGE)
@@ -31,13 +35,22 @@ docker run --rm --platform "$platform" $tty --init -u "$(id -u):$(id -g)" --cap-
     rsync -a --exclude node_modules --exclude dist --exclude .local --exclude .git /src/ ./
     pnpm config set store-dir /pnpm-store >/dev/null
     pnpm install --frozen-lockfile --reporter=silent
-    pnpm build >/dev/null
+    mode=$1; shift
+    [ "$mode" = unit ] || pnpm build >/dev/null
     pnpm fixtures >/dev/null
-    status=0; pnpm exec playwright test "$@" || status=$?
-    mkdir -p /src/.local
+    status=0
+    if [ "$mode" = unit ]; then
+      pnpm test --reporter=default --reporter=json --outputFile.json=.local/nightly/vitest.json "$@" \
+        || status=$?
+    else
+      pnpm exec playwright test "$@" || status=$?
+    fi
+    mkdir -p /src/.local/nightly
+    [ -d .local/nightly ] && cp -r .local/nightly/. /src/.local/nightly/
+    [ "$mode" = unit ] && exit $status
     rm -rf /src/.local/e2e-report /src/.local/e2e-results
     [ -d .local/e2e-report ] && cp -r .local/e2e-report /src/.local/
     [ -d .local/e2e-results ] && cp -r .local/e2e-results /src/.local/
     [ -d e2e/__screenshots__ ] && rsync -a --delete e2e/__screenshots__/ /src/e2e/__screenshots__/
     exit $status
-  ' e2e "$@"
+  ' e2e "$mode" "$@"
