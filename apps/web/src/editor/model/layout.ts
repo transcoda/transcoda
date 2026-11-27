@@ -4,7 +4,7 @@ import {
   SUBWORKFLOW_START_TYPE,
   type WorkflowGraph,
 } from '@transcoda/shared';
-import type { Catalog } from '../../hooks/useCatalog.ts';
+import type { Catalog } from '../../hooks/use-catalog.ts';
 import { GROUP_PADDING, NODE_SIZE, type OpResult, type Position, type Size } from './graph-ops.ts';
 
 /**

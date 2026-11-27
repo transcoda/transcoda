@@ -7,7 +7,7 @@ import { Icon } from '../components/Icon.tsx';
 import { useToast } from '../components/Toast.tsx';
 import { copyShortcut, copyText } from '../lib/clipboard.ts';
 import { CommandBlock } from './CommandBlock.tsx';
-import { ffmpegNotes, logLineCount, shownLog } from './logNotes.ts';
+import { ffmpegNotes, logLineCount, shownLog } from './log-notes.ts';
 
 /** Where the whole log downloads from (the server's `JOB_LOG_PATH`). */
 export const jobLogDownloadUrl = (id: string) =>

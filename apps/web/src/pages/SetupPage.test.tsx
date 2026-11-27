@@ -21,7 +21,7 @@ vi.mock('../api/client.ts', () => ({
     }
   },
 }));
-vi.mock('../auth/useAuth.ts', () => ({ useAuth: () => ({ refresh: mocks.refresh }) }));
+vi.mock('../auth/use-auth.ts', () => ({ useAuth: () => ({ refresh: mocks.refresh }) }));
 vi.mock('wouter', () => ({ useLocation: () => ['/', mocks.navigate] }));
 
 import { SetupPage } from './SetupPage.tsx';

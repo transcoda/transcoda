@@ -3,8 +3,8 @@ import { Redirect } from 'wouter';
 import { Icon } from '../../components/Icon.tsx';
 import { NotFound } from '../../components/NotFound.tsx';
 import { GuardedLink } from '../../lib/navigation.tsx';
-import { usePageTitle } from '../../lib/pageTitle.ts';
-import { usePhone } from '../../lib/usePhone.ts';
+import { usePageTitle } from '../../lib/page-title.ts';
+import { usePhone } from '../../lib/use-phone.ts';
 import { SETTINGS_SECTIONS, type SettingsSection, type SettingsSubPage } from './sections.ts';
 
 const hrefOf = (s: SettingsSection) => `/settings/${s.id}`;

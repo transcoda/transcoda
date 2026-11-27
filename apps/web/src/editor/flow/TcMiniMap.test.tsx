@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { catalogFixture } from '../../test/fixtures/catalog.ts';
 import { renderFlow } from '../../test/flow.tsx';
 import { nodeStateFor } from '../model/issues.ts';
-import { nodeTypes } from './nodeTypes.ts';
+import { nodeTypes } from './node-types.ts';
 import { minimapLabel, miniNodeClass, TcMiniMap } from './TcMiniMap.tsx';
 import type { TcGroupNode, TcNode } from './types.ts';
 

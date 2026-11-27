@@ -20,7 +20,7 @@ vi.mock('../../api/client.ts', () => ({
   },
 }));
 
-import { resetAppUpdate } from '../../hooks/useAppUpdate.ts';
+import { resetAppUpdate } from '../../hooks/use-app-update.ts';
 import { renderAt } from '../../test/render.tsx';
 import { AboutSection } from './AboutSection.tsx';
 import { UPDATE_COMMAND } from './AppUpdatePanel.tsx';

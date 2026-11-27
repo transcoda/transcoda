@@ -6,7 +6,7 @@ import {
   NETWORK_UNLISTED,
   type NetworkEntry,
   networkEntryText,
-} from './pluginText.ts';
+} from './plugin-text.ts';
 
 /**
  * "Connects to": the hosts a build may reach through Transcoda's HTTP client, with what that

@@ -8,9 +8,9 @@ import { Icon } from '../components/Icon.tsx';
 import { LiveDot } from '../components/LiveDot.tsx';
 import { Loading } from '../components/Loading.tsx';
 import { NotFound } from '../components/NotFound.tsx';
-import { useAsync } from '../hooks/useAsync.ts';
-import type { EngineEvent } from '../hooks/useEvents.ts';
-import { useRefetchOn } from '../hooks/useRefetchOn.ts';
+import { useAsync } from '../hooks/use-async.ts';
+import type { EngineEvent } from '../hooks/use-events.ts';
+import { useRefetchOn } from '../hooks/use-refetch-on.ts';
 import { DryRunBadge, VERDICT_ICON } from '../jobs/JobStateChip.tsx';
 import {
   dependsWord,
@@ -19,7 +19,7 @@ import {
   reasonOf,
   sentence,
   testEncodeOutcome,
-} from '../jobs/jobText.ts';
+} from '../jobs/job-text.ts';
 import { QUEUE_PAUSED_TEXT } from '../jobs/QueueBar.tsx';
 import {
   OutcomeChip,
@@ -29,11 +29,11 @@ import {
   RunCounts,
 } from '../jobs/RunCounts.tsx';
 import { RunProcessAgain } from '../jobs/RunProcessAgain.tsx';
-import { useQueue } from '../jobs/useQueue.ts';
+import { useQueue } from '../jobs/use-queue.ts';
 import { fmtBytes } from '../lib/bytes.ts';
-import { usePageTitle } from '../lib/pageTitle.ts';
+import { usePageTitle } from '../lib/page-title.ts';
 import { fmtFull, fmtStamp } from '../lib/time.ts';
-import { usePhone } from '../lib/usePhone.ts';
+import { usePhone } from '../lib/use-phone.ts';
 import { Crumbs } from '../libraries/Crumbs.tsx';
 
 type RunFile = RunDetail['files'][number];

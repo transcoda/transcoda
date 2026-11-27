@@ -1,4 +1,4 @@
-import { useDeviceProfileNames } from './deviceProfiles.ts';
+import { useDeviceProfileNames } from './device-profiles.ts';
 import { Field, type FieldProps, humanise } from './Field.tsx';
 
 /** The engine's device-profile list setting (encode-video, subtitles: `targets`). */

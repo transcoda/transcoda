@@ -82,13 +82,13 @@ A code comment cites the topic doc, or a log entry by file and heading.
 **Add a setting** (stored in the database, edited in Settings)
 - Contract: `SettingsSchema` and `SettingsUpdateInputSchema` in `packages/contract/src/schemas/settings.ts`.
 - Server: `SETTING_KEYS` and `SETTING_DEFAULTS` in `apps/server/src/db/repos/settings.ts`, and `apps/server/src/settings/service.ts` with `service.test.ts`.
-- Web: the section in `apps/web/src/pages/settings/`, and `settingsFixture.ts`.
+- Web: the section in `apps/web/src/pages/settings/`, and `settings-fixture.ts`.
 - Docs: the "Settings in the database" table in `docs/env.md`.
 
 **Add an environment variable**
 - Parse it only in `loadConfig()` in `apps/server/src/config.ts`, tested in `config.test.ts`.
 - Document it in `docs/env.md`. No test compares the two, so check the table yourself.
-- If Settings shows it read-only, see `apps/server/src/settings/service.ts` and `apps/web/src/pages/settings/sourceText.ts`.
+- If Settings shows it read-only, see `apps/server/src/settings/service.ts` and `apps/web/src/pages/settings/source-text.ts`.
 
 **Add a metric**
 - Define it in `METRICS` in `apps/server/src/metrics/catalog.ts`.

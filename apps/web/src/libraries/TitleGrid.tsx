@@ -5,7 +5,7 @@ import type {
   PosterRef,
 } from '@transcoda/contract';
 import { Link } from 'wouter';
-import { VERDICT_WORD, verdictOf } from '../jobs/jobText.ts';
+import { VERDICT_WORD, verdictOf } from '../jobs/job-text.ts';
 import { Poster } from '../jobs/Poster.tsx';
 import { fmtBytes } from '../lib/bytes.ts';
 

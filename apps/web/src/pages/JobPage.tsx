@@ -30,19 +30,19 @@ import {
   pathKey,
   runTitle,
   type TraceSource,
-} from '../editor/trace/traceOverlay.ts';
-import { useAsync } from '../hooks/useAsync.ts';
-import { useCatalog } from '../hooks/useCatalog.ts';
-import { useEvents } from '../hooks/useEvents.ts';
-import { useRefetchOn } from '../hooks/useRefetchOn.ts';
-import { useWorkflows } from '../hooks/useWorkflows.ts';
+} from '../editor/trace/trace-overlay.ts';
+import { useAsync } from '../hooks/use-async.ts';
+import { useCatalog } from '../hooks/use-catalog.ts';
+import { useEvents } from '../hooks/use-events.ts';
+import { useRefetchOn } from '../hooks/use-refetch-on.ts';
+import { useWorkflows } from '../hooks/use-workflows.ts';
 import { BeforeAfter } from '../jobs/BeforeAfter.tsx';
 import { FfmpegNotes, RawOutput, useJobLog } from '../jobs/FfmpegNotes.tsx';
 import { JobPlanSection } from '../jobs/JobPlanSection.tsx';
 import { JobResult } from '../jobs/JobResult.tsx';
 import { JobStateChip } from '../jobs/JobStateChip.tsx';
 import { JobSteps } from '../jobs/JobSteps.tsx';
-import { jobWhenLine } from '../jobs/jobOutcome.ts';
+import { jobWhenLine } from '../jobs/job-outcome.ts';
 import {
   activityLine,
   dependsOnSizeText,
@@ -51,18 +51,18 @@ import {
   percentOf,
   verdictOf,
   wouldText,
-} from '../jobs/jobText.ts';
-import { jobTitle, mediaSub } from '../jobs/mediaText.ts';
+} from '../jobs/job-text.ts';
+import { jobTitle, mediaSub } from '../jobs/media-text.ts';
 import { Poster } from '../jobs/Poster.tsx';
 import { ProcessAgain } from '../jobs/ProcessAgain.tsx';
 import { damagedSideOf, didText, type StepContext, videoConversionOf } from '../jobs/steps.ts';
 import { TestEncodeFile } from '../jobs/TestEncodeFile.tsx';
 import { TestOutputPanel } from '../jobs/TestOutputPanel.tsx';
-import { encodeStopped, useQueue } from '../jobs/useQueue.ts';
-import { useNodeParam } from '../jobs/useTryOnFile.ts';
-import { usePageTitle } from '../lib/pageTitle.ts';
+import { encodeStopped, useQueue } from '../jobs/use-queue.ts';
+import { useNodeParam } from '../jobs/use-try-on-file.ts';
+import { usePageTitle } from '../lib/page-title.ts';
 import { fmtDate } from '../lib/time.ts';
-import { usePhone } from '../lib/usePhone.ts';
+import { usePhone } from '../lib/use-phone.ts';
 import { Crumbs } from '../libraries/Crumbs.tsx';
 import { RestoreButton } from '../recycle/RestoreButton.tsx';
 

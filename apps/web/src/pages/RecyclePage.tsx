@@ -8,12 +8,12 @@ import { Icon } from '../components/Icon.tsx';
 import { ListboxSelect } from '../components/ListboxSelect.tsx';
 import { Loading } from '../components/Loading.tsx';
 import { useToast } from '../components/Toast.tsx';
-import { useAsync } from '../hooks/useAsync.ts';
+import { useAsync } from '../hooks/use-async.ts';
 import { fmtBytes } from '../lib/bytes.ts';
-import { usePageTitle } from '../lib/pageTitle.ts';
+import { usePageTitle } from '../lib/page-title.ts';
 import { fmtDate } from '../lib/time.ts';
-import { usePhone } from '../lib/usePhone.ts';
-import { groupRecycled } from '../recycle/groupRecycled.ts';
+import { usePhone } from '../lib/use-phone.ts';
+import { groupRecycled } from '../recycle/group-recycled.ts';
 import { RestoreButton } from '../recycle/RestoreButton.tsx';
 
 type Library = NonNullable<RecycleListOutput['library']>;

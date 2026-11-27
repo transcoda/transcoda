@@ -1,5 +1,5 @@
 // A job's progress bar: the Jobs list's running rows and the top bar's activity panel.
-import type { Job } from './jobText.ts';
+import type { Job } from './job-text.ts';
 
 export function JobProgress({ job, percent }: { job: Job; percent: number }) {
   return (
