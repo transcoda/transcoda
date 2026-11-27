@@ -5,8 +5,6 @@
   "apps/server/src/engine/verify/verify.ts": 1220,
   "apps/server/src/engine/walk/walk.test.ts": 1785,
   "apps/server/src/plugins/network/fetch-proxy.test.ts": 1231,
-  "apps/server/src/plugins/service.test.ts": 2460,
-  "apps/server/src/plugins/service.ts": 1589,
   "apps/server/src/rpc/procedures/engine.test.ts": 1366,
   "apps/server/src/workflows/service.test.ts": 1657,
   "apps/server/src/workflows/validate.test.ts": 2049,

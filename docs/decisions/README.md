@@ -196,3 +196,4 @@ Entries from M0 to M3 had no date of their own; they carry the day their milesto
 - 2026-11-27 · Structure · [Engine sub-areas, part 2](2026-11.md)
 - 2026-11-27 · Structure · [Plugin sub-folders](2026-11.md)
 - 2026-11-27 · Structure · [Jobs repository split](2026-11.md)
+- 2026-11-27 · Structure · [Plugin service split](2026-11.md)

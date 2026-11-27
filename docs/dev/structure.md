@@ -68,7 +68,8 @@ auth/            sessions, tokens, CSRF, cookies, passwords, rate limits, host-c
 nodes/           registry, remote nodes, availability, the CoreTools interface; core/ (the core nodes)
 workflows/       the workflow service, validate/, upgrade, subworkflow settings, webhook URLs
 plugin-host/     the plugin child process entry (bundled on its own)
-plugins/         service/; settings, crypto, installer, errors
+plugins/         settings, crypto, installer, errors
+  service/       service.ts (entry, PluginService), install, update, catalogs, listing; testing.ts
   trust/         catalogs, signatures, blocklist, guarded HTTP reads
   runtime/       supervisor, process, channel, isolation, limits, restart gate, hooks,
                  check-plugin and its sandbox expectations, dev plugins
@@ -216,7 +217,7 @@ Steps 1 (the check and this doc), 2, 3, 4, 5 and 6 are done. Each later pull req
 - [x] 4. Server: `engine/` sub-areas, part 1: `model/`, `files/`, `media/`, `encode/`.
 - [x] 5. Server: `engine/` sub-areas, part 2: `verify/`, `walk/`, `queue/`, `pipeline/`, `testing/`.
 - [x] 6. Server: `plugins/` sub-folders (`trust/`, `runtime/`, `network/`) and its test support into `testing/`.
-- [ ] 7. Server splits, one pull request each: `db/repos/jobs.ts` (done), `plugins/service.ts`, `workflows/validate.ts`, `engine/verify/verify.ts`.
+- [ ] 7. Server splits, one pull request each: `db/repos/jobs.ts` (done), `plugins/service.ts` (done), `workflows/validate.ts`, `engine/verify/verify.ts`.
 - [ ] 8. Server: test names in the dot form; split the over-budget tests.
 - [ ] 9. Web: `shell/`, `test/` to `testing/`, the CSS guard tests into `styles/`.
 - [ ] 10. Web: pages into their features, in three pull requests; then delete `pages/`.

@@ -11,7 +11,7 @@ import type { MetricsService } from '../metrics/service.ts';
 import type { NodeRegistry } from '../nodes/registry.ts';
 import type { Config } from '../platform/config.ts';
 import type { Logger } from '../platform/logger.ts';
-import type { PluginService } from '../plugins/service.ts';
+import type { PluginService } from '../plugins/service/service.ts';
 import type { SettingsDeps } from '../settings/service.ts';
 import type { AppUpdateChecker } from '../system/app-update.ts';
 import type { HealthService } from '../system/health.ts';
