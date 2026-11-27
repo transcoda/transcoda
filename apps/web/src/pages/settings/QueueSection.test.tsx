@@ -1,5 +1,3 @@
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { settingsFixture } from './settingsFixture.ts';
@@ -18,6 +16,7 @@ vi.mock('../../api/client.ts', () => ({
   },
 }));
 
+import { stylesCss } from '../../styles/css-source.ts';
 import { renderAt } from '../../test/render.tsx';
 import { QueueSection } from './QueueSection.tsx';
 
@@ -192,7 +191,7 @@ describe('QueueSection', () => {
     renderAt('/settings/queue', <QueueSection />);
     const group = await screen.findByRole('group', { name: 'Encoding device' });
     expect(group.querySelector('.setting-radios')?.className).toContain('setting-radios-stack');
-    const css = readFileSync(join(__dirname, '../../styles.css'), 'utf8');
+    const css = stylesCss;
     expect(css).toMatch(
       /@media \(max-width: 639px\) \{[^@]*\.setting-radios-stack \{\s*flex-direction: column;/,
     );

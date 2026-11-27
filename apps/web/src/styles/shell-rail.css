@@ -1,0 +1,61 @@
+/* ---------- Shell rail (the editor, screen 05: no top bar, 56 px icon rail) ---------- */
+
+.shell.is-rail {
+  height: 100vh;
+}
+
+.shell.is-rail .shell-body {
+  flex-wrap: nowrap;
+}
+
+.sidenav.rail {
+  flex: 0 0 56px;
+  width: 56px;
+  padding: var(--sp-3) var(--sp-2);
+  align-items: center;
+}
+
+.rail-home {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--target-min);
+  height: var(--target-min);
+  margin-bottom: var(--sp-2);
+  border-radius: var(--r-md);
+}
+
+.sidenav.rail .nav-item {
+  justify-content: center;
+  width: var(--target-min);
+  padding: 0;
+}
+
+.sidenav.rail .nav-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.sidenav.rail .nav-sep {
+  width: 32px;
+}
+
+.rail-logout {
+  margin-top: auto;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  .rail-logout:hover {
+    color: var(--text);
+    background: var(--raised);
+  }
+}

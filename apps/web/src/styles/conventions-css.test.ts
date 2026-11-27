@@ -1,10 +1,10 @@
 // The shared conventions of the UI consistency pass, pinned in the stylesheet.
-import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { stylesCss } from './css-source.ts';
 
 // Comments dropped, so a rule's selector list is only selectors.
-const css = readFileSync(join(__dirname, '../styles.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+const css = stylesCss.replace(/\/\*[\s\S]*?\*\//g, '');
 
 /** The declarations of every rule whose selector list contains `selector` as one entry, at the
  *  top level or one level inside an at-rule such as `@media (hover: hover)`. */

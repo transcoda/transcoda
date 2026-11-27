@@ -1,0 +1,99 @@
+/* ---------- Issues panel (bottom of the inspector column) ---------- */
+.inspector-issues-region {
+  flex: none;
+  padding: 0 var(--sp-5) var(--sp-3);
+}
+
+.issues-panel,
+.issues-none {
+  margin-top: auto;
+  border-top: 1px solid var(--line);
+  padding-top: var(--sp-3);
+}
+
+/* Nothing selected: the issues list is the whole column, from the top. */
+.inspector-col > .inspector-issues-region:first-child {
+  padding-top: var(--sp-3);
+}
+
+.inspector-col > .inspector-issues-region:first-child :is(.issues-panel, .issues-none) {
+  margin-top: 0;
+  border-top: 0;
+  padding-top: 0;
+}
+
+.issues-summary {
+  display: flex;
+  align-items: center;
+  min-height: var(--target-min);
+  font-size: var(--fs-ui);
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.issues-none {
+  display: flex;
+  align-items: center;
+  min-height: var(--target-min);
+  margin-bottom: 0;
+  font-size: var(--fs-ui);
+  color: var(--muted);
+}
+
+.issues-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  /* A long list scrolls by itself; the inspector above it stays in view. */
+  max-height: 40vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+
+.issues-entry {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  column-gap: var(--sp-2);
+  align-items: start;
+  width: 100%;
+  min-height: var(--target-min);
+  padding: var(--sp-2);
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-ui);
+  text-align: left;
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  .issues-entry:hover {
+    background: var(--raised);
+  }
+}
+
+.issues-entry > .icon {
+  margin-top: var(--sp-1);
+}
+
+.issues-entry.is-error > .icon {
+  color: var(--st-failed-text);
+}
+
+.issues-entry.is-warning > .icon {
+  color: var(--st-needs-setting);
+}
+
+.issues-entry-subject {
+  font-weight: 700;
+}
+
+.issues-entry-message {
+  grid-column: 2;
+  color: var(--muted);
+}

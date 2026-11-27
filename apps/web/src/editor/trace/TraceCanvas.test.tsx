@@ -1,9 +1,8 @@
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import type { WorkflowGraph } from '@transcoda/shared';
 import { useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { stylesCss } from '../../styles/css-source.ts';
 import { catalogFixture } from '../../test/fixtures/catalog.ts';
 import {
   entry,
@@ -132,7 +131,7 @@ describe('TraceCanvas', () => {
     });
 
     it('css: inverted text on the lime fill (AA via --on-accent), motion only when allowed', () => {
-      const css = readFileSync(join(__dirname, '../../styles.css'), 'utf8');
+      const css = stylesCss;
       const rule = css.match(/\.tc-node \.tc-node-fill\s*\{([^}]*)\}/)?.[1] ?? '';
       expect(rule).toMatch(/background:\s*var\(--accent\)/);
       expect(rule).toMatch(/color:\s*var\(--on-accent\)/);
@@ -144,7 +143,7 @@ describe('TraceCanvas', () => {
     });
 
     it('css: a taken or dimmed output keeps the fill ink inside the fill (not lime on lime)', () => {
-      const css = readFileSync(join(__dirname, '../../styles.css'), 'utf8');
+      const css = stylesCss;
       const fill = css.match(
         /\.tc-node \.tc-node-fill \.tc-port-out\.is-taken,\s*\.tc-node \.tc-node-fill \.tc-port-out\.is-dimmed\s*\{([^}]*)\}/,
       );

@@ -2,11 +2,11 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { commaValues, declsOf, spaceValues } from './css-source.ts';
+import { commaValues, declsOf, spaceValues, stylesCss } from './css-source.ts';
 import { LINEAR_PROGRESS } from './design-exceptions.ts';
 
 const tokens = readFileSync(join(__dirname, 'tokens.css'), 'utf8');
-const css = readFileSync(join(__dirname, '../styles.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+const css = stylesCss.replace(/\/\*[\s\S]*?\*\//g, '');
 
 /** The declarations of the first rule whose selector list is exactly `selector`, at any depth. */
 function rule(selector: string): string {

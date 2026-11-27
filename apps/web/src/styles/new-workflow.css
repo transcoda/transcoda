@@ -1,0 +1,69 @@
+.new-wf-form {
+  max-width: 560px;
+  padding: var(--sp-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+/* Cancel, then the primary on the right: the order every dialog footer uses. */
+.new-wf-form .form-actions {
+  justify-content: flex-end;
+}
+
+.kind-choice {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.kind-choice legend {
+  margin-bottom: var(--sp-2);
+  font-size: var(--fs-ui);
+  font-weight: 500;
+}
+
+.kind-option {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  min-height: var(--target-min);
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-md);
+  border: 1px solid var(--line-strong);
+  color: var(--muted);
+  cursor: pointer;
+}
+
+/* Selected: a lime ring and the radio's lime dot, no fill (lime fill is for the primary action). */
+.kind-option:has(input:checked) {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.kind-option:has(input:focus-visible) {
+  box-shadow: var(--focus-ring);
+}
+
+.kind-option input {
+  accent-color: var(--accent);
+}
+
+.kind-option b {
+  color: var(--text);
+}
+
+@media (max-width: 1023px) {
+  .wf-table {
+    overflow-x: auto;
+  }
+}
+
+@media (max-width: 639px) {
+  .page {
+    padding: var(--sp-5) var(--sp-4) var(--sp-10);
+  }
+}

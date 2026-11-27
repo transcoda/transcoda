@@ -1,7 +1,6 @@
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { cleanup, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
+import { stylesCss } from '../../styles/css-source.ts';
 import { renderFlow } from '../../test/flow.tsx';
 import { iconScale, TRACE_ICON, useZoomLevel } from './useZoomLevel.ts';
 
@@ -78,7 +77,7 @@ describe('iconScale on the job page trace', () => {
   });
 
   it('the stylesheet sizes the trace tile to match', () => {
-    const css = readFileSync(join(__dirname, '../../styles.css'), 'utf8');
+    const css = stylesCss;
     expect(css).toMatch(
       new RegExp(
         `\\.tc-node\\.zoom-icon\\.is-big-icon \\{[^}]*width: ${TRACE_ICON.circle}px;[^}]*height: ${TRACE_ICON.circle}px;`,

@@ -1,0 +1,208 @@
+/* ---------- Workflow list and new workflow (M2) ---------- */
+
+.page-head-row {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+}
+
+.page-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-3);
+}
+
+a.btn,
+a.btn:hover {
+  text-decoration: none;
+}
+
+@media (hover: hover) {
+  a.btn-primary:hover {
+    color: var(--on-accent);
+  }
+}
+
+@media (hover: hover) {
+  a.btn-secondary:hover {
+    color: var(--text);
+  }
+}
+
+.wf-section + .wf-section {
+  margin-top: var(--sp-6);
+}
+
+/* The page title with the workflow count beside it (the table's own heading is for screen readers). */
+.wf-title {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-3);
+}
+
+.wf-title .wf-count {
+  font-size: var(--fs-body);
+}
+
+.wf-section-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-3);
+  margin: 0 0 var(--sp-3);
+  font-size: var(--fs-h3);
+}
+
+.wf-count {
+  font-family: var(--font-mono);
+  font-size: var(--fs-small);
+  font-weight: 600;
+  color: var(--muted);
+}
+
+/* Fits the 1024 px desktop without scrolling, so the row menu is never clipped there. Both
+   tables are fixed-layout; USED BY spans TRIGGER + ACTIVE, so LAST EDITED and the menus line up. */
+.wf-table table {
+  width: 100%;
+  min-width: 720px;
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-size: var(--fs-ui);
+}
+
+.wf-col-library {
+  width: 170px;
+}
+/* Room for "Active v12" and, under it, "v13 not activated". */
+.wf-col-active {
+  width: 170px;
+}
+.wf-col-used-by {
+  width: 340px;
+}
+/* Room for "v12 · 27 Oct 2025" (another year's date) without cutting it short. */
+.wf-col-edited {
+  width: 160px;
+}
+.wf-col-actions {
+  width: calc(var(--target-min) + 24px);
+}
+.wf-col-name {
+  width: auto;
+}
+
+.wf-table th {
+  padding: var(--sp-4) var(--sp-3);
+  text-align: left;
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  font-weight: 600;
+  color: var(--faint);
+  text-transform: uppercase;
+}
+
+.wf-table .wf-cell {
+  padding: var(--sp-3);
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  vertical-align: middle;
+}
+
+.wf-table th:first-child,
+.wf-table .wf-cell:first-child {
+  padding-left: var(--sp-5);
+}
+
+.wf-table th:last-child,
+.wf-table .wf-cell:last-child {
+  padding-right: var(--sp-3);
+  text-align: right;
+}
+
+/* The name cell stays a real table cell; the rename input and its hint share one line. */
+.wf-name-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-1) var(--sp-3);
+}
+
+.inline-edit-hint {
+  color: var(--faint);
+  font-size: var(--fs-mono);
+}
+
+@media (max-width: 639px) {
+  /* Below this width the hint would wrap the row; it stays in the input's description. */
+  .inline-edit-hint {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
+/* Underlined only on hover and keyboard focus: a column of underlined names is noise. */
+.wf-link {
+  color: var(--text);
+  font-weight: 700;
+  font-size: var(--fs-body);
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+
+.wf-link:focus-visible {
+  color: var(--text);
+  text-decoration: underline;
+}
+@media (hover: hover) {
+  .wf-link:hover {
+    color: var(--text);
+    text-decoration: underline;
+  }
+}
+
+/* A problem chip next to the name grows and wraps its words rather than spill out of the cell. */
+.wf-name-line .chip {
+  height: auto;
+  min-height: 24px;
+  max-width: 100%;
+  white-space: normal;
+}
+
+/* A library or used-by list longer than its column is cut short; the title has it all. */
+.wf-library,
+.wf-used-by {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.wf-quiet {
+  color: var(--faint);
+}
+
+/* The active pill with the newer version's "not activated" under it. */
+.wf-active {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sp-1);
+}
+
+/* The pill may wrap as a fallback (a long version number in a narrow column). */
+.wf-table .activation-pill {
+  white-space: normal;
+}
+
+.wf-version {
+  overflow: hidden;
+  font-family: var(--font-mono);
+  font-size: var(--fs-mono);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}

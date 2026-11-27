@@ -1,12 +1,11 @@
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
+import { stylesCss } from '../styles/css-source.ts';
 import { Loading } from './Loading.tsx';
 
 afterEach(cleanup);
 
-const css = readFileSync(join(__dirname, '../styles.css'), 'utf8');
+const css = stylesCss;
 
 describe('Loading', () => {
   it('is a status with a decorative spinner and the label as text', () => {

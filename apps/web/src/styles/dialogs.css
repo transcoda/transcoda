@@ -1,0 +1,99 @@
+/* ---------- Shared primitives: dialog, toasts, chips (M2) ---------- */
+
+.dialog {
+  width: min(480px, calc(100vw - 32px));
+  padding: 0;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  color: var(--text);
+}
+
+/* Flex only while open (a bare `display` would show a closed dialog). Title and footer stay
+   pinned; the body scrolls, at every window height. */
+.dialog[open] {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100dvh - 32px);
+  overflow: hidden;
+}
+
+.dialog::backdrop {
+  background: var(--backdrop);
+}
+
+.dialog-wide {
+  width: min(720px, calc(100vw - 32px));
+}
+
+.dialog-danger {
+  border-color: var(--danger-line);
+}
+
+/* The divider under the title mirrors the footer's: a scrolled body never slides under the title. */
+.dialog-title {
+  flex: none;
+  padding: var(--sp-5) var(--sp-6) var(--sp-4);
+  border-bottom: 1px solid var(--line);
+  font-size: var(--fs-h2);
+  font-weight: 700;
+}
+
+.dialog-danger .dialog-title {
+  color: var(--danger-text);
+}
+
+.dialog-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--sp-4) var(--sp-6) var(--sp-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.dialog-footer {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--sp-3);
+  padding: var(--sp-4) var(--sp-6);
+  border-top: 1px solid var(--line);
+}
+
+/* The one-line reason under a disabled primary button: its own row at the footer's end. */
+.dialog-footer .form-reason {
+  flex-basis: 100%;
+  margin: 0;
+  text-align: right;
+}
+
+/* The top-right close button: a full-size target. */
+.dialog-close {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--target-min);
+  height: var(--target-min);
+  border: 0;
+  border-radius: var(--r-md);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+@media (hover: hover) {
+  .dialog-close:hover {
+    background: var(--raised);
+    color: var(--text);
+  }
+}
+.dialog:has(.dialog-close) .dialog-title {
+  padding-right: 60px;
+}

@@ -1,0 +1,1100 @@
+/* ---------- Jobs (screens 07, 08) ---------- */
+
+.nav-count {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  padding: 1px var(--sp-2);
+  border-radius: var(--r-pill);
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.jobs-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  padding: 28px var(--sp-8) var(--sp-12);
+}
+
+.jobs-head {
+  /* One header row (.head-row): the title block, then the queue actions on the right. */
+  margin-bottom: var(--sp-1);
+}
+/* Narrow: the queue buttons move under the title rather than squeezing it ("Job…"). */
+.jobs-head.head-row {
+  flex-wrap: wrap;
+}
+.jobs-title {
+  display: flex;
+  flex-direction: column;
+  /* The block takes the row's free width, so a lane's name ("Quick tasks") is never cut short;
+     below 280px of it the actions wrap to their own line. */
+  flex: 1 1 280px;
+  min-width: 0;
+}
+/* Who holds each lane, one row per lane: its name, then the file, cut short with an ellipsis. */
+.lanes {
+  display: grid;
+  /* The lane's name takes at most half the width, so the file always has room. */
+  grid-template-columns: fit-content(50%) minmax(0, 1fr);
+  column-gap: var(--sp-3);
+  row-gap: 1px;
+  margin-top: var(--sp-2);
+}
+.lane {
+  display: contents;
+}
+.lanes dt {
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lanes dd {
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text);
+}
+.lanes dd.is-idle {
+  color: var(--muted);
+}
+.jobs-title-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+}
+.jobs-head h1 {
+  font-size: var(--fs-title);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.queue {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+.queue-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-3);
+  font-size: var(--fs-small);
+  color: var(--muted);
+}
+.queue-bar .btn {
+  margin-left: auto;
+}
+/* "Cancel all" sits right next to the queue button. */
+.queue-bar .btn + .btn {
+  margin-left: 0;
+}
+.queue-status:empty {
+  display: none;
+}
+
+.filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  height: var(--target-min);
+  padding: 0 var(--sp-3);
+  border-radius: var(--r-pill);
+  border: 1.5px solid var(--line-strong);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-ui);
+  font-weight: 500;
+  cursor: pointer;
+}
+.filter-chip .mono {
+  font-size: var(--fs-micro);
+  opacity: 0.8;
+}
+.filter-chip[aria-pressed="true"] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+}
+
+.filter-chip:focus-visible,
+.job-name:focus-visible,
+.phone-finished:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* A job's poster thumbnail, or a film placeholder. */
+.poster {
+  display: block;
+  overflow: hidden;
+  flex: none;
+}
+.poster img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.poster-row {
+  width: 34px;
+  height: 51px;
+  border-radius: var(--r-sm);
+}
+.poster-page {
+  width: 104px;
+  height: 156px;
+  border-radius: var(--r-md);
+}
+@media (max-width: 639px) {
+  .poster-page {
+    width: 64px;
+    height: 96px;
+  }
+}
+.poster-card {
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  border-radius: var(--r-sm);
+}
+.poster-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--raised);
+  box-shadow: inset 0 0 0 1px var(--line-strong);
+  color: var(--faint);
+}
+
+/* Desktop Jobs list: a table in the rounded surface, scrolling sideways below its minimum width.
+   Positioned so the sr-only Actions header stays inside the scroll box. */
+.job-list {
+  position: relative;
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  overflow-x: auto;
+  container: job-list / inline-size;
+}
+/* The minimum width is the fixed columns plus 240px for the Title. */
+.job-table {
+  width: 100%;
+  min-width: 1010px;
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-size: var(--fs-ui);
+}
+.job-table.has-actions {
+  min-width: 1160px;
+}
+/* Title takes the rest. */
+.job-col-library {
+  width: 110px;
+}
+.job-col-workflow {
+  width: 140px;
+}
+/* Fits "Would replace · −74%" and "Would keep original" on one line; longer states wrap. */
+.job-col-status {
+  width: 210px;
+}
+.job-col-result {
+  width: 210px;
+}
+.job-col-when {
+  width: 100px;
+}
+.job-col-actions {
+  width: 150px;
+}
+/* The stat tiles' label style. */
+.job-table th {
+  padding: var(--sp-3) var(--sp-3);
+  text-align: left;
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--faint);
+  white-space: nowrap;
+  border-bottom: 1px solid var(--line);
+}
+.job-table .row-link td {
+  padding: var(--sp-2) var(--sp-3);
+  vertical-align: middle;
+}
+.job-table .row-link + .row-link td {
+  border-top: 1px solid var(--line);
+}
+.job-table th:first-child,
+.job-table td:first-child {
+  padding-left: var(--sp-4);
+}
+.job-table th:last-child,
+.job-table td:last-child {
+  padding-right: var(--sp-4);
+}
+.job-table .job-when {
+  text-align: right;
+  white-space: nowrap;
+}
+.job-table td.job-when {
+  font-size: var(--fs-small);
+  color: var(--faint);
+  font-variant-numeric: tabular-nums;
+}
+/* No room for every column: Library and Workflow give way (both are on the job's page, and the
+   library filter stays). The Title keeps its 240px. These come after the column widths and the
+   When rules, so they win on order as well as weight. */
+@container job-list (max-width: 1009px) {
+  .job-table:not(.has-actions) {
+    min-width: 760px;
+  }
+  .job-table:not(.has-actions) .job-optional {
+    display: none;
+  }
+}
+/* With running jobs the Actions column needs room too: When also gives way (the job's page has
+   it) and Result is narrower, so the whole row, Pause and Cancel included, fits at 1024px beside
+   the full sidebar. The Title keeps 200px. */
+@container job-list (max-width: 1159px) {
+  .job-table.has-actions {
+    min-width: 720px;
+  }
+  .job-table.has-actions .job-optional,
+  .job-table.has-actions .job-when,
+  .job-table.has-actions .job-col-when {
+    display: none;
+  }
+  .job-table.has-actions .job-col-result {
+    width: 160px;
+  }
+}
+/* Library and workflow: one line, the whole text on hover. */
+.job-cell-clip {
+  font-size: var(--fs-small);
+  color: var(--faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* A job's name as a link (phone cards, the Run page): one line, ellipsis. */
+.job-name {
+  color: var(--text);
+  font-weight: 600;
+  text-decoration: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border-radius: var(--r-sm);
+}
+@media (hover: hover) {
+  .job-name:hover {
+    color: var(--text);
+  }
+}
+.job-title {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  min-width: 0;
+}
+.job-title-main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+/* A long title keeps one line and never widens the table. */
+.job-title-text {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.job-title-sub {
+  display: block;
+  font-size: var(--fs-small);
+  color: var(--faint);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.job-title-code {
+  font-weight: 600;
+  color: var(--muted);
+}
+/* Result: sizes over the saving, or a reason over the sizes, or the detail line. */
+.job-outcome-sizes {
+  display: block;
+  color: var(--text);
+}
+.job-outcome-sub {
+  display: block;
+  font-size: var(--fs-small);
+  color: var(--faint);
+}
+.job-outcome-change {
+  display: block;
+  font-size: var(--fs-small);
+  font-weight: 600;
+}
+.job-outcome-change.is-saved {
+  color: var(--accent-text);
+}
+.job-outcome-change.is-grew {
+  color: var(--muted);
+}
+.job-chips {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+.job-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  height: 28px;
+  padding: 0 var(--sp-3);
+  border-radius: var(--r-pill);
+  border: 1.5px solid transparent;
+  font-size: var(--fs-small);
+  font-weight: 700;
+  white-space: nowrap;
+}
+.job-chip.is-running {
+  background: var(--st-running);
+  border-color: var(--st-running);
+  color: var(--st-running-ink);
+}
+/* A working job's arc turns; a planned one shows a still hourglass instead. */
+@media (prefers-reduced-motion: no-preference) {
+  .job-chip.is-working .icon {
+    animation: loading-spin 1.2s linear infinite;
+  }
+}
+.job-chip.is-queued,
+.job-chip.is-paused,
+.job-chip.is-kept,
+.job-chip.is-noop,
+.job-chip.is-cancelled,
+.job-chip.is-already,
+.job-chip.is-skipped {
+  /* Nothing changed (or not yet): a neutral outline, never a colour that reads as an outcome. */
+  background: transparent;
+  border-color: var(--line-strong);
+  color: var(--muted);
+}
+.job-chip.is-replaced {
+  background: var(--st-replaced);
+  border-color: var(--st-replaced);
+  color: var(--st-replaced-ink);
+}
+.job-chip.is-noop svg {
+  stroke-dasharray: 3 3;
+}
+.job-chip.is-failed {
+  background: var(--st-failed);
+  border-color: var(--st-failed);
+  color: var(--st-failed-ink);
+}
+.job-chip.is-dry {
+  background: var(--st-dry-bg);
+  border: 1.5px solid var(--st-dry);
+  color: var(--st-dry);
+}
+
+.job-detail-text {
+  font-size: var(--fs-small);
+  color: var(--muted);
+}
+/* A Jobs row's detail: at most two lines, so a long reason never stretches the row (#44). */
+.job-detail-clamp {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+.job-detail-text.is-queued {
+  color: var(--faint);
+}
+.job-detail-text.is-replaced {
+  color: var(--st-replaced-text);
+}
+/* Desktop rows: the chip already says "Replaced"; the sizes beside it read as plain text. */
+.job-table .job-detail-text.is-replaced {
+  color: var(--text);
+}
+.job-detail-text.is-failed {
+  color: var(--st-failed-text);
+}
+.job-detail-text.is-dry {
+  color: var(--st-dry);
+}
+
+.progress {
+  height: 8px;
+  border-radius: var(--r-pill);
+  background: var(--line);
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  border-radius: var(--r-pill);
+  background: var(--accent);
+}
+
+.job-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--sp-2);
+}
+
+/* The Jobs table's Result cell: the bar under its line. */
+.job-outcome .progress {
+  margin-top: var(--sp-2);
+}
+/* Status: a long state ("Would replace if it saves ≥ 25%") wraps inside its column instead of
+   running into Result. */
+.job-table .job-chips {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sp-1);
+  max-width: 100%;
+}
+.job-table .job-chip {
+  height: auto;
+  min-height: 28px;
+  max-width: 100%;
+  gap: var(--sp-1);
+  padding: var(--sp-1) var(--sp-2);
+  line-height: 1.25;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.job-table .job-chip > svg {
+  flex: none;
+}
+/* A dry run's "Dry run" / "Test encode" mark: in the table a small mono line under the state
+   chip (see .job-table .job-chips), not a second chip, so a dry-run row is no taller than any
+   other. */
+.job-table .badge-dry {
+  height: auto;
+  padding: 0 0 0 var(--sp-1);
+  gap: var(--sp-1);
+  border: 0;
+  background: none;
+  text-transform: uppercase;
+}
+/* Two buttons fit the 150 px column at the compact size; they wrap rather than overlap. */
+.job-table .job-actions {
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+.job-table .job-actions .btn-sm {
+  height: 30px;
+  padding: 0 var(--sp-3);
+  font-size: var(--fs-small);
+}
+
+.jobs-empty {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2) var(--sp-3);
+  color: var(--faint);
+  font-size: var(--fs-ui);
+}
+.jobs-empty p {
+  margin: 0;
+}
+
+/* Loading (shared): centred in the space it fills; the spinner only turns when motion is welcome. */
+.loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-3);
+  min-height: 40vh;
+  padding: var(--sp-6);
+  color: var(--muted);
+  font-size: var(--fs-small);
+}
+.loading-spinner {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 3px solid var(--line-strong);
+  border-top-color: var(--text);
+}
+.loading-inline {
+  flex-direction: row;
+  justify-content: flex-start;
+  gap: var(--sp-2);
+  min-height: 0;
+  padding: var(--sp-2) var(--sp-3);
+}
+.loading-inline .loading-spinner {
+  width: 14px;
+  height: 14px;
+  border-width: 2px;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .loading-spinner {
+    animation: loading-spin 0.8s linear infinite;
+  }
+}
+@keyframes loading-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.jobs-error {
+  justify-content: space-between;
+}
+
+/* Phone (screen 08): the page carries its own header; the shell's top bar and nav open from Menu. */
+.btn-block {
+  flex: 1;
+  height: var(--target-min);
+}
+.jobs-page.is-phone {
+  padding: var(--sp-4) var(--sp-4) var(--sp-6);
+  gap: var(--sp-3);
+}
+.is-phone .jobs-head {
+  gap: var(--sp-3);
+}
+.is-phone .jobs-title {
+  flex: 1;
+}
+.is-phone .jobs-title-row {
+  gap: var(--sp-3);
+}
+.is-phone .head-actions {
+  padding-top: var(--sp-1);
+}
+/* Two or more actions (Retry failed, Cancel all) do not fit beside the title on a phone: they go
+   to their own row under it, so the lanes line keeps the full width. */
+.is-phone .jobs-head:has(.head-actions > :nth-child(2)) {
+  flex-wrap: wrap;
+}
+.is-phone .jobs-head:has(.head-actions > :nth-child(2)) .jobs-title {
+  flex-basis: 100%;
+}
+.is-phone .jobs-head:has(.head-actions > :nth-child(2)) .head-actions {
+  justify-content: flex-start;
+  margin-left: 0;
+  padding-top: 0;
+}
+.is-phone .jobs-head h1 {
+  font-size: var(--fs-h1);
+}
+/* The phone's filters wrap onto as many rows as they need: a sideways-scrolling row hid the last
+   chips with nothing to say they were there. */
+.is-phone .filter-chip {
+  flex: none;
+}
+/* Jobs page charts: seven day bars and the encoder's last hour. */
+.week-bars {
+  position: relative;
+  margin: 0;
+}
+.week-bars-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+.week-bars-axis {
+  stroke: var(--line-strong);
+  vector-effect: non-scaling-stroke;
+}
+.week-bars text {
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  fill: var(--faint);
+}
+.week-bars-day.is-hover rect:not(.week-bars-hit) {
+  filter: brightness(1.12);
+}
+.week-bars-hit {
+  fill: transparent;
+}
+/* A chart's hover readout: the day's parts, or the encoder's load at the pointer. */
+.chart-tip {
+  position: absolute;
+  bottom: calc(100% - 8px);
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  min-width: max-content;
+  padding: var(--sp-2) var(--sp-2);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  box-shadow: 0 8px 24px var(--toolbar-shadow);
+  font-size: var(--fs-small);
+  color: var(--text);
+  white-space: nowrap;
+  pointer-events: none;
+  transform: translateX(-50%);
+}
+.chart-tip.is-start {
+  transform: translateX(-12%);
+}
+.chart-tip.is-end {
+  transform: translateX(-88%);
+}
+.chart-tip i {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  margin-right: var(--sp-1);
+  border-radius: 2px;
+}
+.chart-tip-total {
+  color: var(--muted);
+}
+.load-strip {
+  position: relative;
+}
+.load-cursor {
+  stroke: var(--muted);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+.load-strip-svg {
+  display: block;
+  width: 100%;
+  height: 80px;
+}
+.load-baseline {
+  stroke: var(--line-strong);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+.load-line {
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+}
+.load-area {
+  opacity: 0.16;
+  stroke: none;
+}
+.load-strip-axis {
+  display: flex;
+  justify-content: space-between;
+  margin-top: var(--sp-1);
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  color: var(--faint);
+}
+.stat-tiles {
+  display: flex;
+  gap: var(--sp-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.stat-tile {
+  flex: 1;
+  min-width: 0;
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--r-md);
+  background: var(--raised);
+  display: flex;
+  flex-direction: column;
+}
+/* Desktop: the tiles filter the list; the button fills the tile so the whole tile is the target.
+   The tile is stretched to the row's tallest tile, so the button grows with it (flex: 1): no
+   tinted band of the tile shows under a content-high button (#31). */
+.stat-tile.is-button {
+  display: flex;
+  padding: 0;
+}
+.stat-tile-button {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+  min-height: var(--target-min);
+  padding: var(--sp-3) var(--sp-4);
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+/* The tile carries the selected state: one ring outside the tint, same radius, a gap of page
+   background between, plus a bold label and a check (shape, not only colour). */
+.stat-tile:has(> .stat-tile-button[aria-pressed="true"]) {
+  box-shadow:
+    0 0 0 2px var(--bg),
+    0 0 0 4px currentColor;
+}
+.stat-label .icon {
+  margin-right: var(--sp-1);
+  vertical-align: -2px;
+}
+.stat-tile-button:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+.stat-label {
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+.stat-sub {
+  font-size: var(--fs-small);
+  color: var(--muted);
+}
+.stat-value {
+  font-size: var(--fs-h2);
+  font-weight: 700;
+  /* "2 MB" never breaks across two lines on a phone. */
+  white-space: nowrap;
+}
+/* "Saved today" is a figure, not a filter: a plain tile, only its value in the accent colour. */
+.stat-tile.has-accent-value .stat-value {
+  color: var(--accent-text);
+}
+/* A zero that is not good news (nothing saved, nothing queued) is dimmed, not hidden. */
+.stat-tile.is-zero .stat-value {
+  color: var(--faint);
+}
+/* One figure leads: "Needs attention" (the count that asks for something to be done) is twice as
+   wide and has the larger figure, so the row is not four equal blocks. */
+.stat-tile.is-lead {
+  flex: 2;
+}
+.stat-tile.is-lead .stat-value {
+  font-size: var(--fs-h1);
+  line-height: 1.2;
+}
+/* "Saved all time" sits at the end of the Today row, apart from its list. */
+.stat-row {
+  display: flex;
+  gap: var(--sp-2);
+}
+.stat-row > .stat-tiles {
+  flex: 4;
+  min-width: 0;
+}
+.stat-row > .stat-tile.is-alltime {
+  flex: 1;
+}
+.is-phone .stat-row {
+  flex-wrap: wrap;
+}
+/* Phone: the lead tile has its own row and the other three share the next, so the longest micro
+   label (NEEDS ATTENTION) has the full width; 12px side padding keeps SAVED TODAY inside. A tile
+   that filters keeps no padding of its own, so its button (which carries the padding) is the
+   whole tile and a tap anywhere on it filters. */
+.is-phone .stat-row > .stat-tiles {
+  flex-wrap: wrap;
+}
+.is-phone .stat-tile:not(.is-button),
+.is-phone .stat-tile-button {
+  padding-inline: var(--sp-3);
+}
+.is-phone .stat-tile.is-lead {
+  flex-basis: 100%;
+}
+.is-phone .stat-row > .stat-tiles,
+.is-phone .stat-row > .stat-tile.is-alltime {
+  flex: 1 1 100%;
+}
+/* Desktop: the Today tiles and the history cards, sized by the space beside the sidebar. */
+.jobs-overview {
+  container: jobs-overview / inline-size;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+/* Last 7 days and the encoder's last hour: one row of four half-height cards (2 × 2 on a phone),
+   title and total on one line, the chart under them. */
+.jobs-history {
+  display: flex;
+  flex-direction: column;
+}
+.history-cards {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--sp-2);
+}
+.is-phone .history-cards {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+/* The four cards share a baseline: the header line (title, total and any legend) at the top, the
+   chart and its axis always the last line, pushed to the bottom of the stretched card. */
+.history-card {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  align-content: space-between;
+  column-gap: var(--sp-2);
+  min-width: 0;
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-md);
+  background: var(--raised);
+}
+.history-card-title {
+  font-size: var(--fs-small);
+  color: var(--muted);
+}
+.history-card-total {
+  margin: 0;
+  font-size: var(--fs-h3);
+  font-weight: 700;
+}
+.history-card-total small {
+  display: inline-block;
+  white-space: nowrap;
+  line-height: 1.3;
+  font-size: var(--fs-small);
+  font-weight: 400;
+  color: var(--faint);
+}
+.history-card .week-bars {
+  order: 2;
+  flex: 1 1 100%;
+  margin-top: var(--sp-2);
+}
+.history-card .week-bars-svg,
+.history-card .load-strip-svg {
+  display: block;
+  width: 100%;
+  height: 44px;
+}
+.week-days {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  margin-top: var(--sp-1);
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  color: var(--faint);
+}
+.history-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-3);
+  margin-top: var(--sp-1);
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  color: var(--muted);
+}
+/* "Files done" puts its legend on the header line, at the right, not under its chart. */
+.history-card > .history-legend {
+  order: 1;
+  margin-left: auto;
+}
+.history-legend i {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: var(--sp-1);
+  border-radius: 2px;
+}
+.encoder-card .load-strip-axis {
+  align-items: center;
+}
+.encoder-card .encoder-legend {
+  margin: 0;
+}
+.encoder-gpu {
+  order: 1;
+  flex: 1 1 100%;
+  margin-top: var(--sp-1);
+  font-size: var(--fs-micro);
+  color: var(--muted);
+}
+/* Phone: smaller type; no legends or day names, the GPU's name under the title. */
+.is-phone .history-card {
+  padding: var(--sp-3) var(--sp-3) var(--sp-2);
+}
+.is-phone .history-card-title {
+  flex: 1 1 100%;
+  overflow: hidden;
+  font-size: var(--fs-micro);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.is-phone .history-card-total {
+  font-size: var(--fs-h3);
+}
+.is-phone .history-card-total small {
+  font-size: var(--fs-micro);
+}
+.is-phone .history-card .week-bars-svg,
+.is-phone .history-card .load-strip-svg {
+  height: 34px;
+}
+.is-phone .history-card > .history-legend,
+.is-phone .week-days,
+.is-phone .encoder-card .load-strip-axis > span:not(.encoder-legend) {
+  display: none;
+}
+.is-phone .encoder-card .load-strip-axis {
+  justify-content: flex-start;
+}
+.is-phone .encoder-gpu {
+  margin: 0;
+}
+/* Too narrow for one row: "Saved all time" under the tiles, the cards 2 × 2. After the base
+   .stat-row and .history-cards rules, which have the same weight. */
+@container jobs-overview (max-width: 699px) {
+  .stat-row {
+    flex-wrap: wrap;
+  }
+  .stat-row > .stat-tiles,
+  .stat-row > .stat-tile.is-alltime {
+    flex: 1 1 100%;
+  }
+  .history-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+/* Too narrow for four tiles in a row: the lead on its own row, the other three under it, so no
+   label is cut. */
+@container jobs-overview (max-width: 559px) {
+  .stat-row > .stat-tiles {
+    flex-wrap: wrap;
+  }
+  .stat-row > .stat-tiles > .stat-tile {
+    flex: 1 1 0;
+  }
+  .stat-row > .stat-tiles > .stat-tile.is-lead {
+    flex-basis: 100%;
+  }
+}
+.phone-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+.phone-section .section-h2 {
+  margin-top: var(--sp-2);
+}
+.phone-card {
+  padding: var(--sp-4);
+  border-radius: var(--r-md);
+  background: var(--raised);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+.phone-card-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.phone-card-head .job-name {
+  flex: 1;
+  min-width: 0;
+}
+/* The episode line sits close under the title. */
+.phone-card .job-title-sub {
+  margin-top: calc(-1 * var(--sp-2));
+}
+.phone-card-head .mono {
+  font-size: var(--fs-mono);
+  font-weight: 600;
+}
+.phone-card .progress {
+  height: 10px;
+  background: var(--bg);
+}
+.phone-card-line {
+  font-size: var(--fs-small);
+  color: var(--muted);
+}
+.phone-card-actions {
+  display: flex;
+  gap: var(--sp-2);
+}
+.phone-finished {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  min-height: 56px;
+  padding: 0 var(--sp-4);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  color: var(--text);
+  text-decoration: none;
+}
+@media (hover: hover) {
+  .phone-finished:hover {
+    color: var(--text);
+  }
+}
+.phone-finished-icon {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--r-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--st-noop);
+  color: var(--st-noop-ink);
+}
+.phone-finished-icon.is-replaced {
+  background: var(--st-replaced);
+  color: var(--st-replaced-ink);
+}
+.phone-finished-icon.is-kept,
+.phone-finished-icon.is-noop,
+.phone-finished-icon.is-skipped,
+.phone-finished-icon.is-cancelled,
+.phone-finished-icon.is-already,
+.phone-finished-icon.is-queued {
+  background: transparent;
+  border: 1.5px solid var(--line-strong);
+  color: var(--muted);
+}
+.phone-finished-icon.is-failed {
+  background: var(--st-failed);
+  color: var(--st-failed-ink);
+}
+.phone-finished-icon.is-dry {
+  background: var(--st-dry-bg);
+  color: var(--st-dry);
+  border: 1.5px dashed var(--st-dry);
+}
+.phone-finished-icon.is-noop svg {
+  stroke-dasharray: 3 3;
+}
+.phone-finished-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.phone-finished-text b {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

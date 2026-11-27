@@ -1,5 +1,3 @@
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { act, cleanup, fireEvent, renderHook, screen, within } from '@testing-library/react';
 import type { LibraryFile } from '@transcoda/contract';
 import { useState } from 'react';
@@ -9,6 +7,7 @@ vi.mock('../jobs/useQueue.ts', () => ({
   useQueue: () => ({ status: { paused: false, lanes: {}, encodeSlots: 1 }, set: vi.fn() }),
 }));
 
+import { stylesCss } from '../styles/css-source.ts';
 import { fx } from '../test/fixtures/jobs.ts';
 import { renderAt } from '../test/render.tsx';
 import { LibraryFileTable } from './LibraryFileTable.tsx';
@@ -146,7 +145,7 @@ describe('selection', () => {
     fireEvent.click(box('Select Shepherd Jr..mkv'));
     expect(view.location()).toBe('/libraries/l1');
     // The row's link overlay covers the row; the checkbox is lifted above it.
-    const css = readFileSync(join(__dirname, '../styles.css'), 'utf8');
+    const css = stylesCss;
     expect(css).toMatch(/\.row-link input\[type="checkbox"\][^{]*\{[^}]*z-index:\s*1/);
   });
 

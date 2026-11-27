@@ -1,5 +1,3 @@
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -17,6 +15,7 @@ vi.mock('../api/client.ts', () => ({
 }));
 
 import type { FieldDef } from '../editor/model/schema-fields.ts';
+import { stylesCss } from '../styles/css-source.ts';
 import { mappingsHint, PathMappingsField } from './PathMappingsField.tsx';
 
 afterEach(cleanup);
@@ -96,7 +95,7 @@ describe('PathMappingsField (#46)', () => {
   });
 
   it('the css stacks the paths full width on a phone and wraps the answer', () => {
-    const css = readFileSync(join(__dirname, '../styles.css'), 'utf8');
+    const css = stylesCss;
     const rule = (selector: string) => {
       const esc = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       return css.match(new RegExp(`(?:^|\\n)${esc}\\s*\\{([^}]*)\\}`))?.[1] ?? '';

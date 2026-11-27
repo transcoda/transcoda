@@ -1,0 +1,185 @@
+/* ---------- Library page ---------- */
+.library-head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.library-crumb {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+.library-count {
+  margin-left: var(--sp-3);
+  font-family: var(--font-mono);
+  font-size: var(--fs-small);
+  color: var(--muted);
+}
+.library-empty {
+  color: var(--muted);
+}
+.library-toolbar {
+  justify-content: space-between;
+}
+/* The library's name opens its page. It reads as the table's other links do (the Feeds column):
+   accent and underlined at rest, so it does not rely on hover or colour alone. */
+.lib-name-text {
+  color: var(--accent-text);
+  font-weight: 700;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  /* A little room inside the focus ring, and a 24 px-plus target (WCAG 2.5.8), without moving
+     the name. */
+  margin: -4px;
+  padding: var(--sp-1);
+  border-radius: var(--r-sm);
+  overflow-wrap: anywhere;
+}
+@media (hover: hover) {
+  .lib-name-text:hover {
+    color: var(--accent-hover);
+    text-decoration-thickness: 2px;
+  }
+}
+.lib-name-text:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* The library's file table: the Jobs table's columns, plus a Size column and a pager. */
+.library-col-size {
+  width: 96px;
+}
+.library-col-check {
+  width: 44px;
+  text-align: center;
+}
+.selection-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-2) var(--sp-3);
+  margin-top: var(--sp-3);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--raised);
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  padding-bottom: max(var(--sp-2), env(safe-area-inset-bottom));
+}
+.selection-count {
+  font-weight: 600;
+  margin-right: auto;
+}
+.file-head-actions {
+  margin-top: var(--sp-3);
+}
+.library-table td.library-col-size,
+.library-table th.library-col-size {
+  white-space: nowrap;
+  text-align: right;
+}
+.library-sort {
+  all: unset;
+  cursor: pointer;
+  text-transform: inherit;
+}
+.library-sort:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+.library-pager {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--sp-2);
+  padding: var(--sp-3) 0;
+}
+.library-pager-range {
+  margin-right: var(--sp-2);
+  font-size: var(--fs-small);
+  color: var(--muted);
+}
+
+/* The library's poster grid: shows, movies and seasons as 2:3 cards. */
+.library-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: var(--sp-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.library-grid > li {
+  min-width: 0;
+}
+.library-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  color: inherit;
+  text-decoration: none;
+  border-radius: var(--r-sm);
+}
+@media (hover: hover) {
+  .library-card:hover .library-card-title {
+    text-decoration: underline;
+  }
+}
+.library-card:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+.library-card-title {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  margin-top: var(--sp-1);
+  font-weight: 600;
+}
+.library-card-line {
+  overflow-wrap: anywhere;
+  font-size: var(--fs-small);
+  color: var(--muted);
+}
+.library-more {
+  display: flex;
+  justify-content: center;
+  padding: var(--sp-4) 0;
+}
+@media (max-width: 639px) {
+  .library-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* A file's page: the facts, what the file was before, and the jobs that ran on it. */
+.file-was {
+  margin-left: var(--sp-2);
+  color: var(--faint);
+}
+.file-tracks {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.file-before {
+  max-width: 720px;
+}
+.file-before .disclosure-body {
+  padding: var(--sp-2) 0 0 var(--sp-6);
+}
+.file-jobs {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+.file-jobs-title {
+  margin: 0;
+  font-size: var(--fs-h3);
+}

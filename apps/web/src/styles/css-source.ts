@@ -6,8 +6,40 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { type AtRule, list, parse, type Root, type Rule } from 'postcss';
 
-export const stylesCss = readFileSync(join(__dirname, '../styles.css'), 'utf8');
+/** The stylesheet entry: a comment, then one `@import "./name.css";` per file, in cascade order. */
+export const indexCss = readFileSync(join(__dirname, 'index.css'), 'utf8');
 export const tokensCss = readFileSync(join(__dirname, 'tokens.css'), 'utf8');
+
+/** The app's own stylesheets (every file index.css imports but the vendored tokens.css), in
+ *  import order: the order the app's cascade sees them in. */
+export const styleFiles: string[] = [...indexCss.matchAll(/@import\s+"\.\/([\w-]+\.css)";/g)]
+  .map((m) => m[1] ?? '')
+  .filter((f) => f !== 'tokens.css');
+
+const parts = styleFiles.map((file) => ({
+  file,
+  text: readFileSync(join(__dirname, file), 'utf8'),
+}));
+
+/** Every file of `styleFiles` joined in order, so a test reads the whole cascade as one source. A
+ *  line number in it maps back to its file with `cssLine`. */
+export const stylesCss = parts.map((p) => p.text).join('\n');
+
+const starts: { file: string; first: number }[] = [];
+{
+  let first = 1;
+  for (const p of parts) {
+    starts.push({ file: p.file, first });
+    first += p.text.split('\n').length;
+  }
+}
+
+/** Where line `line` of `stylesCss` is, as `jobs.css:12`. */
+export function cssLine(line: number): string {
+  let at = starts[0];
+  for (const s of starts) if (s.first <= line) at = s;
+  return at ? `${at.file}:${line - at.first + 1}` : `styles:${line}`;
+}
 
 export interface Decl {
   prop: string;
@@ -97,5 +129,5 @@ export function commaValues(value: string): string[] {
 /** Where a declaration is, for a failure message. */
 export function where(d: Decl): string {
   const at = d.atRules.length > 0 ? ` in ${d.atRules.join(' ')}` : '';
-  return `${d.selectors.join(', ') || '(at-rule)'} { ${d.prop}: ${d.value} }${at} (styles.css:${d.line})`;
+  return `${d.selectors.join(', ') || '(at-rule)'} { ${d.prop}: ${d.value} }${at} (${cssLine(d.line)})`;
 }

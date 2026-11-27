@@ -1,4 +1,3 @@
-import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { act, cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -27,6 +26,7 @@ import { Route } from 'wouter';
 import { resetCatalogCache } from '../hooks/useCatalog.ts';
 import { EventsProvider } from '../hooks/useEvents.ts';
 import { REFETCH_COALESCE_MS } from '../hooks/useRefetchOn.ts';
+import { stylesCss } from '../styles/css-source.ts';
 import { fakeEventSource, queueSnapshot } from '../test/fakeEventStream.ts';
 import { nodesFixture } from '../test/fixtures/catalog.ts';
 import {
@@ -732,7 +732,7 @@ describe('JobPage', () => {
     const raw = (await screen.findByText('Show command and log')).closest('details') as HTMLElement;
     const summary = raw.querySelector(':scope > summary') as HTMLElement;
     expect(summary.querySelector('.icon')?.getAttribute('aria-hidden')).toBe('true');
-    const css = readFileSync(join(__dirname, '../styles.css'), 'utf8');
+    const css = stylesCss;
     expect(css).toMatch(/\.ffmpeg-raw\[open\] > summary \.icon[^{]*\{[^}]*rotate\(90deg\)/);
     expect(css).toMatch(/\.ffmpeg-raw > summary::-webkit-details-marker/);
   });
