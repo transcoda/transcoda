@@ -175,3 +175,4 @@ Entries from M0 to M3 had no date of their own; they carry the day their milesto
 - 2026-11-26 · Tests · [Nightly tests and their issues](2026-11.md)
 - 2026-11-26 · Engine · [ffmpeg 8 timestamps: verify's decode and progress (#154, #155)](2026-11.md)
 - 2026-11-26 · Tooling · [Shared Biome and TypeScript config](2026-11.md)
+- 2026-11-26 · Tooling · [Release notes through the shared checker](2026-11.md)

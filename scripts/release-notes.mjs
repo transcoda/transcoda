@@ -14,17 +14,22 @@ import {
 } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+// The note format, its checks and the grouping are shared with the plugins repository and the
+// release-note check: @transcoda/dev-config (transcoda/.github, changes/notes.mjs).
+import {
+  groupEntries,
+  HIGHLIGHTS,
+  layoutOf,
+  readNotes,
+  renderGroups,
+} from '@transcoda/dev-config/changes';
 
-export const TYPES = ['breaking', 'new', 'improved', 'fixed'];
-/** Optional prose and screenshots for a minor or major release, kept apart from the notes. */
-export const HIGHLIGHTS = 'highlights.md';
 export const IMAGES_DIR = 'images';
 /**
  * Image links in the highlights: Markdown `](images/x.png)` or `](<images/my shot.png>)`, or HTML
  * `src="images/x.png"`. Inside angle brackets the name runs to the `>` and may hold spaces.
  */
 const IMAGE_LINK = /(\]\(<|\]\(|src=")images\/((?<=<images\/)[^>\n]+|[^)"\s]+)/g;
-const HEADINGS = { breaking: 'Breaking', new: 'New', improved: 'Improved', fixed: 'Fixed' };
 const SEMVER =
   /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$/;
 const CHANGELOG_HEADER =
@@ -86,35 +91,6 @@ export function isValidDate(date) {
 export function todayLocal(now = new Date()) {
   const p = (n) => String(n).padStart(2, '0');
   return `${now.getFullYear()}-${p(now.getMonth() + 1)}-${p(now.getDate())}`;
-}
-
-/** Same rules as scripts/check-release-note.mjs. Returns { type, text } or { error }. */
-export function parseNote(text) {
-  const match = /^---\n([\s\S]*?)\n---\n([\s\S]*)$/.exec(text.replace(/\r\n/g, '\n'));
-  const type = match ? /^type:\s*(\S+)\s*$/m.exec(match[1])?.[1] : undefined;
-  const body = match ? match[2].trim().replace(/\s*\n\s*/g, ' ') : '';
-  const errors = [];
-  if (!type || !TYPES.includes(type)) {
-    errors.push(`front matter needs "type:" set to one of ${TYPES.join(', ')}.`);
-  }
-  if (!body) errors.push('the note text is empty.');
-  return errors.length > 0 ? { errors } : { type, text: body };
-}
-
-export function groupEntries(notes) {
-  return TYPES.flatMap((type) =>
-    notes.filter((n) => n.type === type).map(({ text }) => ({ type, text })),
-  );
-}
-
-function renderGroups(entries, level) {
-  return TYPES.map((type) => {
-    const items = entries.filter((e) => e.type === type);
-    if (items.length === 0) return '';
-    return `${'#'.repeat(level)} ${HEADINGS[type]}\n\n${items.map((e) => `- ${e.text}`).join('\n')}\n`;
-  })
-    .filter(Boolean)
-    .join('\n');
 }
 
 /** A final x.y.0 release (minor or major). Patches and pre-releases leave the highlights alone. */
@@ -234,22 +210,13 @@ export function run(argv, now = new Date()) {
   if (!isValidDate(date)) throw new ReleaseError(`"${date}" is not a valid date (use YYYY-MM-DD).`);
 
   const changesDir = join(root, '.changes');
-  const files = existsSync(changesDir)
-    ? readdirSync(changesDir)
-        .filter((f) => f.endsWith('.md') && f !== 'README.md' && f !== HIGHLIGHTS)
-        .sort()
-    : [];
-  if (files.length === 0) {
+  // The same checks as the release-note check and pnpm check: format, place, no hashes or PR numbers.
+  const { notes, errors: problems } = readNotes(root, layoutOf(root));
+  if (problems.length > 0) throw new ReleaseError(problems.join('\n'));
+  if (notes.length === 0) {
     throw new ReleaseError('No release notes found in .changes/ (nothing to release).');
   }
-  const notes = [];
-  const problems = [];
-  for (const file of files) {
-    const parsed = parseNote(readFileSync(join(changesDir, file), 'utf8'));
-    if (parsed.errors) for (const e of parsed.errors) problems.push(`.changes/${file}: ${e}`);
-    else notes.push(parsed);
-  }
-  if (problems.length > 0) throw new ReleaseError(problems.join('\n'));
+  const files = notes.map((n) => n.path);
 
   const read = (p) => (existsSync(p) ? readFileSync(p, 'utf8') : undefined);
   const packages = VERSIONED_PACKAGES.map((p) => join(root, p)).filter(existsSync);
@@ -339,7 +306,7 @@ export function run(argv, now = new Date()) {
     write(join(root, 'release-notes.md'), body);
     write(jsonPath, json);
     for (const p of packages) write(p, withVersion(read(p), args.version));
-    for (const f of files) remove(join(changesDir, f));
+    for (const f of files) remove(join(root, f));
     if (highlights) {
       if (existsSync(imagesPath) && readdirSync(imagesPath).length === 0) {
         rmdirSync(imagesPath);
