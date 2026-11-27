@@ -58,9 +58,9 @@ The plugins repository's nightly uses the same two actions.
 
 ## Dependency updates (Renovate)
 
-- One weekly window, Sunday 17:00 to 23:59 New York time; security fixes skip it and get the `security` label. Releases must be 3 days old first (not `@transcoda/sdk`). Weekly lockfile maintenance in the same window.
+- One weekly window, Sunday 17:00 to 23:59 New York time; security fixes skip it and get the `security` label. Releases must be 3 days old first, except our own: `@transcoda/sdk`, and the shared tooling from `transcoda/.github`. Weekly lockfile maintenance in the same window.
 - Every Renovate PR gets the `dependencies` and `no user-facing change` labels, and a house-style title (`Dependencies:`, `CI:` for actions, `FFmpeg:` for jellyfin-ffmpeg).
-- Groups: `GitHub Actions`, `npm non-major` (majors one by one), `Node.js` (`node` and `@types/node`; majors are disabled and done by hand), `Playwright` (the npm package and the container image together; run `pnpm e2e:update` on that PR and commit the new baselines).
+- Groups: `GitHub Actions`, `npm non-major` (majors one by one), `pnpm` (the `packageManager` field, on its own, as in the plugins repository so both move in the same week), `Node.js` (`node` and `@types/node`; majors are disabled and done by hand), `Playwright` (the npm package and the container image together; run `pnpm e2e:update` on that PR and commit the new baselines), `transcoda shared tooling` (the `@transcoda/dev-config` dev dependency and every `transcoda/.github/actions/*` pin move to the same tag in one PR, titled `CI:`).
 - Regex managers keep `JELLYFIN_FFMPEG_VERSION` and `COREPACK_VERSION` in `docker/Dockerfile` current. A jellyfin-ffmpeg PR asks the reviewer to swap the label for a `.changes/` note when users would notice the update.
 - There is no Dependabot.
 
