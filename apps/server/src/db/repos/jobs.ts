@@ -42,11 +42,12 @@ export interface ReplaceJournal {
   originalPath: string;
   tmpPath: string;
   outputPath: string;
-  /** The recycle path, or the `.orig` path when recycling is off. */
+  /** Where the original moves: its path in the recycle folder. */
   copyPath: string;
   /** The library root: the sweep decides nothing while it is unreachable (an unmounted share). */
   libraryRoot: string;
-  recycling: boolean;
+  /** Only in journals from before 2026-11-27; `false`: a `.orig` copy the sweep leaves alone. */
+  recycling?: boolean;
   fingerprint: Fingerprint;
   outputBytes: number;
 }
@@ -117,10 +118,7 @@ export interface JobListRow extends Omit<JobRow, 'media'> {
   estimatedBytes: number | null;
   /** Dry runs only: {@link planSummary} of the stored plan; null without one. */
   planSummary: string | null;
-  /**
-   * A plan-only dry run that ended `dry_run` whose size gate decides after encoding (#41): the
-   * gate's minimum saving; null otherwise.
-   */
+  /** A `dry_run` whose size gate runs after encoding (#41): its minimum saving, else null. */
   dependsOnSize: { minSavingPercent: number } | null;
   /** From a `library` run: its library's run hours apply. */
   automatic: boolean;

@@ -17,8 +17,8 @@ export interface ReplaceInput {
   outputPath: string;
   /** The original's fingerprint when the job probed it. */
   expected: Fingerprint;
-  /** null = keep the original as `.orig` beside the file until the replace is done. */
-  recycleFolder: string | null;
+  /** Where the original moves (mirroring its path under the library root). */
+  recycleFolder: string;
   owner: { uid: number; gid: number } | null;
   /** The library the file belongs to (recycle index). */
   libraryId: string;
@@ -52,7 +52,7 @@ export interface ReplaceDeps {
 }
 
 export type ReplaceResult =
-  | { kind: 'replaced'; recyclePath: string | null; afterBytes: number }
+  | { kind: 'replaced'; recyclePath: string; afterBytes: number }
   | { kind: 'fingerprint-changed' }
   /** Aborted before anything on disk changed; the journal is cleared, the output left in temp. */
   | { kind: 'cancelled' }
@@ -120,10 +120,6 @@ export function tmpPathFor(originalPath: string, jobId: string): string {
   return join(dirname(originalPath), `.transcoda-${jobId}.tmp`);
 }
 
-export function origPathFor(originalPath: string, jobId: string): string {
-  return `${originalPath}.transcoda-${jobId}.orig`;
-}
-
 /** `${recycleFolder}/${relative(libraryRoot, originalPath)}`, with `.${n}` appended for n > 0. */
 export function recyclePathFor(
   recycleFolder: string,
@@ -148,7 +144,7 @@ class Cancelled extends Error {}
 
 /**
  * Replaces the original with the verified output so that a crash at any point leaves the
- * original's bytes at its path or at the copy path (recycle folder or `.orig`):
+ * original's bytes at its path or at the copy path in the recycle folder:
  *
  * 1. `checking`: same file as probed, copy path on the original's filesystem, room for the
  *    replacement (waiting for space is cancellable), neither the tmp nor the copy path taken.
@@ -157,7 +153,7 @@ class Cancelled extends Error {}
  *    (bind mounts of one filesystem share `st_dev`) undoes the tmp and fails as "different
  *    filesystem" at `checking`.
  * 4. `installing_tmp`: tmp → original path (no clobber), fsync the directory.
- * 5. `cleaning`: the `.orig` is removed when not recycling.
+ * 5. `cleaning`: the replacement is installed; the journal is cleared.
  *
  * Each intent is journaled before its action. Any throw while `checking` clears the journal
  * (nothing has moved); any later throw returns `failed` at the current intent and leaves the
@@ -172,7 +168,6 @@ export async function replaceOriginal(
   const { originalPath, outputPath, jobId } = input;
   const dir = dirname(originalPath);
   const tmpPath = tmpPathFor(originalPath, jobId);
-  const recycling = input.recycleFolder !== null;
   let step: ReplaceJournal['step'] = 'checking';
   let journal: ReplaceJournal | null = null;
   const intent = (next: ReplaceJournal['step']): void => {
@@ -184,8 +179,8 @@ export async function replaceOriginal(
   const refuse = (msg: string): never => {
     throw new CheckFailed(msg);
   };
-  const differentFilesystem = (copyDir: string): string =>
-    `recycle folder ${input.recycleFolder ?? copyDir} is on a different filesystem than ${originalPath}`;
+  const differentFilesystem = (): string =>
+    `recycle folder ${input.recycleFolder} is on a different filesystem than ${originalPath}`;
   /** Waits for space until the signal aborts (the wait itself may ignore the signal). */
   const waitForSpace = async (needed: number, available: number): Promise<void> => {
     const signal = deps.signal;
@@ -206,20 +201,15 @@ export async function replaceOriginal(
 
   try {
     const outputBytes = (await fs.stat(outputPath)).size;
-    let copyPath: string;
-    if (input.recycleFolder !== null) {
-      const rel = relative(input.libraryRoot, originalPath);
-      if (rel === '' || rel.startsWith('..') || isAbsolute(rel)) {
-        refuse(`${originalPath} is not under the library root ${input.libraryRoot}`);
-      }
-      let n = 0;
-      copyPath = recyclePathFor(input.recycleFolder, input.libraryRoot, originalPath);
-      while (await fs.exists(copyPath)) {
-        n += 1;
-        copyPath = recyclePathFor(input.recycleFolder, input.libraryRoot, originalPath, n);
-      }
-    } else {
-      copyPath = origPathFor(originalPath, jobId);
+    const rel = relative(input.libraryRoot, originalPath);
+    if (rel === '' || rel.startsWith('..') || isAbsolute(rel)) {
+      refuse(`${originalPath} is not under the library root ${input.libraryRoot}`);
+    }
+    let n = 0;
+    let copyPath = recyclePathFor(input.recycleFolder, input.libraryRoot, originalPath);
+    while (await fs.exists(copyPath)) {
+      n += 1;
+      copyPath = recyclePathFor(input.recycleFolder, input.libraryRoot, originalPath, n);
     }
     const copyDir = dirname(copyPath);
 
@@ -230,17 +220,13 @@ export async function replaceOriginal(
       outputPath,
       copyPath,
       libraryRoot: input.libraryRoot,
-      recycling,
       fingerprint: input.expected,
       outputBytes,
     };
     deps.journal(journal);
 
-    let copyDev: number | null = null;
-    if (recycling) {
-      await fs.mkdir(copyDir);
-      copyDev = (await fs.stat(copyDir)).dev;
-    }
+    await fs.mkdir(copyDir);
+    const copyDev = (await fs.stat(copyDir)).dev;
     const needed = outputBytes + FREE_SPACE_MARGIN_BYTES;
     let waiting: { path: string; since: number } | null = null;
     let room = false;
@@ -280,7 +266,7 @@ export async function replaceOriginal(
       deps.journal(null);
       return { kind: 'fingerprint-changed' };
     }
-    if (copyDev !== null && copyDev !== origStat.dev) refuse(differentFilesystem(copyDir));
+    if (copyDev !== origStat.dev) refuse(differentFilesystem());
     if (await fs.exists(copyPath)) refuse(`${copyPath} already exists`);
     if (await fs.exists(tmpPath)) refuse(`${tmpPath} already exists`);
     if (deps.signal?.aborted) throw new Cancelled();
@@ -324,33 +310,26 @@ export async function replaceOriginal(
       // st_dev: no copy+unlink fallback, the job fails.
       await fs.unlink(tmpPath);
       deps.journal(null);
-      return { kind: 'failed', step: 'checking', message: differentFilesystem(copyDir) };
+      return { kind: 'failed', step: 'checking', message: differentFilesystem() };
     }
     await syncDirs(fs, [copyDir, dir], log);
-    if (recycling) {
-      deps.recordRecycled({
-        path: copyPath,
-        libraryId: input.libraryId,
-        jobId,
-        sizeBytes: origStat.size,
-        recycledAt: deps.now().toISOString(),
-        kind: 'original',
-        originalPath,
-      });
-    }
+    deps.recordRecycled({
+      path: copyPath,
+      libraryId: input.libraryId,
+      jobId,
+      sizeBytes: origStat.size,
+      recycledAt: deps.now().toISOString(),
+      kind: 'original',
+      originalPath,
+    });
 
     intent('installing_tmp');
     await renameNoClobber(fs, tmpPath, originalPath);
     await syncDir(fs, dir, log);
 
     intent('cleaning');
-    if (!recycling) await fs.unlink(copyPath);
     deps.journal(null);
-    return {
-      kind: 'replaced',
-      recyclePath: recycling ? copyPath : null,
-      afterBytes: outputBytes,
-    };
+    return { kind: 'replaced', recyclePath: copyPath, afterBytes: outputBytes };
   } catch (err) {
     if (step === 'checking' && journal !== null) {
       // Nothing has moved yet: no journal may outlive this replace (the sweep would otherwise

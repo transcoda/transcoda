@@ -172,7 +172,6 @@ describe('pruneRecycle', () => {
           outputPath: '/transcode/out.mkv',
           copyPath: join(bin, `${jobId}`),
           libraryRoot: root,
-          recycling: true,
           fingerprint: { sizeBytes: 100, mtimeMs: 1, ino: 1, dev: 1, nlink: 1 },
           outputBytes: 50,
         },

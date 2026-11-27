@@ -412,7 +412,6 @@ describe('jobs', () => {
       outputPath: '/transcode/a/out.mkv',
       copyPath: '/media/tv/.recycle/a.mkv',
       libraryRoot: '/media/tv',
-      recycling: true,
       fingerprint: fp,
       outputBytes: 60,
     };
