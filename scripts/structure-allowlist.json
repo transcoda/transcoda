@@ -42,15 +42,10 @@
   ],
   "pageImports": [
     "apps/web/src/editor/ui/Palette.tsx -> apps/web/src/pages/settings/source-text.ts",
-    "apps/web/src/pages/LibraryFilePage.tsx -> apps/web/src/pages/JobsPage.tsx"
+    "apps/web/src/pages/LibraryFilePage.tsx -> apps/web/src/jobs/JobsPage.tsx"
   ],
   "folderNames": [],
-  "smallFolders": [
-    "apps/server/src/settings",
-    "apps/web/src/auth",
-    "apps/web/src/data",
-    "apps/web/src/recycle"
-  ],
+  "smallFolders": ["apps/server/src/settings", "apps/web/src/auth", "apps/web/src/data"],
   "orphanTests": [
     "apps/server/src/db/migration-conventions.test.ts",
     "apps/server/src/mcp/mcp-docs.test.ts",
@@ -89,9 +84,9 @@
     "apps/server/src/engine/queue/scheduler.ts": 830,
     "apps/server/src/engine/walk/walk.ts": 1083,
     "apps/server/src/workflows/service.ts": 1123,
-    "apps/web/src/jobs/steps.ts": 1066,
+    "apps/web/src/jobs/JobPage/steps.ts": 1066,
+    "apps/web/src/jobs/JobsPage.tsx": 947,
     "apps/web/src/pages/EditorPage.tsx": 1344,
-    "apps/web/src/pages/JobsPage.tsx": 947,
     "apps/web/src/pages/LibrariesPage.tsx": 863,
     "apps/web/src/styles/job-page.css": 1415,
     "apps/web/src/styles/jobs.css": 1100,

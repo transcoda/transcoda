@@ -4,21 +4,21 @@ import { useAuth } from './auth/use-auth.ts';
 import { Loading } from './components/Loading.tsx';
 import { NotFound } from './components/NotFound.tsx';
 import { EventsProvider } from './hooks/use-events.ts';
+import { JobPage } from './jobs/JobPage/JobPage.tsx';
+import { JobsPage } from './jobs/JobsPage.tsx';
+import { RunPage } from './jobs/RunPage/RunPage.tsx';
 import { EditorPage } from './pages/EditorPage.tsx';
 import { HostNotAllowedPage } from './pages/HostNotAllowedPage.tsx';
-import { JobPage } from './pages/JobPage.tsx';
-import { JobsPage } from './pages/JobsPage.tsx';
 import { LibrariesPage } from './pages/LibrariesPage.tsx';
 import { LibraryFilePage } from './pages/LibraryFilePage.tsx';
 import { LibraryPage } from './pages/LibraryPage.tsx';
 import { LoginPage } from './pages/LoginPage.tsx';
 import { NewWorkflowPage } from './pages/NewWorkflowPage.tsx';
 import { PluginsPage } from './pages/PluginsPage.tsx';
-import { RecyclePage } from './pages/RecyclePage.tsx';
-import { RunPage } from './pages/RunPage.tsx';
 import { SetupPage } from './pages/SetupPage.tsx';
 import { SettingsPage } from './pages/settings/SettingsPage.tsx';
 import { WorkflowsPage } from './pages/WorkflowsPage.tsx';
+import { RecyclePage } from './recycle/RecyclePage.tsx';
 import { Shell } from './shell/Shell.tsx';
 
 /** The session check, before any screen can render: the shared Loading, filling the screen. */
