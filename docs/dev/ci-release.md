@@ -4,12 +4,8 @@ The rules in force today for `.github/workflows/`, `docker/`, `renovate.json`, `
 
 ## On a pull request
 
-<<<<<<< HEAD
-- **CI** (`ci.yml`): job `check` runs `pnpm install --frozen-lockfile`, `pnpm check` (typecheck, Biome, `check-deps`, `check-licences`, Vitest), `pnpm build`, and `docker/entrypoint.test.sh` in the image's Node base. Job `e2e` runs the browser and screenshot tests through `scripts/e2e-docker.sh`, the same script as `pnpm e2e:docker`.
-- **Real ffmpeg** (`real-ffmpeg.yml`, job `real-ffmpeg`): only on pull requests that touch the engine, its capabilities, the core nodes, the fixture generator or the Dockerfiles that pin ffmpeg (the `paths` list in the file). It runs `pnpm test:docker`: the unit tests in the e2e container with the fixtures, so the real-ffmpeg tests that `check` skips run against jellyfin-ffmpeg. Not a required check, since it doesn't run on every pull request.
-=======
 - **CI** (`ci.yml`): job `check` runs `pnpm install --frozen-lockfile`, `pnpm check` (typecheck, Biome with `--error-on-warnings`, knip, `check-deps`, `check-licences`, Vitest), `pnpm build`, and `docker/entrypoint.test.sh` in the image's Node base. Job `e2e` runs the browser and screenshot tests through `scripts/e2e-docker.sh`, the same script as `pnpm e2e:docker`.
->>>>>>> origin/main
+- **Real ffmpeg** (`real-ffmpeg.yml`, job `real-ffmpeg`): only on pull requests that touch the engine, its capabilities, the core nodes, the fixture generator or the Dockerfiles that pin ffmpeg (the `paths` list in the file). It runs `pnpm test:docker`: the unit tests in the e2e container with the fixtures, so the real-ffmpeg tests that `check` skips run against jellyfin-ffmpeg. Not a required check, since it doesn't run on every pull request.
 - **PR title** (`pr-title.yml`, job `pr-title`) and **Release note** (`release-note.yml`, job `release-note`) call the shared actions in the org's `.github` repository.
 - The `main` ruleset requires the `check`, `release-note` and `pr-title` checks, one approving review (code owner review on), and allows squash merges only. `e2e` runs on every pull request but is not a required check.
 - The script is named `check`, not `ci`: `pnpm ci` is a pnpm built-in.
