@@ -398,6 +398,7 @@ export function findProblems(root: string, allowlist: Allowlist): Findings {
     }
   }
   walkFiles(root, 'e2e', importerOnly);
+  walkFiles(root, 'scripts', importerOnly);
   // Config files next to each package.json (tsdown.config.ts imports src/build-version.ts).
   for (const group of ['apps', 'packages']) {
     if (!existsSync(join(root, group))) continue;
@@ -572,7 +573,7 @@ export function findProblems(root: string, allowlist: Allowlist): Findings {
     }
   }
 
-  // Test names: <subject>.test.ts or <subject>.<topic>.test.ts beside <subject>.ts.
+  // Test names: <subject>.test.ts or <subject>.<topic>.test.ts beside <subject>.ts (or .css).
   for (const f of files) {
     if (!isTest(f)) continue;
     const parts = base(f).split('.');
@@ -583,7 +584,7 @@ export function findProblems(root: string, allowlist: Allowlist): Findings {
         files.some(
           (s) =>
             parent(s) === dir &&
-            CODE.test(s) &&
+            SOURCE.test(s) &&
             !isTest(s) &&
             !isDts(s) &&
             base(s).replace(/\.[^.]+$/, '') === parts.slice(0, i + 1).join('.'),

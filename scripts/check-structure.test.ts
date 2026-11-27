@@ -182,6 +182,16 @@ describe('test support (Rule C)', () => {
     expect(check(files, { testSupportNames: [`${S}/db/test-db.ts`] })).toEqual([]);
   });
 
+  it('counts an import from the repository scripts as production use', () => {
+    expect(
+      check({
+        [`${S}/db/report.ts`]: leaf,
+        [`${S}/db/report.test.ts`]: imp('./report.ts'),
+        'scripts/report.ts': imp('../apps/server/src/db/report.ts'),
+      }),
+    ).toEqual([]);
+  });
+
   it('counts a package entry imported by name as used', () => {
     expect(
       check({
@@ -250,6 +260,8 @@ describe('test names', () => {
       [`${S}/db/open.test.ts`]: imp('./open.ts'),
       [`${S}/db/open.real.test.ts`]: imp('./open.ts'),
       [`${S}/db/repos.test.ts`]: imp('./open.ts'),
+      [`${W}/styles/jobs.css`]: '.a {}\n',
+      [`${W}/styles/jobs.test.ts`]: leaf,
     });
     expect(errors.filter((e) => /named after no source file/.test(e))).toEqual([
       expect.stringMatching(/^apps\/server\/src\/db\/repos\.test\.ts is named after no source/),
