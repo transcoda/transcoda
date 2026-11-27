@@ -25,7 +25,7 @@ import type { Logger } from '../platform/logger.ts';
 import { PluginHooksRunner } from '../plugins/runtime/hooks.ts';
 import { loadLimits } from '../plugins/runtime/limits.ts';
 import { PluginRestartGate } from '../plugins/runtime/restart-gate.ts';
-import { PluginService, type PluginServiceDeps } from '../plugins/service.ts';
+import { PluginService, type PluginServiceDeps } from '../plugins/service/service.ts';
 import type { AppDeps } from '../rpc/context.ts';
 import { AppUpdateChecker } from '../system/app-update.ts';
 import { usableInstallDir } from '../system/browse.ts';

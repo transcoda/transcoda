@@ -124,7 +124,6 @@
     "apps/server/src/engine/queue/scheduler.ts": 830,
     "apps/server/src/engine/verify/verify.ts": 1220,
     "apps/server/src/engine/walk/walk.ts": 1083,
-    "apps/server/src/plugins/service.ts": 1589,
     "apps/server/src/workflows/service.ts": 1123,
     "apps/server/src/workflows/validate.ts": 1364,
     "apps/web/src/jobs/steps.ts": 1066,
