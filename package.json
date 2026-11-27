@@ -19,6 +19,8 @@
     "check-deps": "node scripts/check-deps.mjs && node --test scripts/check-deps.test.mjs",
     "fixtures": "node scripts/fixtures/generate.mjs",
     "e2e": "playwright test",
+    "e2e:docker": "sh scripts/e2e-docker.sh",
+    "e2e:update": "sh scripts/e2e-docker.sh --update-snapshots",
     "e2e:report": "playwright show-report .local/e2e-report",
     "notices": "node scripts/third-party-notices.ts",
     "check-licences": "node --test scripts/third-party-notices.test.ts && node scripts/third-party-notices.ts --check",
