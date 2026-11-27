@@ -1,0 +1,14 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true,
+    "emitDeclarationOnly": true,
+    "rootDir": "..",
+    "outDir": "../.local/e2e-types",
+    "tsBuildInfoFile": "../.local/e2e-types/tsconfig.tsbuildinfo",
+    "allowImportingTsExtensions": true,
+    "types": ["node"]
+  },
+  "include": ["*.ts", "../playwright.config.ts"],
+  "references": []
+}
