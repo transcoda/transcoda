@@ -4,7 +4,7 @@ import { Icon, type IconName } from '../components/Icon.tsx';
 import { StatTile } from '../components/StatTile.tsx';
 import { fmtBytes } from '../lib/bytes.ts';
 import { DryRunBadge, PausedChip, VERDICT_ICON } from './JobStateChip.tsx';
-import type { Verdict } from './jobText.ts';
+import type { Verdict } from './job-text.ts';
 
 export type OutcomeKey = (typeof RUN_OUTCOME_KEYS)[number];
 

@@ -38,23 +38,8 @@ import { retarget } from './retarget.ts';
 import type { ExecuteOutcome, JobControl, JobExecutor, SlotFit } from './scheduler.ts';
 import { actionNode } from './walk.ts';
 
-export { classifyErrorLine } from './decoder-names.ts';
-export { coverFailure, coverTimeoutMs, readTail } from './pipeline-encode.ts';
-export {
-  ESTIMATE_HISTORY,
-  estimateBytes,
-  laneFor,
-  planOf,
-  sizeGateDecides,
-  slotFitOf,
-} from './pipeline-plan.ts';
-export { NOTIFY_TIMEOUT_MS, PLUGIN_RETRY_MS, redactUrl } from './pipeline-steps.ts';
-export {
-  logPathFor,
-  PASS_LOG_ARGS,
-  type PipelineDeps,
-  PROGRESS_INTERVAL_MS,
-} from './pipeline-types.ts';
+export { redactUrl } from './pipeline-steps.ts';
+export { logPathFor, type PipelineDeps } from './pipeline-types.ts';
 
 import { verifyEncoded } from './pipeline-output.ts';
 

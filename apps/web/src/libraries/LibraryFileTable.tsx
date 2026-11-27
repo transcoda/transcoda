@@ -3,14 +3,14 @@ import { useEffect, useRef } from 'react';
 import { Link } from 'wouter';
 import { ResultCell, TitleSub } from '../jobs/JobCells.tsx';
 import { JobStateChip } from '../jobs/JobStateChip.tsx';
-import { phoneLine } from '../jobs/jobText.ts';
-import { jobTitle } from '../jobs/mediaText.ts';
+import { phoneLine } from '../jobs/job-text.ts';
+import { jobTitle } from '../jobs/media-text.ts';
 import { Poster } from '../jobs/Poster.tsx';
-import { useQueue } from '../jobs/useQueue.ts';
+import { useQueue } from '../jobs/use-queue.ts';
 import { fmtBytes } from '../lib/bytes.ts';
 import { fmtFull, fmtStamp, jobLastTime } from '../lib/time.ts';
-import { usePhone } from '../lib/usePhone.ts';
-import type { Selection } from './useSelection.ts';
+import { usePhone } from '../lib/use-phone.ts';
+import type { Selection } from './use-selection.ts';
 
 const num = (n: number) => n.toLocaleString('en-US');
 

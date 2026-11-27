@@ -5,7 +5,7 @@ import { api } from '../../api/client.ts';
 import { Disclosure } from '../../components/Disclosure.tsx';
 import { Icon } from '../../components/Icon.tsx';
 import { Loading } from '../../components/Loading.tsx';
-import { useAsync } from '../../hooks/useAsync.ts';
+import { useAsync } from '../../hooks/use-async.ts';
 import { fmtBytes } from '../../lib/bytes.ts';
 import { fmtFull, fmtStamp } from '../../lib/time.ts';
 

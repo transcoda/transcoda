@@ -15,8 +15,8 @@ import { LiveDot } from '../components/LiveDot.tsx';
 import { Loading } from '../components/Loading.tsx';
 import { StatTile } from '../components/StatTile.tsx';
 import { useToast } from '../components/Toast.tsx';
-import { useAsync } from '../hooks/useAsync.ts';
-import { useRefetchOn } from '../hooks/useRefetchOn.ts';
+import { useAsync } from '../hooks/use-async.ts';
+import { useRefetchOn } from '../hooks/use-refetch-on.ts';
 import { ResultCell, TitleSub, WorkflowText } from '../jobs/JobCells.tsx';
 import { JobProgress } from '../jobs/JobProgress.tsx';
 import { JobStateChip, VERDICT_ICON } from '../jobs/JobStateChip.tsx';
@@ -30,8 +30,8 @@ import {
   QUEUED_VERSION_NOTE,
   verdictOf,
   versionText,
-} from '../jobs/jobText.ts';
-import { jobTitle } from '../jobs/mediaText.ts';
+} from '../jobs/job-text.ts';
+import { jobTitle } from '../jobs/media-text.ts';
 import { Poster } from '../jobs/Poster.tsx';
 import { QueueLanes, QueuePausedNote, QueueToggle } from '../jobs/QueueBar.tsx';
 import {
@@ -39,13 +39,13 @@ import {
   stateChangeTracker,
   useJobsList,
   useProblemCount,
-} from '../jobs/useJobsList.ts';
-import { encodeStopped, useQueue } from '../jobs/useQueue.ts';
+} from '../jobs/use-jobs-list.ts';
+import { encodeStopped, useQueue } from '../jobs/use-queue.ts';
 import { fmtBytes } from '../lib/bytes.ts';
-import { usePageTitle } from '../lib/pageTitle.ts';
+import { usePageTitle } from '../lib/page-title.ts';
 import { fmtFull, fmtStamp, jobLastTime } from '../lib/time.ts';
-import { usePhone } from '../lib/usePhone.ts';
-import { AllTimeTile, JobsHistory, useJobsHistory } from './jobs-history.tsx';
+import { usePhone } from '../lib/use-phone.ts';
+import { AllTimeTile, JobsHistory, useJobsHistory } from './JobsHistory.tsx';
 
 const num = new Intl.NumberFormat('en-US');
 

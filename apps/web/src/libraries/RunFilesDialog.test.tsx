@@ -22,7 +22,7 @@ vi.mock('../api/client.ts', async () => {
   };
 });
 
-import { ACTIVATE_TO_RUN } from '../jobs/useRunOnFile.tsx';
+import { ACTIVATE_TO_RUN } from '../jobs/use-run-on-file.tsx';
 import { RunFilesDialog, type RunSelection, runHoursWindow } from './RunFilesDialog.tsx';
 
 const NIGHT = [22, 23, 0, 1, 2, 3, 4, 5];
