@@ -179,4 +179,5 @@ Entries from M0 to M3 had no date of their own; they carry the day their milesto
 - 2026-11-26 · Conventions · [Docs checked against the code](2026-11.md)
 - 2026-11-26 · Tooling · [Shared Biome and TypeScript config](2026-11.md)
 - 2026-11-26 · Tooling · [Release notes through the shared checker](2026-11.md)
+- 2026-11-26 · Tooling · [Main red, file-size budget and screenshots checks](2026-11.md)
 - 2026-11-26 · Tooling · [Scripts in TypeScript, tests on Vitest](2026-11.md)
