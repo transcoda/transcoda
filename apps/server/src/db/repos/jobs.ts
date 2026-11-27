@@ -46,11 +46,7 @@ export interface ReplaceJournal {
   copyPath: string;
   /** The library root: the sweep decides nothing while it is unreachable (an unmounted share). */
   libraryRoot: string;
-  /**
-   * Never written now. A journal from before 2026-11-27 has it, and `false` there means the copy
-   * is a `.orig` beside the file that the replace deleted at the end: the sweep leaves such a job
-   * for the user (docs/dev/engine.md, "Safety rules that must hold").
-   */
+  /** Only in journals from before 2026-11-27; `false`: a `.orig` copy the sweep leaves alone. */
   recycling?: boolean;
   fingerprint: Fingerprint;
   outputBytes: number;
@@ -122,10 +118,7 @@ export interface JobListRow extends Omit<JobRow, 'media'> {
   estimatedBytes: number | null;
   /** Dry runs only: {@link planSummary} of the stored plan; null without one. */
   planSummary: string | null;
-  /**
-   * A plan-only dry run that ended `dry_run` whose size gate decides after encoding (#41): the
-   * gate's minimum saving; null otherwise.
-   */
+  /** A `dry_run` whose size gate runs after encoding (#41): its minimum saving, else null. */
   dependsOnSize: { minSavingPercent: number } | null;
   /** From a `library` run: its library's run hours apply. */
   automatic: boolean;
