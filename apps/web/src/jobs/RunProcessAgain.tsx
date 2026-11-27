@@ -6,7 +6,7 @@ import { describeError } from '../api/errors.ts';
 import { Dialog } from '../components/Dialog.tsx';
 import { Icon } from '../components/Icon.tsx';
 import { useToast } from '../components/Toast.tsx';
-import { useWorkflows } from '../hooks/useWorkflows.ts';
+import { useWorkflows } from '../hooks/use-workflows.ts';
 import { recycleFolderOf } from './ProcessAgain.tsx';
 
 const filesWord = (n: number) => `${n} ${n === 1 ? 'file' : 'files'}`;

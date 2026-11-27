@@ -8,13 +8,13 @@ import {
   useState,
 } from 'react';
 import { useLocation, useRoute } from 'wouter';
-import { useAuth } from '../auth/useAuth.ts';
-import { useAppUpdate } from '../hooks/useAppUpdate.ts';
-import { useJobsCounts } from '../jobs/useJobsList.ts';
+import { useAuth } from '../auth/use-auth.ts';
+import { useAppUpdate } from '../hooks/use-app-update.ts';
+import { useJobsCounts } from '../jobs/use-jobs-list.ts';
 import { GuardedLink, guardedRun } from '../lib/navigation.tsx';
-import { usePhone } from '../lib/usePhone.ts';
+import { usePhone } from '../lib/use-phone.ts';
 import { TmdbAttribution } from '../plugins/TmdbAttribution.tsx';
-import { usePluginsNav } from '../plugins/usePluginsNav.ts';
+import { usePluginsNav } from '../plugins/use-plugins-nav.ts';
 import { ActivityButton } from './ActivityButton.tsx';
 import { Icon, type IconName } from './Icon.tsx';
 import { Mark, Wordmark } from './Logo.tsx';

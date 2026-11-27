@@ -10,8 +10,8 @@ import {
   QUEUED_VERSION_NOTE,
   verdictOf,
   versionText,
-} from './jobText.ts';
-import { mediaSub, resultLines } from './mediaText.ts';
+} from './job-text.ts';
+import { mediaSub, resultLines } from './media-text.ts';
 
 /**
  * The row's detail line, clamped to two lines so a long reason cannot stretch the row; the whole

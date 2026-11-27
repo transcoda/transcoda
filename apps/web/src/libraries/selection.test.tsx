@@ -3,7 +3,7 @@ import type { LibraryFile } from '@transcoda/contract';
 import { useState } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('../jobs/useQueue.ts', () => ({
+vi.mock('../jobs/use-queue.ts', () => ({
   useQueue: () => ({ status: { paused: false, lanes: {}, encodeSlots: 1 }, set: vi.fn() }),
 }));
 
@@ -12,7 +12,7 @@ import { fx } from '../test/fixtures/jobs.ts';
 import { renderAt } from '../test/render.tsx';
 import { LibraryFileTable } from './LibraryFileTable.tsx';
 import { SelectionBar } from './SelectionBar.tsx';
-import { useSelection } from './useSelection.ts';
+import { useSelection } from './use-selection.ts';
 
 const realMatchMedia = window.matchMedia;
 function stubPhone(phone: boolean) {

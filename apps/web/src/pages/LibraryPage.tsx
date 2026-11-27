@@ -7,9 +7,9 @@ import { Icon } from '../components/Icon.tsx';
 import { Loading } from '../components/Loading.tsx';
 import { NotFound } from '../components/NotFound.tsx';
 import { SegmentedSwitch } from '../components/SegmentedSwitch.tsx';
-import { useAsync } from '../hooks/useAsync.ts';
-import { usePageTitle } from '../lib/pageTitle.ts';
-import { usePhone } from '../lib/usePhone.ts';
+import { useAsync } from '../hooks/use-async.ts';
+import { usePageTitle } from '../lib/page-title.ts';
+import { usePhone } from '../lib/use-phone.ts';
 import { type Crumb, Crumbs, seasonLabel } from '../libraries/Crumbs.tsx';
 import { LibraryFileTable } from '../libraries/LibraryFileTable.tsx';
 import { RunFilesDialog, type RunSelection } from '../libraries/RunFilesDialog.tsx';
@@ -20,10 +20,10 @@ import {
   useLibraryRefetch,
   useLibrarySeasons,
   useLibraryTitlePages,
-} from '../libraries/useLibraryListing.ts';
-import { useScanNow } from '../libraries/useScanNow.tsx';
-import { type Selection, useSelection } from '../libraries/useSelection.ts';
-import { type LibraryView, readLibraryView, writeLibraryView } from '../libraries/viewPref.ts';
+} from '../libraries/use-library-listing.ts';
+import { useScanNow } from '../libraries/use-scan-now.tsx';
+import { type Selection, useSelection } from '../libraries/use-selection.ts';
+import { type LibraryView, readLibraryView, writeLibraryView } from '../libraries/view-pref.ts';
 
 /** How long the search box waits after the last keystroke before asking the server. */
 const SEARCH_DEBOUNCE_MS = 250;

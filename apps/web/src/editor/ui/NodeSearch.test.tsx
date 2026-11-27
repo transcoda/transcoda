@@ -2,7 +2,7 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import type { NodeInfo, WorkflowSummary } from '@transcoda/contract';
 import type { WorkflowKind } from '@transcoda/shared';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { PortType } from '../../hooks/useCatalog.ts';
+import type { PortType } from '../../hooks/use-catalog.ts';
 import { catalogFixture } from '../../test/fixtures/catalog.ts';
 import { compatibleTargets, type NextRule } from '../model/connection.ts';
 import { filterHint, NodeSearch } from './NodeSearch.tsx';

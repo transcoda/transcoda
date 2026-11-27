@@ -4,7 +4,7 @@ The rules in force today for `.github/workflows/`, `docker/`, `renovate.json`, `
 
 ## On a pull request
 
-- **CI** (`ci.yml`): job `check` runs `pnpm install --frozen-lockfile`, `pnpm check` (typecheck, Biome, `check-deps`, `check-licences`, Vitest), `pnpm build`, and `docker/entrypoint.test.sh` in the image's Node base. Job `e2e` runs the browser and screenshot tests through `scripts/e2e-docker.sh`, the same script as `pnpm e2e:docker`.
+- **CI** (`ci.yml`): job `check` runs `pnpm install --frozen-lockfile`, `pnpm check` (typecheck, Biome with `--error-on-warnings`, knip, `check-deps`, `check-licences`, Vitest), `pnpm build`, and `docker/entrypoint.test.sh` in the image's Node base. Job `e2e` runs the browser and screenshot tests through `scripts/e2e-docker.sh`, the same script as `pnpm e2e:docker`.
 - **PR title** (`pr-title.yml`, job `pr-title`) and **Release note** (`release-note.yml`, job `release-note`) call the shared actions in the org's `.github` repository.
 - The `main` ruleset requires the `check`, `release-note` and `pr-title` checks, one approving review (code owner review on), and allows squash merges only. `e2e` runs on every pull request but is not a required check.
 - The script is named `check`, not `ci`: `pnpm ci` is a pnpm built-in.

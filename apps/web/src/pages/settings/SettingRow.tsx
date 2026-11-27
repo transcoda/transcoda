@@ -2,7 +2,7 @@ import type { SettingSource } from '@transcoda/contract';
 import { type ReactNode, useId } from 'react';
 import { Disclosure } from '../../components/Disclosure.tsx';
 import { GroupLabel } from '../../components/Headings.tsx';
-import { envDocsUrl, envSourceText, sourceText } from './sourceText.ts';
+import { envDocsUrl, envSourceText, sourceText } from './source-text.ts';
 
 /** An environment value's source: the variable, and whether it is set (else the default is used). */
 export type EnvSource = { kind: 'env'; variable: string; set: boolean };

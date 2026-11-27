@@ -1,5 +1,5 @@
 import { type NodeInfo, NodesListOutputSchema } from '@transcoda/contract';
-import { buildCatalog } from '../../hooks/useCatalog.ts';
+import { buildCatalog } from '../../hooks/use-catalog.ts';
 import raw from './nodes.json';
 
 /**

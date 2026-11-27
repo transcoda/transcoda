@@ -1,6 +1,6 @@
 import type { WorkflowSummary } from '@transcoda/contract';
 import type { NodeInstance } from '@transcoda/shared';
-import type { ZoomLevel } from '../flow/useZoomLevel.ts';
+import type { ZoomLevel } from '../flow/use-zoom-level.ts';
 import type { NodeState } from '../model/issues.ts';
 import { readRunSettings } from './RunSubworkflowInspector.tsx';
 

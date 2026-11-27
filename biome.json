@@ -82,6 +82,19 @@
       }
     },
     {
+      "includes": ["apps/web/src/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "useFilenamingConvention": {
+              "level": "error",
+              "options": { "filenameCases": ["kebab-case", "PascalCase"] }
+            }
+          }
+        }
+      }
+    },
+    {
       "includes": [
         "**/*.config.ts",
         "apps/server/src/plugins/fixtures/**",

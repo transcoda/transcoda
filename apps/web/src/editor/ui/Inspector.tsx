@@ -12,7 +12,7 @@ import { KIND_WORD, KindEyebrow } from '../../components/Chips.tsx';
 import { Disclosure } from '../../components/Disclosure.tsx';
 import { Icon } from '../../components/Icon.tsx';
 import { ListboxSelect } from '../../components/ListboxSelect.tsx';
-import type { Catalog } from '../../hooks/useCatalog.ts';
+import type { Catalog } from '../../hooks/use-catalog.ts';
 import { BADGE_ICON } from '../flow/badges.ts';
 import { kindClassOf } from '../flow/TcNode.tsx';
 import type { EditorState } from '../model/editor-state.ts';
