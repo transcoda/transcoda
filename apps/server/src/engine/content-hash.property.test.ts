@@ -1,10 +1,11 @@
 // Property test (fast-check) for the content hash's sampled chunks: every read lies inside the file,
 // a small file is read whole, and a large one at its start, middle and end.
+import { fcRuns } from '@transcoda/shared/testing';
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { chunkOffsets } from './content-hash.ts';
 
-const RUNS = { numRuns: 300, seed: 0x7c0da };
+const RUNS = fcRuns();
 
 describe('chunkOffsets (property)', () => {
   it('reads inside the file: all of a small one, start, middle and end of a large one', () => {

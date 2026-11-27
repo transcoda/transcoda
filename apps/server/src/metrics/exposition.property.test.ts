@@ -1,11 +1,12 @@
 // Property tests (fast-check) for the Prometheus text writer: any help text, label value and sample
 // value reads back unchanged through the strict reader the other exposition tests use.
+import { fcRuns } from '@transcoda/shared/testing';
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { renderExposition, type ScalarFamily } from './exposition.ts';
 import { parseExposition } from './parse-exposition.ts';
 
-const RUNS = { numRuns: 200, seed: 0x7c0da };
+const RUNS = fcRuns();
 
 // Backslashes, quotes and newlines weighted in, plus any text at all.
 const text = fc.oneof(

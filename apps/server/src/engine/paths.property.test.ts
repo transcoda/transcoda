@@ -2,12 +2,13 @@
 // library root is "within" it, a sibling that only shares a prefix is not, and the recycle and
 // temporary paths built from it stay where they belong.
 import { dirname, join, sep } from 'node:path';
+import { fcRuns } from '@transcoda/shared/testing';
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { isWithin } from './paths.ts';
 import { recyclePathFor, tmpPathFor } from './replace.ts';
 
-const RUNS = { numRuns: 200, seed: 0x7c0da };
+const RUNS = fcRuns();
 
 /** One path segment: any text without a separator or NUL, and not `.` or `..`. */
 const segment = fc

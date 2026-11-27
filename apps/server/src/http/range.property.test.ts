@@ -1,10 +1,11 @@
 // Property tests (fast-check) for the Range header reader: whatever a client sends, a range it
 // returns lies inside the file, so a read never goes past either end.
+import { fcRuns } from '@transcoda/shared/testing';
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { parseRange } from './range.ts';
 
-const RUNS = { numRuns: 300, seed: 0x7c0da };
+const RUNS = fcRuns();
 
 const digits = fc.oneof(fc.nat().map(String), fc.constant(''), fc.stringMatching(/^\d{1,25}$/));
 const header = fc.oneof(

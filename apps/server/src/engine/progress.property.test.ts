@@ -1,5 +1,6 @@
 // Property tests (fast-check) for the -progress parser: whatever ffmpeg writes, and however the
 // pipe splits it, parsing never throws and every number it reports is one a job page can show.
+import { fcRuns } from '@transcoda/shared/testing';
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import {
@@ -9,8 +10,7 @@ import {
   toJobProgress,
 } from './progress.ts';
 
-// Fixed seed and run count: `pnpm test` stays fast and fails the same way every time.
-const RUNS = { numRuns: 200, seed: 0x7c0da };
+const RUNS = fcRuns();
 
 const KEYS = [
   'frame',

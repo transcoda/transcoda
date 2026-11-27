@@ -1,10 +1,11 @@
 // Property test (fast-check) for renderCommandLine: the stored command line, split the way a POSIX
 // shell splits it, gives back the exact argv that ran.
+import { fcRuns } from '@transcoda/shared/testing';
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { renderCommandLine } from './render.ts';
 
-const RUNS = { numRuns: 300, seed: 0x7c0da };
+const RUNS = fcRuns();
 
 /**
  * Word splitting and quote removal as a POSIX shell does them, for what renderCommandLine writes:

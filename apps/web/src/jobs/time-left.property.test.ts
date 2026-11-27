@@ -1,11 +1,12 @@
 // Property tests (fast-check) for how long a job took and has left: any number of seconds reads as
 // a person would write it, with seconds and minutes always under 60.
+import { fcRuns } from '@transcoda/shared/testing';
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { fmtDuration } from '../lib/time.ts';
 import { fmtTimeLeft } from './job-text.ts';
 
-const RUNS = { numRuns: 300, seed: 0x7c0da };
+const RUNS = fcRuns();
 
 /** "40 s", "3 min", "1 h", "1 h 23 min", "2 min 5 s", each part in range. */
 function expectReadable(text: string): void {
