@@ -26,6 +26,8 @@ function steadyText() {
     [/\b\d+(?:\.\d+)? (?:B|kB|MB|GB|TB)\b/g, '1 MB'],
     [/\b\d+(?:\.\d+)? (?:kb|Mb|Gb)\/s\b/g, '1 Mb/s'],
     [/\d+(?:\.\d+)? ?%/g, '50%'],
+    // ffmpeg's log length depends on the machine (CPU notes, NUMA).
+    [/^\d+ lines?$/, '10 lines'],
   ];
   const fix = (node: Node) => {
     const text = node.textContent ?? '';
