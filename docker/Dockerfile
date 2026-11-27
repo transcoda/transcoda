@@ -6,11 +6,14 @@ ARG NODE_IMAGE=node:26.13.1-bookworm-slim@sha256:5df79989ed685e09f0a98019db4cebf
 
 # 1. Build the web UI and the server bundle on the build host's platform.
 FROM --platform=$BUILDPLATFORM ${NODE_IMAGE} AS build
-# Node 26 no longer bundles corepack; it comes from npm, pinned, and then provides the pnpm
-# that package.json's packageManager names.
-ARG COREPACK_VERSION=0.36.0
+# Node 26 no longer bundles corepack. It comes from npm through docker/corepack's lockfile
+# (`npm ci`: version and hash pinned, Renovate updates both) and then provides the pnpm that
+# package.json's packageManager names.
 ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
-RUN npm install -g "corepack@${COREPACK_VERSION}" && corepack enable
+COPY docker/corepack/package.json docker/corepack/package-lock.json /opt/corepack/
+RUN npm ci --prefix /opt/corepack --ignore-scripts --no-audit --no-fund \
+ && ln -sf /opt/corepack/node_modules/corepack/dist/corepack.js /usr/local/bin/corepack \
+ && corepack enable
 WORKDIR /src
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 COPY packages/contract/package.json packages/contract/
@@ -32,9 +35,11 @@ RUN TRANSCODA_BUILD_FIXTURES=1 TRANSCODA_RELEASE=${TRANSCODA_RELEASE} TRANSCODA_
 # 2. Production node_modules for the server, resolved on the target platform.
 #    better-sqlite3 ships prebuilt binaries, so no compiler is needed (allowBuilds stays false).
 FROM ${NODE_IMAGE} AS deps
-ARG COREPACK_VERSION=0.36.0
 ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
-RUN npm install -g "corepack@${COREPACK_VERSION}" && corepack enable
+COPY docker/corepack/package.json docker/corepack/package-lock.json /opt/corepack/
+RUN npm ci --prefix /opt/corepack --ignore-scripts --no-audit --no-fund \
+ && ln -sf /opt/corepack/node_modules/corepack/dist/corepack.js /usr/local/bin/corepack \
+ && corepack enable
 WORKDIR /src
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 COPY packages/contract/package.json packages/contract/

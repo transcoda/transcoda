@@ -82,6 +82,11 @@
       "groupName": "Playwright"
     },
     {
+      "description": "corepack for the image's build stages and the e2e container (Node 26 no longer bundles it): docker/corepack's package.json and lockfile, installed with npm ci so it is pinned by hash. Its own pull request, so a corepack update is tested on its own.",
+      "matchFileNames": ["docker/corepack/package.json"],
+      "groupName": "corepack"
+    },
+    {
       "description": "The Docker base image, pinned by digest next to its tag.",
       "matchManagers": ["dockerfile"],
       "pinDigests": true
@@ -105,14 +110,6 @@
       "datasourceTemplate": "deb",
       "registryUrlTemplate": "https://repo.jellyfin.org/debian?suite=bookworm&components=main&binaryArch=amd64",
       "versioningTemplate": "deb"
-    },
-    {
-      "description": "corepack in the image's build stages: Node 26 no longer bundles it, so docker/Dockerfile installs it from npm (both ARG lines).",
-      "customType": "regex",
-      "managerFilePatterns": ["/^docker/Dockerfile$/"],
-      "matchStrings": ["ARG COREPACK_VERSION=(?<currentValue>\\S+)"],
-      "depNameTemplate": "corepack",
-      "datasourceTemplate": "npm"
     }
   ]
 }

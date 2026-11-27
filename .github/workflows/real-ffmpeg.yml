@@ -16,6 +16,7 @@ on:
       - scripts/e2e-docker.sh
       - e2e/Dockerfile
       - docker/Dockerfile
+      - docker/corepack/**
       - .github/workflows/real-ffmpeg.yml
 
 concurrency:
