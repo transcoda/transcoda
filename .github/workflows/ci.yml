@@ -42,6 +42,26 @@ jobs:
             -e TRANSCODA_CONFIG_DIR=/tmp/cfg -e TRANSCODA_TRANSCODE_DIR=/tmp/tc \
             -e TRANSCODA_PLUGIN_RUN_DIR=/tmp/run "$node_image" sh /t/entrypoint.test.sh
 
+  # No source file over 1200 lines. Files already over it are in .github/file-size-allowlist.json
+  # at their current size, which may only shrink. The globs are the same as `pnpm check-file-size`
+  # in package.json; change both together. Rule: docs/dev/conventions.md, "File size".
+  file-size:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: transcoda/.github/actions/file-size@43cbb990910eca37108711aedaa1b939835a1941 # v1.1.0
+        with:
+          max-lines: 1200
+          allowlist: .github/file-size-allowlist.json
+          globs: |
+            apps/**/*.{ts,tsx,mts,mjs,css}
+            packages/**/*.{ts,tsx,mts,mjs}
+            scripts/**/*.{ts,mts,mjs}
+            e2e/**/*.{ts,mjs}
+            *.{ts,mts,mjs}
+            !**/fixtures/**
+
   # Browser tests (Playwright) against the built server and the fixture media, screenshots included.
   # They run in e2e/Dockerfile's container, as `pnpm e2e:docker` does locally, so the baselines
   # match. Strategy and time budget: docs/dev/testing.md, "Tiers".

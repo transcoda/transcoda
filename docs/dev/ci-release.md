@@ -4,14 +4,16 @@ The rules in force today for `.github/workflows/`, `docker/`, `renovate.json`, `
 
 ## On a pull request
 
-- **CI** (`ci.yml`): job `check` runs `pnpm install --frozen-lockfile`, `pnpm check` (typecheck, Biome with `--error-on-warnings`, knip, `check-deps`, `check-licences`, Vitest), `pnpm build`, and `docker/entrypoint.test.sh` in the image's Node base. Job `e2e` runs the browser and screenshot tests through `scripts/e2e-docker.sh`, the same script as `pnpm e2e:docker`.
+- **CI** (`ci.yml`): job `check` runs `pnpm install --frozen-lockfile`, `pnpm check` (typecheck, Biome with `--error-on-warnings`, knip, `check-deps`, `check-licences`, `check-file-size`, Vitest), `pnpm build`, and `docker/entrypoint.test.sh` in the image's Node base. Job `file-size` runs the org's `file-size` action: no source file over 1200 lines, and on a pull request no new or raised entry in `.github/file-size-allowlist.json` ([conventions.md](conventions.md#file-size)). Job `e2e` runs the browser and screenshot tests through `scripts/e2e-docker.sh`, the same script as `pnpm e2e:docker`.
 - **PR title** (`pr-title.yml`, job `pr-title`) and **Release note** (`release-note.yml`, job `release-note`) call the shared actions in the org's `.github` repository.
+- **Screenshots** (`screenshots.yml`, job `screenshots`): a pull request that changes `apps/web/src/` (tests and `src/test/` aside), `apps/web/index.html` or `apps/web/public/` needs an image in its description, or the `no screenshots needed` label when nothing visible changed. It runs again when the description or the labels change.
 - The `main` ruleset requires the `check`, `release-note` and `pr-title` checks, one approving review (code owner review on), and allows squash merges only. `e2e` runs on every pull request but is not a required check.
 - The script is named `check`, not `ci`: `pnpm ci` is a pnpm built-in.
 
 ## On `main` and on tags
 
 - `ci.yml` runs again on every push to `main`.
+- **Main red** (`main-red.yml`): when a push run of CI or Docker on `main` fails, the org's `main-red` action opens one issue for that workflow, labelled `main-red`; a further failing run adds a comment, and the issue closes when the workflow passes on `main` again. It is a `workflow_run` workflow, so it runs from `main`'s copy only, and it must not get a `concurrency` group. To watch another workflow, add its `name:` to the list.
 - **Docker** (`docker.yml`) runs on `main`, on `v*` tags and by hand. Job `image` builds amd64 and arm64 and pushes to `ghcr.io/transcoda/transcoda`. Then: `sandbox` (the plugin sandbox denial check inside the pushed image, natively per arch), `hardening` (the shipped compose file against the pushed image: capabilities, read-only root, plugin user), `vulnerabilities` (on `main` only) and `release-assets` (on release tags only). These run after the push, so a failure is a red run on an image that is already published.
 - Image tags: `main` for the branch; `<version>`, `<major>.<minor>` and `latest` for a release tag; a pre-release gets only its own version. No commit-SHA tags.
 - **GHCR cleanup** (`ghcr-cleanup.yml`) runs after each successful Docker run and weekly. It deletes untagged images older than a day only. A manual run defaults to a dry run.
