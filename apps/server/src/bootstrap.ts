@@ -2,7 +2,7 @@ import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadOrCreateSecretKey } from './auth/secret-key.ts';
-import { confirmNvenc, probeGpus } from './capabilities/devices.ts';
+import { probeGpus, usableHardware } from './capabilities/devices.ts';
 import { probeFfmpeg } from './capabilities/ffmpeg.ts';
 import { type Config, requireIsolationInProduction } from './config.ts';
 import { backupDirOf } from './db/backup.ts';
@@ -85,12 +85,10 @@ export async function createDeps(
   process.env.CUDA_DEVICE_ORDER ??= 'PCI_BUS_ID';
   const probed = await probeFfmpeg(config.ffmpegPath);
   const listed = probed.available ? { ...probed, gpus: await probeGpus() } : probed;
-  const nvenc = await confirmNvenc(listed);
-  const capabilities = nvenc.capabilities;
-  if (nvenc.unusable !== null) {
-    log.info(
-      `ffmpeg has NVENC, but it does not run here (${nvenc.unusable}); encoding in software`,
-    );
+  const hardware = await usableHardware(listed);
+  const capabilities = hardware.capabilities;
+  for (const what of hardware.dropped) {
+    log.info(`hardware encoding unavailable: ${what}; jobs encode without it`);
   }
   if (!capabilities.available) {
     log.warn(

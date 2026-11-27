@@ -2141,6 +2141,15 @@ Which kind of test covers what. A change gets its test in the lowest tier that c
   - Posters are not in the shots yet: the fixtures have no artwork, so every card shows the placeholder.
 - **Found by the container run:** x265 prints a harmless error-level line where the kernel shows no NUMA nodes (Docker Desktop), which failed every HEVC encode there (fixed separately). jellyfin-ffmpeg also reports NVENC on a machine with no GPU, so the first encode tries the GPU and falls back to software.
 
+## 2026-11-26 Hardware encoders that cannot run
+
+- ffmpeg's `-encoders` lists what it was built with, not what runs here. jellyfin-ffmpeg has NVENC, Quick Sync and VA-API in every build, so on a machine with none of them, auto picked NVENC for every job. Every encode failed once and was retried in software, and the job's steps said "on the GPU (NVENC …)". Found by the browser tests' container (#147).
+- At start (`usableHardware`, `capabilities/devices.ts`):
+  - **NVENC:** taken as working when nvidia-smi lists an NVIDIA GPU. Without one, a one-frame test encode (`color` source, `h264_nvenc`, null output, 15 s limit) decides. A GPU in a container without nvidia-smi passes; no GPU or no driver fails ("Cannot load libcuda.so.1"), and the NVENC encoders and the `cuda` hwaccel are dropped.
+  - **Quick Sync and VA-API:** dropped when no `/dev/dri/renderD*` can be opened. Sysfs may list the host's nodes inside a container, so opening one is what counts. No test encode: with a node, the existing per-GPU handling applies.
+  - The log names what was dropped and why ("hardware encoding unavailable: NVENC (Cannot load libcuda.so.1); jobs encode without it").
+- **The steps name the encoder that ran.** The trace keeps what the workflow built; the job's plan follows the software fallback and a retarget to the slot's GPU. Encode video's sentence and detail take the encoder and quality from the plan's video conversion when it differs (`videoConversionOf`, `ranAs` in `jobs/steps.ts`).
+
 ## Follow-ups (2026-10-17)
 
 - **mp4 video default normalization.** `normalizeDefaults` treats video like subtitle when the output container is mp4: extra default video flags are cleared and the first kept non-cover video is flagged when none is (note `mp4 cannot have no default video`). The mp4 muxer enables a video track that was told "not default", which verify would report as a stream mismatch. Matroska passes the flag through, so mkv output is unchanged; cover pictures are never touched.

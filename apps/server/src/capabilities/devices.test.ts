@@ -2,7 +2,6 @@ import type { Capabilities } from '@transcoda/contract';
 import { describe, expect, it } from 'vitest';
 import { deviceVendor } from '../engine/render.ts';
 import {
-  confirmNvenc,
   devicePlan,
   effectiveCapabilities,
   encodeSlots,
@@ -16,6 +15,7 @@ import {
   probeIntelGpus,
   type SysFs,
   slotGpuLabel,
+  usableHardware,
 } from './devices.ts';
 import type { Exec } from './ffmpeg.ts';
 
@@ -391,12 +391,20 @@ describe('encodeSlots', () => {
   });
 });
 
-describe('confirmNvenc', () => {
+describe('usableHardware', () => {
   const failing: Exec = async () => {
     throw Object.assign(new Error('Command failed'), {
       stderr: '[h264_nvenc @ 0x1] Cannot load libcuda.so.1\nError while opening encoder\n',
     });
   };
+  const works: Exec = async () => ({ stdout: '', stderr: '' });
+  /** A /dev/dri with these render nodes, of which `open` can be opened. */
+  const dri = (nodes: string[], open: string[] = nodes): SysFs => ({
+    listRenderNodes: async () => nodes,
+    readFile: async () => '',
+    realpath: async (p) => p,
+    canOpen: async (p) => open.some((n) => p === `/dev/dri/${n}`),
+  });
 
   it('drops NVENC and cuda when nvidia-smi lists no GPU and a test encode fails', async () => {
     const calls: string[][] = [];
@@ -404,8 +412,8 @@ describe('confirmNvenc', () => {
       calls.push([file, ...args]);
       return failing(file, args, opts);
     };
-    const { capabilities, unusable } = await confirmNvenc(caps([]), exec);
-    expect(unusable).toBe('Error while opening encoder');
+    const { capabilities, dropped } = await usableHardware(caps([]), exec, dri(['renderD128']));
+    expect(dropped).toEqual(['NVENC (Cannot load libcuda.so.1)']);
     expect(capabilities.available && capabilities.encoders).toEqual([
       'libx265',
       'libx264',
@@ -423,15 +431,35 @@ describe('confirmNvenc', () => {
         ...['-f', 'null', '-'],
       ],
     ]);
-    // So auto has no GPU to encode on.
-    expect(encodeSlots(capabilities, { kind: 'auto' })[0]?.device).toBeNull();
+  });
+
+  it('drops Quick Sync and VA-API when no render node can be opened', async () => {
+    for (const fs of [dri([]), dri(['renderD128'], [])]) {
+      const { capabilities, dropped } = await usableHardware(caps([rtx]), failing, fs);
+      expect(dropped).toEqual(['Quick Sync and VA-API (no /dev/dri render node)']);
+      expect(capabilities.available && capabilities.encoders).toEqual([
+        'libx265',
+        'libx264',
+        'hevc_nvenc',
+        'h264_nvenc',
+        'aac',
+      ]);
+      expect(capabilities.available && capabilities.hwaccels).toEqual(['cuda']);
+    }
+  });
+
+  it('with neither, auto encodes in software on the plain slot', async () => {
+    const { capabilities } = await usableHardware(caps([]), failing, dri([]));
+    expect(capabilities.available && capabilities.encoders).toEqual(['libx265', 'libx264', 'aac']);
+    expect(encodeSlots(capabilities, { kind: 'auto' })).toEqual([
+      { id: 'encode', label: 'Encode', device: null, gpuId: null },
+    ]);
   });
 
   it('keeps NVENC when the test encode works (a GPU in a container without nvidia-smi)', async () => {
-    const exec: Exec = async () => ({ stdout: '', stderr: '' });
     const before = caps([]);
-    const { capabilities, unusable } = await confirmNvenc(before, exec);
-    expect(unusable).toBeNull();
+    const { capabilities, dropped } = await usableHardware(before, works, dri(['renderD128']));
+    expect(dropped).toEqual([]);
     expect(capabilities).toBe(before);
   });
 
@@ -441,10 +469,10 @@ describe('confirmNvenc', () => {
       ran += 1;
       return failing(...a);
     };
-    expect((await confirmNvenc(caps([rtx]), exec)).unusable).toBeNull();
+    expect((await usableHardware(caps([rtx]), exec, dri(['renderD128']))).dropped).toEqual([]);
     const noNvenc = caps([]);
     if (noNvenc.available) noNvenc.encoders = ['libx265'];
-    expect((await confirmNvenc(noNvenc, exec)).unusable).toBeNull();
+    expect((await usableHardware(noNvenc, exec, dri([]))).dropped).toEqual([]);
     expect(ran).toBe(0);
   });
 });

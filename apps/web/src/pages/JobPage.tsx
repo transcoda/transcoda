@@ -266,7 +266,6 @@ function JobView({ id }: { id: string }) {
             jobState: job.state,
             currentNode: lit,
             nodeProblems: job.result?.nodeProblems ?? [],
-            videoConversion: videoConversionOf(job.plan),
           }
         : null,
     [job, trace, lit],
@@ -293,6 +292,7 @@ function JobView({ id }: { id: string }) {
             replacedTo: job.result?.replacedTo ?? null,
             sourceDamaged: job.result?.sourceDamaged === true,
             nodeProblems: job.result?.nodeProblems ?? [],
+            videoConversion: videoConversionOf(job.plan),
             damagedSide: job.graph
               ? damagedSideOf(job.graph, (type) => catalog?.byType.get(type)?.kind)
               : new Set(),
