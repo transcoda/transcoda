@@ -44,7 +44,7 @@ jobs:
 
   # Browser tests (Playwright) against the built server and the fixture media, screenshots included.
   # They run in e2e/Dockerfile's container, as `pnpm e2e:docker` does locally, so the baselines
-  # match. Strategy and time budget: docs/decisions.md, "Test tiers".
+  # match. Strategy and time budget: docs/dev/testing.md, "Tiers".
   e2e:
     runs-on: ubuntu-latest
     timeout-minutes: 20

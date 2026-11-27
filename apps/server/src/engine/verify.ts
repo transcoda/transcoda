@@ -1081,7 +1081,7 @@ async function decodableStart(
   return first !== null && first > file.start ? first : file.start;
 }
 
-/** Checks the written output against the plan; see the module comment and docs/decisions.md. */
+/** Checks the written output against the plan; see the module comment and docs/dev/engine.md. */
 export async function verifyOutput(input: VerifyInput): Promise<VerifyResult> {
   const exec = withSignal(input.exec ?? verifyExec, input.signal);
   let probe: ProbeResult;

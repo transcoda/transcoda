@@ -1,5 +1,7 @@
 # Copy run: proving the engine on copies, with NVENC
 
+> **Historical record.** This is the M1 engine gate (October 2026), when the engine had no job screens. The API routes and steps were right then; for today's behaviour see [`docs/dev/engine.md`](../dev/engine.md) and the README. It is kept as a record and is not updated.
+
 This is the playbook for the M1 gate. You run the engine against **copies** of your media on the home server, with the GPU, and check that nothing is lost.
 
 The M1 engine has no job screens (they arrive with the M2 editor track), so everything here goes through the REST API under `/api/v1`: the libraries, jobs, runs, queue and events routes. `GET /api/openapi.json` on your server describes every route and field.
@@ -106,7 +108,7 @@ The `default_mode` line must say `(default passthrough)`. If it says `infer` or 
 
 ## 3. Import the example workflows
 
-The three example graphs are in [`examples/workflows/`](../examples/workflows/) (see its README for what each does and which warnings are expected). Their encoders stay on `auto`: with the GPU present, `auto` resolves to `hevc_nvenc` (HEVC) or `h264_nvenc`; it prefers hardware, then falls back to `libx265`/`libx264`.
+The three example graphs are in [`examples/workflows/`](../../examples/workflows/) (see its README for what each does and which warnings are expected). Their encoders stay on `auto`: with the GPU present, `auto` resolves to `hevc_nvenc` (HEVC) or `h264_nvenc`; it prefers hardware, then falls back to `libx265`/`libx264`.
 
 Create, save and activate each one. The `save` call needs the version you are building on (a new workflow is at version 1):
 
@@ -235,7 +237,7 @@ Do all of these before you count the run.
    Poll until `in_progress` is 0. No job may be `done`. A file replaced in the first run is a new file (new fingerprint), so it is walked again; it is HEVC now and ends `nothing_to_do` when it is mkv or mp4, or `kept_original` with `path never writes the result` in another container. A file the first run left alone (`nothing_to_do`, `kept_original` or `failed`) keeps its fingerprint and is `already_processed` (`force: true` queues it again). `already_processed` is not "processed successfully": a file that `failed` in the first run shows up here too (its `reason` says `already failed on <date>`), so compare with the first run's `failed` list rather than counting it as done. Recycled originals are inside the library root but are never queued.
 7. **Dry runs over copies** of the other workflows behave the same way (a dry run never counts as "already processed").
 
-The recycle folder keeps originals for 7 days, and also stops short of using more than 25 % of the free space of its filesystem (oldest originals are removed first). Those are database settings (`recycle.retentionDays`, `recycle.maxFreePercent`, see [`env.md`](env.md#settings-in-the-database)); change them under Settings → Recycle.
+The recycle folder keeps originals for 7 days, and also stops short of using more than 25 % of the free space of its filesystem (oldest originals are removed first). Those are database settings (`recycle.retentionDays`, `recycle.maxFreePercent`, see [`env.md`](../env.md#settings-in-the-database)); change them under Settings → Recycle.
 
 ## 6. Roll back
 

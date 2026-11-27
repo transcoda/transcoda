@@ -127,7 +127,7 @@ The most common ones are `PUID`, `PGID` and `UMASK` (container user; the server 
 - [MCP server for AI assistants](docs/mcp.md)
 - [Metrics for Prometheus, Grafana and Home Assistant](docs/metrics.md)
 - [Releases and versioning](docs/releasing.md) · [Changelog](CHANGELOG.md)
-- [Design decisions](docs/decisions.md)
+- [Developer docs](docs/dev/) · [Decision log](docs/decisions/README.md)
 
 ## Contributing
 
@@ -135,29 +135,7 @@ Bug reports, ideas and pull requests are welcome. Start with [CONTRIBUTING.md](C
 
 ## Development
 
-Requirements on a Mac: Node 26 (`>=26.13.1`), pnpm via corepack (no longer bundled with Node 26: `npm install -g corepack`), and ffmpeg for the capability probe (`brew install ffmpeg`; the Docker image uses jellyfin-ffmpeg instead).
-
-```sh
-npm install -g corepack
-corepack enable
-pnpm install
-pnpm --filter @transcoda/server dev   # API on http://localhost:8080, state in apps/server/.local/config
-pnpm --filter @transcoda/web dev      # UI on http://localhost:5173, proxies /api and /rpc to :8080
-```
-
-Open `http://localhost:5173`; the first visit asks you to create the admin account. `localhost` is always an allowed host.
-
-| Command | Does |
-| --- | --- |
-| `pnpm check` | typecheck, lint, dependency-direction check, license check and tests (what CI runs; `pnpm ci` is a pnpm built-in, so the script is named `check`) |
-| `pnpm test` / `pnpm typecheck` / `pnpm lint` | one step of the above |
-| `pnpm format` | Biome autofix |
-| `pnpm build` | production bundles for web and server |
-| `pnpm notices` | (not `pnpm licences`: that is a pnpm built-in) writes `apps/server/third-party.json` and `apps/server/THIRD_PARTY_NOTICES.txt` (git-ignored; the Docker build runs it) from the production dependencies of web and server, plus the image's jellyfin-ffmpeg, Node.js and Debian base and the vendored lucide icons |
-
-`pnpm check` (and so CI) fails when a production dependency's license is outside the allow-list (`ALLOWED` in `scripts/third-party-notices.ts`: permissive licenses and OFL-1.1 for the fonts; GPL, LGPL and AGPL fail) or when a package ships no license text. An exception, a corrected license or a hand-supplied text goes in `scripts/licences/overrides.json`, keyed by package name (or `name@version`) and always with a `reason`; text files live beside it.
-
-To run the production bundle without Docker: `pnpm build && TRANSCODA_CONFIG_DIR=./.local/prod-config TRANSCODA_WEB_DIR=apps/web/dist node apps/server/dist/main.js`.
+Setup, the dev servers, the commands and the licence check are in [CONTRIBUTING.md › Setting up](CONTRIBUTING.md#setting-up). How the code is organised: [`AGENTS.md`](AGENTS.md) and [`docs/dev/`](docs/dev/).
 
 ## License
 

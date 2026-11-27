@@ -16,7 +16,7 @@ import type { CoreTools } from '../engine/check-source.ts';
 import { serverSettingsSchema } from './plugin-settings-schema.ts';
 import type { NodeSource } from './registry.ts';
 
-/** The supervisor's side of a hook call (Task 7 implements it over IPC). */
+/** The supervisor's side of a hook call (the plugin supervisor implements it over IPC). */
 export interface RemoteHooks {
   call(
     hook: HookName,

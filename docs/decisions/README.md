@@ -1,0 +1,176 @@
+# Decision log
+
+The history of decisions made while building Transcoda: what was decided, when and why. It is a record, not the rulebook. Many entries were later superseded, and an old entry is not corrected in place.
+
+**For today's rules, read the topic docs in [`docs/dev/`](../dev/)**: [testing](../dev/testing.md), [engine](../dev/engine.md), [server and API](../dev/server-api.md), [plugin host](../dev/plugins-host.md), [web UI](../dev/web-ui.md), [conventions](../dev/conventions.md), [CI and releases](../dev/ci-release.md).
+
+## Files
+
+Until the end of October the work ran in milestones (M0 to M3), and the log was kept per milestone task. From 2026-10-18 it is one file per month.
+
+| File | Covers |
+| --- | --- |
+| [2026-10-m0.md](2026-10-m0.md) | M0: tooling, server skeleton, auth, web scaffold, Docker, CI |
+| [2026-10-m1-workflows.md](2026-10-m1-workflows.md) | M1: node migrations, workflow validation, the workflow service and procedures |
+| [2026-10-m2-editor.md](2026-10-m2-editor.md) | M2 phase A: the workflow editor |
+| [2026-10-m1-engine.md](2026-10-m1-engine.md) | M1 engine: probe, build model, verify, replace, scheduler, queue, pipeline |
+| [2026-10-m2-jobs.md](2026-10-m2-jobs.md) | M2 phase B: event stream, jobs, libraries, runs, job page, the M2 gate |
+| [2026-10-activation-mcp.md](2026-10-activation-mcp.md) | Per-version activation and the MCP server |
+| [2026-10-m3-plugins.md](2026-10-m3-plugins.md) | M3: plugins and their security hardening |
+| [2026-10.md](2026-10.md) | 2026-10-18 to 2026-10-31 |
+| [2026-11.md](2026-11.md) | November 2026 |
+
+## Adding a decision
+
+1. Change the rule in the topic doc in `docs/dev/` it belongs to, so the rule reads as it is today.
+2. Add an entry to the newest month file (start `YYYY-MM.md` for a new month and add it to the table above): a `## YYYY-MM-DD Title` heading, then what was decided and why. When it replaces an older entry, say so in the new one.
+3. Add one line for it at the end of the index below: `- YYYY-MM-DD · Area · [Title](file.md)`. Areas in use: Auth, Conventions, Database, Design, Docker, Editor, Engine, Jobs, Libraries, MCP, Metrics, Plugins, Server, Tests, Tooling, Web, Workflows. A line may end with a note in parentheses, such as `(superseded by "…")`.
+
+`scripts/decisions-index.test.ts` (part of `pnpm check`) fails when an entry has no date in its heading or is missing from the index, and prints the line to add.
+
+Entries from M0 to M3 had no date of their own; they carry the day their milestone was built.
+
+## Index
+
+- 2026-10-16 · Tooling · [M0 tooling](2026-10-m0.md)
+- 2026-10-16 · Tooling · [M0 Task 2: TypeScript 7 vs 6](2026-10-m0.md)
+- 2026-10-16 · Auth · [M0 Task 3: password hashing in Node 24](2026-10-m0.md)
+- 2026-10-16 · Server · [M0 Task 4: oRPC wiring (verified against @orpc/* 1.15.7 and a running spike)](2026-10-m0.md)
+- 2026-10-16 · Server · [Task 5: shared, sdk, dependency rule](2026-10-m0.md)
+- 2026-10-16 · Server · [Task 6: packages/contract](2026-10-m0.md)
+- 2026-10-16 · Database · [Task 8: SQLite open, migrations, backups](2026-10-m0.md)
+- 2026-10-16 · Server · [Task 7: apps/server skeleton](2026-10-m0.md)
+- 2026-10-16 · Database · [Task 9: Migration 0001 and repositories](2026-10-m0.md)
+- 2026-10-16 · Auth · [M0 Task 10: secret key file and password hashing](2026-10-m0.md)
+- 2026-10-16 · Auth · [M0 Task 11: sessions, cookies and CSRF tokens](2026-10-m0.md)
+- 2026-10-16 · Auth · [M0 Task 12: host checks and trusted proxies](2026-10-m0.md)
+- 2026-10-16 · Auth · [Task 14: login rate limiter](2026-10-m0.md)
+- 2026-10-16 · Auth · [M0 Task 15: auth middleware and auth.* procedures](2026-10-m0.md)
+- 2026-10-16 · Server · [M0 Task 17: system.capabilities](2026-10-m0.md)
+- 2026-10-16 · Auth · [M0 Task 15 fix round 1: login burst, same-origin setup/login, sliding cookie](2026-10-m0.md)
+- 2026-10-16 · Auth · [M0 Task 16: tokens.* procedures](2026-10-m0.md)
+- 2026-10-16 · Web · [Task 18: apps/web scaffold](2026-10-m0.md)
+- 2026-10-16 · Web · [Task 19: app shell, canvas, tokens page](2026-10-m0.md)
+- 2026-10-16 · Server · [Task 20: server entrypoint, production bundle, graceful shutdown](2026-10-m0.md)
+- 2026-10-16 · Docker · [Task 21: Docker image, entrypoint, compose example](2026-10-m0.md)
+- 2026-10-16 · Tooling · [Task 22: GitHub Actions](2026-10-m0.md)
+- 2026-10-16 · Server · [M0 Task 23: final M0 state](2026-10-m0.md)
+- 2026-10-16 · Design · [Task 24: Patchbay UI design on the M0 screens](2026-10-m0.md)
+- 2026-10-16 · Server · [M0 final fix wave](2026-10-m0.md)
+- 2026-10-16 · Workflows · [M1 Task 9: node migrations and sub-workflow pin comparison](2026-10-m1-workflows.md)
+- 2026-10-16 · Workflows · [M1 Task 10: workflow validation](2026-10-m1-workflows.md)
+- 2026-10-16 · Workflows · [M1 Task 12: workflow service and startup upgrade](2026-10-m1-workflows.md)
+- 2026-10-16 · Workflows · [M1 Task 13: nodes and workflows procedures](2026-10-m1-workflows.md)
+- 2026-10-16 · Server · [M1 workflow contract step](2026-10-m1-workflows.md)
+- 2026-10-16 · Workflows · [M1 final review](2026-10-m1-workflows.md)
+- 2026-10-16 · Tests · [M2 Task 1: web test setup, node-catalogue fixture, data hooks](2026-10-m2-editor.md)
+- 2026-10-16 · Editor · [M2 Task 2: dialog, toast, chip primitives and shared time formatting](2026-10-m2-editor.md)
+- 2026-10-16 · Editor · [M2 Task 3: workflow list, create, rename and delete pages](2026-10-m2-editor.md)
+- 2026-10-16 · Editor · [M2 Task 4: editor model (graph operations, connection rules)](2026-10-m2-editor.md)
+- 2026-10-16 · Editor · [M2 Task 5: editor state, issue mapping, graph equality, undo history](2026-10-m2-editor.md)
+- 2026-10-16 · Editor · [M2 Task 6: React Flow adapter (`toFlow` / `fromFlow`)](2026-10-m2-editor.md)
+- 2026-10-16 · Editor · [M2 Task 7: node, handle and edge components](2026-10-m2-editor.md)
+- 2026-10-16 · Editor · [M2 Task 8: groups, minimap, zoom detail levels, node toolbar](2026-10-m2-editor.md)
+- 2026-10-16 · Editor · [M2 Task 9: palette and node search](2026-10-m2-editor.md)
+- 2026-10-16 · Editor · [M2 Task 10: editor page, live validation, save and conflicts](2026-10-m2-editor.md)
+- 2026-10-16 · Editor · [M2 Task 11: issues panel, canvas banner, keyboard path, viewport, narrow and catalog-less states](2026-10-m2-editor.md)
+- 2026-10-16 · Editor · [M2 Task 12: JSON Schema fields, field controls, language picker](2026-10-m2-editor.md)
+- 2026-10-16 · Editor · [M2 Task 13: inspector](2026-10-m2-editor.md)
+- 2026-10-16 · Editor · [M2 Task 14: on-node row, groups UI, bypass](2026-10-m2-editor.md)
+- 2026-10-16 · Editor · [M2 Task 16: TV cleanup example and empty-state actions](2026-10-m2-editor.md)
+- 2026-10-16 · Editor · [M2 Task 18: versions panel, past versions, restore, save notes](2026-10-m2-editor.md)
+- 2026-10-16 · Editor · [M2 Task 15: sub-workflow authoring, Run node inspector, overrides](2026-10-m2-editor.md)
+- 2026-10-16 · Editor · [M2 Task 19: leave guard, undo/redo controls, save shortcut](2026-10-m2-editor.md)
+- 2026-10-16 · Editor · [M2 Task 17: dry-run/enabled switch and enable confirmation](2026-10-m2-editor.md) (superseded by "Activation")
+- 2026-10-16 · Editor · [M2 Phase A: editor](2026-10-m2-editor.md)
+- 2026-10-16 · Engine · [M1 engine Task 1: deferred cleanups](2026-10-m1-engine.md)
+- 2026-10-16 · Engine · [M1 engine Task 2: shared engine vocabulary](2026-10-m1-engine.md)
+- 2026-10-16 · Engine · [M1 engine Task 4: engine config, probe and fingerprint](2026-10-m1-engine.md)
+- 2026-10-16 · Engine · [M1 engine Task 5: migration 0003 and engine repositories](2026-10-m1-engine.md)
+- 2026-10-16 · Engine · [M1 engine Task 6: build model and ffmpeg command rendering](2026-10-m1-engine.md)
+- 2026-10-16 · Engine · [M1 engine Task 7: targets](2026-10-m1-engine.md)
+- 2026-10-16 · Engine · [M1 engine Task 8: validation](2026-10-m1-engine.md)
+- 2026-10-16 · Engine · [M1 engine Task 9: core node hooks](2026-10-m1-engine.md)
+- 2026-10-16 · Engine · [M1 engine Task 10: loading and walk](2026-10-m1-engine.md)
+- 2026-10-16 · Engine · [M1 engine Task 11: ffmpeg process control and progress](2026-10-m1-engine.md)
+- 2026-10-16 · Engine · [M1 engine Task 12: verify](2026-10-m1-engine.md)
+- 2026-10-16 · Engine · [M1 engine Task 13: replace](2026-10-m1-engine.md)
+- 2026-10-16 · Engine · [M1 engine Task 14: scheduler](2026-10-m1-engine.md)
+- 2026-10-16 · Engine · [M1 engine Task 13 fix round (review rulings)](2026-10-m1-engine.md)
+- 2026-10-16 · Engine · [M1 engine Task 12 second fix round (verify: stream ends, decode-end, damaged sources)](2026-10-m1-engine.md)
+- 2026-10-16 · Engine · [M1 engine Task 15: queueing](2026-10-m1-engine.md)
+- 2026-10-16 · Engine · [M1 engine Task 16: pipeline](2026-10-m1-engine.md)
+- 2026-10-16 · Engine · [M1 engine Task 18: examples and the second-run gate](2026-10-m1-engine.md)
+- 2026-10-16 · Engine · [M1 engine Task 17: API](2026-10-m1-engine.md)
+- 2026-10-16 · Engine · [M1 engine step](2026-10-m1-engine.md)
+- 2026-10-16 · Engine · [M1 engine final fix wave (final review)](2026-10-m1-engine.md)
+- 2026-10-17 · Jobs · [M2 editor: merge of the M1 engine](2026-10-m2-jobs.md)
+- 2026-10-17 · Jobs · [M2 Task 21: event stream](2026-10-m2-jobs.md)
+- 2026-10-17 · Jobs · [M2 Task 22: jobs page](2026-10-m2-jobs.md)
+- 2026-10-17 · Jobs · [M2 Task 26: Libraries page](2026-10-m2-jobs.md)
+- 2026-10-17 · Jobs · [M2 Task 25: run summary](2026-10-m2-jobs.md)
+- 2026-10-17 · Jobs · [M2 Task 24: dry-run plan, file picker, try on a file](2026-10-m2-jobs.md)
+- 2026-10-17 · Jobs · [M2 Task 23: job page](2026-10-m2-jobs.md)
+- 2026-10-17 · Jobs · [M2 Phase B: jobs](2026-10-m2-jobs.md)
+- 2026-10-17 · Jobs · [M2 gate](2026-10-m2-jobs.md)
+- 2026-10-17 · Jobs · [M2 fix round (Phase B review + M2 gate findings)](2026-10-m2-jobs.md)
+- 2026-10-17 · Jobs · [M2 final fix wave](2026-10-m2-jobs.md)
+- 2026-10-17 · Jobs · [Follow-ups](2026-10-m2-jobs.md)
+- 2026-10-17 · Workflows · [Activation](2026-10-activation-mcp.md)
+- 2026-10-17 · MCP · [MCP server](2026-10-activation-mcp.md)
+- 2026-10-17 · Plugins · [M3 plugins (phase 1)](2026-10-m3-plugins.md)
+- 2026-10-17 · Plugins · [M3 security hardening](2026-10-m3-plugins.md)
+- 2026-10-18 · Plugins · [Integrations (Bazarr, Seerr, sidecar subtitles, deep health)](2026-10.md)
+- 2026-10-18 · Editor · [Editor patterns](2026-10.md)
+- 2026-10-19 · Engine · [Several finish steps on one output (gate finding C1)](2026-10.md)
+- 2026-10-19 · Web · [UI round 3, core part (C4, C2 / #37, #36, #35)](2026-10.md)
+- 2026-10-19 · Libraries · [A restored original and its stale recycle row (gate finding C5)](2026-10.md)
+- 2026-10-21 · Plugins · [Plugin settings patterns never run on the server (sandbox review H2)](2026-10.md)
+- 2026-10-21 · Plugins · [A plugin cannot take the server down through its channel (sandbox review H1)](2026-10.md)
+- 2026-10-21 · Plugins · [The fetch proxy pins the address it checked (sandbox review M1)](2026-10.md)
+- 2026-10-21 · Plugins · [Plugin memory and slot caps (sandbox review M2, M4)](2026-10.md)
+- 2026-10-21 · Plugins · [Signed catalog index is monotonic (sandbox review L1)](2026-10.md)
+- 2026-10-21 · Libraries · [Library trigger](2026-10.md)
+- 2026-10-21 · Libraries · [Process again from the UI (#38)](2026-10.md)
+- 2026-10-21 · Web · [Side nav divider runs the full height (#42)](2026-10.md)
+- 2026-10-21 · Web · [Percent fields move in whole steps (UI list, size gate "Saved at least")](2026-10.md)
+- 2026-10-21 · Web · [Grouped codec picker (UI list #40)](2026-10.md)
+- 2026-10-21 · Database · [Backup on build change](2026-10.md)
+- 2026-10-21 · Engine · [Plan-only dry runs say when the size gate decides (UI list #41)](2026-10.md)
+- 2026-10-21 · Engine · [Test-encode dry runs](2026-10.md)
+- 2026-10-22 · Engine · [NVENC encodes decode on the GPU](2026-10.md)
+- 2026-10-22 · Engine · [Encoding device setting](2026-10.md)
+- 2026-10-23 · Engine · [Several GPUs encode in parallel](2026-10.md)
+- 2026-10-22 · Engine · [Remove duplicate audio](2026-10.md)
+- 2026-10-22 · Engine · [Verify progress](2026-10.md)
+- 2026-10-22 · Editor · [Tidy up the canvas, version banner links](2026-10.md)
+- 2026-10-22 · Engine · [Encode bitrate control](2026-10.md)
+- 2026-10-22 · Libraries · [Library run hours](2026-10.md)
+- 2026-10-23 · Engine · [Encode audio updates track titles](2026-10.md)
+- 2026-10-25 · Engine · [The encoder is free once a file is verified](2026-10.md) (superseded by "The encoder is free once a file is encoded")
+- 2026-10-25 · Engine · [Jobs stats count the encoder's work and the server's days](2026-10.md)
+- 2026-10-26 · Tooling · [Versioned releases](2026-10.md)
+- 2026-10-26 · Workflows · [The empty list offers the three examples](2026-10.md)
+- 2026-10-26 · Engine · [The encoder is free once a file is encoded](2026-10.md)
+- 2026-10-26 · Tooling · [Node 24.22.1](2026-10.md) (superseded by "Node 26")
+- 2026-10-26 · Engine · [Intel GPUs and GPU order](2026-10.md)
+- 2026-10-28 · Engine · [Already processed](2026-10.md)
+- 2026-10-29 · Editor · [File inputs take several connections](2026-10.md)
+- 2026-11-02 · Engine · [Never re-run a processed file](2026-11.md)
+- 2026-11-02 · Libraries · [Restore original](2026-11.md)
+- 2026-11-02 · Libraries · [Recycle folder page](2026-11.md)
+- 2026-11-09 · Conventions · [SI units everywhere](2026-11.md)
+- 2026-11-11 · Metrics · [Metrics for Prometheus and Home Assistant](2026-11.md)
+- 2026-11-11 · Plugins · [Plugin hosts before install (#100, SDK 1.3.0)](2026-11.md)
+- 2026-11-17 · Engine · [Failure codes](2026-11.md)
+- 2026-11-17 · Tooling · [Node 26](2026-11.md)
+- 2026-11-17 · Engine · [Titles and posters from sidecar files](2026-11.md)
+- 2026-11-20 · Jobs · [Node states on the job trace](2026-11.md)
+- 2026-11-20 · Design · [Design audit fixes](2026-11.md)
+- 2026-11-23 · Design · [Design rule checks](2026-11.md)
+- 2026-11-23 · Conventions · [Code consistency checks](2026-11.md)
+- 2026-11-24 · Design · [One icon stroke](2026-11.md)
+- 2026-11-26 · Tests · [Test tiers (#147)](2026-11.md)
+- 2026-11-26 · Engine · [Hardware encoders that cannot run](2026-11.md)
+- 2026-11-26 · Tests · [Nightly tests and their issues](2026-11.md)
+- 2026-11-26 · Engine · [ffmpeg 8 timestamps: verify's decode and progress (#154, #155)](2026-11.md)
