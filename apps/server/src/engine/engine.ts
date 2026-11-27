@@ -51,7 +51,7 @@ import type { Logger } from '../platform/logger.ts';
 import type { PluginHooksRunner } from '../plugins/runtime/hooks.ts';
 import type { PluginRestartGate } from '../plugins/runtime/restart-gate.ts';
 import { graphUpgrade, type WorkflowService } from '../workflows/service.ts';
-import { migratePinned } from '../workflows/validate.ts';
+import { migratePinned } from '../workflows/validate/validate.ts';
 import { readCondensedTail } from './encode/log-condense.ts';
 import type { ProcessSpawner } from './encode/process.ts';
 import { EngineEvents } from './events.ts';

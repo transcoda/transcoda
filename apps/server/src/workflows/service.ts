@@ -62,7 +62,7 @@ import {
   type ValidationCache,
   type ValidationContext,
   validateWorkflow,
-} from './validate.ts';
+} from './validate/validate.ts';
 import { dropWebhookUrls } from './webhook-urls.ts';
 
 export interface WorkflowServiceDeps {

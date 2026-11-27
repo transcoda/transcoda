@@ -65,7 +65,7 @@ Today's rules for the server outside the encode engine. The engine is in [engine
 
 ## Workflows and activation
 
-- `WorkflowService` (`workflows/service.ts`) owns workflows: list, get, save, validate (`workflows/validate.ts`), node upgrades (`workflows/upgrade.ts`). `upgradeAll()` runs at start.
+- `WorkflowService` (`workflows/service.ts`) owns workflows: list, get, save, validate (`workflows/validate/validate.ts`, its checks in the files beside it), node upgrades (`workflows/upgrade.ts`). `upgradeAll()` runs at start.
 - A save always creates a new version. It never changes which version runs for real.
 - Only `setActiveVersion` and `clearActiveVersion` (`db/repos/workflows.ts`) write the active version. `workflows.activate` and `deactivate` are human-only (`requireHumanSession`, refusal "Activation is a UI action").
 - Webhook URLs are redacted in every output (`rpc/redact.ts`). A redacted URL sent back keeps the stored one.

@@ -11,7 +11,7 @@ import { z } from 'zod';
 import { filePort } from '../nodes/core/common.ts';
 import { createCoreRegistry, NodeRegistry, type RegisteredNode } from '../nodes/registry.ts';
 import { remoteNodeDefinition } from '../nodes/remote.ts';
-import { validateWorkflow } from './validate.ts';
+import { validateWorkflow } from './validate/validate.ts';
 
 const FILE = fileURLToPath(
   new URL('../../../../examples/workflows/keep-my-languages-plugins.json', import.meta.url),
