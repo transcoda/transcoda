@@ -55,7 +55,7 @@ import {
 import { jobTitle, mediaSub } from '../jobs/mediaText.ts';
 import { Poster } from '../jobs/Poster.tsx';
 import { ProcessAgain } from '../jobs/ProcessAgain.tsx';
-import { damagedSideOf, didText, type StepContext } from '../jobs/steps.ts';
+import { damagedSideOf, didText, type StepContext, videoConversionOf } from '../jobs/steps.ts';
 import { TestEncodeFile } from '../jobs/TestEncodeFile.tsx';
 import { TestOutputPanel } from '../jobs/TestOutputPanel.tsx';
 import { encodeStopped, useQueue } from '../jobs/useQueue.ts';
@@ -292,6 +292,7 @@ function JobView({ id }: { id: string }) {
             replacedTo: job.result?.replacedTo ?? null,
             sourceDamaged: job.result?.sourceDamaged === true,
             nodeProblems: job.result?.nodeProblems ?? [],
+            videoConversion: videoConversionOf(job.plan),
             damagedSide: job.graph
               ? damagedSideOf(job.graph, (type) => catalog?.byType.get(type)?.kind)
               : new Set(),

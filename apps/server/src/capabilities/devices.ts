@@ -35,6 +35,11 @@ export function parseNvidiaSmiList(stdout: string): Gpu[] {
 export interface SysFs {
   /** Names of the render nodes (`renderD128`, …). */
   listRenderNodes(): Promise<string[]>;
+  /**
+   * Names of the render nodes in `/dev/dri`: what this process was given, which sysfs (the host's,
+   * in a container, or hidden) may not show. Without it, {@link listRenderNodes} stands in.
+   */
+  listDeviceNodes?(): Promise<string[]>;
   readFile(path: string): Promise<string>;
   realpath(path: string): Promise<string>;
   /** Whether the node can be opened for reading (it is closed again at once). */
@@ -44,6 +49,7 @@ export interface SysFs {
 const realSysFs: SysFs = {
   listRenderNodes: async () =>
     (await readdir('/sys/class/drm')).filter((n) => /^renderD\d+$/.test(n)),
+  listDeviceNodes: async () => (await readdir('/dev/dri')).filter((n) => /^renderD\d+$/.test(n)),
   readFile: (path) => readFile(path, 'utf8'),
   realpath: (path) => realpath(path),
   canOpen: async (path) => {
@@ -119,6 +125,84 @@ export async function probeGpus(exec: Exec = defaultExec, fs?: SysFs): Promise<G
     // no nvidia-smi: no NVIDIA GPU detected
   }
   return [...nvidia, ...(await probeIntelGpus(fs))];
+}
+
+/**
+ * ffmpeg lists every hardware encoder it was built with (jellyfin-ffmpeg has them all), GPU or not,
+ * and auto picks the first one it lists. So the ones this machine cannot run are dropped at start,
+ * and jobs encode in software from the start instead of failing over on every job (and the job page
+ * says what really ran):
+ * - NVENC: with an NVIDIA GPU listed by nvidia-smi it is taken as working. Without one, a one-frame
+ *   test encode decides: a GPU behind a container without nvidia-smi passes, a machine with no
+ *   NVIDIA GPU or driver fails ("Cannot load libcuda.so.1"). A failure drops the NVENC encoders
+ *   and the cuda hwaccel.
+ * - Quick Sync and VA-API: they need a render node (`/dev/dri/renderD*`) this process can open.
+ *   With none (a container without the device passed in) their encoders and hwaccels are dropped.
+ * `dropped` says what went and why, for the log. Never throws.
+ */
+export async function usableHardware(
+  caps: Capabilities,
+  exec: Exec = defaultExec,
+  fs: SysFs = realSysFs,
+): Promise<{ capabilities: Capabilities; dropped: string[] }> {
+  if (!caps.available) return { capabilities: caps, dropped: [] };
+  let { encoders, hwaccels } = caps;
+  const dropped: string[] = [];
+  const nvencWhy = await nvencFailure(caps, exec);
+  if (nvencWhy !== null) {
+    encoders = encoders.filter((e) => !e.endsWith('_nvenc'));
+    hwaccels = hwaccels.filter((h) => h !== 'cuda');
+    dropped.push(`NVENC (${nvencWhy})`);
+  }
+  const dri = /_(qsv|vaapi)$/;
+  if (encoders.some((e) => dri.test(e)) && !(await anyRenderNode(fs))) {
+    encoders = encoders.filter((e) => !dri.test(e));
+    hwaccels = hwaccels.filter((h) => h !== 'qsv' && h !== 'vaapi');
+    dropped.push('Quick Sync and VA-API (no /dev/dri render node)');
+  }
+  return dropped.length === 0
+    ? { capabilities: caps, dropped }
+    : { capabilities: { ...caps, encoders, hwaccels }, dropped };
+}
+
+/** Why NVENC cannot run here, or null when it can (or there is none to test). */
+async function nvencFailure(caps: Capabilities, exec: Exec): Promise<string | null> {
+  if (!hasNvenc(caps) || !caps.available) return null;
+  if ((caps.gpus ?? []).some((g) => g.vendor === 'nvidia')) return null;
+  const nvenc = caps.encoders.filter((e) => e.endsWith('_nvenc'));
+  const encoder = nvenc.includes('h264_nvenc') ? 'h264_nvenc' : (nvenc[0] ?? 'h264_nvenc');
+  try {
+    await exec(
+      caps.path,
+      [
+        ...['-hide_banner', '-nostdin', '-v', 'error'],
+        ...['-f', 'lavfi', '-i', 'color=c=black:s=256x144:r=1'],
+        ...['-frames:v', '1', '-c:v', encoder, '-f', 'null', '-'],
+      ],
+      { timeoutMs: 15_000 },
+    );
+    return null;
+  } catch (e) {
+    // ffmpeg's first line says why ("Cannot load libcuda.so.1"); the rest follow from it.
+    const stderr = (e as { stderr?: unknown }).stderr;
+    const first = typeof stderr === 'string' ? stderr.trim().split('\n')[0] : undefined;
+    return first?.replace(/^\[[^\]]*\]\s*/, '') || (e instanceof Error ? e.message : String(e));
+  }
+}
+
+/**
+ * Whether any render node in `/dev/dri` can be opened. Listed from `/dev/dri` itself, not sysfs:
+ * inside a container sysfs may show the host's nodes, or none while the device was passed in.
+ */
+async function anyRenderNode(fs: SysFs): Promise<boolean> {
+  let nodes: string[];
+  try {
+    nodes = await (fs.listDeviceNodes ?? fs.listRenderNodes)();
+  } catch {
+    return false;
+  }
+  for (const n of nodes) if (await fs.canOpen(`/dev/dri/${n}`)) return true;
+  return false;
 }
 
 /** A stored setting value; anything unknown reads as `auto`. */

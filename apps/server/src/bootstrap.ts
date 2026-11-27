@@ -2,7 +2,7 @@ import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadOrCreateSecretKey } from './auth/secret-key.ts';
-import { probeGpus } from './capabilities/devices.ts';
+import { probeGpus, usableHardware } from './capabilities/devices.ts';
 import { probeFfmpeg } from './capabilities/ffmpeg.ts';
 import { type Config, requireIsolationInProduction } from './config.ts';
 import { backupDirOf } from './db/backup.ts';
@@ -84,7 +84,12 @@ export async function createDeps(
   // CUDA numbers GPUs fastest-first by default; ffmpeg (a child) must count as nvidia-smi does.
   process.env.CUDA_DEVICE_ORDER ??= 'PCI_BUS_ID';
   const probed = await probeFfmpeg(config.ffmpegPath);
-  const capabilities = probed.available ? { ...probed, gpus: await probeGpus() } : probed;
+  const listed = probed.available ? { ...probed, gpus: await probeGpus() } : probed;
+  const hardware = await usableHardware(listed);
+  const capabilities = hardware.capabilities;
+  for (const what of hardware.dropped) {
+    log.info(`hardware encoding unavailable: ${what}; jobs encode without it`);
+  }
   if (!capabilities.available) {
     log.warn(
       `ffmpeg unavailable (${capabilities.error ?? 'unknown error'}); transcoding is disabled`,

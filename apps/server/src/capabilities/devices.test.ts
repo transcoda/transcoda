@@ -15,6 +15,7 @@ import {
   probeIntelGpus,
   type SysFs,
   slotGpuLabel,
+  usableHardware,
 } from './devices.ts';
 import type { Exec } from './ffmpeg.ts';
 
@@ -387,5 +388,100 @@ describe('encodeSlots', () => {
     expect(encodeSlots(caps([rtx, a2000]), { kind: 'nvidia', index: 1 })).toEqual([
       { id: 'encode', label: 'Encode', device: { kind: 'cuda', index: 1 }, gpuId: 'nvidia:1' },
     ]);
+  });
+});
+
+describe('usableHardware', () => {
+  const failing: Exec = async () => {
+    throw Object.assign(new Error('Command failed'), {
+      stderr: '[h264_nvenc @ 0x1] Cannot load libcuda.so.1\nError while opening encoder\n',
+    });
+  };
+  const works: Exec = async () => ({ stdout: '', stderr: '' });
+  /** A /dev/dri with these render nodes, of which `open` can be opened. */
+  const dri = (nodes: string[], open: string[] = nodes): SysFs => ({
+    listRenderNodes: async () => {
+      throw new Error('ENOENT: /sys/class/drm');
+    },
+    listDeviceNodes: async () => nodes,
+    readFile: async () => '',
+    realpath: async (p) => p,
+    canOpen: async (p) => open.some((n) => p === `/dev/dri/${n}`),
+  });
+
+  it('drops NVENC and cuda when nvidia-smi lists no GPU and a test encode fails', async () => {
+    const calls: string[][] = [];
+    const exec: Exec = async (file, args, opts) => {
+      calls.push([file, ...args]);
+      return failing(file, args, opts);
+    };
+    const { capabilities, dropped } = await usableHardware(caps([]), exec, dri(['renderD128']));
+    expect(dropped).toEqual(['NVENC (Cannot load libcuda.so.1)']);
+    expect(capabilities.available && capabilities.encoders).toEqual([
+      'libx265',
+      'libx264',
+      'hevc_qsv',
+      'hevc_vaapi',
+      'aac',
+    ]);
+    expect(capabilities.available && capabilities.hwaccels).toEqual(['vaapi', 'qsv']);
+    // One frame of a generated picture with the H.264 encoder, written nowhere.
+    expect(calls).toEqual([
+      [
+        '/usr/bin/ffmpeg',
+        ...['-hide_banner', '-nostdin', '-v', 'error', '-f', 'lavfi'],
+        ...['-i', 'color=c=black:s=256x144:r=1', '-frames:v', '1', '-c:v', 'h264_nvenc'],
+        ...['-f', 'null', '-'],
+      ],
+    ]);
+  });
+
+  it('drops Quick Sync and VA-API when no render node can be opened', async () => {
+    for (const fs of [dri([]), dri(['renderD128'], [])]) {
+      const { capabilities, dropped } = await usableHardware(caps([rtx]), failing, fs);
+      expect(dropped).toEqual(['Quick Sync and VA-API (no /dev/dri render node)']);
+      expect(capabilities.available && capabilities.encoders).toEqual([
+        'libx265',
+        'libx264',
+        'hevc_nvenc',
+        'h264_nvenc',
+        'aac',
+      ]);
+      expect(capabilities.available && capabilities.hwaccels).toEqual(['cuda']);
+    }
+  });
+
+  it('keeps Quick Sync and VA-API for an openable /dev/dri node while sysfs is hidden', async () => {
+    // dri() has no /sys/class/drm: the device nodes alone decide.
+    const { dropped } = await usableHardware(caps([rtx]), failing, dri(['renderD128']));
+    expect(dropped).toEqual([]);
+  });
+
+  it('with neither, auto encodes in software on the plain slot', async () => {
+    const { capabilities } = await usableHardware(caps([]), failing, dri([]));
+    expect(capabilities.available && capabilities.encoders).toEqual(['libx265', 'libx264', 'aac']);
+    expect(encodeSlots(capabilities, { kind: 'auto' })).toEqual([
+      { id: 'encode', label: 'Encode', device: null, gpuId: null },
+    ]);
+  });
+
+  it('keeps NVENC when the test encode works (a GPU in a container without nvidia-smi)', async () => {
+    const before = caps([]);
+    const { capabilities, dropped } = await usableHardware(before, works, dri(['renderD128']));
+    expect(dropped).toEqual([]);
+    expect(capabilities).toBe(before);
+  });
+
+  it('runs no test when nvidia-smi lists an NVIDIA GPU, or when ffmpeg has no NVENC', async () => {
+    let ran = 0;
+    const exec: Exec = async (...a) => {
+      ran += 1;
+      return failing(...a);
+    };
+    expect((await usableHardware(caps([rtx]), exec, dri(['renderD128']))).dropped).toEqual([]);
+    const noNvenc = caps([]);
+    if (noNvenc.available) noNvenc.encoders = ['libx265'];
+    expect((await usableHardware(noNvenc, exec, dri([]))).dropped).toEqual([]);
+    expect(ran).toBe(0);
   });
 });

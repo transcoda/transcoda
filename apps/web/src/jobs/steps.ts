@@ -13,9 +13,11 @@ import type {
 import {
   CHECK_SOURCE_DAMAGED_PORT,
   CHECK_SOURCE_TYPE,
+  type Conversion,
   changesFile,
   isFinalState,
   isPicture,
+  parseConversion,
   RENDER_DAMAGED_PORT,
   RENDER_TYPE,
   TRACE_CANCELED,
@@ -76,6 +78,30 @@ export interface StepContext {
   damagedSide?: ReadonlySet<string>;
   /** `result.nodeProblems`: the last attempt's problems and warnings, each on its node's step. */
   nodeProblems?: readonly NodeProblem[];
+  /**
+   * The video encode in the job's plan ({@link videoConversionOf}). The plan follows what ran: a
+   * software fallback after a failed GPU encode, or a move to the slot's GPU vendor. The trace keeps
+   * what the workflow built.
+   */
+  videoConversion?: Conversion | null;
+}
+
+/** The first converted video stream of a job's plan, as parsed from its note; null for none. */
+export function videoConversionOf(
+  plan: { streams: readonly { type: string; action: string; note: string }[] } | null | undefined,
+): Conversion | null {
+  const v = plan?.streams.find((s) => s.type === 'video' && s.action === 'convert');
+  return v ? parseConversion(v.note, 'video') : null;
+}
+
+/**
+ * The trace's video conversion with the encoder that really ran, when the plan says another one
+ * (a GPU encode that fell back to software); its quality goes with it.
+ */
+function ranAs(v: Converted, ran: Conversion | null | undefined): Converted {
+  if (!ran || v.encoder === null || ran.encoder === v.encoder) return v;
+  const q = ran.quality === null ? Number.NaN : Number(ran.quality.split(' ')[1]);
+  return { ...v, encoder: ran.encoder, quality: Number.isFinite(q) ? q : v.quality };
 }
 
 /**
@@ -419,7 +445,8 @@ function encodeVideo(d: Decision, c: TraceChanges, ctx: StepContext, past: boole
     });
   }
   const src = videoSource(ctx.probe);
-  const v = c.converted.find((s) => s.type === 'video');
+  const built = c.converted.find((s) => s.type === 'video');
+  const v = built ? ranAs(built, ctx.videoConversion) : undefined;
   if (!v) {
     if (ctx.probe && !src) return { sentence: "There's no video to encode", notes };
     const was = past ? 'was' : 'is';
@@ -912,7 +939,9 @@ function step(d: Decision, ctx: StepContext, around: Around): Step {
   }
   const changing = changesFile(d.changes);
   const wording = d.type ? ACTIONS[d.type] : undefined;
-  const words: Words = wording ? wording(d, d.changes, ctx, past) : { sentence: reasonSentence(d) };
+  // The plan is the last attempt's: an earlier attempt keeps the encoder its trace names.
+  const own = around.earlier ? { ...ctx, videoConversion: null } : ctx;
+  const words: Words = wording ? wording(d, d.changes, own, past) : { sentence: reasonSentence(d) };
   return {
     ...base,
     badge: changing ? 'change' : 'same',
