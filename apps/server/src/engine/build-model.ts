@@ -392,9 +392,14 @@ export function normalizeDefaults(model: BuildModel, probe?: ProbeResult): Map<S
 /** Hardware encoders that also need an hwaccel listed by `ffmpeg -hwaccels`. */
 const NEEDS_HWACCEL: Record<string, string> = { hevc_nvenc: 'cuda', h264_nvenc: 'cuda' };
 
+/**
+ * What `auto` tries, best first. VA-API is not here: the render opens no VA-API device and
+ * uploads no frames, so an auto pick could only fail over to software. Name `hevc_vaapi` with
+ * your own device arguments in the model to use it.
+ */
 const AUTO_ENCODERS: Record<'hevc' | 'h264' | 'av1', string[]> = {
-  hevc: ['hevc_nvenc', 'hevc_qsv', 'hevc_vaapi', 'libx265'],
-  h264: ['h264_nvenc', 'h264_qsv', 'h264_vaapi', 'libx264'],
+  hevc: ['hevc_nvenc', 'hevc_qsv', 'libx265'],
+  h264: ['h264_nvenc', 'h264_qsv', 'libx264'],
   av1: ['libsvtav1', 'libaom-av1'],
 };
 

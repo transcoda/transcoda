@@ -39,7 +39,7 @@ The rules in force today for `apps/server/src/engine/`, `apps/server/src/capabil
 - `usableHardware` (`capabilities/devices.ts`) drops encoders that are listed but cannot run: NVENC without nvidia-smi must pass a one-frame test encode; QSV and VA-API need an openable `/dev/dri/renderD*`.
 - `engine.encodeDevice` (`auto`, `cpu`, `nvidia:<n>`, `intel:<pci>`) filters capabilities through `effectiveCapabilities`. `engine.gpuOrder` sets GPU order (default NVIDIA by index, then Intel by PCI address).
 - `encodeSlots` gives one encode slot per usable GPU under `auto` with two or more GPUs, else one slot. `slotFitOf` says what a job needs (`gpu`, `nvidia`, `intel`, `software`); a software job takes the last free slot.
-- Auto order in `build-model.ts` is NVENC, QSV, VA-API, then software; `retarget.ts` moves an auto-picked stream to the slot's vendor at execute. A named encoder never moves.
+- Auto order in `build-model.ts` is NVENC, QSV, then software. VA-API is never picked by `auto`: the render sets up no VA-API device or `hwupload`, so it runs only when named, with the model's own device arguments; `retarget.ts` moves an auto-picked stream to the slot's vendor at execute. A named encoder never moves.
 - NVENC encodes decode with `-hwaccel cuda`; a QSV slot opens its render node and, for 8/10-bit 4:2:0 sources, decodes on the GPU too. A model that brings its own `-hwaccel` or `-init_hw_device` keeps it.
 - A GPU failure (`looksLikeGpuFailure`, `fallback.ts`) requeues the job with that GPU in `failedGpus`; only when no other GPU fits does `softwareFallback` run it in software.
 
