@@ -19,7 +19,7 @@ Dependencies point one way: `packages/shared` ← `packages/sdk` ← `packages/c
 - **Release note:** a note in `.changes/` ([format](.changes/README.md)). Use the `no user-facing change` label instead when users will not notice the change.
 - **Tests** are in the right tier ([testing.md](docs/dev/testing.md)), and a bug fix comes with a test that failed before the fix.
   - Run `pnpm fixtures` once per checkout. Without it, the real-ffmpeg tests skip silently.
-  - After engine changes, run `pnpm test:docker`.
+  - After engine changes, run `pnpm test:docker`. CI runs it too (`real-ffmpeg`) on a pull request that touches the engine.
 - **Docs:** update `README.md` and `docs/` for users, and the topic doc in `docs/dev/` when a rule changes.
 - **UI changes:** add the screenshots described under "UI changes".
 - **Pull request title:** `Area: what changed`, e.g. `Engine: drop hardware encoders that cannot run here`.
