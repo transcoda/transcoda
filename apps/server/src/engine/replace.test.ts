@@ -25,7 +25,6 @@ import { defaultRecycleFolder } from './recycle.ts';
 import {
   durableReplaceWrites,
   FREE_SPACE_MARGIN_BYTES,
-  origPathFor,
   pollForSpace,
   type ReplaceDeps,
   type ReplaceInput,
@@ -129,13 +128,13 @@ afterEach(async () => {
   await rm(root, { recursive: true, force: true });
 });
 
-async function input(recycle: boolean, extra: Partial<ReplaceInput> = {}): Promise<ReplaceInput> {
+async function input(extra: Partial<ReplaceInput> = {}): Promise<ReplaceInput> {
   return {
     jobId: JOB,
     originalPath: original,
     outputPath: output,
     expected: await fingerprintOf(original),
-    recycleFolder: recycle ? defaultRecycleFolder(lib) : null,
+    recycleFolder: defaultRecycleFolder(lib),
     owner: null,
     libraryId: 'l1',
     libraryRoot: lib,
@@ -185,9 +184,8 @@ async function filesUnder(dir: string): Promise<string[]> {
 }
 
 describe('paths', () => {
-  it('tmp beside the file, .orig beside the file, recycle mirrors the library layout', () => {
+  it('tmp beside the file, recycle mirrors the library layout', () => {
     expect(tmpPathFor('/m/tv/a.mkv', 'j')).toBe('/m/tv/.transcoda-j.tmp');
-    expect(origPathFor('/m/tv/a.mkv', 'j')).toBe('/m/tv/a.mkv.transcoda-j.orig');
     expect(recyclePathFor('/m/tv/.transcoda-recycle', '/m/tv', '/m/tv/S1/a.mkv')).toBe(
       '/m/tv/.transcoda-recycle/S1/a.mkv',
     );
@@ -208,7 +206,7 @@ describe('replaceOriginal', () => {
     };
     const before = await stat(original);
     const r = deps(fs);
-    const result = await replaceOriginal(await input(true), r.deps);
+    const result = await replaceOriginal(await input(), r.deps);
 
     expect(result).toEqual({
       kind: 'replaced',
@@ -235,9 +233,9 @@ describe('replaceOriginal', () => {
       outputPath: output,
       copyPath: recyclePath(),
       libraryRoot: lib,
-      recycling: true,
       outputBytes: NEW.length,
     });
+    expect(r.journals[0]).not.toHaveProperty('recycling');
     expect(findJob(db, JOB)?.replaceJournal).toBeNull();
     expect(listRecycled(db)).toEqual([
       {
@@ -254,28 +252,17 @@ describe('replaceOriginal', () => {
     expect(await filesUnder(lib)).toEqual([recyclePath(), original].sort());
   });
 
-  it('no recycle folder: original renamed to .orig and removed after the replace', async () => {
-    const r = deps();
-    const result = await replaceOriginal(await input(false), r.deps);
-    expect(result).toEqual({ kind: 'replaced', recyclePath: null, afterBytes: NEW.length });
-    expect(r.journals[0]?.copyPath).toBe(origPathFor(original, JOB));
-    expect(r.journals[0]?.recycling).toBe(false);
-    expect(sha(await readFile(original))).toBe(sha(NEW));
-    expect(await filesUnder(lib)).toEqual([original]);
-    expect(listRecycled(db)).toEqual([]);
-  });
-
   it('a taken recycle path gets a numeric suffix', async () => {
     await mkdir(dirname(recyclePath()), { recursive: true });
     await writeFile(recyclePath(), 'older recycled copy');
-    const result = await replaceOriginal(await input(true), deps().deps);
+    const result = await replaceOriginal(await input(), deps().deps);
     expect(result).toMatchObject({ kind: 'replaced', recyclePath: `${recyclePath()}.1` });
     expect(await readFile(recyclePath(), 'utf8')).toBe('older recycled copy');
     expect(sha(await readFile(`${recyclePath()}.1`))).toBe(sha(ORIG));
   });
 
   it('fingerprint changed → output discarded, original untouched, kind fingerprint-changed', async () => {
-    const inp = await input(true);
+    const inp = await input();
     const changed = Buffer.concat([ORIG, Buffer.from('more')]);
     await writeFile(original, changed);
     const r = deps();
@@ -296,7 +283,7 @@ describe('replaceOriginal', () => {
       },
     };
     const r = deps(fs);
-    expect(await replaceOriginal(await input(true), r.deps)).toEqual({
+    expect(await replaceOriginal(await input(), r.deps)).toEqual({
       kind: 'fingerprint-changed',
     });
     expect(sha(await readFile(original))).toBe(sha(changed));
@@ -318,7 +305,7 @@ describe('replaceOriginal', () => {
       },
     };
     const r = deps(fs);
-    const result = await replaceOriginal(await input(true), r.deps);
+    const result = await replaceOriginal(await input(), r.deps);
     expect(result).toEqual({
       kind: 'failed',
       step: 'checking',
@@ -332,7 +319,7 @@ describe('replaceOriginal', () => {
 
   it('never renames over an existing path: a pre-existing tmp or copyPath → failed at checking; renameNoClobber refuses', async () => {
     await writeFile(tmpPath(), 'someone else');
-    let result = await replaceOriginal(await input(true), deps().deps);
+    let result = await replaceOriginal(await input(), deps().deps);
     expect(result).toEqual({
       kind: 'failed',
       step: 'checking',
@@ -340,9 +327,17 @@ describe('replaceOriginal', () => {
     });
     await rm(tmpPath());
 
-    const orig = origPathFor(original, JOB);
-    await writeFile(orig, 'a user file');
-    result = await replaceOriginal(await input(false), deps().deps);
+    // The recycle path is taken after it was chosen (a user file appears while the replace checks).
+    const orig = recyclePath();
+    const fs: FsOps = {
+      ...roomy,
+      statfs: async (p) => {
+        await mkdir(dirname(orig), { recursive: true });
+        await writeFile(orig, 'a user file');
+        return roomy.statfs(p);
+      },
+    };
+    result = await replaceOriginal(await input(), deps(fs).deps);
     expect(result).toEqual({ kind: 'failed', step: 'checking', message: `${orig} already exists` });
     expect(await readFile(orig, 'utf8')).toBe('a user file');
     expect(sha(await readFile(original))).toBe(sha(ORIG));
@@ -357,7 +352,7 @@ describe('replaceOriginal', () => {
 
   it('an original outside the library root cannot be recycled → failed at checking', async () => {
     const result = await replaceOriginal(
-      await input(true, { libraryRoot: join(root, 'elsewhere') }),
+      await input({ libraryRoot: join(root, 'elsewhere') }),
       deps().deps,
     );
     expect(result).toMatchObject({ kind: 'failed', step: 'checking' });
@@ -374,7 +369,7 @@ describe('replaceOriginal', () => {
       },
     };
     const r = deps(fs);
-    const result = await replaceOriginal(await input(true), r.deps);
+    const result = await replaceOriginal(await input(), r.deps);
     expect(r.waits).toEqual([[NEW.length + FREE_SPACE_MARGIN_BYTES, 40_960]]);
     expect(result).toMatchObject({ kind: 'replaced' });
   });
@@ -394,7 +389,7 @@ describe('replaceOriginal', () => {
       onSpaceWait: (w) => told.push(w),
       log: { ...log, info: (e) => infos.push(e) },
     });
-    expect(await replaceOriginal(await input(true), r.deps)).toMatchObject({ kind: 'replaced' });
+    expect(await replaceOriginal(await input(), r.deps)).toMatchObject({ kind: 'replaced' });
     const needed = NEW.length + FREE_SPACE_MARGIN_BYTES;
     const path = lib;
     expect(told).toEqual([
@@ -432,7 +427,7 @@ describe('replaceOriginal', () => {
         return new Promise(() => {});
       },
     });
-    expect(await replaceOriginal(await input(true), r.deps)).toEqual({ kind: 'cancelled' });
+    expect(await replaceOriginal(await input(), r.deps)).toEqual({ kind: 'cancelled' });
     expect(told.at(-1)).toBeNull();
     expect(infos.map((e) => [e.msg, e.outcome])).toEqual([
       ['replace waits for free space', undefined],
@@ -462,7 +457,7 @@ describe('replaceOriginal', () => {
       },
     };
     const result = await replaceOriginal(
-      await input(true, { owner: { uid: 4242, gid: 4343 } }),
+      await input({ owner: { uid: 4242, gid: 4343 } }),
       deps(fs).deps,
     );
     expect(result).toMatchObject({ kind: 'replaced' });
@@ -481,7 +476,7 @@ describe('replaceOriginal', () => {
       },
     };
     const result = await replaceOriginal(
-      await input(true, { owner: { uid: st.uid, gid: st.gid } }),
+      await input({ owner: { uid: st.uid, gid: st.gid } }),
       deps(fs).deps,
     );
     expect(result).toMatchObject({ kind: 'replaced' });
@@ -491,7 +486,7 @@ describe('replaceOriginal', () => {
     const ac = new AbortController();
     ac.abort('cancel');
     const r1 = deps(roomy, { signal: ac.signal });
-    expect(await replaceOriginal(await input(true), r1.deps)).toEqual({ kind: 'cancelled' });
+    expect(await replaceOriginal(await input(), r1.deps)).toEqual({ kind: 'cancelled' });
     expect(r1.journals).toEqual([]);
     expect(sha(await readFile(original))).toBe(sha(ORIG));
 
@@ -502,7 +497,7 @@ describe('replaceOriginal', () => {
       journal(j);
       if (j?.step === 'writing_tmp') late.abort('cancel');
     };
-    expect(await replaceOriginal(await input(true), r2.deps)).toMatchObject({ kind: 'replaced' });
+    expect(await replaceOriginal(await input(), r2.deps)).toMatchObject({ kind: 'replaced' });
     expect(sha(await readFile(original))).toBe(sha(NEW));
   });
 
@@ -520,7 +515,7 @@ describe('replaceOriginal', () => {
         return new Promise(() => {}); // a wait that never ends by itself
       },
     });
-    expect(await replaceOriginal(await input(true), r.deps)).toEqual({ kind: 'cancelled' });
+    expect(await replaceOriginal(await input(), r.deps)).toEqual({ kind: 'cancelled' });
     expect(signals).toEqual([ac.signal]);
     expect(r.journals.map((j) => j?.step ?? null)).toEqual(['checking', null]);
     expect(findJob(db, JOB)?.replaceJournal).toBeNull();
@@ -540,7 +535,7 @@ describe('replaceOriginal', () => {
         return exists(p);
       },
     };
-    expect(await replaceOriginal(await input(true), r.deps)).toEqual({ kind: 'cancelled' });
+    expect(await replaceOriginal(await input(), r.deps)).toEqual({ kind: 'cancelled' });
     expect(r.journals.map((j) => j?.step ?? null)).toEqual(['checking', null]);
     expect(await filesUnder(lib)).toEqual([original]);
   });
@@ -570,7 +565,7 @@ describe('replaceOriginal', () => {
       },
     ] satisfies FsOps[]) {
       const r = deps(fs);
-      const result = await replaceOriginal(await input(true), r.deps);
+      const result = await replaceOriginal(await input(), r.deps);
       expect(result).toMatchObject({ kind: 'failed', step: 'checking' });
       expect(r.journals.map((j) => j?.step ?? null)).toEqual(['checking', null]);
       expect(findJob(db, JOB)?.replaceJournal).toBeNull();
@@ -591,7 +586,7 @@ describe('replaceOriginal', () => {
       },
     };
     const r = deps(fs);
-    expect(await replaceOriginal(await input(true), r.deps)).toEqual({
+    expect(await replaceOriginal(await input(), r.deps)).toEqual({
       kind: 'failed',
       step: 'checking',
       message: `recycle folder ${defaultRecycleFolder(lib)} is on a different filesystem than ${original}`,
@@ -608,26 +603,20 @@ describe('replaceOriginal', () => {
   });
 
   it('after the original moves, both its old and its new directory are fsynced', async () => {
-    for (const recycle of [true, false]) {
-      const synced: string[] = [];
-      const fs: FsOps = {
-        ...roomy,
-        fsyncDir: async (p) => {
-          synced.push(p);
-          await roomy.fsyncDir(p);
-        },
-      };
-      await rm(root, { recursive: true, force: true });
-      db.close();
-      await seed();
-      expect(await replaceOriginal(await input(recycle), deps(fs).deps)).toMatchObject({
-        kind: 'replaced',
-      });
-      const show = join(lib, 'Show');
-      // recycle: the recycle dir and the library dir after the move, the library dir after the
-      // install; .orig: one directory, synced after each rename.
-      expect(synced).toEqual(recycle ? [dirname(recyclePath()), show, show] : [show, show]);
-    }
+    const synced: string[] = [];
+    const fs: FsOps = {
+      ...roomy,
+      fsyncDir: async (p) => {
+        synced.push(p);
+        await roomy.fsyncDir(p);
+      },
+    };
+    expect(await replaceOriginal(await input(), deps(fs).deps)).toMatchObject({
+      kind: 'replaced',
+    });
+    const show = join(lib, 'Show');
+    // The recycle dir and the library dir after the move, the library dir after the install.
+    expect(synced).toEqual([dirname(recyclePath()), show, show]);
   });
 
   it('a mount without fsync support (EINVAL/ENOTSUP) is a warning, not a failure', async () => {
@@ -639,7 +628,7 @@ describe('replaceOriginal', () => {
       fsyncDir: unsupported('EINVAL'),
       fsyncFile: unsupported('ENOTSUP'),
     };
-    expect(await replaceOriginal(await input(true), deps(fs).deps)).toMatchObject({
+    expect(await replaceOriginal(await input(), deps(fs).deps)).toMatchObject({
       kind: 'replaced',
     });
     expect(sha(await readFile(original))).toBe(sha(NEW));
@@ -674,7 +663,6 @@ describe('durableReplaceWrites', () => {
       outputPath: output,
       copyPath: recyclePath(),
       libraryRoot: lib,
-      recycling: true,
       fingerprint: { sizeBytes: 1, mtimeMs: 1, ino: 1, dev: 1, nlink: 1 },
       outputBytes: 1,
     };
@@ -751,7 +739,6 @@ const OWNER = { uid: 99_999, gid: 99_999 };
 
 interface Scenario {
   name: string;
-  recycle: boolean;
   /** A fresh base FsOps for one run. */
   fs(): FsOps;
   /** Extra deps for one run (signal, waitForSpace). */
@@ -792,28 +779,9 @@ const RECYCLE_TO_MOVE = [
   'stat#5', // original unchanged during the copy?
   'journal#3', // moving_original
 ];
-const ORIG_TO_MOVE = [
-  'stat#1',
-  'journal#1', // checking
-  'statfs#1',
-  'stat#2',
-  'exists#1',
-  'exists#2',
-  'journal#2', // writing_tmp
-  'copyFile#1',
-  'stat#3',
-  'chown#1',
-  'chmod#1',
-  'utimes#1',
-  'fsyncFile#1',
-  'stat#4',
-  'journal#3', // moving_original
-];
-
 const SCENARIOS: Scenario[] = [
   {
     name: 'recycle',
-    recycle: true,
     fs: () => faultBase,
     originals: [ORIG],
     kind: 'replaced',
@@ -834,7 +802,6 @@ const SCENARIOS: Scenario[] = [
   },
   {
     name: 'recycle, no hard links',
-    recycle: true,
     fs: () => noLinks,
     originals: [ORIG],
     kind: 'replaced',
@@ -856,50 +823,7 @@ const SCENARIOS: Scenario[] = [
     ],
   },
   {
-    name: '.orig',
-    recycle: false,
-    fs: () => faultBase,
-    originals: [ORIG],
-    kind: 'replaced',
-    calls: [
-      ...ORIG_TO_MOVE,
-      'link#1',
-      'unlink#1',
-      'fsyncDir#1', // one directory for both names
-      'journal#4', // installing_tmp
-      'link#2',
-      'unlink#2',
-      'fsyncDir#2',
-      'journal#5', // cleaning
-      'unlink#3', // the .orig
-      'journal#6', // null
-    ],
-  },
-  {
-    name: '.orig, no hard links',
-    recycle: false,
-    fs: () => noLinks,
-    originals: [ORIG],
-    kind: 'replaced',
-    calls: [
-      ...ORIG_TO_MOVE,
-      'link#1',
-      'exists#3',
-      'rename#1',
-      'fsyncDir#1',
-      'journal#4',
-      'link#2',
-      'exists#4',
-      'rename#2',
-      'fsyncDir#2',
-      'journal#5',
-      'unlink#1',
-      'journal#6',
-    ],
-  },
-  {
     name: 'cancel while waiting for space',
-    recycle: true,
     fs: () => ({ ...faultBase, statfs: async () => ({ bavail: 1, bsize: 1 }) }),
     deps: () => {
       const ac = new AbortController();
@@ -917,7 +841,6 @@ const SCENARIOS: Scenario[] = [
   },
   {
     name: 'EXDEV on the move',
-    recycle: true,
     fs: () => ({
       ...faultBase,
       link: async () => {
@@ -940,7 +863,6 @@ const SCENARIOS: Scenario[] = [
   },
   {
     name: 'original changed during the copy',
-    recycle: true,
     fs: () => ({
       ...faultBase,
       copyFile: async (a, b) => {
@@ -959,7 +881,6 @@ const SCENARIOS: Scenario[] = [
   },
   {
     name: 'original changed before the check',
-    recycle: true,
     fs: () => faultBase,
     prepare: () => writeFile(original, CHANGED),
     originals: [CHANGED],
@@ -1020,7 +941,7 @@ describe('fault injection: a fault at every disk touch, journal write and recycl
       await rm(root, { recursive: true, force: true });
       db.close();
       await seed();
-      const inp = await input(sc.recycle, { owner: OWNER });
+      const inp = await input({ owner: OWNER });
       await sc.prepare?.();
       const calls: string[] = [];
       const result = await replaceOriginal(inp, instrumented(sc, null, calls));
@@ -1044,9 +965,9 @@ describe('fault injection: a fault at every disk touch, journal write and recycl
     for (const fault of sc.calls) {
       for (const mode of ['crash', 'failed'] as const) {
         it(`${sc.name}: fault at ${fault}, then ${mode === 'crash' ? 'a crash' : 'the pipeline records the result'}`, async () => {
-          const inp = await input(sc.recycle, { owner: OWNER });
+          const inp = await input({ owner: OWNER });
           await sc.prepare?.();
-          const copyPath = sc.recycle ? recyclePath() : origPathFor(original, JOB);
+          const copyPath = recyclePath();
           const result = await replaceOriginal(inp, instrumented(sc, fault, []));
           expect(result.kind).not.toBe('replaced');
           const originalExistedBefore = await nodeFsOps.exists(original);
@@ -1065,23 +986,18 @@ describe('fault injection: a fault at every disk touch, journal write and recycl
           });
 
           const origShas = sc.originals.map(sha);
-          // (a) the original's bytes are at the library path or at the copy path, never neither —
-          // except after a finished .orig replace, whose last step removes the original on purpose.
-          const cleanedUp = !sc.recycle && fault === 'journal#6';
+          // (a) the original's bytes are at the library path or at the copy path, never neither.
           const atOriginal = (await nodeFsOps.exists(original))
             ? sha(await readFile(original))
             : null;
           const atCopy = (await nodeFsOps.exists(copyPath)) ? sha(await readFile(copyPath)) : null;
-          if (!cleanedUp) {
-            expect(origShas.some((h) => h === atOriginal || h === atCopy)).toBe(true);
-          }
+          expect(origShas.some((h) => h === atOriginal || h === atCopy)).toBe(true);
           // The library path is never left empty after the sweep.
           expect(atOriginal).not.toBeNull();
           // (b) a replacement at the library path is complete and the original is at the copy path.
           if (atOriginal === sha(NEW)) {
             expect((await stat(original)).size).toBe(NEW.length);
-            if (cleanedUp) expect(atCopy).toBeNull();
-            else expect(origShas).toContain(atCopy);
+            expect(origShas).toContain(atCopy);
           } else {
             expect(origShas).toContain(atOriginal);
           }
@@ -1100,7 +1016,7 @@ describe('fault injection: a fault at every disk touch, journal write and recycl
           if (atOriginal === sha(NEW)) {
             expect(sweep.completed).toEqual([JOB]);
             expect(job).toMatchObject({ state: 'replacing' });
-            if (sc.recycle) expect(listRecycled(db).map((x) => x.path)).toEqual([copyPath]);
+            expect(listRecycled(db).map((x) => x.path)).toEqual([copyPath]);
           } else if (!originalExistedBefore) {
             expect(sweep.rolledBack).toEqual([JOB]);
             expect(job).toMatchObject({

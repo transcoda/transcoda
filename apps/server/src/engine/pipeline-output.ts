@@ -35,7 +35,7 @@ import {
 } from './replace.ts';
 import type { JobControl } from './scheduler.ts';
 import { recycleSidecars } from './sidecar-recycle.ts';
-import { removeOrigCopy, settleReplaceNow } from './sweep.ts';
+import { settleReplaceNow } from './sweep.ts';
 import { verifyOutput } from './verify.ts';
 
 /**
@@ -116,14 +116,13 @@ export async function recycleSidecarsAfterReplace(
   core: PipelineCore,
   job: JobRow,
   p: Prepared,
-  r: { replacedTo: 'recycle' | 'deleted'; recycleFolder: string; libraryRoot: string },
+  r: { recycleFolder: string; libraryRoot: string },
 ): Promise<string[]> {
   if (job.dryRun) throw new Error('a sidecar recycle step reached a dry run');
   const wanted = p.model.streams.some(
     (s) => s.keep && extraInputOf(p.model, s)?.afterReplace === 'recycle',
   );
   if (!wanted) return [];
-  if (r.replacedTo !== 'recycle') return ['subtitle files were kept: the library does not recycle'];
   const { db, fs, log, now } = core.deps;
   return recycleSidecars(
     {
@@ -147,7 +146,7 @@ export async function replace(
   | {
       kind: 'done';
       job: JobRow;
-      replacedTo: 'recycle' | 'deleted';
+      replacedTo: 'recycle';
       /** The recycle folder the replace used (sidecars follow the original there). */
       recycleFolder: string;
       libraryRoot: string;
@@ -253,29 +252,19 @@ export async function replace(
     const row = findJob(db, job.id) ?? job;
     const settled = await settleReplaceNow(db, { fs, log: core.deps.log }, row, core.deps.now());
     if (settled === 'completed') {
-      // The file was replaced: done either way (a `.orig` that cannot be removed keeps the
-      // journal, and the next start's sweep finishes the cleaning).
-      const now = findJob(db, job.id);
-      const j = now?.replaceJournal ?? null;
-      const recovered = `${what}; recovered: the replacement is installed`;
-      const done = (problem: string) => ({
-        kind: 'done' as const,
-        job: now ?? job,
-        replacedTo: j?.recycling === false ? ('deleted' as const) : ('recycle' as const),
+      // The file was replaced and its original is in the recycle folder: done.
+      if (findJob(db, job.id)?.replaceJournal) {
+        durably(db, () => updateJob(db, job.id, { replaceJournal: null }, core.deps.now()));
+      }
+      return {
+        kind: 'done',
+        job: findJob(db, job.id) ?? job,
+        replacedTo: 'recycle',
         recycleFolder,
         libraryRoot: root,
         lateCancel: false,
-        problem,
-      });
-      if (j === null || (await removeOrigCopy({ fs, log: core.deps.log }, job.id, j))) {
-        if (j !== null) {
-          durably(db, () => updateJob(db, job.id, { replaceJournal: null }, core.deps.now()));
-        }
-        return done(recovered);
-      }
-      return done(
-        `${recovered}; the original copy ${j.copyPath} could not be removed, the next start retries`,
-      );
+        problem: `${what}; recovered: the replacement is installed`,
+      };
     }
     if (settled === 'rolledBack') return failure(`${what}; original restored`);
     if (settled === 'cleared') return failure(`${what}; nothing was replaced`);
@@ -286,7 +275,7 @@ export async function replace(
   return {
     kind: 'done',
     job,
-    replacedTo: result.recyclePath !== null ? 'recycle' : 'deleted',
+    replacedTo: 'recycle',
     recycleFolder,
     libraryRoot: root,
     lateCancel: ctl.stopReason() === 'cancel',

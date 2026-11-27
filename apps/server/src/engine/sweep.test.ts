@@ -27,7 +27,7 @@ import { edge, mainGraph, node } from '../workflows/test-helpers.ts';
 import { fingerprintOf } from './fingerprint.ts';
 import { tempDir, toolPaths } from './fixtures.ts';
 import { type FsOps, failingAt, nodeFsOps } from './fs-ops.ts';
-import { origPathFor, recyclePathFor, tmpPathFor } from './replace.ts';
+import { recyclePathFor, tmpPathFor } from './replace.ts';
 import { killStaleFfmpeg, requeueOnce, type SweepDeps, startupSweep } from './sweep.ts';
 
 const now = new Date('2026-03-01T12:00:00.000Z');
@@ -413,6 +413,7 @@ interface Layout {
   O: boolean;
   T: boolean;
   C: boolean;
+  /** Only an older version's journal has it; `false` was a `.orig` replace. */
   recycling?: boolean;
   step?: ReplaceJournal['step'];
 }
@@ -423,7 +424,7 @@ async function layout(id: string, l: Layout) {
   const recycling = l.recycling ?? true;
   const copyPath = recycling
     ? recyclePathFor(join(lib, '.transcoda-recycle'), lib, originalPath)
-    : origPathFor(originalPath, id);
+    : `${originalPath}.transcoda-${id}.orig`;
   const tmpPath = tmpPathFor(originalPath, id);
   // The journal's fingerprint is the original's identity: at O when it is there, else at C.
   await mkdir(dirname(copyPath), { recursive: true });
@@ -451,7 +452,7 @@ async function layout(id: string, l: Layout) {
     outputPath: join(tc, id, 'out.mkv'),
     copyPath,
     libraryRoot: lib,
-    recycling,
+    ...(l.recycling === undefined ? {} : { recycling: l.recycling }),
     fingerprint,
     outputBytes: NEW.length,
   };
@@ -579,8 +580,8 @@ describe('startupSweep: the replace journal, decided from the disk', () => {
     expect(sha(await readFile(p.copyPath))).toBe(sha(ORIG));
   });
 
-  it('O = the replacement and the .orig already removed (crash before the null journal) → completed', async () => {
-    const p = await layout('h', { O: false, T: true, C: true, recycling: false, step: 'cleaning' });
+  it('O = the replacement and the recycled copy already gone (removed before the null journal) → completed', async () => {
+    const p = await layout('h', { O: false, T: true, C: true, step: 'cleaning' });
     await rename(p.tmpPath, p.originalPath);
     await rm(p.copyPath);
     const r = await startupSweep(db, sweepDeps());
@@ -673,7 +674,7 @@ describe('startupSweep: the replace journal, decided from the disk', () => {
   });
 
   it('a missing folder of the file (a sub-mount not up) decides nothing either', async () => {
-    const p = await layout('v', { O: false, T: true, C: true, recycling: false });
+    const p = await layout('v', { O: false, T: true, C: true });
     const show = join(lib, 'Show');
     await rename(show, join(root, 'Show-away'));
     const r = await startupSweep(db, sweepDeps());
@@ -784,6 +785,67 @@ describe('startupSweep: the replace journal, decided from the disk', () => {
   });
 });
 
+describe("startupSweep: an older version's .orig replace is left for the user", () => {
+  /** Every file under the library's Show folder with its content's hash. */
+  const showFiles = async () => {
+    const dir = join(lib, 'Show');
+    const names = (await readdir(dir)).sort();
+    return Promise.all(names.map(async (n) => [n, sha(await readFile(join(dir, n)))]));
+  };
+  const layouts: [string, Layout][] = [
+    ['installed, .orig not yet removed', { O: false, T: false, C: true, step: 'cleaning' }],
+    ['tmp written, original moved', { O: false, T: true, C: true }],
+    ['tmp written, original in place', { O: true, T: true, C: false, step: 'moving_original' }],
+    ['the original missing', { O: false, T: true, C: false }],
+  ];
+  for (const [name, l] of layouts) {
+    it(`${name}: the job fails naming the files, nothing on disk changes, the journal stays`, async () => {
+      const p = await layout('o', { ...l, recycling: false });
+      if (name.startsWith('installed')) await writeFile(p.originalPath, NEW);
+      const before = await showFiles();
+      for (let start = 0; start < 2; start += 1) {
+        const r = await startupSweep(db, sweepDeps());
+        expect(r.conflicts).toEqual(['o']);
+        expect(await showFiles()).toEqual(before);
+        const job = findJob(db, 'o');
+        expect(job).toMatchObject({ state: 'failed', failureCode: 'replace', replaceJournal: p.j });
+        expect(job?.reason).toContain(`older version that kept the original as ${p.copyPath}`);
+        expect(job?.reason).toContain(p.tmpPath);
+      }
+      expect(listRecycled(db)).toEqual([]);
+    });
+  }
+
+  it('once neither the .orig nor the tmp is left, the journal is cleared and the job stays failed', async () => {
+    const p = await layout('o2', { O: true, T: true, C: true, recycling: false });
+    await startupSweep(db, sweepDeps());
+    await rm(p.copyPath);
+    await rm(p.tmpPath);
+    const r = await startupSweep(db, sweepDeps());
+    expect(r.conflicts).toEqual(['o2']);
+    expect(findJob(db, 'o2')).toMatchObject({ state: 'failed', replaceJournal: null });
+    expect(sha(await readFile(p.originalPath))).toBe(sha(ORIG));
+  });
+
+  it('an unreachable library keeps the journal even though nothing can be seen', async () => {
+    const p = await layout('o3', { O: false, T: true, C: true, recycling: false });
+    const offline = join(root, 'lib-offline');
+    await rename(lib, offline);
+    const r = await startupSweep(db, sweepDeps());
+    expect(r.conflicts).toEqual(['o3']);
+    expect(findJob(db, 'o3')).toMatchObject({ state: 'failed', replaceJournal: p.j });
+    await rename(offline, lib);
+    expect(await nodeFsOps.exists(p.copyPath)).toBe(true);
+    expect(await nodeFsOps.exists(p.tmpPath)).toBe(true);
+  });
+
+  it('a journal without the field (written now) is settled as a recycle replace', async () => {
+    const p = await layout('n', { O: false, T: true, C: true });
+    expect(p.j).not.toHaveProperty('recycling');
+    expect((await startupSweep(db, sweepDeps())).completed).toEqual(['n']);
+  });
+});
+
 const noLinks: FsOps = {
   ...nodeFsOps,
   link: async () => {
@@ -817,7 +879,6 @@ describe('startupSweep: a fault at every disk touch of the sweep itself never lo
   const rows: Row[] = [
     { name: 'install', l: { O: false, T: true, C: true } },
     { name: 'restore', l: { O: false, T: false, C: true } },
-    { name: 'install .orig', l: { O: false, T: true, C: true, recycling: false } },
     { name: 'requeue', l: { O: true, T: true, C: false, step: 'writing_tmp' } },
     {
       name: 'cleared (a failed job)',

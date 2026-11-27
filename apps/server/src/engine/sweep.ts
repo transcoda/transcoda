@@ -47,8 +47,9 @@ export interface SweepResult {
    */
   cleared: string[];
   /**
-   * Left for the user: two copies, a missing original, a recovery that failed or an unreachable
-   * library (the last two keep their journal and are settled again on the next start).
+   * Left for the user: two copies, a missing original, a recovery that failed, an unreachable
+   * library or an older version's `.orig` replace (the last three keep their journal and are
+   * looked at again on the next start).
    */
   conflicts: string[];
   /** Restores a crash cut short whose moves were all undone (the job stays `done`). */
@@ -369,7 +370,7 @@ export type SettleOutcome = Bucket;
  * Settles a replace that just failed past its `checking` step, at once and with the sweep's own
  * rules (what is on disk decides), instead of leaving it to the next start. A job whose original
  * never moved is `cleared` (never requeued here); `completed` leaves the job `replacing` at intent
- * `cleaning` for the caller to finish (`removeOrigCopy`, then clear the journal).
+ * `cleaning` for the caller to finish (clear the journal).
  */
 export function settleReplaceNow(
   db: Database,
@@ -380,30 +381,6 @@ export function settleReplaceNow(
   const j = job.replaceJournal;
   if (j === null) return Promise.resolve('cleared');
   return settleOne(db, deps, job, j, now, false);
-}
-
-/**
- * The `cleaning` step of a replace: the `.orig` copy is removed when not recycling (already gone
- * is fine). False when it could not be removed (the journal stays for the next start).
- */
-export async function removeOrigCopy(
-  deps: SettleDeps,
-  jobId: string,
-  j: ReplaceJournal,
-): Promise<boolean> {
-  if (j.recycling) return true;
-  try {
-    await deps.fs.unlink(j.copyPath);
-    return true;
-  } catch (err) {
-    if (errorCode(err) === 'ENOENT') return true;
-    deps.log.warn({
-      msg: 'could not remove the .orig of a finished replace',
-      job: jobId,
-      code: errorCode(err),
-    });
-    return false;
-  }
 }
 
 /**
@@ -419,6 +396,7 @@ async function settleJournal(
   requeueRunning: boolean,
 ): Promise<Bucket> {
   const { fs, log } = deps;
+  if (j.recycling === false) return olderOrigReplace(db, deps, job, j, now);
   /** Keeps the journal: nothing is decided while the library cannot be seen. */
   const unavailable = (missing: string): Bucket => {
     log.warn({
@@ -493,7 +471,7 @@ async function settleJournal(
     db.transaction(() => {
       // A row of an earlier job at this path is stale (C5): this job's original is there now.
       const recorded = listRecycled(db).some((r) => r.path === j.copyPath && r.jobId === job.id);
-      if (j.recycling && C && !recorded) {
+      if (C && !recorded) {
         recordRecycledRow(
           db,
           {
@@ -531,7 +509,7 @@ async function settleJournal(
       return 'conflicts';
     }
     if (movedBefore) {
-      // `.orig` already removed by cleaning (or the recycled copy pruned): the replace finished.
+      // The recycled copy was pruned or deleted meanwhile: the replace finished.
       if (await installedAtO()) return completed();
       // The original is back although it had moved: an earlier sweep restored it, then crashed.
       if (await isOriginal(j.originalPath)) {
@@ -546,7 +524,7 @@ async function settleJournal(
     // settled (failed, cancelled, requeued) keeps its state.
     const running = requeueRunning && RUNNING_JOB_STATES.includes(job.state);
     db.transaction(() => {
-      if (j.recycling) deleteRecycled(db, j.copyPath);
+      deleteRecycled(db, j.copyPath);
       updateJob(db, job.id, { replaceJournal: null }, now);
       if (running) requeueOnce(db, job, 'interrupted', now);
     })();
@@ -575,8 +553,50 @@ async function settleJournal(
     await finishRestore(db, deps, job, j, now);
     return 'rolledBack';
   }
-  if (j.recycling) deleteRecycled(db, j.copyPath);
+  deleteRecycled(db, j.copyPath);
   fail('original missing');
+  return 'conflicts';
+}
+
+/**
+ * A journal written before 2026-11-27 by a replace that kept the original as a `.orig` beside the
+ * file instead of recycling it. Transcoda no longer settles those and never touches their files:
+ * the job fails and says where the files may be. The journal stays (so the tmp is never taken for
+ * a stray) until neither the `.orig` nor the tmp is left, which is how the user closes it.
+ */
+async function olderOrigReplace(
+  db: Database,
+  deps: SettleDeps,
+  job: JobRow,
+  j: ReplaceJournal,
+  now: Date,
+): Promise<Bucket> {
+  const { fs } = deps;
+  // Absence only means something when the library is there: an unmounted share reads as empty.
+  const reachable = (await firstMissing(fs, [j.libraryRoot, dirname(j.originalPath)])) === null;
+  const leftover = !reachable || (await fs.exists(j.copyPath)) || (await fs.exists(j.tmpPath));
+  deps.log.warn({
+    msg: 'replace from an older version that kept its original as .orig; left for the user',
+    job: job.id,
+    journalCleared: !leftover,
+  });
+  updateJob(
+    db,
+    job.id,
+    {
+      state: 'failed',
+      reason:
+        `replace was interrupted in an older version that kept the original as ${j.copyPath}, ` +
+        `and Transcoda changed nothing: the original is at ${j.originalPath} or ${j.copyPath}, ` +
+        `the replacement may be at ${j.tmpPath}. Keep the file you want at ${j.originalPath} ` +
+        'and remove the other two',
+      failureCode: 'replace',
+      ...(leftover ? {} : { replaceJournal: null }),
+      lane: null,
+      progress: null,
+    },
+    now,
+  );
   return 'conflicts';
 }
 
@@ -602,7 +622,7 @@ async function finishRestore(
 ): Promise<void> {
   await syncDirs(deps.fs, dirs, deps.log);
   db.transaction(() => {
-    if (j.recycling) deleteRecycled(db, j.copyPath);
+    deleteRecycled(db, j.copyPath);
     updateJob(
       db,
       job.id,
