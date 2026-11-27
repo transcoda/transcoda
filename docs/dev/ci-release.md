@@ -42,7 +42,7 @@ The rules in force today for `.github/workflows/`, `docker/`, `renovate.json`, `
 
 ## Release notes and PR titles
 
-- Every pull request adds a `.changes/<name>.md` note or carries the `no user-facing change` label. `scripts/check-release-note.mjs` is the checker; the org action runs it. `pnpm check` also validates every note waiting in `.changes/`. Format and highlights: [`.changes/README.md`](../../.changes/README.md).
+- Every pull request adds a `.changes/<name>.md` note or carries the `no user-facing change` label. The checker is the shared one: the org's `release-note` action with `layout: flat` runs `transcoda-release-note check` from `@transcoda/dev-config`, which also refuses commit hashes and pull request numbers in a note. `pnpm check` validates every note waiting in `.changes/` with the same rules (`scripts/changes.test.ts`), and `pnpm release` reads them through the same library (`@transcoda/dev-config/changes`). The plugins repository uses the same format, one folder per plugin. Format and highlights: [`.changes/README.md`](../../.changes/README.md).
 - PR titles follow the house style `Area: what changed`. The area is free-form but starts with a capital letter or a digit, has no `(scope)`, and the title has no trailing full stop. No `feat:` or `chore(deps):`. Squash merges use the title as the commit message.
 
 ## Cutting a release
