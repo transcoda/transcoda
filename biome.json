@@ -1,5 +1,6 @@
 {
   "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+  "extends": ["@transcoda/dev-config/biome"],
   "files": {
     "includes": [
       "**",
@@ -18,50 +19,17 @@
       "!pnpm-lock.yaml"
     ]
   },
-  "formatter": { "indentStyle": "space", "lineWidth": 100 },
-  "javascript": { "formatter": { "quoteStyle": "single" } },
-  "markdown": { "formatter": { "enabled": false } },
-  "yaml": { "formatter": { "enabled": false } },
-  "linter": { "rules": { "preset": "recommended" } },
-  "assist": { "actions": { "source": { "organizeImports": "on" } } },
   "plugins": [
     {
-      "path": "./scripts/biome/utc-dates.grit",
+      "path": "./node_modules/@transcoda/dev-config/biome/utc-dates.grit",
       "includes": ["apps/server/src/**", "packages/*/src/**", "!**/*.test.ts"]
     },
     {
-      "path": "./scripts/biome/test-cleanup.grit",
+      "path": "./node_modules/@transcoda/dev-config/biome/test-cleanup.grit",
       "includes": ["apps/web/src/**/*.test.tsx", "apps/web/src/**/*.test.ts"]
     }
   ],
   "overrides": [
-    {
-      "includes": ["apps/**", "packages/**", "scripts/**", "e2e/**", "playwright.config.ts"],
-      "linter": {
-        "rules": {
-          "correctness": { "useImportExtensions": "error" },
-          "nursery": { "noFloatingPromises": "error", "useAwaitThenable": "error" },
-          "style": {
-            "noDefaultExport": "error",
-            "noNonNullAssertion": "error",
-            "useConsistentArrayType": "error",
-            "useConsistentTestIt": "error",
-            "useTestHooksOnTop": "error"
-          },
-          "suspicious": {
-            "noDeprecatedImports": "error",
-            "noExplicitAny": "error",
-            "noFocusedTests": "error",
-            "noImportCycles": "error",
-            "noSkippedTests": "error"
-          }
-        }
-      }
-    },
-    {
-      "includes": ["apps/*/src/**", "packages/*/src/**"],
-      "linter": { "rules": { "suspicious": { "noConsole": "error" } } }
-    },
     {
       "includes": [
         "apps/server/**",
@@ -75,7 +43,9 @@
           "style": {
             "useFilenamingConvention": {
               "level": "error",
-              "options": { "filenameCases": ["kebab-case"] }
+              "options": {
+                "filenameCases": ["kebab-case"]
+              }
             }
           }
         }
@@ -83,23 +53,46 @@
     },
     {
       "includes": [
-        "**/*.config.ts",
         "apps/server/src/plugins/fixtures/**",
         "apps/server/src/plugins/testing/global-setup.ts"
       ],
-      "linter": { "rules": { "style": { "noDefaultExport": "off" } } }
+      "linter": {
+        "rules": {
+          "style": {
+            "noDefaultExport": "off"
+          }
+        }
+      }
     },
     {
       "includes": ["e2e/**"],
-      "linter": { "rules": { "style": { "useConsistentTestIt": "off" } } }
+      "linter": {
+        "rules": {
+          "style": {
+            "useConsistentTestIt": "off"
+          }
+        }
+      }
     },
     {
       "includes": ["apps/server/src/logger.ts"],
-      "linter": { "rules": { "suspicious": { "noConsole": "off" } } }
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noConsole": "off"
+          }
+        }
+      }
     },
     {
       "includes": ["apps/web/src/**/*.css"],
-      "linter": { "rules": { "style": { "noHexColors": "error" } } }
+      "linter": {
+        "rules": {
+          "style": {
+            "noHexColors": "error"
+          }
+        }
+      }
     }
   ]
 }
