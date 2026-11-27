@@ -1,0 +1,28 @@
+name: Screenshots
+
+# A pull request that changes the web UI shows it: its description needs an image (before and after,
+# AGENTS.md "UI changes"), or the `no screenshots needed` label when nothing visible changed.
+# `edited` runs it again when screenshots are added to the description; `labeled` and `unlabeled`
+# when the label changes.
+
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize, labeled, unlabeled]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  screenshots:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: transcoda/.github/actions/screenshots@43cbb990910eca37108711aedaa1b939835a1941 # v1.1.0
+        with:
+          paths: |
+            apps/web/src/**
+            apps/web/index.html
+            apps/web/public/**
+            !**/*.test.{ts,tsx}
+            !apps/web/src/test/**

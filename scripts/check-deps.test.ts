@@ -1,14 +1,13 @@
-import assert from 'node:assert/strict';
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { it } from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { checkDeps, importSpecifiers } from './check-deps.mjs';
+import { expect, it } from 'vitest';
+import { checkDeps, importSpecifiers } from './check-deps.ts';
 
 const repoRoot = join(fileURLToPath(import.meta.url), '..', '..');
 
-const workspace = (pkgs) => {
+const workspace = (pkgs: { name: string; dependencies: Record<string, string> }[]) => {
   const root = mkdtempSync(join(tmpdir(), 'check-deps-'));
   for (const { name, dependencies } of pkgs) {
     const dir = join(root, 'packages', name.replace(/^@transcoda\//, ''));
@@ -18,38 +17,35 @@ const workspace = (pkgs) => {
   return root;
 };
 
-it('the real workspace passes', () => assert.deepEqual(checkDeps(repoRoot), []));
+it('the real workspace passes', () => expect(checkDeps(repoRoot)).toEqual([]));
 
 it('sdk may depend on zod but not on hono', () => {
   const ok = workspace([
     { name: '@transcoda/sdk', dependencies: { zod: '4.6.7', '@transcoda/shared': 'workspace:*' } },
   ]);
-  assert.deepEqual(checkDeps(ok), []);
+  expect(checkDeps(ok)).toEqual([]);
   const bad = workspace([{ name: '@transcoda/sdk', dependencies: { hono: '4.13.13' } }]);
-  assert.match(
-    checkDeps(bad).join('\n'),
+  expect(checkDeps(bad).join('\n')).toMatch(
     /sdk: dependencies contains third-party dependency hono \(allowed: zod\)/,
   );
 });
 
 it('shared may depend on zod only; sdk may not depend on contract', () => {
-  assert.match(
+  expect(
     checkDeps(workspace([{ name: '@transcoda/shared', dependencies: { hono: '1' } }])).join('\n'),
-    /shared: .*hono/,
-  );
-  assert.match(
+  ).toMatch(/shared: .*hono/);
+  expect(
     checkDeps(
       workspace([
         { name: '@transcoda/sdk', dependencies: { '@transcoda/contract': 'workspace:*' } },
       ]),
     ).join('\n'),
-    /sdk: dependencies contains forbidden dependency @transcoda\/contract/,
-  );
+  ).toMatch(/sdk: dependencies contains forbidden dependency @transcoda\/contract/);
 });
 
 it('no package reaches into another one with a relative import', () => {
   const root = mkdtempSync(join(tmpdir(), 'check-deps-'));
-  const pkg = (dir, name, files) => {
+  const pkg = (dir: string, name: string, files: Record<string, string>) => {
     mkdirSync(join(root, dir, 'src'), { recursive: true });
     writeFileSync(join(root, dir, 'package.json'), JSON.stringify({ name }));
     for (const [file, text] of Object.entries(files)) {
@@ -74,15 +70,14 @@ it('no package reaches into another one with a relative import', () => {
       '',
     ].join('\n'),
   });
-  assert.deepEqual(checkDeps(root), []);
+  expect(checkDeps(root)).toEqual([]);
   writeFileSync(
     join(root, 'apps/web/src/bad.ts'),
     "import { a } from '../../server/src/a.ts';\nexport const l = () => import('../../server/src/a.ts');\n",
   );
   const errors = checkDeps(root);
-  assert.equal(errors.length, 2);
-  assert.match(
-    errors.join('\n'),
+  expect(errors.length).toBe(2);
+  expect(errors.join('\n')).toMatch(
     /apps\/web\/src\/bad\.ts imports \.\.\/\.\.\/server\/src\/a\.ts, a relative path into apps\/server/,
   );
 });
@@ -98,5 +93,5 @@ it('importSpecifiers reads statements, not comments, strings or regexes', () => 
     'const t = `${"x"}from \'./tpl.ts\'`;',
     "const lazy = await import('./lazy.ts');",
   ].join('\n');
-  assert.deepEqual(importSpecifiers(text), ['./a.ts', './side.css', './b.ts', './lazy.ts']);
+  expect(importSpecifiers(text)).toEqual(['./a.ts', './side.css', './b.ts', './lazy.ts']);
 });

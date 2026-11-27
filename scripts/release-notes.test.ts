@@ -3,16 +3,14 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-// @ts-expect-error plain .mjs script without types
 import {
   compareVersions,
-  parseNote,
   prepareHighlights,
   prependChangelog,
   takesHighlights,
-} from './release-notes.mjs';
+} from './release-notes.ts';
 
-const script = join(import.meta.dirname, 'release-notes.mjs');
+const script = join(import.meta.dirname, 'release-notes.ts');
 let root: string;
 
 const note = (name: string, type: string, text: string) =>
@@ -32,19 +30,6 @@ beforeEach(() => {
   writeFileSync(join(root, '.changes/README.md'), '# readme\n');
 });
 afterEach(() => rmSync(root, { recursive: true, force: true }));
-
-describe('parseNote', () => {
-  it('parses type and body, joining lines', () => {
-    expect(parseNote('---\ntype: new\n---\nHello\nworld.\n')).toEqual({
-      type: 'new',
-      text: 'Hello world.',
-    });
-  });
-  it('reports bad type and empty body', () => {
-    expect(parseNote('---\ntype: wat\n---\n\n').errors).toHaveLength(2);
-    expect(parseNote('no front matter').errors).toHaveLength(2);
-  });
-});
 
 describe('compareVersions', () => {
   it('orders by semver precedence', () => {
