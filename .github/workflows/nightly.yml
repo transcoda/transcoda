@@ -40,7 +40,10 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       # In the e2e container, so the real-ffmpeg tests run against the image's jellyfin-ffmpeg.
+      # The property tests try 10000 cases each instead of 100 (about 10 s more in all).
       - run: sh scripts/e2e-docker.sh --unit
+        env:
+          FC_NUM_RUNS: 10000
       - if: ${{ !cancelled() }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:

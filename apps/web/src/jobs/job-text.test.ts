@@ -8,6 +8,7 @@ import {
   detailLine,
   estimateTag,
   FILTERS,
+  fmtTimeLeft,
   isWaitingForLane,
   phoneLine,
   phoneRunningLine,
@@ -658,5 +659,19 @@ describe('verify progress', () => {
     expect(activityLine({ ...fx.running, progress: null })).toBe('Encoding');
     expect(activityLine({ ...fx.running, paused: true })).toBe('Paused');
     expect(activityLine(fx.replaced)).toBeUndefined();
+  });
+});
+
+describe('fmtTimeLeft', () => {
+  it('reads seconds, minutes, and hours with minutes', () => {
+    expect(fmtTimeLeft(40)).toBe('40 s');
+    expect(fmtTimeLeft(180)).toBe('3 min');
+    expect(fmtTimeLeft(3600)).toBe('1 h');
+    expect(fmtTimeLeft(4980)).toBe('1 h 23 min');
+  });
+
+  it('reads just under a minute as 1 min, not 60 s (found by fast-check)', () => {
+    expect(fmtTimeLeft(59.5)).toBe('1 min');
+    expect(fmtTimeLeft(59.4)).toBe('59 s');
   });
 });

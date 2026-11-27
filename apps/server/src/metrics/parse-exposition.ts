@@ -90,7 +90,11 @@ export function parseExposition(text: string): ParsedExposition {
       const map = line.startsWith('# HELP ') ? help : types;
       if (map.has(name)) throw new Error(`repeated: ${line}`);
       if (map === types && !TYPES.has(arg)) throw new Error(`bad type: ${line}`);
-      map.set(name, arg.replace(/\\n/g, '\n').replace(/\\\\/g, '\\'));
+      // One pass, so an escaped backslash before an `n` stays a backslash and an `n`.
+      map.set(
+        name,
+        arg.replace(/\\([\\n])/g, (_, c: string) => (c === 'n' ? '\n' : '\\')),
+      );
       continue;
     }
     if (line.startsWith('#') || line === '')

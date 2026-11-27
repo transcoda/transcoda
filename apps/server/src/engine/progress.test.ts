@@ -93,6 +93,11 @@ describe('withFrameTime', () => {
 });
 
 describe('toJobProgress', () => {
+  it('has no eta when the speed is so close to zero that it would be infinite (found by fast-check)', () => {
+    const sample = { outTimeSeconds: 0, speed: 5e-324, fps: null, sizeBytes: null };
+    expect(toJobProgress(sample, 60).etaSeconds).toBeNull();
+  });
+
   it('has no percent or eta without an out time', () => {
     expect(toJobProgress({ ...at(), speed: 2 }, 60)).toMatchObject({
       percent: null,
