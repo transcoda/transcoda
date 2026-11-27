@@ -9,21 +9,28 @@ import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
-const ALLOWED = {
+const ALLOWED: Record<string, string[]> = {
   shared: [],
   sdk: ['shared'],
   contract: ['shared', 'sdk'],
   server: ['shared', 'sdk', 'contract'],
   web: ['shared', 'contract'],
 };
-const THIRD_PARTY = { shared: ['zod'], sdk: ['zod'] };
-const DEP_FIELDS = ['dependencies', 'devDependencies', 'peerDependencies'];
+const THIRD_PARTY: Record<string, string[]> = { shared: ['zod'], sdk: ['zod'] };
+const DEP_FIELDS = ['dependencies', 'devDependencies', 'peerDependencies'] as const;
 
-function readJson(path) {
-  return JSON.parse(readFileSync(path, 'utf8'));
+interface PackageJson {
+  name?: string;
+  dependencies?: Record<string, string>;
+  devDependencies?: Record<string, string>;
+  peerDependencies?: Record<string, string>;
 }
 
-function* walk(dir) {
+function readJson(path: string): PackageJson {
+  return JSON.parse(readFileSync(path, 'utf8')) as PackageJson;
+}
+
+function* walk(dir: string): Generator<string> {
   for (const entry of readdirSync(dir)) {
     if (entry === 'node_modules' || entry === 'dist') continue;
     const path = join(dir, entry);
@@ -32,14 +39,14 @@ function* walk(dir) {
   }
 }
 
-export function checkDeps(root) {
-  const errors = [];
+export function checkDeps(root: string): string[] {
+  const errors: string[] = [];
   for (const group of ['packages', 'apps']) {
     const groupDir = join(root, group);
     if (!existsSync(groupDir)) continue;
     for (const dirName of readdirSync(groupDir)) {
       const pkgPath = join(groupDir, dirName, 'package.json');
-      let pkg;
+      let pkg: PackageJson;
       try {
         pkg = readJson(pkgPath);
       } catch {
@@ -75,7 +82,7 @@ export function checkDeps(root) {
         for (const file of walk(srcDir)) {
           const text = readFileSync(file, 'utf8');
           for (const m of text.matchAll(/from\s+['"](@transcoda\/[^'"]+)['"]/g)) {
-            if (!permitted.includes(m[1])) {
+            if (m[1] && !permitted.includes(m[1])) {
               errors.push(`${short}: ${file.slice(root.length + 1)} imports ${m[1]}`);
             }
           }
@@ -85,6 +92,12 @@ export function checkDeps(root) {
   }
   errors.push(...crossPackageRelativeImports(root));
   return errors;
+}
+
+/** A token: a word, a string (null for a template literal or a regex) or one punctuation mark. */
+interface Token {
+  kind: 'word' | 'string' | 'punct';
+  value: string | null;
 }
 
 const SOURCE_FILE = /\.(?:[cm]?[jt]s|tsx)$/;
@@ -100,18 +113,18 @@ const REGEX_AFTER_WORD = new Set(
  * and this script runs with no dependencies.) A quote string ends at a line break, so an
  * apostrophe in JSX text spoils at most its own line.
  */
-export function importSpecifiers(text) {
-  const tokens = []; // { kind: 'word' | 'string' | 'punct', value }
-  const braces = []; // per open `{`: true when it is a template literal's `${`
+export function importSpecifiers(text: string): string[] {
+  const tokens: Token[] = [];
+  const braces: boolean[] = []; // per open `{`: true when it is a template literal's `${`
   let i = 0;
   const n = text.length;
   const last = () => tokens[tokens.length - 1];
   const regexAllowed = () => {
     const t = last();
     if (!t) return true;
-    if (t.kind === 'word') return REGEX_AFTER_WORD.has(t.value);
+    if (t.kind === 'word') return REGEX_AFTER_WORD.has(t.value ?? '');
     if (t.kind === 'string') return false;
-    return !/^[)\]]$/.test(t.value);
+    return !/^[)\]]$/.test(t.value ?? '');
   };
   // Skips a template literal's text from i (just after ` or a closing }) up to its end or `${`.
   const templateText = () => {
@@ -130,7 +143,7 @@ export function importSpecifiers(text) {
     }
   };
   while (i < n) {
-    const c = text[i];
+    const c = text[i] ?? '';
     if (c === '/' && text[i + 1] === '/') {
       while (i < n && text[i] !== '\n') i += 1;
     } else if (c === '/' && text[i + 1] === '*') {
@@ -159,11 +172,11 @@ export function importSpecifiers(text) {
         i += 1;
       }
       i += 1;
-      while (i < n && /[a-z]/i.test(text[i])) i += 1;
+      while (i < n && /[a-z]/i.test(text[i] ?? '')) i += 1;
       tokens.push({ kind: 'string', value: null });
     } else if (/[\w$]/.test(c)) {
       const start = i;
-      while (i < n && /[\w$]/.test(text[i])) i += 1;
+      while (i < n && /[\w$]/.test(text[i] ?? '')) i += 1;
       tokens.push({ kind: 'word', value: text.slice(start, i) });
     } else if (/\s/.test(c)) {
       i += 1;
@@ -177,10 +190,10 @@ export function importSpecifiers(text) {
       tokens.push({ kind: 'punct', value: c });
     }
   }
-  const specifiers = [];
+  const specifiers: string[] = [];
   for (let k = 0; k < tokens.length; k++) {
     const t = tokens[k];
-    if (t.kind !== 'word') continue;
+    if (t?.kind !== 'word') continue;
     const next = tokens[k + 1];
     const prev = tokens[k - 1];
     // `x.from 'a'` or `x.import(...)` is a property, not a statement.
@@ -197,9 +210,9 @@ export function importSpecifiers(text) {
 
 // A relative import that resolves into another workspace package skips the dependency direction
 // above (and the package's public entry point): import it as @transcoda/<name> instead.
-function crossPackageRelativeImports(root) {
-  const errors = [];
-  const packageDirs = [];
+function crossPackageRelativeImports(root: string): string[] {
+  const errors: string[] = [];
+  const packageDirs: string[] = [];
   for (const group of ['packages', 'apps']) {
     const groupDir = join(root, group);
     if (!existsSync(groupDir)) continue;
@@ -208,7 +221,8 @@ function crossPackageRelativeImports(root) {
       if (existsSync(join(dir, 'package.json'))) packageDirs.push(dir);
     }
   }
-  const owner = (path) => packageDirs.find((dir) => path === dir || path.startsWith(dir + sep));
+  const owner = (path: string) =>
+    packageDirs.find((dir) => path === dir || path.startsWith(dir + sep));
   for (const dir of packageDirs) {
     const srcDir = join(dir, 'src');
     if (!existsSync(srcDir)) continue;

@@ -1,6 +1,6 @@
 {
   "//": "Declarations for the published SDK (packages/sdk/tsdown.config.ts). It sits at the root because the dts bundler uses this file's folder as rootDir, and the build inlines packages/shared.",
-  "extends": "./tsconfig.base.json",
+  "extends": "@transcoda/dev-config/tsconfig.base.json",
   "compilerOptions": {
     "declaration": true,
     "emitDeclarationOnly": true,

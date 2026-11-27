@@ -181,6 +181,9 @@ importers:
       '@playwright/test':
         specifier: 1.65.1
         version: 1.65.1
+      '@transcoda/dev-config':
+        specifier: github:transcoda/.github#v1.1.0
+        version: https://codeload.github.com/transcoda/.github/tar.gz/43cbb990910eca37108711aedaa1b939835a1941
       '@types/node':
         specifier: 26.6.6
         version: 26.6.6
@@ -1187,6 +1190,11 @@ packages:
         optional: true
       '@types/react-dom':
         optional: true
+
+  '@transcoda/dev-config@https://codeload.github.com/transcoda/.github/tar.gz/43cbb990910eca37108711aedaa1b939835a1941':
+    resolution: {gitHosted: true, integrity: sha512-ldRCggAXleJn8gN421NveOwgcRZLGnb1Dovnsw2sj5OkxNud7XP6fVP5ovQE978XsOYAG6SALb6iLTMXPcTq+w==, tarball: https://codeload.github.com/transcoda/.github/tar.gz/43cbb990910eca37108711aedaa1b939835a1941}
+    version: 1.1.0
+    hasBin: true
 
   '@tybys/wasm-util@0.10.5':
     resolution: {integrity: sha512-dOGOPxlaNV+G046mZzN+9C0dAcQZeSKcXiVaM0TYy/LM4ttTmgSBDxYfovcYI8Em3+eAbiAYpvWLOv8+ZVRJKA==}
@@ -3125,6 +3133,8 @@ snapshots:
     optionalDependencies:
       '@types/react': 19.3.0
       '@types/react-dom': 19.3.0(@types/react@19.3.0)
+
+  '@transcoda/dev-config@https://codeload.github.com/transcoda/.github/tar.gz/43cbb990910eca37108711aedaa1b939835a1941': {}
 
   '@tybys/wasm-util@0.10.5':
     dependencies:

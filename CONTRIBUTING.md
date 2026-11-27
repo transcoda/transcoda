@@ -32,7 +32,7 @@ Open `http://localhost:5173`; the first visit asks you to create the admin accou
 
 | Command | Does |
 | --- | --- |
-| `pnpm check` | typecheck, lint (warnings fail), dead-code check (knip), dependency-direction check, licence check and tests: what CI runs (`pnpm ci` is a pnpm built-in, so the script is named `check`) |
+| `pnpm check` | typecheck, lint (warnings fail), dead-code check (knip), dependency-direction check, licence check, file-size budget (1200 lines) and tests: what CI runs (`pnpm ci` is a pnpm built-in, so the script is named `check`) |
 | `pnpm test` / `pnpm typecheck` / `pnpm lint` | one step of the above |
 | `pnpm format` | Biome autofix |
 | `pnpm build` | production bundles for web and server |
@@ -60,7 +60,7 @@ Never put secrets, API keys, real media or personal file paths in code, tests, l
 
 ## How pull requests get merged
 
-- CI must pass: `pnpm check`, the build, the release-note check and the PR-title check.
+- CI must pass: `pnpm check`, the build, the release-note check and the PR-title check. A pull request that changes the web UI also needs screenshots in its description (the `screenshots` check).
 - A maintainer reviews it. Every pull request from a contributor needs a maintainer's approval before it can be merged.
 - A maintainer merges it with **squash merge**: your branch becomes one commit on `main`, and the pull request title becomes the commit message. The title follows the house style `Area: what changed`, for example `Engine: a stopped job keeps its partial output` (a check enforces it; see [PR titles](#pr-titles)).
 - If the pull request is meant for a particular release, a maintainer puts it in that release's milestone.

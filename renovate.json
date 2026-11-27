@@ -53,6 +53,20 @@
       "minimumReleaseAge": null
     },
     {
+      "description": "pnpm (the packageManager field): its own pull request, in the Sunday-evening window and with the same release-age wait, as in the plugins repository, so both repositories move to the same pnpm version in the same week.",
+      "matchDepTypes": ["packageManager"],
+      "matchPackageNames": ["pnpm"],
+      "groupName": "pnpm",
+      "schedule": ["* 17-23 * * 0"]
+    },
+    {
+      "description": "The org's shared tooling from transcoda/.github: the @transcoda/dev-config dev dependency (a github: tag, read as github-tags) and the SHA-pinned transcoda/.github/actions/* move to the same tag in one pull request, since the actions and the package come from the same release. No release-age wait: these are our own tagged releases, and the wait guards against third-party ones.",
+      "matchPackageNames": ["@transcoda/dev-config", "transcoda/.github", "transcoda/.github/**"],
+      "groupName": "transcoda shared tooling",
+      "semanticCommitType": "CI",
+      "minimumReleaseAge": null
+    },
+    {
       "description": "Node.js: the base image, .node-version, engines and @types/node move together on the LTS line CI and the image run; majors by hand.",
       "matchPackageNames": ["node", "@types/node"],
       "groupName": "Node.js"

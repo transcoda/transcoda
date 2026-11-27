@@ -1,0 +1,21 @@
+{
+  "apps/server/src/db/repos/engine-repos.test.ts": 1285,
+  "apps/server/src/db/repos/jobs.ts": 1424,
+  "apps/server/src/engine/queue-service.test.ts": 1882,
+  "apps/server/src/engine/scheduler.test.ts": 1464,
+  "apps/server/src/engine/verify.test.ts": 1403,
+  "apps/server/src/engine/verify.ts": 1220,
+  "apps/server/src/engine/walk.test.ts": 1785,
+  "apps/server/src/plugins/fetch-proxy.test.ts": 1231,
+  "apps/server/src/plugins/service.test.ts": 2460,
+  "apps/server/src/plugins/service.ts": 1589,
+  "apps/server/src/rpc/procedures/engine.test.ts": 1366,
+  "apps/server/src/workflows/service.test.ts": 1657,
+  "apps/server/src/workflows/validate.test.ts": 2049,
+  "apps/server/src/workflows/validate.ts": 1364,
+  "apps/web/src/pages/EditorPage.test.tsx": 2208,
+  "apps/web/src/pages/EditorPage.tsx": 1344,
+  "apps/web/src/pages/JobsPage.test.tsx": 1350,
+  "apps/web/src/pages/PluginsPage.test.tsx": 1412,
+  "apps/web/src/styles/job-page.css": 1415
+}
