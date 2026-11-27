@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { promisify } from 'node:util';
 import { emptyGraph } from '@transcoda/shared';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createTestApp, type TestApp } from '../app/test-app.ts';
+import { createTestApp, type TestApp } from '../app/testing/app.ts';
 import {
   asSession,
   bearer,
@@ -14,7 +14,7 @@ import {
   login,
   type Session,
   send,
-} from '../app/test-http.ts';
+} from '../app/testing/http.ts';
 import { insertJob, insertJobResult } from '../db/repos/jobs/jobs.ts';
 import { insertLibrary } from '../db/repos/libraries.ts';
 import { insertRun } from '../db/repos/runs.ts';

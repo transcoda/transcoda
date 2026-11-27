@@ -2,7 +2,7 @@ import { stat, utimes, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { WorkflowGraph } from '@transcoda/shared';
 import { describe, expect, it, vi } from 'vitest';
-import { createTestApp } from '../../app/test-app.ts';
+import { createTestApp } from '../../app/testing/app.ts';
 import { fingerprintKey } from '../../db/repos/files.ts';
 import {
   findJob,

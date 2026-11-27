@@ -2,7 +2,7 @@ import { copyFile, readFile, rm, utimes, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { planSummary } from '@transcoda/shared';
 import { describe, expect, it } from 'vitest';
-import { createTestApp } from '../../app/test-app.ts';
+import { createTestApp } from '../../app/testing/app.ts';
 import type { Exec } from '../../capabilities/ffmpeg.ts';
 import { findJob, findJobResult, listTrace } from '../../db/repos/jobs/jobs.ts';
 import { listRecycled } from '../../db/repos/recycled.ts';

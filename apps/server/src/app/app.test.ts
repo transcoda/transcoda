@@ -11,7 +11,7 @@ import { createUser } from '../db/repos/users.ts';
 import { createTestDb } from '../db/test-db.ts';
 import { type Config, loadConfig } from '../platform/config.ts';
 import { nodeFsOps } from '../platform/fs-ops.ts';
-import { createTestApp } from './test-app.ts';
+import { createTestApp } from './testing/app.ts';
 
 function makeApp(overrides: Partial<Config> = {}, opts: { withUser?: boolean } = {}) {
   const { app, db, clock } = createTestApp({ config: overrides });

@@ -2,7 +2,7 @@ import { writeFile } from 'node:fs/promises';
 import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { describe, expect, it, vi } from 'vitest';
-import type { TestApp } from '../../app/test-app.ts';
+import type { TestApp } from '../../app/testing/app.ts';
 import { findPlugin } from '../../db/repos/plugins.ts';
 import { OFFICIAL_BLOCKLIST_URL } from '../../platform/official-plugins.ts';
 import { fixturePluginPath } from '../testing/build.ts';

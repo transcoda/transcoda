@@ -3,7 +3,7 @@ import { dirname, join } from 'node:path';
 import type { Capabilities } from '@transcoda/contract';
 import type { JobState } from '@transcoda/shared';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createTestApp, type TestApp } from '../app/test-app.ts';
+import { createTestApp, type TestApp } from '../app/testing/app.ts';
 import type { Exec } from '../capabilities/ffmpeg.ts';
 import {
   findJob,

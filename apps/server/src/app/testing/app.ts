@@ -6,21 +6,21 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import type { Capabilities } from '@transcoda/contract';
 import type { Hono } from 'hono';
-import type { Exec } from '../capabilities/ffmpeg.ts';
-import type { Database } from '../db/open.ts';
-import { createTestDb } from '../db/test-db.ts';
-import type { ProcessSpawner } from '../engine/encode/process.ts';
-import type { AnyToolDef } from '../mcp/tool.ts';
-import type { RegisteredNode } from '../nodes/registry.ts';
-import { type Config, loadConfig } from '../platform/config.ts';
-import type { FsOps } from '../platform/fs-ops.ts';
-import { createLogger, type Logger } from '../platform/logger.ts';
-import type { PluginHooksRunner } from '../plugins/runtime/hooks.ts';
-import type { PluginServiceDeps } from '../plugins/service/service.ts';
-import { hostPath } from '../plugins/testing/build.ts';
-import type { AppDeps } from '../rpc/context.ts';
-import { createApp } from './app.ts';
-import { createAppDeps } from './deps.ts';
+import type { Exec } from '../../capabilities/ffmpeg.ts';
+import type { Database } from '../../db/open.ts';
+import { createTestDb } from '../../db/test-db.ts';
+import type { ProcessSpawner } from '../../engine/encode/process.ts';
+import type { AnyToolDef } from '../../mcp/tool.ts';
+import type { RegisteredNode } from '../../nodes/registry.ts';
+import { type Config, loadConfig } from '../../platform/config.ts';
+import type { FsOps } from '../../platform/fs-ops.ts';
+import { createLogger, type Logger } from '../../platform/logger.ts';
+import type { PluginHooksRunner } from '../../plugins/runtime/hooks.ts';
+import type { PluginServiceDeps } from '../../plugins/service/service.ts';
+import { hostPath } from '../../plugins/testing/build.ts';
+import type { AppDeps } from '../../rpc/context.ts';
+import { createApp } from '../app.ts';
+import { createAppDeps } from '../deps.ts';
 
 /** The host the vitest globalSetup built; absent outside a test run that built it (never needed until a plugin starts). */
 function defaultHostPath(): string {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createTestApp } from '../../app/test-app.ts';
+import { createTestApp } from '../../app/testing/app.ts';
 import {
   asSession,
   bearer,
@@ -8,7 +8,7 @@ import {
   ORIGIN,
   secondUser,
   send,
-} from '../../app/test-http.ts';
+} from '../../app/testing/http.ts';
 import { SESSION_COOKIE } from '../../auth/cookies.ts';
 
 describe('tokens procedures', () => {

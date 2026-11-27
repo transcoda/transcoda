@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
-import { createTestApp, type TestApp } from '../../app/test-app.ts';
+import { createTestApp, type TestApp } from '../../app/testing/app.ts';
 import { SESSION_COOKIE } from '../../auth/cookies.ts';
 import { getSetting, setSetting } from '../../db/repos/settings.ts';
 import { countUsers } from '../../db/repos/users.ts';

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
-import { createTestApp } from '../app/test-app.ts';
-import { asSession, bearer, createToken, HOST, login, send } from '../app/test-http.ts';
+import { createTestApp } from '../app/testing/app.ts';
+import { asSession, bearer, createToken, HOST, login, send } from '../app/testing/http.ts';
 import { INITIALIZE, mcpClient, rawMcp } from './test-client.ts';
 import { defineTool, ToolFailure } from './tool.ts';
 import { queueTools } from './tools/queue.ts';

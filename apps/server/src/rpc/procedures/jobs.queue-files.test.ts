@@ -2,8 +2,15 @@ import { chmod, mkdir, rename, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { Capabilities } from '@transcoda/contract';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { createTestApp, type TestApp } from '../../app/test-app.ts';
-import { asSession, bearer, createToken, login, type Session, send } from '../../app/test-http.ts';
+import { createTestApp, type TestApp } from '../../app/testing/app.ts';
+import {
+  asSession,
+  bearer,
+  createToken,
+  login,
+  type Session,
+  send,
+} from '../../app/testing/http.ts';
 import type { Exec } from '../../capabilities/ffmpeg.ts';
 import { softDeleteLibrary } from '../../db/repos/libraries.ts';
 import { filePathsOf, showKey } from '../../db/repos/library-files.ts';

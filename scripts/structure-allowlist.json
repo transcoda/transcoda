@@ -43,8 +43,6 @@
   "barrels": [],
   "testSupportImports": [],
   "testSupportNames": [
-    "apps/server/src/app/test-app.ts",
-    "apps/server/src/app/test-http.ts",
     "apps/server/src/db/test-db.ts",
     "apps/server/src/mcp/test-client.ts",
     "apps/server/src/metrics/parse-exposition.ts",

@@ -11,7 +11,7 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import type { PluginManifest } from '@transcoda/shared';
 import { afterAll, afterEach, beforeAll, vi } from 'vitest';
-import { createTestApp, type TestApp } from '../../app/test-app.ts';
+import { createTestApp, type TestApp } from '../../app/testing/app.ts';
 import type { createCoreRegistry } from '../../nodes/registry.ts';
 import type { PluginIsolation } from '../../platform/config.ts';
 import type { SigningKey } from '../../platform/signing-keys.ts';

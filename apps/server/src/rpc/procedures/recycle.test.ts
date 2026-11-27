@@ -2,8 +2,15 @@ import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { emptyGraph } from '@transcoda/shared';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { createTestApp, type TestApp } from '../../app/test-app.ts';
-import { asSession, bearer, createToken, login, type Session, send } from '../../app/test-http.ts';
+import { createTestApp, type TestApp } from '../../app/testing/app.ts';
+import {
+  asSession,
+  bearer,
+  createToken,
+  login,
+  type Session,
+  send,
+} from '../../app/testing/http.ts';
 import { fingerprintKey } from '../../db/repos/files.ts';
 import { insertJob, insertJobResult } from '../../db/repos/jobs/jobs.ts';
 import { insertLibrary } from '../../db/repos/libraries.ts';
