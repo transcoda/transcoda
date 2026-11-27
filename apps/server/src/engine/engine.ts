@@ -75,7 +75,7 @@ import { type RestoreResult, restoreRecycled } from './restore.ts';
 import { closedLibraries, type RunHoursHold, runHoursHold, serverTimeZone } from './run-hours.ts';
 import { pickSlot, Scheduler } from './scheduler.ts';
 import { SpaceWaits } from './space-waits.ts';
-import { removeOrigCopy, type SweepResult, startupSweep } from './sweep.ts';
+import { type SweepResult, startupSweep } from './sweep.ts';
 import { type TestOutputRow, TestOutputStore } from './test-outputs.ts';
 
 /** The part of a job log `jobLog` returns: its tail. */
@@ -524,11 +524,9 @@ export class EngineService {
 
   // ---- internals ----
 
-  /** A replace the sweep found installed: drop the `.orig` (when not recycling) and record done. */
+  /** A replace the sweep found installed: record done (the original is in the recycle folder). */
   private async finishCleaning(job: JobRow, j: ReplaceJournal): Promise<void> {
-    const { db, fs, log } = this.deps;
-    // Keep the journal when the .orig cannot be removed; the next start tries again.
-    if (!(await removeOrigCopy({ fs, log }, job.id, j))) return;
+    const { db, fs } = this.deps;
     // The replacement is installed at the original's path: Already processed knows it by this.
     let outputFingerprint: string | null = null;
     let outputHash: string | null = null;
@@ -567,7 +565,7 @@ export class EngineService {
         estimatedBytes: previous?.estimatedBytes ?? null,
         command: previous?.command ?? null,
         plan: previous?.plan ?? null,
-        replacedTo: j.recycling ? 'recycle' : 'deleted',
+        replacedTo: 'recycle',
         logPath: previous?.logPath ?? null,
         warnings: [...(previous?.warnings ?? []), 'replace finished by the startup sweep'],
         problems: previous?.problems ?? [],
