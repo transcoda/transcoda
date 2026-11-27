@@ -9,6 +9,7 @@ import {
   steps,
   stepsHeading,
   stepsSummary,
+  videoConversionOf,
 } from './steps.ts';
 
 const d = (over: Partial<Decision> & Pick<Decision, 'key' | 'nodeId' | 'title'>): Decision => ({
@@ -333,6 +334,56 @@ describe('steps: one sentence and a badge per node', () => {
     expect(encode('hevc_qsv', null, 3000).sentence).toBe(
       'Video is re-encoded to HEVC on the GPU (Quick Sync, 3.0 Mb/s)',
     );
+  });
+
+  it('Encode video says the encoder that ran: a GPU encode that fell back to software', () => {
+    const decision = d({
+      key: '4',
+      nodeId: 'ev',
+      title: 'Encode video',
+      type: 'core:encode-video',
+      changes: changes({
+        converted: [
+          {
+            index: 0,
+            type: 'video',
+            codec: 'hevc',
+            language: null,
+            forced: false,
+            from: 'h264',
+            encoder: 'hevc_nvenc',
+            quality: 23,
+            preset: null,
+            bitrateKbps: 3300,
+            channels: null,
+            pixelFormat: 'yuv420p',
+          },
+        ],
+      }),
+    });
+    // The plan after the fallback: what the job's page reads into `videoConversion`.
+    const plan = {
+      streams: [
+        {
+          type: 'video',
+          action: 'convert',
+          note: 'convert h264→hevc (libx265 crf 23 medium max 3300k)',
+        },
+        { type: 'audio', action: 'keep', note: 'keep' },
+      ],
+    };
+    const ran = videoConversionOf(plan);
+    expect(ran).toMatchObject({ encoder: 'libx265', quality: 'CRF 23' });
+    const s = one(decision, { ...DRY, videoConversion: ran });
+    expect(s.sentence).toBe(
+      'Video is re-encoded to HEVC in software (libx265, CRF 23, at most 3.3 Mb/s)',
+    );
+    expect(s.detail).toMatchObject({ after: 'HEVC 8-bit, libx265, CRF 23, at most 3.3 Mb/s' });
+    // The same encoder in the plan, or no plan: the trace's words.
+    expect(one(decision, { ...DRY, videoConversion: null }).sentence).toBe(
+      'Video is re-encoded to HEVC on the GPU (NVENC, CQ 23, at most 3.3 Mb/s)',
+    );
+    expect(videoConversionOf(null)).toBeNull();
   });
 
   it('Encode video that copies says why; with a targets check and no targets it adds an action note', () => {

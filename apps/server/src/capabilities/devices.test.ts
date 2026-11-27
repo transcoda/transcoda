@@ -2,6 +2,7 @@ import type { Capabilities } from '@transcoda/contract';
 import { describe, expect, it } from 'vitest';
 import { deviceVendor } from '../engine/render.ts';
 import {
+  confirmNvenc,
   devicePlan,
   effectiveCapabilities,
   encodeSlots,
@@ -387,5 +388,63 @@ describe('encodeSlots', () => {
     expect(encodeSlots(caps([rtx, a2000]), { kind: 'nvidia', index: 1 })).toEqual([
       { id: 'encode', label: 'Encode', device: { kind: 'cuda', index: 1 }, gpuId: 'nvidia:1' },
     ]);
+  });
+});
+
+describe('confirmNvenc', () => {
+  const failing: Exec = async () => {
+    throw Object.assign(new Error('Command failed'), {
+      stderr: '[h264_nvenc @ 0x1] Cannot load libcuda.so.1\nError while opening encoder\n',
+    });
+  };
+
+  it('drops NVENC and cuda when nvidia-smi lists no GPU and a test encode fails', async () => {
+    const calls: string[][] = [];
+    const exec: Exec = async (file, args, opts) => {
+      calls.push([file, ...args]);
+      return failing(file, args, opts);
+    };
+    const { capabilities, unusable } = await confirmNvenc(caps([]), exec);
+    expect(unusable).toBe('Error while opening encoder');
+    expect(capabilities.available && capabilities.encoders).toEqual([
+      'libx265',
+      'libx264',
+      'hevc_qsv',
+      'hevc_vaapi',
+      'aac',
+    ]);
+    expect(capabilities.available && capabilities.hwaccels).toEqual(['vaapi', 'qsv']);
+    // One frame of a generated picture with the H.264 encoder, written nowhere.
+    expect(calls).toEqual([
+      [
+        '/usr/bin/ffmpeg',
+        ...['-hide_banner', '-nostdin', '-v', 'error', '-f', 'lavfi'],
+        ...['-i', 'color=c=black:s=256x144:r=1', '-frames:v', '1', '-c:v', 'h264_nvenc'],
+        ...['-f', 'null', '-'],
+      ],
+    ]);
+    // So auto has no GPU to encode on.
+    expect(encodeSlots(capabilities, { kind: 'auto' })[0]?.device).toBeNull();
+  });
+
+  it('keeps NVENC when the test encode works (a GPU in a container without nvidia-smi)', async () => {
+    const exec: Exec = async () => ({ stdout: '', stderr: '' });
+    const before = caps([]);
+    const { capabilities, unusable } = await confirmNvenc(before, exec);
+    expect(unusable).toBeNull();
+    expect(capabilities).toBe(before);
+  });
+
+  it('runs no test when nvidia-smi lists an NVIDIA GPU, or when ffmpeg has no NVENC', async () => {
+    let ran = 0;
+    const exec: Exec = async (...a) => {
+      ran += 1;
+      return failing(...a);
+    };
+    expect((await confirmNvenc(caps([rtx]), exec)).unusable).toBeNull();
+    const noNvenc = caps([]);
+    if (noNvenc.available) noNvenc.encoders = ['libx265'];
+    expect((await confirmNvenc(noNvenc, exec)).unusable).toBeNull();
+    expect(ran).toBe(0);
   });
 });

@@ -121,6 +121,51 @@ export async function probeGpus(exec: Exec = defaultExec, fs?: SysFs): Promise<G
   return [...nvidia, ...(await probeIntelGpus(fs))];
 }
 
+/**
+ * ffmpeg lists NVENC whenever it was built with it (jellyfin-ffmpeg always is), GPU or not. With an
+ * NVIDIA GPU listed by nvidia-smi it is taken as working. Without one, a one-frame NVENC encode
+ * decides: a GPU behind a container without nvidia-smi passes, a machine with no NVIDIA GPU or
+ * driver fails ("Cannot load libcuda.so.1"). On a failure the NVENC encoders and the cuda hwaccel
+ * are dropped, so jobs encode in software from the start instead of failing over every time, and
+ * the job page says what really ran. Never throws.
+ */
+export async function confirmNvenc(
+  caps: Capabilities,
+  exec: Exec = defaultExec,
+): Promise<{ capabilities: Capabilities; unusable: string | null }> {
+  if (!caps.available || !hasNvenc(caps)) return { capabilities: caps, unusable: null };
+  if ((caps.gpus ?? []).some((g) => g.vendor === 'nvidia')) {
+    return { capabilities: caps, unusable: null };
+  }
+  const nvenc = caps.encoders.filter((e) => e.endsWith('_nvenc'));
+  const encoder = nvenc.includes('h264_nvenc') ? 'h264_nvenc' : (nvenc[0] ?? 'h264_nvenc');
+  try {
+    await exec(
+      caps.path,
+      [
+        ...['-hide_banner', '-nostdin', '-v', 'error'],
+        ...['-f', 'lavfi', '-i', 'color=c=black:s=256x144:r=1'],
+        ...['-frames:v', '1', '-c:v', encoder, '-f', 'null', '-'],
+      ],
+      { timeoutMs: 15_000 },
+    );
+    return { capabilities: caps, unusable: null };
+  } catch (e) {
+    const stderr = (e as { stderr?: unknown }).stderr;
+    const why =
+      (typeof stderr === 'string' ? stderr.trim().split('\n').at(-1) : undefined) ||
+      (e instanceof Error ? e.message : String(e));
+    return {
+      capabilities: {
+        ...caps,
+        encoders: caps.encoders.filter((x) => !x.endsWith('_nvenc')),
+        hwaccels: caps.hwaccels.filter((h) => h !== 'cuda'),
+      },
+      unusable: why,
+    };
+  }
+}
+
 /** A stored setting value; anything unknown reads as `auto`. */
 export function parseEncodeDevice(value: string): EncodeDevice {
   if (value === 'cpu') return { kind: 'cpu' };
