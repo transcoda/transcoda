@@ -41,9 +41,9 @@ const file = (id: string, title: string): LibraryFile => ({
   poster: null,
   latest: { ...fx.kept, media: { ...fx.kept.media, title } },
 });
-const A = file('f1', 'Night of the Living Dead');
-const B = file('f2', 'Sherlock Jr.');
-const C = file('f3', 'The General');
+const A = file('f1', 'Nocturne of the Quiet Moon');
+const B = file('f2', 'Shepherd Jr.');
+const C = file('f3', 'The Gardener');
 
 const onRun = vi.fn();
 
@@ -95,19 +95,19 @@ describe('selection', () => {
   it('checking two rows shows the bar with 2 selected; Clear empties it', () => {
     renderAt('/libraries/l1', <Harness />);
     expect(screen.queryByRole('region', { name: 'Selection' })).toBeNull();
-    fireEvent.click(box('Select Night of the Living Dead.mkv'));
-    fireEvent.click(box('Select Sherlock Jr..mkv'));
+    fireEvent.click(box('Select Nocturne of the Quiet Moon.mkv'));
+    fireEvent.click(box('Select Shepherd Jr..mkv'));
     const bar = screen.getByRole('region', { name: 'Selection' });
     expect(within(bar).getByText('2 selected')).toBeTruthy();
     expect(bar.querySelector('[aria-live="polite"]')?.textContent).toBe('2 selected');
     fireEvent.click(within(bar).getByRole('button', { name: 'Clear' }));
     expect(screen.queryByRole('region', { name: 'Selection' })).toBeNull();
-    expect(box('Select Night of the Living Dead.mkv').checked).toBe(false);
+    expect(box('Select Nocturne of the Quiet Moon.mkv').checked).toBe(false);
   });
 
   it('the bar offers Run a workflow… and calls onRun', () => {
     renderAt('/libraries/l1', <Harness />);
-    fireEvent.click(box('Select Sherlock Jr..mkv'));
+    fireEvent.click(box('Select Shepherd Jr..mkv'));
     fireEvent.click(screen.getByRole('button', { name: 'Run a workflow…' }));
     expect(onRun).toHaveBeenCalledTimes(1);
   });
@@ -115,12 +115,12 @@ describe('selection', () => {
   it('Select this page selects only the rows on this page', () => {
     renderAt('/libraries/l1', <Harness pages={[[A, B], [C]]} />);
     fireEvent.click(box('Select this page'));
-    expect(box('Select Night of the Living Dead.mkv').checked).toBe(true);
-    expect(box('Select Sherlock Jr..mkv').checked).toBe(true);
+    expect(box('Select Nocturne of the Quiet Moon.mkv').checked).toBe(true);
+    expect(box('Select Shepherd Jr..mkv').checked).toBe(true);
     expect(screen.getByText('2 selected')).toBeTruthy();
     // Another page: its row is not selected, and the first page's rows still count.
     fireEvent.click(screen.getByRole('button', { name: 'next page' }));
-    expect(box('Select The General.mkv').checked).toBe(false);
+    expect(box('Select The Gardener.mkv').checked).toBe(false);
     expect(box('Select this page').checked).toBe(false);
     fireEvent.click(box('Select this page'));
     expect(screen.getByText('3 selected')).toBeTruthy();
@@ -133,17 +133,17 @@ describe('selection', () => {
     renderAt('/libraries/l1', <Harness />);
     const head = box('Select this page');
     expect(head.indeterminate).toBe(false);
-    fireEvent.click(box('Select Sherlock Jr..mkv'));
+    fireEvent.click(box('Select Shepherd Jr..mkv'));
     expect(head.indeterminate).toBe(true);
     expect(head.checked).toBe(false);
-    fireEvent.click(box('Select Night of the Living Dead.mkv'));
+    fireEvent.click(box('Select Nocturne of the Quiet Moon.mkv'));
     expect(head.indeterminate).toBe(false);
     expect(head.checked).toBe(true);
   });
 
   it('a row checkbox does not open the file', () => {
     const view = renderAt('/libraries/l1', <Harness />);
-    fireEvent.click(box('Select Sherlock Jr..mkv'));
+    fireEvent.click(box('Select Shepherd Jr..mkv'));
     expect(view.location()).toBe('/libraries/l1');
     // The row's link overlay covers the row; the checkbox is lifted above it.
     const css = readFileSync(join(__dirname, '../styles.css'), 'utf8');
@@ -152,11 +152,11 @@ describe('selection', () => {
 
   it('the selection resets when the reset key changes', () => {
     renderAt('/libraries/l1', <Harness />);
-    fireEvent.click(box('Select Sherlock Jr..mkv'));
+    fireEvent.click(box('Select Shepherd Jr..mkv'));
     expect(screen.getByText('1 selected')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'new search' }));
     expect(screen.queryByRole('region', { name: 'Selection' })).toBeNull();
-    expect(box('Select Sherlock Jr..mkv').checked).toBe(false);
+    expect(box('Select Shepherd Jr..mkv').checked).toBe(false);
   });
 
   it('phones show no checkboxes', () => {

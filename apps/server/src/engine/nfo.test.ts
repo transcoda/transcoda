@@ -6,27 +6,27 @@ const none = { showTitle: null, season: null, episode: null, year: null };
 describe('readNfo', () => {
   it('reads a movie', () => {
     expect(
-      readNfo('<?xml version="1.0"?><movie><title>Sherlock Jr.</title><year>1924</year></movie>'),
-    ).toEqual({ ...none, root: 'movie', title: 'Sherlock Jr.', year: 1924 });
+      readNfo('<?xml version="1.0"?><movie><title>Shepherd Jr.</title><year>1924</year></movie>'),
+    ).toEqual({ ...none, root: 'movie', title: 'Shepherd Jr.', year: 1924 });
   });
 
   it('reads a show, its year from premiered', () => {
     expect(
       readNfo(
-        '<tvshow><title>The Beverly Hillbillies</title><premiered>1962-09-26</premiered></tvshow>',
+        '<tvshow><title>The Bramblewood Family</title><premiered>1962-09-26</premiered></tvshow>',
       ),
-    ).toEqual({ ...none, root: 'tvshow', title: 'The Beverly Hillbillies', year: 1962 });
+    ).toEqual({ ...none, root: 'tvshow', title: 'The Bramblewood Family', year: 1962 });
   });
 
   it('reads an episode', () => {
     expect(
       readNfo(
-        '<episodedetails><title>Jed&apos;s Dilemma</title><showtitle>The Beverly Hillbillies</showtitle><season>1</season><episode>17</episode></episodedetails>',
+        '<episodedetails><title>Ada&apos;s Dilemma</title><showtitle>The Bramblewood Family</showtitle><season>1</season><episode>17</episode></episodedetails>',
       ),
     ).toEqual({
       root: 'episodedetails',
-      title: "Jed's Dilemma",
-      showTitle: 'The Beverly Hillbillies',
+      title: "Ada's Dilemma",
+      showTitle: 'The Bramblewood Family',
       season: 1,
       episode: 17,
       year: null,

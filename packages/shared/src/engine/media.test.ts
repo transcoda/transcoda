@@ -22,14 +22,14 @@ type Expected = Partial<
 describe('parseFileName', () => {
   const cases: [string, string, Expected][] = [
     [
-      '/lib/The Beverly Hillbillies (1962)/Season 01/The Beverly Hillbillies (1962) - S01E17.mkv',
+      '/lib/The Bramblewood Family (1962)/Season 01/The Bramblewood Family (1962) - S01E17.mkv',
       '/lib',
-      { kind: 'episode', title: 'The Beverly Hillbillies', year: 1962, season: 1, episode: 17 },
+      { kind: 'episode', title: 'The Bramblewood Family', year: 1962, season: 1, episode: 17 },
     ],
     [
-      '/lib/Sherlock.Jr.1924.720p.H264.mkv',
+      '/lib/Shepherd.Jr.1924.720p.H264.mkv',
       '/lib',
-      { kind: 'movie', title: 'Sherlock Jr', year: 1924 },
+      { kind: 'movie', title: 'Shepherd Jr', year: 1924 },
     ],
     [
       '/lib/Maple Lane/Season 01/S01E04.mp4',
@@ -50,9 +50,9 @@ describe('parseFileName', () => {
       { kind: 'movie', title: '2001 A Space Odyssey', year: 1968 },
     ],
     [
-      '/lib/The General (1926) [1080p].mkv',
+      '/lib/The Gardener (1926) [1080p].mkv',
       '/lib',
-      { kind: 'movie', title: 'The General', year: 1926 },
+      { kind: 'movie', title: 'The Gardener', year: 1926 },
     ],
     ['/lib/2012 (2009).mkv', '/lib', { kind: 'movie', title: '2012', year: 2009 }],
     ['/lib/1917.mkv', '/lib', { kind: 'unknown', title: '1917', year: null }],
@@ -66,9 +66,9 @@ describe('parseFileName', () => {
     ['/lib/The DV Files (2001).mkv', '/lib', { kind: 'movie', title: 'The DV Files', year: 2001 }],
     ['/lib/HDR Test (2020).mkv', '/lib', { kind: 'movie', title: 'HDR Test', year: 2020 }],
     [
-      '/lib/The.General.1926.PROPER.REMUX.mkv',
+      '/lib/The.Gardener.1926.PROPER.REMUX.mkv',
       '/lib',
-      { kind: 'movie', title: 'The General', year: 1926 },
+      { kind: 'movie', title: 'The Gardener', year: 1926 },
     ],
     [
       '/lib/The DV Files (2001)/Season 01/S01E03.mkv',

@@ -193,7 +193,7 @@ describe('source damaged results', () => {
 describe('job media', () => {
   const stored = {
     kind: 'movie' as const,
-    title: 'Sherlock Jr.',
+    title: 'Shepherd Jr.',
     year: 1924,
     season: null,
     episode: null,
@@ -228,7 +228,7 @@ describe('job media', () => {
   });
 
   it('reads a cell of the wrong shape as none, so the list row parses the file name', () => {
-    const fallback = { kind: 'movie', title: 'The General', year: 1926, source: 'filename' };
+    const fallback = { kind: 'movie', title: 'The Gardener', year: 1926, source: 'filename' };
     const bad = [
       { ...stored, title: null },
       { ...stored, title: '' },
@@ -240,11 +240,11 @@ describe('job media', () => {
       { ...stored, posterPath: 42 },
       { kind: 'movie' },
       [stored],
-      'Sherlock Jr.',
+      'Shepherd Jr.',
     ];
     bad.forEach((cell, i) => {
       const id = `w${i}`;
-      job(id, { path: '/media/movies/The General (1926).mkv' });
+      job(id, { path: '/media/movies/The Gardener (1926).mkv' });
       db.prepare('UPDATE jobs SET media = ? WHERE id = ?').run(JSON.stringify(cell), id);
       expect(findJob(db, id)?.media, JSON.stringify(cell)).toBeNull();
       expect(findJobListRow(db, id)?.media).toMatchObject(fallback);

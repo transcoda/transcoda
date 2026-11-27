@@ -26,10 +26,10 @@ describe('ResultCell', () => {
 
 describe('TitleSub', () => {
   it('renders the episode code in bold, then the episode title', () => {
-    const media = { ...fx.replaced.media, season: 1, episode: 2, episodeTitle: 'Jed Buys Stock' };
+    const media = { ...fx.replaced.media, season: 1, episode: 2, episodeTitle: 'Ada Buys Stock' };
     const { container } = render(<TitleSub media={media} />);
     expect(container.querySelector('b.job-title-code')?.textContent).toBe('S01E02');
-    expect(container.querySelector('.job-title-sub')?.textContent).toBe('S01E02 · Jed Buys Stock');
+    expect(container.querySelector('.job-title-sub')?.textContent).toBe('S01E02 · Ada Buys Stock');
   });
   it('renders nothing without a code or text', () => {
     const media = { ...fx.replaced.media, kind: 'movie' as const, year: null };
