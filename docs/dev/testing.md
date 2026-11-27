@@ -22,6 +22,11 @@ A change gets its test in the lowest tier that can catch the bug.
 - A property states what must hold for every input (never throws, stays in range, round-trips), not one example. When it finds a bug, the fix also gets that example test with the shrunk counterexample.
 - These are what OpenSSF Scorecard's Fuzzing check counts: it looks for a TypeScript file that imports `fast-check`.
 
+## Test names and test support
+
+- A test sits beside its subject and is named after it: `<subject>.test.ts`, or `<subject>.<topic>.test.ts` for a further file on the same subject (`JobPage.plan.test.tsx`, `paths.property.test.ts`, `pipeline.real.test.ts`). No `__tests__` folders. A test with no subject file is in the `orphanTests` list in `scripts/structure-allowlist.json`, which only shrinks ([structure.md](structure.md#test-names)).
+- Builders, fixtures and helpers tests share go in a `testing.ts` beside those tests, or a `testing/` folder; data files in `fixtures/`. Production code never imports them, and a file only tests import is test support and must be named so. `pnpm check-structure` checks both; the helpers below that still have older names are listed in `testSupportNames` until they move.
+
 ## Helpers to use
 
 Use these instead of writing your own:
@@ -65,4 +70,4 @@ Use these instead of writing your own:
 - `.github/workflows/nightly.yml` runs once a night when `main` moved since the last finished nightly (a manual run always runs): the unit tests with fixtures in the e2e container (`pnpm test:docker`, with `FC_NUM_RUNS=10000` for the property tests), and the browser and screenshot tests.
 - A failing test gets a GitHub issue labelled `nightly`, titled `Nightly: <file> > <test>` (the org's `nightly-issues` action, from `transcoda/.github`). A test that fails again gets a comment, a test that passes again gets its issue closed, more than 10 new failures get one "many tests fail" issue, and a run that fails outside its tests gets one "the run failed outside its tests" issue.
 
-History: [2026-11](../decisions/2026-11.md) ("Test tiers", "Nightly tests and their issues", "Property tests with fast-check"), [M2 editor](../decisions/2026-10-m2-editor.md) ("M2 Task 1").
+History: [2026-11](../decisions/2026-11.md) ("Source layout and its check", "Test tiers", "Nightly tests and their issues", "Property tests with fast-check"), [M2 editor](../decisions/2026-10-m2-editor.md) ("M2 Task 1").

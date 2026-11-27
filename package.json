@@ -17,6 +17,7 @@
     "release": "node scripts/release-notes.ts",
     "knip": "knip",
     "check-deps": "node scripts/check-deps.ts",
+    "check-structure": "node scripts/check-structure.ts",
     "fixtures": "node scripts/fixtures/generate.ts",
     "e2e": "playwright test",
     "e2e:docker": "sh scripts/e2e-docker.sh",
@@ -26,7 +27,7 @@
     "notices": "node scripts/third-party-notices.ts",
     "check-licences": "node scripts/third-party-notices.ts --check",
     "check-file-size": "transcoda-file-size --max-lines 1200 --allowlist .github/file-size-allowlist.json 'apps/**/*.{ts,tsx,mts,mjs,css}' 'packages/**/*.{ts,tsx,mts,mjs}' 'scripts/**/*.{ts,mts,mjs}' 'e2e/**/*.{ts,mjs}' '*.{ts,mts,mjs}' '!**/fixtures/**'",
-    "check": "pnpm typecheck && pnpm lint && pnpm knip && pnpm check-deps && pnpm check-licences && pnpm check-file-size && pnpm test"
+    "check": "pnpm typecheck && pnpm lint && pnpm knip && pnpm check-deps && pnpm check-structure && pnpm check-licences && pnpm check-file-size && pnpm test"
   },
   "devDependencies": {
     "@biomejs/biome": "2.6.8",
