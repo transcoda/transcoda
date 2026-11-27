@@ -1,5 +1,5 @@
 import { mkdir, readdir, rm, stat, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import type { Capabilities } from '@transcoda/contract';
 import type { JobState } from '@transcoda/shared';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -191,10 +191,11 @@ describe('EngineService', () => {
     });
   });
 
-  it('start() with a replacing job whose journal says cleaning records done (the .orig removed)', async () => {
+  it('start() with a replacing job whose journal says cleaning records done (the original recycled)', async () => {
     const { id, file } = await queued();
-    // On disk: the replacement installed at the path, the original kept as .orig.
-    const orig = `${file}.transcoda-${id}.orig`;
+    // On disk: the replacement installed at the path, the original in the recycle folder.
+    const orig = join(root, '.transcoda-recycle', 'a.mkv');
+    await mkdir(dirname(orig), { recursive: true });
     await writeFile(orig, Buffer.alloc(1000, 7));
     const fp = await fingerprintOf(orig);
     await writeFile(file, Buffer.alloc(600, 1));
@@ -211,7 +212,6 @@ describe('EngineService', () => {
           outputPath: join(transcodeDir, id, 'out.mkv'),
           copyPath: orig,
           libraryRoot: root,
-          recycling: false,
           fingerprint: fp,
           outputBytes: 600,
         },
@@ -251,10 +251,44 @@ describe('EngineService', () => {
       outcome: 'done',
       beforeBytes: 1000,
       afterBytes: 600,
-      replacedTo: 'deleted',
+      replacedTo: 'recycle',
     });
-    expect(await readdir(root)).toEqual(['a.mkv']);
+    expect((await readdir(root)).sort()).toEqual(['.transcoda-recycle', 'a.mkv']);
+    expect((await stat(orig)).size).toBe(1000);
     expect((await stat(file)).size).toBe(600);
+  });
+
+  it("start() leaves an older version's .orig replace at cleaning for the user: failed, nothing touched, journal kept", async () => {
+    const { id, file } = await queued();
+    // A journal written before the .orig path was removed: replacement installed, original as .orig.
+    const orig = `${file}.transcoda-${id}.orig`;
+    await writeFile(orig, Buffer.alloc(1000, 7));
+    const fp = await fingerprintOf(orig);
+    await writeFile(file, Buffer.alloc(600, 1));
+    setSetting(t.db, 'queue.paused', true, t.clock.now());
+    const journal = {
+      step: 'cleaning' as const,
+      originalPath: file,
+      tmpPath: join(root, `.transcoda-${id}.tmp`),
+      outputPath: join(transcodeDir, id, 'out.mkv'),
+      copyPath: orig,
+      libraryRoot: root,
+      recycling: false,
+      fingerprint: fp,
+      outputBytes: 600,
+    };
+    updateJob(t.db, id, { state: 'replacing', replaceJournal: journal }, t.clock.now());
+    const sweep = await t.deps.engine.start();
+    expect(sweep.conflicts).toEqual([id]);
+    expect(row(id)).toMatchObject({
+      state: 'failed',
+      failureCode: 'replace',
+      replaceJournal: journal,
+    });
+    expect(row(id).reason).toContain(`kept the original as ${orig}`);
+    expect(findJobResult(t.db, id)).toBeNull();
+    expect((await readdir(root)).sort()).toEqual(['a.mkv', `a.mkv.transcoda-${id}.orig`]);
+    expect((await stat(orig)).size).toBe(1000);
   });
 
   it('start deletes expired test outputs and keeps current ones across a restart', async () => {

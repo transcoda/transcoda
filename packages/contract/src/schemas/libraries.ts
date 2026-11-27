@@ -33,7 +33,7 @@ export const LibrarySchema = z.object({
   path: z.string(),
   /**
    * Absolute; null means the default `<root>/.transcoda-recycle`. Every replace recycles the
-   * original (recycling cannot be switched off in M1).
+   * original (recycling cannot be switched off).
    */
   recycleFolder: z.string().nullable(),
   processHardlinked: z.boolean(),

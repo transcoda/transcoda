@@ -34,9 +34,9 @@ export const JobProgressSchema = z.object({
 });
 
 /**
- * Where the original went after a replace. Jobs always recycle in M1 (`recycle`). `deleted` only
- * appears for a replace that took the `.orig` path (no recycle folder: the `.orig` copy is removed
- * at the end) and was finished by the startup sweep from its journal.
+ * Where the original went after a replace. Every replace recycles (`recycle`). `deleted` is history
+ * only: a job finished by an older version's replace that kept the original as a `.orig` beside
+ * the file and removed it at the end. No replace writes it now.
  */
 export const ReplacedToSchema = z.enum(['recycle', 'deleted']);
 

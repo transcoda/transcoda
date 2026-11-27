@@ -14,6 +14,14 @@ A change gets its test in the lowest tier that can catch the bug.
 | Render snapshots | `toMatchSnapshot` on generated output, such as the ffmpeg argv in `apps/server/src/engine/render.test.ts` | Text output that must not change by accident | UI markup: a snapshot of a component's HTML breaks on every harmless change and nobody reviews it | Part of `pnpm test` |
 | Browser | `e2e/*.e2e.ts` (Playwright, Chromium) against the built server and the fixture media (`e2e/server.mjs`) | A few key flows end to end, and screenshots of the main pages | Every state of every page; those are unit tests | `e2e` CI job, under 10 min |
 
+## Property tests
+
+- Parsers and pure functions that take outside input (ffmpeg's output, HTTP headers, file paths, numbers to format) also get a property test with [fast-check](https://fast-check.dev): `<module>.property.test.ts` beside the code, in the unit tier, importing `fc from 'fast-check'`.
+- Every `fc.assert` takes its options from `fcRuns()` (`@transcoda/shared/testing`) and sets no seed, so each run tries new cases. `fcRuns()` reads the number of cases from `FC_NUM_RUNS`: 100 by default, so `pnpm test` stays fast, and 10000 in the nightly's unit run.
+- **Reproducing a failure.** fast-check prints the counterexample and a line like `{ seed: 1234567890, path: "12:3:0", endOnFailure: true }`. Pass those to the failing assert, for example `fc.assert(property, { ...fcRuns(), seed: 1234567890, path: '12:3:0' })`, and it replays that case straight away. Don't commit the seed: turn the counterexample into a plain example test instead.
+- A property states what must hold for every input (never throws, stays in range, round-trips), not one example. When it finds a bug, the fix also gets that example test with the shrunk counterexample.
+- These are what OpenSSF Scorecard's Fuzzing check counts: it looks for a TypeScript file that imports `fast-check`.
+
 ## Helpers to use
 
 Use these instead of writing your own:
@@ -54,7 +62,7 @@ Use these instead of writing your own:
 
 ## Nightly
 
-- `.github/workflows/nightly.yml` runs once a night when `main` moved since the last finished nightly (a manual run always runs): the unit tests with fixtures in the e2e container (`pnpm test:docker`), and the browser and screenshot tests.
+- `.github/workflows/nightly.yml` runs once a night when `main` moved since the last finished nightly (a manual run always runs): the unit tests with fixtures in the e2e container (`pnpm test:docker`, with `FC_NUM_RUNS=10000` for the property tests), and the browser and screenshot tests.
 - A failing test gets a GitHub issue labelled `nightly`, titled `Nightly: <file> > <test>` (the org's `nightly-issues` action, from `transcoda/.github`). A test that fails again gets a comment, a test that passes again gets its issue closed, more than 10 new failures get one "many tests fail" issue, and a run that fails outside its tests gets one "the run failed outside its tests" issue.
 
-History: [2026-11](../decisions/2026-11.md) ("Test tiers", "Nightly tests and their issues"), [M2 editor](../decisions/2026-10-m2-editor.md) ("M2 Task 1").
+History: [2026-11](../decisions/2026-11.md) ("Test tiers", "Nightly tests and their issues", "Property tests with fast-check"), [M2 editor](../decisions/2026-10-m2-editor.md) ("M2 Task 1").
