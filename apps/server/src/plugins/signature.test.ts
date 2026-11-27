@@ -1,11 +1,7 @@
 import { generateKeyPairSync, sign } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
-import {
-  parseSigningKeys,
-  publicKeyFromHex,
-  type SigningKey,
-  verifySignature,
-} from './signature.ts';
+import type { SigningKey } from '../platform/signing-keys.ts';
+import { publicKeyFromHex, verifySignature } from './signature.ts';
 
 function makeKey(id: string) {
   const { publicKey, privateKey } = generateKeyPairSync('ed25519');
@@ -141,19 +137,5 @@ describe('publicKeyFromHex', () => {
     expect(() => publicKeyFromHex('abc')).toThrow();
     expect(() => publicKeyFromHex('g'.repeat(64))).toThrow();
     expect(() => publicKeyFromHex('A'.repeat(64))).toThrow();
-  });
-});
-
-describe('parseSigningKeys', () => {
-  it('parses comma-separated id:hex entries', () => {
-    expect(parseSigningKeys(`a:${'f'.repeat(64)},b:${'0'.repeat(64)}`)).toEqual([
-      { id: 'a', publicKey: 'f'.repeat(64) },
-      { id: 'b', publicKey: '0'.repeat(64) },
-    ]);
-  });
-
-  it('names the bad entry', () => {
-    expect(() => parseSigningKeys('a:xyz')).toThrow(new Error('a:xyz: expected <id>:<64 hex>'));
-    expect(() => parseSigningKeys(`bad id:${'f'.repeat(64)}`)).toThrow('expected <id>:<64 hex>');
   });
 });

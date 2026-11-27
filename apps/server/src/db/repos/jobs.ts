@@ -18,8 +18,8 @@ import {
   type TraceEntry,
   TraceEntrySchema,
 } from '@transcoda/shared';
-import { type Fingerprint, fingerprintKey } from '../../engine/fingerprint.ts';
 import type { Database } from '../open.ts';
+import { type Fingerprint, fingerprintKey } from './files.ts';
 
 export interface JobProgress {
   percent: number | null;

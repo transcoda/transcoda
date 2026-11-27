@@ -59,6 +59,7 @@ export const LAYERS: Record<string, Layer[]> = {
         'engine/sweep.ts',
         'engine/space-waits.ts',
         'engine/test-outputs.ts',
+        'engine/preview.ts',
       ],
     },
     {
@@ -72,7 +73,6 @@ export const LAYERS: Record<string, Layer[]> = {
         'engine/poster-store.ts',
         'engine/content-hash.ts',
         'engine/decoder-names.ts',
-        'engine/preview.ts',
       ],
     },
     {

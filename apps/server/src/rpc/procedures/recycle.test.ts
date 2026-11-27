@@ -4,11 +4,12 @@ import { emptyGraph } from '@transcoda/shared';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createTestApp, type TestApp } from '../../app/test-app.ts';
 import { asSession, bearer, createToken, login, type Session, send } from '../../app/test-http.ts';
+import { fingerprintKey } from '../../db/repos/files.ts';
 import { insertJob, insertJobResult, insertRecycled } from '../../db/repos/jobs.ts';
 import { insertLibrary } from '../../db/repos/libraries.ts';
 import { insertRun } from '../../db/repos/runs.ts';
 import { insertWorkflow } from '../../db/repos/workflows.ts';
-import { fingerprintKey, fingerprintOf } from '../../engine/fingerprint.ts';
+import { fingerprintOf } from '../../engine/fingerprint.ts';
 import { tempDir } from '../../engine/fixtures.ts';
 
 const recycledAt = '2026-01-01T00:00:00.000Z';

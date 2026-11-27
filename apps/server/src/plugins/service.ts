@@ -53,6 +53,7 @@ import type { NodeRegistry, RegisteredNode } from '../nodes/registry.ts';
 import { type RemoteHooks, remoteNodeDefinition } from '../nodes/remote.ts';
 import type { Config } from '../platform/config.ts';
 import type { Logger } from '../platform/logger.ts';
+import { parseSigningKeys, type SigningKey } from '../platform/signing-keys.ts';
 import type { WorkflowService } from '../workflows/service.ts';
 import { stepsBetween } from '../workflows/upgrade.ts';
 import { BlocklistClient, type BlockMatch } from './blocklist.ts';
@@ -66,7 +67,6 @@ import { blocklistInertWarning } from './official-keys.ts';
 import { describeExit, type ExitReason, PluginCallError } from './process.ts';
 import type { RestartTarget } from './restart-gate.ts';
 import { openStoredSettings, PluginSettings, policyOf } from './settings.ts';
-import { parseSigningKeys, type SigningKey } from './signature.ts';
 import { type PluginRuntime, PluginSupervisor, type SupervisorDeps } from './supervisor.ts';
 
 export type PluginCatalogOutput = z.infer<typeof PluginCatalogOutputSchema>;

@@ -20,9 +20,9 @@ import {
 } from '@transcoda/shared';
 import { describe, expect, it } from 'vitest';
 import { kept, modelFromProbe, streamsOf } from '../../engine/build-model.ts';
-import type { CheckSourceResult, CoreTools } from '../../engine/check-source.ts';
 import { parseProbe } from '../../engine/probe.ts';
 import { capsOf, fileOf, probeOf, withStream } from '../../engine/test-helpers.ts';
+import type { CheckSourceResult, CoreTools } from '../core-tools.ts';
 import {
   coverAttachments,
   encodeAudio,

@@ -3,13 +3,14 @@ import { join } from 'node:path';
 import type { ProbeResult } from '@transcoda/sdk';
 import type { JobState } from '@transcoda/shared';
 import { describe, expect, it, vi } from 'vitest';
+import { fingerprintKey } from '../db/repos/files.ts';
 import { findJobResult, hasReplaceJournal, listRecycled } from '../db/repos/jobs.ts';
 import { nodeFsOps } from '../platform/fs-ops.ts';
 import { node } from '../workflows/test-helpers.ts';
 import { modelFromProbe } from './build-model.ts';
 import { contentHash } from './content-hash.ts';
 import { classifyErrorLine, sourceDecoderNames } from './decoder-names.ts';
-import { fingerprintKey, fingerprintOf } from './fingerprint.ts';
+import { fingerprintOf } from './fingerprint.ts';
 import {
   base,
   configDir,

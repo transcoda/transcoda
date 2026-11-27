@@ -5,14 +5,14 @@ import type { FailureCode, JobState, NodeProblem } from '@transcoda/shared';
 import { devicePlan, readEncodeDevice } from '../capabilities/devices.ts';
 import { type Exec, makeExec } from '../capabilities/ffmpeg.ts';
 import type { Database } from '../db/open.ts';
+import { type Fingerprint, fingerprintKey } from '../db/repos/files.ts';
 import { insertJobResult, type JobPatch, type JobRow, updateJob } from '../db/repos/jobs.ts';
 import { findWorkflow } from '../db/repos/workflows.ts';
+import type { CheckSourceResult } from '../nodes/core-tools.ts';
 import { errorCode } from '../platform/fs-ops.ts';
 import { type HookName, hookJobOf } from '../plugins/hooks.ts';
-import type { CheckSourceResult } from './check-source.ts';
 import { contentHash } from './content-hash.ts';
 import type { EngineEvents } from './events.ts';
-import { type Fingerprint, fingerprintKey } from './fingerprint.ts';
 import { SETTLE_MINUTES } from './paths.ts';
 import {
   type End,

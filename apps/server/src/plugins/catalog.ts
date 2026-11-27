@@ -5,11 +5,10 @@ import { PLUGIN_NAME_PATTERN, PluginNetworkSchema } from '@transcoda/shared';
 import semver from 'semver';
 import { z } from 'zod';
 import type { Logger } from '../platform/logger.ts';
+import type { SigningKey } from '../platform/signing-keys.ts';
 import { httpFetch } from './http-get.ts';
-import { type SigningKey, verifySignature } from './signature.ts';
+import { verifySignature } from './signature.ts';
 import { fetchSigned, SignatureError } from './signed-fetch.ts';
-
-export { OFFICIAL_CATALOG_URL } from './catalog-url.ts';
 
 /** Largest catalog index body accepted. */
 export const MAX_CATALOG_BYTES = 4 * 1024 * 1024;

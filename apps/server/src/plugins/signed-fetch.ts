@@ -1,6 +1,7 @@
 import { readFile, stat } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
-import { type SigningKey, verifySignature } from './signature.ts';
+import type { SigningKey } from '../platform/signing-keys.ts';
+import { verifySignature } from './signature.ts';
 import { fetchGuarded, readLimited } from './token-hosts.ts';
 
 /** Largest detached signature file accepted. */

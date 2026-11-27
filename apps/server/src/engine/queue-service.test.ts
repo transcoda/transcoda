@@ -4,6 +4,7 @@ import { type Capabilities, QUEUE_FILES_MAX } from '@transcoda/contract';
 import { parseFileName } from '@transcoda/shared';
 import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from 'vitest';
 import type { Database } from '../db/open.ts';
+import { fingerprintKey } from '../db/repos/files.ts';
 import {
   findJob,
   insertJobResult,
@@ -18,7 +19,7 @@ import type { Logger } from '../platform/logger.ts';
 import { WorkflowService } from '../workflows/service.ts';
 import { bumpV1, bumpV3, chain, node, testRegistry } from '../workflows/test-helpers.ts';
 import { type EngineEvent, EngineEvents } from './events.ts';
-import { fingerprintKey, fingerprintOf } from './fingerprint.ts';
+import { fingerprintOf } from './fingerprint.ts';
 import { tempDir } from './fixtures.ts';
 import type { MediaResolver } from './media-info.ts';
 import {
@@ -37,7 +38,6 @@ const caps: Capabilities = {
   filters: ['pan'],
 };
 const HOUR_AGO = (): Date => new Date(Date.now() - 60 * 60 * 1000);
-
 let base: string;
 let root: string;
 let outside: string;

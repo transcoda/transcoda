@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import type { Stats } from 'node:fs';
 import { basename, dirname, relative, sep } from 'node:path';
 import { type Database, durably } from '../db/open.ts';
+import { fingerprintKey } from '../db/repos/files.ts';
 import {
   claimRestoreJournal,
   deleteRecycled,
@@ -30,7 +31,6 @@ import {
   why,
 } from '../platform/fs-ops.ts';
 import type { Logger } from '../platform/logger.ts';
-import { fingerprintKey } from './fingerprint.ts';
 import { fingerprintFromStats, recyclePathFor } from './replace.ts';
 
 export interface RestoreDeps {

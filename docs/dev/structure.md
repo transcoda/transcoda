@@ -54,11 +54,13 @@ Packages keep their own direction, `shared <- sdk <- contract <- server/web`, ch
 
 ```
 platform/        leaves with no domain knowledge: logger, config, process guards, build version,
-                 fs-ops, child-caps, memory-guard. Imports no other area.
+                 fs-ops, child-caps, memory-guard; the official plugin catalog's URLs and keys and
+                 the key-list format (deployment defaults config reads). Imports no other area.
 db/              open, migrate, backups; testing.ts (createTestDb)
   migrations/    one file per migration, registered in index.ts
   repos/         one file (or module folder) per table group; all SQL lives here
     jobs/        jobs.ts (entry), results.ts, trace.ts, journals.ts, prior-runs.ts
+    files.ts     the files table and the fingerprint key
 capabilities/    ffmpeg and GPU probes
 auth/            sessions, tokens, CSRF, cookies, passwords, rate limits, host-check, request-info
 nodes/           registry, remote nodes, availability, the CoreTools interface; core/ (the core nodes)
@@ -69,8 +71,9 @@ engine/
   model/         what to do to a file: model.ts (entry), changes.ts, render.ts, targets.ts,
                  retarget.ts, fallback.ts. Imports nothing but platform.
   events.ts      the event bus types
-  files/         touching the library: fingerprint, paths, replace, recycle, restore, sweep
-  media/         reading a file: probe, media info, NFO, posters, content hash, preview
+  files/         touching the library: fingerprint, paths, replace, recycle, restore, sweep,
+                 test outputs and their browser preview
+  media/         reading a file: probe, media info, NFO, posters, content hash
   encode/        the ffmpeg child: process, progress, stall guard, log condensing
   verify/        verify.ts (entry), durations, stream checks, decode checks
   walk/          walk.ts (entry), check-source, already-processed, load-workflow, plugin context
@@ -198,10 +201,10 @@ A move pull request updates the paths in the allowlists and the "today" entries 
 
 ## Migration status
 
-Steps 1 (the check and this doc) and 2 are done. Each later pull request ticks its line.
+Steps 1 (the check and this doc), 2 and 3 are done. Each later pull request ticks its line.
 
 - [x] 2. Server: `platform/`, `app/` and `system/`; `host-check.ts` and `request-info.ts` into `auth/`.
-- [ ] 3. Server: fix the upward imports (`fingerprintKey` into the repository layer, the official plugin constants out of `plugins/`, `CoreTools` into `nodes/`).
+- [x] 3. Server: fix the upward imports (`fingerprintKey` into the repository layer, the official plugin constants out of `plugins/`, `CoreTools` into `nodes/`).
 - [ ] 4. Server: `engine/` sub-areas, part 1: `model/`, `files/`, `media/`, `encode/`.
 - [ ] 5. Server: `engine/` sub-areas, part 2: `verify/`, `walk/`, `queue/`, `pipeline/`, `testing.ts`.
 - [ ] 6. Server: `plugins/` sub-folders (`trust/`, `runtime/`, `network/`) and its test support into `testing/`.

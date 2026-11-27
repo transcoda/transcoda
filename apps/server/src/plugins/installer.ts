@@ -10,8 +10,9 @@ import {
   RESERVED_PLUGIN_NAMES,
 } from '@transcoda/shared';
 import semver from 'semver';
+import type { SigningKey } from '../platform/signing-keys.ts';
 import { httpFetch } from './http-get.ts';
-import { type SigningKey, verifySignature } from './signature.ts';
+import { verifySignature } from './signature.ts';
 import { MAX_SIGNATURE_BYTES } from './signed-fetch.ts';
 import { fetchGuarded, readLimited } from './token-hosts.ts';
 

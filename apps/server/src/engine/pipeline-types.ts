@@ -14,6 +14,7 @@ import type { FailureCode, JobPlan, JobState, JsonValue, NodeProblem } from '@tr
 import type { EncodeSlot } from '../capabilities/devices.ts';
 import type { Exec } from '../capabilities/ffmpeg.ts';
 import type { Database } from '../db/open.ts';
+import type { Fingerprint } from '../db/repos/files.ts';
 import type { WalkStep } from '../db/repos/jobs.ts';
 import type { LibraryRow } from '../db/repos/libraries.ts';
 import type { NodeRegistry } from '../nodes/registry.ts';
@@ -24,7 +25,6 @@ import type { PluginHooksRunner } from '../plugins/hooks.ts';
 import type { PluginRestartGate } from '../plugins/restart-gate.ts';
 import type { WorkflowService } from '../workflows/service.ts';
 import type { CurrentNode, EngineEvents } from './events.ts';
-import type { Fingerprint } from './fingerprint.ts';
 import { jobProbeOf } from './probe.ts';
 import type { ProcessSpawner } from './process.ts';
 import type { RenderInput } from './render.ts';

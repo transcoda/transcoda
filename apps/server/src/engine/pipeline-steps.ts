@@ -6,10 +6,10 @@ import {
   type FinishRunResult,
   type PluginFinishAction,
 } from '@transcoda/sdk';
+import { fingerprintKey } from '../db/repos/files.ts';
 import { findJob, type JobRow } from '../db/repos/jobs.ts';
 import { hookJobOf } from '../plugins/hooks.ts';
 import { contentHash } from './content-hash.ts';
-import { fingerprintKey } from './fingerprint.ts';
 import type { PipelineCore } from './pipeline-core.ts';
 import { traceFinish } from './pipeline-trace.ts';
 import {
