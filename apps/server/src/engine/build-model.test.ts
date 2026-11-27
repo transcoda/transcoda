@@ -228,6 +228,13 @@ describe('resolveEncoder', () => {
     expect(resolveEncoder('hevc', 'libx265', capsOf(['libx265']))).toBe('libx265');
     expect(resolveEncoder('hevc', 'hevc_vaapi', capsOf(['libx265']))).toBeNull();
   });
+
+  it('resolveEncoder: auto never picks VA-API (no device is set up for it); naming it still works', () => {
+    const vaapi = capsOf(['hevc_vaapi', 'h264_vaapi', 'libx265', 'libx264'], ['vaapi']);
+    expect(resolveEncoder('hevc', 'auto', vaapi)).toBe('libx265');
+    expect(resolveEncoder('h264', 'auto', vaapi)).toBe('libx264');
+    expect(resolveEncoder('hevc', 'hevc_vaapi', vaapi)).toBe('hevc_vaapi');
+  });
 });
 
 describe('container fit (streams a container cannot hold)', () => {
