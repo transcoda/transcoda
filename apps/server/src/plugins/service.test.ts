@@ -24,7 +24,7 @@ import type { PluginManifest } from '@transcoda/shared';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createTestApp, type TestApp } from '../app/test-app.ts';
 import { findPlugin, findPluginSettings, listCatalogs } from '../db/repos/plugins.ts';
-import { tempDir } from '../engine/fixtures.ts';
+import { tempDir } from '../engine/testing/fixtures.ts';
 import { createCoreRegistry } from '../nodes/registry.ts';
 import type { PluginIsolation } from '../platform/config.ts';
 import { OFFICIAL_BLOCKLIST_URL } from '../platform/official-plugins.ts';

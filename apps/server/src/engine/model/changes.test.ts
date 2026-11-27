@@ -1,7 +1,7 @@
 import type { BuildModel } from '@transcoda/sdk';
 import { changesFile } from '@transcoda/shared';
 import { describe, expect, it } from 'vitest';
-import { probeOf } from '../test-helpers.ts';
+import { probeOf } from '../testing/builders.ts';
 import { modelChanges } from './changes.ts';
 import { modelFromProbe } from './model.ts';
 

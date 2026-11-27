@@ -6,7 +6,7 @@ import { Readable } from 'node:stream';
 import { promisify } from 'node:util';
 import type { JobPlan } from '@transcoda/shared';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { fixturePath, fixturesAvailable, tempDir, toolPaths } from '../fixtures.ts';
+import { fixturePath, fixturesAvailable, tempDir, toolPaths } from '../testing/fixtures.ts';
 import { buildPreview, previewArgs } from './preview.ts';
 
 const run = promisify(execFile);

@@ -21,7 +21,7 @@ import { insertRun } from '../db/repos/runs.ts';
 import { insertWorkflow } from '../db/repos/workflows.ts';
 import { buildPreview } from '../engine/files/preview.ts';
 import { scratchMinFreeBytes, TEST_OUTPUT_DIR } from '../engine/files/test-outputs.ts';
-import { fixturePath, fixturesAvailable, tempDir, toolPaths } from '../engine/fixtures.ts';
+import { fixturePath, fixturesAvailable, tempDir, toolPaths } from '../engine/testing/fixtures.ts';
 import { type FsOps, nodeFsOps } from '../platform/fs-ops.ts';
 
 vi.mock('../engine/files/preview.ts', async (importOriginal) => {

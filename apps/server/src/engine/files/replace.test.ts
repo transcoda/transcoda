@@ -19,7 +19,7 @@ import { insertWorkflow } from '../../db/repos/workflows.ts';
 import { createTestDb } from '../../db/test-db.ts';
 import { type FsOps, failingAt, nodeFsOps, renameNoClobber } from '../../platform/fs-ops.ts';
 import type { Logger } from '../../platform/logger.ts';
-import { tempDir } from '../fixtures.ts';
+import { tempDir } from '../testing/fixtures.ts';
 import { fingerprintOf } from './fingerprint.ts';
 import { defaultRecycleFolder } from './recycle.ts';
 import {

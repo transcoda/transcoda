@@ -69,14 +69,14 @@ describe('layers (Rule A)', () => {
     ]);
   });
 
-  it('uses the longest prefix: engine/verify.ts sits below nodes/, engine.ts above it', () => {
+  it('uses the longest prefix: engine/verify/ sits below nodes/, engine.ts above it', () => {
     expect(
       check({
-        [`${S}/engine/verify.ts`]: imp('../nodes/registry.ts'),
+        [`${S}/engine/verify/verify.ts`]: imp('../../nodes/registry.ts'),
         [`${S}/nodes/registry.ts`]: leaf,
         [`${S}/engine/engine.ts`]: imp('../nodes/registry.ts'),
       }).join('\n'),
-    ).toMatch(/engine\/verify\.ts \(layer engine\/verify\) imports .* \(layer nodes\)/);
+    ).toMatch(/engine\/verify\/verify\.ts \(layer engine\/verify\) imports .* \(layer nodes\)/);
   });
 
   it('counts type-only imports and ignores tests', () => {

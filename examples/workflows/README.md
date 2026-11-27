@@ -8,7 +8,7 @@ and `libx265` or `libx264` otherwise. Create a workflow from one in the Workflow
 **Examples** menu (or save the file as a workflow's graph), try it with a dry run, then activate
 the version.
 
-`apps/server/src/engine/examples.test.ts` runs the three core examples over the test fixtures
+`apps/server/src/engine/engine.examples.test.ts` runs the three core examples over the test fixtures
 (`pnpm fixtures`) with real ffmpeg: a first run, the same folder again (every job must be
 `nothing_to_do` or `already_processed`), and a dry run over fresh copies (nothing on disk changes).
 

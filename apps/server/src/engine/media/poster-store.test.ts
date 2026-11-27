@@ -11,7 +11,7 @@ import { insertLibrary, softDeleteLibrary } from '../../db/repos/libraries.ts';
 import { insertRun } from '../../db/repos/runs.ts';
 import { insertWorkflow } from '../../db/repos/workflows.ts';
 import type { Logger } from '../../platform/logger.ts';
-import { tempDir } from '../fixtures.ts';
+import { tempDir } from '../testing/fixtures.ts';
 import {
   POSTER_BUILD_TIMEOUT_MS,
   POSTER_FAILURE_MEMORY_MS,

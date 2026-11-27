@@ -5,9 +5,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { RecycledInsert } from '../../db/repos/jobs.ts';
 import { type FsOps, nodeFsOps } from '../../platform/fs-ops.ts';
 import type { Logger } from '../../platform/logger.ts';
-import { tempDir } from '../fixtures.ts';
 import { modelFromProbe } from '../model/model.ts';
-import { probeOf, withSidecar } from '../test-helpers.ts';
+import { probeOf, withSidecar } from '../testing/builders.ts';
+import { tempDir } from '../testing/fixtures.ts';
 import { recycleSidecars } from './sidecar-recycle.ts';
 
 let base: string;

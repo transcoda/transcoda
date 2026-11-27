@@ -30,7 +30,7 @@ import {
 } from '../../db/repos/library-files.ts';
 import { findFeeder, type LibraryNamer, listInactiveNamers } from '../../db/repos/workflows.ts';
 import { jobProbeOf } from '../../engine/media/probe.ts';
-import { closedLibraries, runHoursHold } from '../../engine/run-hours.ts';
+import { closedLibraries, runHoursHold } from '../../engine/queue/run-hours.ts';
 import type { AppDeps } from '../context.ts';
 import { os, requireScope } from '../middleware.ts';
 import { toJob } from './jobs.ts';

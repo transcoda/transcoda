@@ -53,7 +53,6 @@ import type { PluginHooksRunner } from '../plugins/hooks.ts';
 import type { PluginRestartGate } from '../plugins/restart-gate.ts';
 import { graphUpgrade, type WorkflowService } from '../workflows/service.ts';
 import { migratePinned } from '../workflows/validate.ts';
-import { LibraryCatchUp } from './catch-up.ts';
 import { readCondensedTail } from './encode/log-condense.ts';
 import type { ProcessSpawner } from './encode/process.ts';
 import { EngineEvents } from './events.ts';
@@ -72,11 +71,17 @@ import { type TestOutputRow, TestOutputStore } from './files/test-outputs.ts';
 import { contentHash } from './media/content-hash.ts';
 import { PosterStore, type Thumbnail } from './media/poster-store.ts';
 import { type JobProbe, jobProbeOf } from './media/probe.ts';
-import { MediaPass } from './media-pass.ts';
-import { logPathFor, Pipeline } from './pipeline.ts';
-import { QueueService } from './queue-service.ts';
-import { closedLibraries, type RunHoursHold, runHoursHold, serverTimeZone } from './run-hours.ts';
-import { pickSlot, Scheduler } from './scheduler.ts';
+import { logPathFor, Pipeline } from './pipeline/pipeline.ts';
+import { LibraryCatchUp } from './queue/catch-up.ts';
+import { MediaPass } from './queue/media-pass.ts';
+import { QueueService } from './queue/queue-service.ts';
+import {
+  closedLibraries,
+  type RunHoursHold,
+  runHoursHold,
+  serverTimeZone,
+} from './queue/run-hours.ts';
+import { pickSlot, Scheduler } from './queue/scheduler.ts';
 
 /** The part of a job log `jobLog` returns: its tail. */
 export const JOB_LOG_TAIL_BYTES = 64 * 1024;

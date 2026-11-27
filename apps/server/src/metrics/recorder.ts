@@ -3,7 +3,7 @@
 // restart as a counter reset).
 import { isFinalState, type JobState, type Lane } from '@transcoda/shared';
 import type { EngineEvent } from '../engine/events.ts';
-import type { EncodeSlotStatus } from '../engine/scheduler.ts';
+import type { EncodeSlotStatus } from '../engine/queue/scheduler.ts';
 import type { HistogramFamily } from './exposition.ts';
 
 /** Upper bounds in seconds: 10 s to 8 h. */

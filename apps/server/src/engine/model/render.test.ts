@@ -4,9 +4,9 @@ import { join } from 'node:path';
 import { promisify } from 'node:util';
 import type { BuildModel } from '@transcoda/sdk';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { fixturePath, fixturesAvailable, tempDir, toolPaths } from '../fixtures.ts';
 import { probeFile } from '../media/probe.ts';
-import { probeOf, withSidecar, withStream } from '../test-helpers.ts';
+import { probeOf, withSidecar, withStream } from '../testing/builders.ts';
+import { fixturePath, fixturesAvailable, tempDir, toolPaths } from '../testing/fixtures.ts';
 import { fitToContainer, modelFromProbe, outputOrder } from './model.ts';
 import {
   coverExtractArgs,

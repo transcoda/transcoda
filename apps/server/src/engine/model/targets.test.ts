@@ -1,6 +1,6 @@
 import { DEVICE_PROFILE_IDS } from '@transcoda/shared';
 import { describe, expect, it } from 'vitest';
-import { probeOf, withSidecar, withStream } from '../test-helpers.ts';
+import { probeOf, withSidecar, withStream } from '../testing/builders.ts';
 import { modelFromProbe } from './model.ts';
 import {
   checkEncodeAudioSettings,

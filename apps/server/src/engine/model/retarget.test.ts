@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { probeOf, withStream } from '../test-helpers.ts';
+import { probeOf, withStream } from '../testing/builders.ts';
 import { modelFromProbe } from './model.ts';
 import { autoStreams, retarget } from './retarget.ts';
 

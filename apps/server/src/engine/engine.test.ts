@@ -17,8 +17,8 @@ import { type FsOps, nodeFsOps } from '../platform/fs-ops.ts';
 import { chain, node } from '../workflows/test-helpers.ts';
 import { FakeSpawner } from './encode/process.ts';
 import { fingerprintOf } from './files/fingerprint.ts';
-import { tempDir } from './fixtures.ts';
-import { packetRows } from './test-helpers.ts';
+import { packetRows } from './testing/builders.ts';
+import { tempDir } from './testing/fixtures.ts';
 
 /** How long `until` waits; well above any healthy run, below the raised test timeout. */
 const UNTIL_MS = 10_000;

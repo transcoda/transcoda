@@ -8,8 +8,8 @@ import { asSession, bearer, createToken, login, type Session, send } from '../ap
 import type { Exec } from '../capabilities/ffmpeg.ts';
 import { findJob, listRecycled } from '../db/repos/jobs.ts';
 import { FakeSpawner } from '../engine/encode/process.ts';
-import { tempDir } from '../engine/fixtures.ts';
-import { packetRows } from '../engine/test-helpers.ts';
+import { packetRows } from '../engine/testing/builders.ts';
+import { tempDir } from '../engine/testing/fixtures.ts';
 import { type FsOps, nodeFsOps } from '../platform/fs-ops.ts';
 import type { Logger } from '../platform/logger.ts';
 import { CorruptGraphError } from '../workflows/service.ts';
