@@ -1473,6 +1473,8 @@ export class Pipeline implements JobExecutor {
     let last: ProgressSample | null = null;
     let lastWrite = Number.NEGATIVE_INFINITY;
     let framesOut = false;
+    /** How far the output got: the furthest out time, or frames over the frame rate without one. */
+    let reached: number | null = null;
     // `frame=` counts the first video stream ffmpeg writes (see withFrameTime).
     const firstVideo = outputOrder(p.model).find(
       (s) => s.type === 'video' && !isMkvCover(p.model, s),
@@ -1480,6 +1482,7 @@ export class Pipeline implements JobExecutor {
     const frameRate =
       p.probe.streams.find((s) => s.index === firstVideo?.sourceIndex)?.frameRate ?? null;
     let leading = 0;
+    let unplaced = 0;
     const sourceErrors: { line: string; at: number }[] = [];
     const demuxerErrors: { line: string; at: number }[] = [];
     const outputErrors: string[] = [];
@@ -1497,19 +1500,24 @@ export class Pipeline implements JobExecutor {
         last = s;
         guard?.sample(s);
         if ((s.frames ?? 0) > 0 || (s.outTimeSeconds ?? 0) > 0) framesOut = true;
+        const shown = withFrameTime(s, frameRate);
+        if (shown.outTimeSeconds !== null) reached = Math.max(reached ?? 0, shown.outTimeSeconds);
         if (ctl.signal.aborted) return;
         const t = this.deps.now().getTime();
         if (t - lastWrite < PROGRESS_INTERVAL_MS) return;
         lastWrite = t;
-        const shown = withFrameTime(s, frameRate);
         this.update(job, ctl, { progress: toJobProgress(shown, p.probe.durationSeconds) });
       },
       onStderrLine: (line) => {
         const side = classifyErrorLine(line, sourceCodecs, encoders);
         if (side === 'output') outputErrors.push(line.trim());
+        // Before the first output frame, or with no position known (ffmpeg 8 without an out time
+        // and no frame rate to read the frames by): ignored with a warning, never placed at 0,
+        // where confirming the damage would decode the wrong part of the source.
         else if (side !== null && !framesOut) leading += 1;
-        else if (side !== null) {
-          const at = last?.outTimeSeconds ?? 0;
+        else if (side !== null && reached === null) unplaced += 1;
+        else if (side !== null && reached !== null) {
+          const at = reached;
           (side === 'source' ? sourceErrors : demuxerErrors).push({ line: line.trim(), at });
         }
       },
@@ -1617,6 +1625,13 @@ export class Pipeline implements JobExecutor {
         );
       }
       return fail(retryable('encode', cause ? `${why}: ${cause}` : why));
+    }
+    if (unplaced > 0) {
+      this.renderWarn(
+        job,
+        p,
+        `ignored ${unplaced} decoder error(s): ffmpeg reported no output time to place them by`,
+      );
     }
     if (leading > 0) {
       this.renderWarn(job, p, `ignored ${leading} decoder error(s) before the first output frame`);

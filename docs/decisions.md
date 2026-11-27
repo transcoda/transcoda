@@ -2175,7 +2175,8 @@ The first nightly ran the real-ffmpeg tests against jellyfin-ffmpeg 8.1.3, the v
   - Before, a block without an out time was dropped. Such an encode sent no progress (no percent, no ETA), and the stall guard got no sample at all, so after `TRANSCODA_ENCODE_STALL_MINUTES` (60) it would have stopped a healthy long encode as "wrote no output". The frame-count check also read a stale block.
   - Now every complete block is a sample, with `outTimeSeconds` null for `N/A`.
     - The stall guard counts size growth as before; an encode that never starts still sends no block at all, in both versions, so "no output" keeps its meaning.
-    - The job's progress takes the further of the out time and `frame=` over the first video stream's frame rate (`withFrameTime`), for display only.
+    - The job's progress takes the further of the out time and `frame=` over the first video stream's frame rate (`withFrameTime`).
+    - A source decoder error is placed at that same furthest position, which the confirming decode reads around. With no position known (no out time and no frame rate), it is ignored with a warning rather than placed at 0, where the confirming decode would read the wrong part of the source.
   - ffmpeg 8 also holds a copied image track's packets for up to 10 s of media (`-max_interleave_delta`) before writing. The real-ffmpeg test of the image track therefore checks that the copied run's progress starts within the limit, not that it grows.
 
 ## Follow-ups (2026-10-17)

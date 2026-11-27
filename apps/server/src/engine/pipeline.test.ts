@@ -206,7 +206,15 @@ const addSidecar: AnyNodeDefinition = defineNode({
  */
 class TestSpawner extends FakeSpawner {
   async complete(
-    o: { bytes?: number; code?: number; leading?: string[]; stderr?: string[]; at?: number } = {},
+    o: {
+      bytes?: number;
+      code?: number;
+      leading?: string[];
+      stderr?: string[];
+      at?: number;
+      /** The progress sample has no out time (ffmpeg 8, a copied image track), only frames. */
+      noOutTime?: boolean;
+    } = {},
   ): Promise<void> {
     const call = this.calls.at(-1);
     if (!call) throw new Error('nothing spawned');
@@ -219,7 +227,7 @@ class TestSpawner extends FakeSpawner {
     await emit(o.leading ?? []);
     if (o.stderr) {
       this.emitProgress({
-        outTimeSeconds: o.at ?? 30,
+        outTimeSeconds: o.noOutTime ? null : (o.at ?? 30),
         speed: 1,
         fps: 25,
         sizeBytes: 100,
@@ -2418,6 +2426,50 @@ describe('pipeline: controller notes', () => {
     expect(spot?.[spot.indexOf('-ss') + 1]).toBe('29.000');
     expect(spawner.calls).toHaveLength(1);
     expect((await stat(file())).size).toBe(1000);
+  });
+
+  it('without an out time, a source decoder error is placed by the frames written, not at 0', async () => {
+    sourceSpotsDamaged = true;
+    sourceProbe = {
+      ...sourceProbe,
+      streams: sourceProbe.streams.map((s) => (s.type === 'video' ? { ...s, frameRate: 25 } : s)),
+    };
+    const wf = workflow(
+      line(node('in', 'core:input-manual'), toH264(), node('ro', 'core:replace-original')),
+    );
+    const id = await queue(file(), wf);
+    await t.deps.engine.start();
+    await until('spawn', () => spawner.calls.length === 1);
+    await spawner.complete({
+      bytes: 600,
+      at: 30,
+      noOutTime: true,
+      stderr: ['[hevc @ 0x1234] [error] Could not find ref with POC 3'],
+    });
+    expect(await settled(id)).toMatchObject({ state: 'kept_original' });
+    const spot = execCalls.find(
+      (c) => c[0] === 'ffmpeg' && c.includes('-ss') && c.join(' ').includes(` -i ${root}`),
+    );
+    expect(spot?.[spot.indexOf('-ss') + 1]).toBe('29.000');
+  });
+
+  it('without an out time or a frame rate, a source decoder error is ignored with a warning', async () => {
+    sourceSpotsDamaged = true;
+    const wf = workflow(
+      line(node('in', 'core:input-manual'), toH264(), node('ro', 'core:replace-original')),
+    );
+    const id = await queue(file(), wf);
+    await t.deps.engine.start();
+    await until('spawn', () => spawner.calls.length === 1);
+    await spawner.complete({
+      bytes: 600,
+      noOutTime: true,
+      stderr: ['[hevc @ 0x1234] [error] Could not find ref with POC 3'],
+    });
+    expect(await settled(id)).toMatchObject({ state: 'done' });
+    expect(findJobResult(t.db, id)?.warnings).toContain(
+      'ignored 1 decoder error(s): ffmpeg reported no output time to place them by',
+    );
   });
 
   it('a dca decoder error mid-encode on a dts source that the source reproduces → kept_original, no retry', async () => {
