@@ -1,7 +1,7 @@
 {
+  "apps/web/src/jobs/JobsPage.test.tsx": 1350,
   "apps/web/src/pages/EditorPage.test.tsx": 2208,
   "apps/web/src/pages/EditorPage.tsx": 1344,
-  "apps/web/src/pages/JobsPage.test.tsx": 1350,
   "apps/web/src/pages/PluginsPage.test.tsx": 1412,
   "apps/web/src/styles/job-page.css": 1415
 }

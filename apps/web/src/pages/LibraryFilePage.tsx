@@ -12,6 +12,7 @@ import { Loading } from '../components/Loading.tsx';
 import { NotFound } from '../components/NotFound.tsx';
 import { useAsync } from '../hooks/use-async.ts';
 import { TitleSub } from '../jobs/JobCells.tsx';
+import { JobHistoryTable } from '../jobs/JobsPage.tsx';
 import { jobTitle } from '../jobs/media-text.ts';
 import { Poster } from '../jobs/Poster.tsx';
 import { fmtBytes } from '../lib/bytes.ts';
@@ -21,7 +22,6 @@ import { type Crumb, Crumbs, seasonLabel } from '../libraries/Crumbs.tsx';
 import { type ProbeFacts, probeFacts } from '../libraries/probe-facts.ts';
 import { RunFilesDialog } from '../libraries/RunFilesDialog.tsx';
 import { useLibraryRefetch } from '../libraries/use-library-listing.ts';
-import { JobHistoryTable } from './JobsPage.tsx';
 
 /** Jobs per request; "Show older jobs" asks for the page after the ones on screen. */
 const JOBS_PAGE = 50;

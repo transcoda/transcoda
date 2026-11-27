@@ -5,12 +5,13 @@ The rules in force today for `apps/web/**`. History is in the decision files lin
 ## Layout of `apps/web/src`
 
 - `App.tsx`: every route. `main.tsx`: fonts, stylesheets, theme before first paint, providers.
-- `pages/`: one component per route (`WorkflowsPage`, `EditorPage`, `JobsPage`, `JobPage`, `RunPage`, `LibrariesPage`, `LibraryPage`, `LibraryFilePage`, `RecyclePage`, `PluginsPage`, `NewWorkflowPage`, `LoginPage`, `SetupPage`). `pages/settings/` holds Settings and its sections.
+- `pages/`: one component per route for the routes not yet moved into their feature (`WorkflowsPage`, `EditorPage`, `LibrariesPage`, `LibraryPage`, `LibraryFilePage`, `PluginsPage`, `NewWorkflowPage`, `LoginPage`, `SetupPage`). `pages/settings/` holds Settings and its sections.
 - `editor/`: the workflow editor. `model/` is pure (no React, no React Flow), `flow/` adapts it to React Flow, `ui/` is the panels, dialogs and hooks around the canvas, `trace/` is the read-only canvas on the job page.
-- `jobs/`: job and run pieces (steps, plan view, result, queue bar, process again) and their wording modules (`steps.ts`, `job-text.ts`, `plan-text.ts`, `media-text.ts`).
+- `jobs/`: the Jobs page (`JobsPage.tsx`, `JobsHistory.tsx`), the job page (`JobPage/`: steps, plan view, result, test output, ffmpeg notes and the `steps.ts` wording) and the run page (`RunPage/`); at the root what several pages use (cells, state chip, poster, queue bar, process again) and the shared wording modules (`job-text.ts`, `plan-text.ts`, `media-text.ts`).
 - `shell/`: the app chrome that knows features: `Shell` (nav and layout), `ActivityButton`, `AuthLayout` (the sign-in pages' frame).
 - `workflows/`: the empty Workflows state and the bundled examples (`bundled.ts`, `create-example.ts`).
-- `libraries/`, `plugins/`, `recycle/`: the parts of those pages that are big enough to stand alone.
+- `recycle/`: `RecyclePage`, `RestoreButton` (the job page uses it too) and the grouping.
+- `libraries/`, `plugins/`: the parts of those pages that are big enough to stand alone.
 - `components/`: shared primitives that know no feature (`Dialog`, `Toast`, `Chips`, `Icon`, `Loading`, `NotFound`, `Headings`, `RowMenu`, `ListboxSelect`, `Disclosure`, `FilePath`, ...).
 - `api/` (client, CSRF, error mapping), `hooks/` (data and event hooks), `lib/` (formatting, page title, guarded navigation, breakpoints, theme), `data/` (codec and language tables).
 - `styles/`: `tokens.css` (vendored from the design handoff, excluded from Biome, never hand-edited except the additions DESIGN.md lists), the design guard tests (each named after the stylesheet it reads, `shell.activity.test.ts`) and their one exceptions file.
@@ -46,7 +47,7 @@ The rules in force today for `apps/web/**`. History is in the decision files lin
 
 ## Job pages and wording
 
-- `jobs/steps.ts` writes the job's step list ("What the workflow did / would do"). It words each step from the trace's structured parts (changes, findings, settings, the probe), not from the engine's reason text, except for conditions, data and plugin nodes, which only have that.
+- `jobs/JobPage/steps.ts` writes the job's step list ("What the workflow did / would do"). It words each step from the trace's structured parts (changes, findings, settings, the probe), not from the engine's reason text, except for conditions, data and plugin nodes, which only have that.
 - The steps name the encoder that actually ran: when the plan's video conversion differs from what the graph built (a software fallback, a GPU retarget), Encode video's sentence uses the plan (`videoConversionOf`, `ranAs`).
 - A badge on the job trace is the job's own problem or warning for that node (`result.nodeProblems`, drawn by `withJobProblems`), not the workflow's issues.
 - Job states and verdict words come from `jobs/job-text.ts`; plan lines from `jobs/plan-text.ts`. Add a word there, not inline in a page.
