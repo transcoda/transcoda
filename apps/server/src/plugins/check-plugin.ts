@@ -23,9 +23,6 @@ import {
 } from './process.ts';
 import { SANDBOX_EXPECTATIONS, sandboxExpectations } from './sandbox-expectations.ts';
 
-/** Probes the denial fixture reports; `--expect-denials` checks every one. */
-export const DENIAL_PROBES = Object.keys(SANDBOX_EXPECTATIONS).length;
-
 export type CheckResult =
   | {
       ok: true;

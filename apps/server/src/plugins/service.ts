@@ -90,7 +90,7 @@ export type UpdateCheckResult =
 
 import { PluginServiceError } from './errors.ts';
 
-export { PluginServiceError, type PluginServiceErrorCode } from './errors.ts';
+export { PluginServiceError } from './errors.ts';
 
 export interface PluginServiceDeps {
   db: Database;

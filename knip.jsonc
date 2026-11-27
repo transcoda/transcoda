@@ -1,0 +1,32 @@
+// knip finds unused files, dependencies and exports (`pnpm knip`, part of `pnpm check`).
+// Rules and how to handle a finding: docs/dev/conventions.md, "Dead code".
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  // An export used in its own file is not dead code: tests and docs read many constants by name.
+  "ignoreExportsUsedInFile": true,
+  "workspaces": {
+    ".": {
+      "entry": ["scripts/**/*.{ts,mjs}", "e2e/**/*.ts"],
+      "project": ["scripts/**/*.{ts,mjs}", "e2e/**/*.ts", "*.ts"]
+    },
+    "apps/server": {
+      // Bundled on their own (tsdown): the denial fixture plugin, and the dev scripts.
+      "entry": ["src/plugins/fixtures/*.ts", "scripts/*.ts"],
+      "project": ["src/**/*.ts", "scripts/**/*.ts"]
+    },
+    "apps/web": {
+      "project": ["src/**/*.{ts,tsx}"]
+    },
+    "packages/*": {
+      // The SDK's second entry point (`@transcoda/sdk/testing`).
+      "entry": ["src/testing.ts"],
+      "project": ["src/**/*.ts"]
+    }
+  },
+  // Known findings that stay, each with its reason.
+  "ignoreIssues": {
+    // PluginSettingsTestInputSchema is the same schema as the save input today, under its own name
+    // so the test route's input can change without touching the save route's.
+    "packages/contract/src/schemas/plugins.ts": ["duplicates"]
+  }
+}

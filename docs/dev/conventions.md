@@ -27,7 +27,13 @@ Biome's recommended preset, plus `overrides` blocks and two GritQL plugins in `b
 - **UTC dates** (`scripts/biome/utc-dates.grit`): no local-time `Date` methods (`getHours`, `toLocaleDateString`, ...) in server or package code. Times are UTC. A place that really means local time has a `biome-ignore lint/plugin/utc-dates` with its reason (backup file names, the day in an "already processed" reason). GritQL has no types, so `toLocaleString` is flagged only on `new Date(...)` or a receiver named like a date (`d`, `*Date*`, `*Time*`, `*Now*`, `*When*`, `*Day*`, `*At`).
 - **Web test cleanup** (`scripts/biome/test-cleanup.grit`): a web test file that imports `render` or `renderHook` has a top-level `afterEach` that calls `cleanup`. Web tests run without Vitest globals, so Testing Library cannot clean up by itself.
 - Formatting: two spaces, single quotes, 100 columns. `pnpm format` fixes it.
-- A suppression (`biome-ignore`) always says why. Don't add one to get past a rule you could follow.
+- A suppression (`biome-ignore`) always says why. Don't add one to get past a rule you could follow. `scripts/biome-suppressions.test.ts` holds a budget per rule: a new suppression fails it, and so does a removed one until its count is lowered, so the budget only goes down. Raising a count is a decision a reviewer has to see in the pull request.
+
+## Dead code
+
+- `pnpm knip` (part of `pnpm check`, about 2 s) reports unused files, unused dependencies and exports nothing imports, in every workspace. Config: `knip.jsonc`.
+- Tests count as users: an export only a test imports is not reported. An export used in its own file is not reported either (`ignoreExportsUsedInFile`); drop the `export` when nothing else needs it anyway.
+- A finding is fixed by deleting the dead code or the dependency. One that must stay goes in `ignoreIssues` in `knip.jsonc`, with its reason in a comment above it.
 
 ## Checked by tests
 
