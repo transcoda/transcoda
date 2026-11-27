@@ -7,6 +7,7 @@
     "outDir": "../.local/e2e-types",
     "tsBuildInfoFile": "../.local/e2e-types/tsconfig.tsbuildinfo",
     "allowImportingTsExtensions": true,
+    "lib": ["ES2024", "DOM"],
     "types": ["node"]
   },
   "include": ["*.ts", "../playwright.config.ts"],
