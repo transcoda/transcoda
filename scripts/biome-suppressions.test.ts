@@ -38,7 +38,6 @@ const BASELINE: Record<string, number> = {
   'lint/style/noHexColors': 1,
   'lint/suspicious/noArrayIndexKey': 18,
   'lint/suspicious/noConsole': 1,
-  'lint/suspicious/noControlCharactersInRegex': 1,
   'lint/suspicious/noExplicitAny': 7,
   'lint/suspicious/noTemplateCurlyInString': 2,
 };
