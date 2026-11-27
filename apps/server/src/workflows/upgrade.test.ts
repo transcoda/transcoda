@@ -31,7 +31,7 @@ import {
   stepsBetween,
   type UpgradePlan,
 } from './upgrade.ts';
-import { migratePinned } from './validate.ts';
+import { migratePinned } from './validate/validate.ts';
 
 const v1Graph = () => mainGraph([node('b', 'test:bump', { level: 2 }, { typeVersion: 1 })]);
 

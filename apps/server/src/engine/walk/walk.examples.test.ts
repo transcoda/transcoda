@@ -18,7 +18,7 @@ import { z } from 'zod';
 import { filePort } from '../../nodes/core/common.ts';
 import { createCoreRegistry, NodeRegistry, type RegisteredNode } from '../../nodes/registry.ts';
 import { remoteNodeDefinition } from '../../nodes/remote.ts';
-import { validateWorkflow } from '../../workflows/validate.ts';
+import { validateWorkflow } from '../../workflows/validate/validate.ts';
 import { capsOf, fileOf, probeOf } from '../testing/builders.ts';
 import { type WalkDeps, walkBuild, walkDecide } from './walk.ts';
 
