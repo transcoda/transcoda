@@ -60,7 +60,7 @@ Today's rules for the server outside the encode engine. The engine is in [engine
 ## Settings and environment variables
 
 - **Database settings** are things a person changes in the UI without a restart. Keys and defaults are `SETTING_KEYS` and `SETTING_DEFAULTS` in `db/repos/settings.ts`. `settings/service.ts` reads them; a row that fails its schema reads as the default. `settings.update` is session only and allow-lists its fields in `SettingsUpdateInputSchema`. No MCP tool reads or changes settings.
-- **Environment variables** are deployment facts that need a restart. They are parsed only in `loadConfig()` (`apps/server/src/platform/config.ts`) into `Config`, with a `ConfigError` for a bad value. Document each in a table row in `docs/env.md`; `config-docs.test.ts` compares the rows with the variables `config.ts` reads.
+- **Environment variables** are deployment facts that need a restart. They are parsed only in `loadConfig()` (`apps/server/src/platform/config.ts`) into `Config`, with a `ConfigError` for a bad value. Document each in a table row in `docs/env.md`; `config.docs.test.ts` compares the rows with the variables `config.ts` reads.
 - The Settings page shows some variables read-only (`source.kind: 'env'`) with their effective values from `Config`. The service learns which variables are set by name only (`transcodaEnvNames` in `app/deps.ts`), and `settings.get` never returns a secret.
 
 ## Workflows and activation
@@ -82,7 +82,7 @@ Today's rules for the server outside the encode engine. The engine is in [engine
 
 - `METRICS` in `apps/server/src/metrics/catalog.ts` lists every metric `/metrics` serves. Labels come from small fixed sets only: never a path, job id or message.
 - `metrics/service.ts` builds one snapshot (cached 5 s) from `db/repos/metrics.ts` and in-memory state; `metrics/exposition.ts` renders it. `system.status` serves the same snapshot as JSON.
-- `metrics/sync.test.ts` checks that `docs/metrics.md` lists every metric with its type and labels in catalog order, and that `examples/grafana/transcoda-dashboard.json` queries only served metrics.
+- `metrics/catalog.sync.test.ts` checks that `docs/metrics.md` lists every metric with its type and labels in catalog order, and that `examples/grafana/transcoda-dashboard.json` queries only served metrics.
 - `TRANSCODA_METRICS=false` turns `/metrics` and `system.status` off.
 
 ## Logging
