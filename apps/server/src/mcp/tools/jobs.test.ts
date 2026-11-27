@@ -5,8 +5,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.setConfig({ testTimeout: 30_000 });
 
-import { createTestApp, type TestApp } from '../../app/test-app.ts';
-import { createToken, login } from '../../app/test-http.ts';
+import { createTestApp, type TestApp } from '../../app/testing/app.ts';
+import { createToken, login } from '../../app/testing/http.ts';
 import type { Exec } from '../../capabilities/ffmpeg.ts';
 import { findJob, insertJobResult, updateJob } from '../../db/repos/jobs/jobs.ts';
 import { FakeSpawner } from '../../engine/encode/process.ts';

@@ -1,7 +1,7 @@
 import { emptyGraph } from '@transcoda/shared';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { createTestApp, type TestApp } from '../../app/test-app.ts';
-import { asSession, login, type Session, send } from '../../app/test-http.ts';
+import { createTestApp, type TestApp } from '../../app/testing/app.ts';
+import { asSession, login, type Session, send } from '../../app/testing/http.ts';
 import { insertJob, insertJobResult, type JobResultRow } from '../../db/repos/jobs/jobs.ts';
 import { insertLibrary } from '../../db/repos/libraries.ts';
 import { insertRun } from '../../db/repos/runs.ts';

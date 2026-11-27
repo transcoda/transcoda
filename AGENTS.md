@@ -99,7 +99,7 @@ A code comment cites the topic doc, or a log entry by file and heading.
 
 ## Test helpers
 
-Use these rather than re-declaring them ([more](docs/dev/testing.md#helpers-to-use)): `createTestApp` (`apps/server/src/app/test-app.ts`); `send`, `login`, `withCsrf`, `createToken` (`apps/server/src/app/test-http.ts`); `createTestDb` (`apps/server/src/db/test-db.ts`); `node`, `edge`, `mainGraph`, `testRegistry` (`apps/server/src/workflows/test-helpers.ts`); `probeOf`, `fileOf`, `capsOf` (`apps/server/src/engine/testing/builders.ts`); `fixturesAvailable` (`apps/server/src/engine/testing/fixtures.ts`); `renderAt` (`apps/web/src/test/render.tsx`).
+Use these rather than re-declaring them ([more](docs/dev/testing.md#helpers-to-use)): `createTestApp` (`apps/server/src/app/testing/app.ts`); `send`, `login`, `withCsrf`, `createToken` (`apps/server/src/app/testing/http.ts`); `createTestDb` (`apps/server/src/db/test-db.ts`); `node`, `edge`, `mainGraph`, `testRegistry` (`apps/server/src/workflows/test-helpers.ts`); `probeOf`, `fileOf`, `capsOf` (`apps/server/src/engine/testing/builders.ts`); `fixturesAvailable` (`apps/server/src/engine/testing/fixtures.ts`); `renderAt` (`apps/web/src/test/render.tsx`).
 
 ## UI changes
 

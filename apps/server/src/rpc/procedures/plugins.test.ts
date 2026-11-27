@@ -4,8 +4,15 @@ import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import type { PluginManifest } from '@transcoda/shared';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { createTestApp, type TestApp } from '../../app/test-app.ts';
-import { asSession, bearer, createToken, login, type Session, send } from '../../app/test-http.ts';
+import { createTestApp, type TestApp } from '../../app/testing/app.ts';
+import {
+  asSession,
+  bearer,
+  createToken,
+  login,
+  type Session,
+  send,
+} from '../../app/testing/http.ts';
 import { checkPluginBundle } from '../../plugins/runtime/check-plugin.ts';
 import { fixturePluginPath, hostPath } from '../../plugins/testing/build.ts';
 

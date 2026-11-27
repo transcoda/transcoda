@@ -9,7 +9,7 @@ import { join } from 'node:path';
 import { promisify } from 'node:util';
 import type { JobState } from '@transcoda/shared';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
-import { createTestApp, type TestApp } from '../../app/test-app.ts';
+import { createTestApp, type TestApp } from '../../app/testing/app.ts';
 import { makeExec } from '../../capabilities/ffmpeg.ts';
 import { findJob, findJobResult, type JobRow } from '../../db/repos/jobs/jobs.ts';
 import { type FsOps, nodeFsOps } from '../../platform/fs-ops.ts';

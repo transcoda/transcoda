@@ -1,6 +1,6 @@
 import { join } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
-import { asSession, bearer, createToken, send } from '../../app/test-http.ts';
+import { asSession, bearer, createToken, send } from '../../app/testing/http.ts';
 import {
   fedLibrary,
   get,

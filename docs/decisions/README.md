@@ -203,3 +203,4 @@ Entries from M0 to M3 had no date of their own; they carry the day their milesto
 - 2026-11-27 · Structure · [Server test names](2026-11.md)
 - 2026-11-27 · Structure · [Server test splits, part 1](2026-11.md)
 - 2026-11-27 · Structure · [Server test splits, part 2](2026-11.md)
+- 2026-11-27 · Structure · [Server app test support in app/testing/](2026-11.md)

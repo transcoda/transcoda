@@ -4,8 +4,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { LicencesOutputSchema } from '@transcoda/contract';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createTestApp, type TestApp } from '../../app/test-app.ts';
-import { asSession, bearer, createToken, login, send } from '../../app/test-http.ts';
+import { createTestApp, type TestApp } from '../../app/testing/app.ts';
+import { asSession, bearer, createToken, login, send } from '../../app/testing/http.ts';
 import type { Logger } from '../../platform/logger.ts';
 
 // The generator's own fixture (scripts/third-party-notices.test.ts writes and checks it).

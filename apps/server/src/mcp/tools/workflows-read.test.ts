@@ -1,7 +1,7 @@
 import type { JsonValue, WorkflowGraph } from '@transcoda/shared';
 import { describe, expect, it } from 'vitest';
-import { createTestApp, type TestApp } from '../../app/test-app.ts';
-import { asSession, createToken, login, type Session, send } from '../../app/test-http.ts';
+import { createTestApp, type TestApp } from '../../app/testing/app.ts';
+import { asSession, createToken, login, type Session, send } from '../../app/testing/http.ts';
 import { insertLibrary } from '../../db/repos/libraries.ts';
 import {
   bumpV1,

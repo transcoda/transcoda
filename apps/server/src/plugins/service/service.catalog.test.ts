@@ -1,7 +1,7 @@
 import { rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
-import { createTestApp } from '../../app/test-app.ts';
+import { createTestApp } from '../../app/testing/app.ts';
 import { fixturePluginPath } from '../testing/build.ts';
 import { UPDATE_CHECK_DELAY_MS, UPDATE_CHECK_MS } from './service.ts';
 

@@ -1,7 +1,7 @@
 import type { Issue, WorkflowGraph } from '@transcoda/shared';
 import { describe, expect, it } from 'vitest';
-import { createTestApp, type TestApp } from '../app/test-app.ts';
-import { asSession, login, type Session, send, withCsrf } from '../app/test-http.ts';
+import { createTestApp, type TestApp } from '../app/testing/app.ts';
+import { asSession, login, type Session, send, withCsrf } from '../app/testing/http.ts';
 import { languageCleanupSub, otterFinchMain } from './fixtures/otter-finch.ts';
 import { bumpV1, bumpV2, bumpV3, node, testRegistry } from './test-helpers.ts';
 

@@ -213,7 +213,7 @@ A move pull request updates the paths in the allowlists and the "today" entries 
 
 ## Migration status
 
-Steps 1 (the check and this doc), 2, 3, 4, 5, 6 and 7 are done. Each later pull request ticks its line.
+Steps 1 (the check and this doc), 2, 3, 4, 5, 6, 7 and 8 are done. Each later pull request ticks its line.
 
 - [x] 2. Server: `platform/`, `app/` and `system/`; `host-check.ts` and `request-info.ts` into `auth/`.
 - [x] 3. Server: fix the upward imports (`fingerprintKey` into the repository layer, the official plugin constants out of `plugins/`, `CoreTools` into `nodes/`).
@@ -221,7 +221,7 @@ Steps 1 (the check and this doc), 2, 3, 4, 5, 6 and 7 are done. Each later pull 
 - [x] 5. Server: `engine/` sub-areas, part 2: `verify/`, `walk/`, `queue/`, `pipeline/`, `testing/`.
 - [x] 6. Server: `plugins/` sub-folders (`trust/`, `runtime/`, `network/`) and its test support into `testing/`.
 - [x] 7. Server splits, one pull request each: `db/repos/jobs.ts`, `plugins/service.ts`, `workflows/validate.ts`, `engine/verify/verify.ts`.
-- [ ] 8. Server: test names in the dot form; split the over-budget tests.
+- [x] 8. Server: test names in the dot form; split the over-budget tests.
 - [ ] 9. Web: `shell/`, `test/` to `testing/`, the CSS guard tests into `styles/`.
 - [ ] 10. Web: pages into their features, in three pull requests; then delete `pages/`.
 - [ ] 11. Web splits: the editor page's hooks, the jobs page, the over-budget page tests, the two largest stylesheets.

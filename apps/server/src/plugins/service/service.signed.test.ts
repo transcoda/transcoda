@@ -2,7 +2,7 @@ import { generateKeyPairSync } from 'node:crypto';
 import { rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import type { TestApp } from '../../app/test-app.ts';
+import type { TestApp } from '../../app/testing/app.ts';
 import { findPlugin, listCatalogs } from '../../db/repos/plugins.ts';
 import { signText } from '../testing/sign.ts';
 

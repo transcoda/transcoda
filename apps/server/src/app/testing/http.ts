@@ -1,8 +1,8 @@
 import fsp, { type FileHandle } from 'node:fs/promises';
 import { expect, type MockInstance, vi } from 'vitest';
-import { SESSION_COOKIE } from '../auth/cookies.ts';
-import { createUser } from '../db/repos/users.ts';
-import type { TestApp } from './test-app.ts';
+import { SESSION_COOKIE } from '../../auth/cookies.ts';
+import { createUser } from '../../db/repos/users.ts';
+import type { TestApp } from './app.ts';
 
 /** REST helpers for procedure tests: requests through `TestApp.app` under `/api/v1`. */
 

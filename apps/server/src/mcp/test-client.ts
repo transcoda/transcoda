@@ -1,8 +1,8 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
-import type { TestApp } from '../app/test-app.ts';
-import { HOST } from '../app/test-http.ts';
+import type { TestApp } from '../app/testing/app.ts';
+import { HOST } from '../app/testing/http.ts';
 
 const withHost = (init?: RequestInit): RequestInit => {
   const headers = new Headers(init?.headers);

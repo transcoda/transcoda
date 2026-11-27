@@ -1,7 +1,7 @@
 import { chmod, mkdir, rename, symlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { asSession, bearer, createToken, send } from '../../app/test-http.ts';
+import { asSession, bearer, createToken, send } from '../../app/testing/http.ts';
 import { setSetting } from '../../db/repos/settings.ts';
 import { chain, node } from '../../workflows/test-helpers.ts';
 import {

@@ -4,7 +4,7 @@ import type { AddressInfo } from 'node:net';
 import { join } from 'node:path';
 import { fakeHookContext } from '@transcoda/sdk/testing';
 import { describe, expect, it } from 'vitest';
-import type { TestApp } from '../../app/test-app.ts';
+import type { TestApp } from '../../app/testing/app.ts';
 import { findPluginSettings } from '../../db/repos/plugins.ts';
 import { tempDir } from '../../engine/testing/fixtures.ts';
 import { PluginServiceError } from './service.ts';

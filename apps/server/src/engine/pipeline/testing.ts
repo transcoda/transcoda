@@ -5,7 +5,7 @@ import { type AnyNodeDefinition, defineNode, type ProbeResult } from '@transcoda
 import type { JobState, WorkflowGraph } from '@transcoda/shared';
 import { afterEach, beforeEach, expect, vi } from 'vitest';
 import { z } from 'zod';
-import { createTestApp, type TestApp } from '../../app/test-app.ts';
+import { createTestApp, type TestApp } from '../../app/testing/app.ts';
 import type { Exec } from '../../capabilities/ffmpeg.ts';
 import { findJob, type JobRow } from '../../db/repos/jobs/jobs.ts';
 import type { LibraryRow } from '../../db/repos/libraries.ts';
