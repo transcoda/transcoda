@@ -5,8 +5,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { HIGHLIGHTS, layoutOf, lintNotes } from '@transcoda/dev-config/changes';
 import { describe, expect, it } from 'vitest';
-// @ts-expect-error plain .mjs script without types
-import { IMAGES_DIR, prepareHighlights } from './release-notes.mjs';
+import { IMAGES_DIR, prepareHighlights } from './release-notes.ts';
 
 const root = join(import.meta.dirname, '..');
 const dir = join(root, '.changes');

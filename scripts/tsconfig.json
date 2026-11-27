@@ -1,0 +1,14 @@
+{
+  "extends": "@transcoda/dev-config/tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true,
+    "emitDeclarationOnly": true,
+    "rootDir": ".",
+    "outDir": "../.local/scripts-types",
+    "tsBuildInfoFile": "../.local/scripts-types/tsconfig.tsbuildinfo",
+    "allowImportingTsExtensions": true,
+    "types": ["node"]
+  },
+  "include": ["**/*.ts"],
+  "references": []
+}

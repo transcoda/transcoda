@@ -6,7 +6,8 @@ Today's rules for how code is written here. Most of them are checked by `pnpm ch
 
 - Strict mode with `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes` and `verbatimModuleSyntax` (`@transcoda/dev-config/tsconfig.base.json`, the base the plugins repository extends too; every `tsconfig.json` here extends it). `pnpm typecheck` runs `tsc -b` over the solution file.
 - Node runs `.ts` directly. Relative imports name the extension (`./x.ts`).
-- Packages depend one way, `shared <- sdk <- contract <- server/web`; no relative import from one workspace package into another. `pnpm check-deps` (`scripts/check-deps.mjs`) enforces both.
+- Scripts in `scripts/` are TypeScript too (`node scripts/x.ts`), type-checked by `pnpm typecheck` through `scripts/tsconfig.json`. Node strips the types, so use only erasable syntax: no `enum`, no `namespace`, no constructor parameter properties. The types of `@transcoda/dev-config` (plain JavaScript) that the scripts use are declared in `scripts/dev-config.d.ts`.
+- Packages depend one way, `shared <- sdk <- contract <- server/web`; no relative import from one workspace package into another. `pnpm check-deps` (`scripts/check-deps.ts`) enforces both.
 
 ## Checked by Biome
 

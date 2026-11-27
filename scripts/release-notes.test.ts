@@ -3,15 +3,14 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-// @ts-expect-error plain .mjs script without types
 import {
   compareVersions,
   prepareHighlights,
   prependChangelog,
   takesHighlights,
-} from './release-notes.mjs';
+} from './release-notes.ts';
 
-const script = join(import.meta.dirname, 'release-notes.mjs');
+const script = join(import.meta.dirname, 'release-notes.ts');
 let root: string;
 
 const note = (name: string, type: string, text: string) =>
