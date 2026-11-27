@@ -2,13 +2,13 @@ import { stat, utimes, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { WorkflowGraph } from '@transcoda/shared';
 import { describe, expect, it, vi } from 'vitest';
+import { createTestApp } from '../app/test-app.ts';
 import { findJob, findJobResult, insertJob, insertJobResult, listTrace } from '../db/repos/jobs.ts';
-import { createTestApp } from '../test-app.ts';
+import { nodeFsOps } from '../platform/fs-ops.ts';
 import { edge, mainGraph, node } from '../workflows/test-helpers.ts';
 import { modelFromProbe } from './build-model.ts';
 import { contentHash } from './content-hash.ts';
 import { fingerprintKey, fingerprintOf } from './fingerprint.ts';
-import { nodeFsOps } from './fs-ops.ts';
 import { laneFor } from './pipeline-plan.ts';
 import {
   base,

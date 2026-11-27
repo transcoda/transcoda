@@ -1,7 +1,7 @@
 // Linux-only checks around running plugin hosts as another user. A leaf module: it imports only
 // node built-ins and a type (config.ts's ConfigError would make an import cycle).
 import * as nodeFs from 'node:fs/promises';
-import type { PluginIsolation } from '../config.ts';
+import type { PluginIsolation } from '../platform/config.ts';
 
 /** Raised at start when isolation is configured but cannot work; the server stops (never same-uid). */
 export class IsolationError extends Error {

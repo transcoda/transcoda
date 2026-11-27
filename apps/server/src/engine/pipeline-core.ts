@@ -7,12 +7,12 @@ import { type Exec, makeExec } from '../capabilities/ffmpeg.ts';
 import type { Database } from '../db/open.ts';
 import { insertJobResult, type JobPatch, type JobRow, updateJob } from '../db/repos/jobs.ts';
 import { findWorkflow } from '../db/repos/workflows.ts';
+import { errorCode } from '../platform/fs-ops.ts';
 import { type HookName, hookJobOf } from '../plugins/hooks.ts';
 import type { CheckSourceResult } from './check-source.ts';
 import { contentHash } from './content-hash.ts';
 import type { EngineEvents } from './events.ts';
 import { type Fingerprint, fingerprintKey } from './fingerprint.ts';
-import { errorCode } from './fs-ops.ts';
 import { SETTLE_MINUTES } from './paths.ts';
 import {
   type End,

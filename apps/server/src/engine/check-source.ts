@@ -2,6 +2,7 @@
 import type { ProbeResult } from '@transcoda/sdk';
 import { isPicture } from '@transcoda/shared';
 import type { Exec } from '../capabilities/ffmpeg.ts';
+import { isMemoryLimitError, memoryLimitMessage } from '../platform/memory-guard.ts';
 import type { AlreadyProcessedAnswer, AlreadyProcessedQuery } from './already-processed.ts';
 import {
   classifyErrorLine,
@@ -9,7 +10,6 @@ import {
   READ_FAILURE,
   sourceDecoderNames,
 } from './decoder-names.ts';
-import { isMemoryLimitError, memoryLimitMessage } from './memory-guard.ts';
 import { progressReader } from './progress.ts';
 import type { VerifyFailure } from './verify.ts';
 

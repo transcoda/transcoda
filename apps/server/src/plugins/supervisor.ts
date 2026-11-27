@@ -10,8 +10,8 @@ import type {
   PluginState,
   SupervisorLimits,
 } from '@transcoda/shared';
-import type { PluginIsolation } from '../config.ts';
-import type { Logger } from '../logger.ts';
+import type { PluginIsolation } from '../platform/config.ts';
+import type { Logger } from '../platform/logger.ts';
 import { createRedactor } from '../plugin-host/redact.ts';
 import { secretValues } from './crypto.ts';
 import { isolationViolation, type ProcessIdentity, processIdentity } from './isolation.ts';

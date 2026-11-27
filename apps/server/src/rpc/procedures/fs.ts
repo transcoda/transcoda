@@ -1,4 +1,4 @@
-import { browseDirs as browse, hiddenRoots } from '../../fs/browse.ts';
+import { browseDirs as browse, hiddenRoots } from '../../system/browse.ts';
 import { os, requireHumanSessionWith } from '../middleware.ts';
 
 // Listing the server's folders is a person's job: an API token never browses, whatever its scopes,

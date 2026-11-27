@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import { createTestApp } from '../app/test-app.ts';
 import { SESSION_COOKIE } from '../auth/cookies.ts';
 import { createUser } from '../db/repos/users.ts';
-import { createTestApp } from '../test-app.ts';
 import { resolveAuth } from './auth-context.ts';
 
 function fixture() {

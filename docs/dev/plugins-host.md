@@ -47,7 +47,7 @@ The promise text lives in two places that a test pins equal: `SECURITY_PROMISE` 
 
 `DEFAULT_LIMITS` in `packages/shared/src/plugins/types.ts` holds the defaults; `LIMIT_BOUNDS` and `loadLimits` in `plugins/limits.ts` read overrides from `plugins.limits.<key>` settings rows, and a malformed or out-of-bound row falls back to the default. The ones that guard the server: `heapMb` 128 (bound 4096), `rssMb` 256 (bound 2048, polled every second), `maxHosts` 16 (bound 256; past it a start is `stopped`, not retried), `cancelGraceMs` 5 s, `callTimeoutMs` 30 s, `finishRunTimeoutMs` 5 min, `startTimeoutMs` 60 s, `fetchBodyBytes` 16 MB, crash restarts given up after `maxCrashes` 3 in `crashWindowMs` 10 min. One IPC message is at most `MAX_MESSAGE_BYTES` (16 MB, `packages/shared/src/plugins/protocol.ts`). Plugin stdout and stderr are forwarded at most 100 lines per second per process (`supervisor.ts`). The table authors see is in [`plugin-sdk.md`](../plugin-sdk.md), "Limits"; change both together.
 
-Server-level backstops: `process-guards.ts` logs an unhandled rejection and keeps running; an uncaught exception exits 1. The crash-loop guard (`plugin_start_attempts`, migration 0012) disables every plugin counted in `maxCrashes` boots in a row that did not stay up `stableMs`.
+Server-level backstops: `platform/process-guards.ts` logs an unhandled rejection and keeps running; an uncaught exception exits 1. The crash-loop guard (`plugin_start_attempts`, migration 0012) disables every plugin counted in `maxCrashes` boots in a row that did not stay up `stableMs`.
 
 ## How the engine calls plugins
 

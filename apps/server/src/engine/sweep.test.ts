@@ -22,11 +22,11 @@ import { insertLibrary } from '../db/repos/libraries.ts';
 import { insertRun } from '../db/repos/runs.ts';
 import { insertWorkflow } from '../db/repos/workflows.ts';
 import { createTestDb } from '../db/test-db.ts';
-import type { Logger } from '../logger.ts';
+import { type FsOps, failingAt, nodeFsOps } from '../platform/fs-ops.ts';
+import type { Logger } from '../platform/logger.ts';
 import { edge, mainGraph, node } from '../workflows/test-helpers.ts';
 import { fingerprintOf } from './fingerprint.ts';
 import { tempDir, toolPaths } from './fixtures.ts';
-import { type FsOps, failingAt, nodeFsOps } from './fs-ops.ts';
 import { recyclePathFor, tmpPathFor } from './replace.ts';
 import { killStaleFfmpeg, requeueOnce, type SweepDeps, startupSweep } from './sweep.ts';
 

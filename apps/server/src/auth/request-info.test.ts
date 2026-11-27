@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ConfigError } from '../config.ts';
+import { ConfigError } from '../platform/config.ts';
 import {
   clientIp,
   isHttps,

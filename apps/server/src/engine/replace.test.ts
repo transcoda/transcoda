@@ -17,10 +17,10 @@ import { insertLibrary } from '../db/repos/libraries.ts';
 import { insertRun } from '../db/repos/runs.ts';
 import { insertWorkflow } from '../db/repos/workflows.ts';
 import { createTestDb } from '../db/test-db.ts';
-import type { Logger } from '../logger.ts';
+import { type FsOps, failingAt, nodeFsOps, renameNoClobber } from '../platform/fs-ops.ts';
+import type { Logger } from '../platform/logger.ts';
 import { fingerprintOf } from './fingerprint.ts';
 import { tempDir } from './fixtures.ts';
-import { type FsOps, failingAt, nodeFsOps, renameNoClobber } from './fs-ops.ts';
 import { defaultRecycleFolder } from './recycle.ts';
 import {
   durableReplaceWrites,

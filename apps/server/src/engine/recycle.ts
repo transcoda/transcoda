@@ -10,8 +10,8 @@ import {
   type RecycledRow,
 } from '../db/repos/jobs.ts';
 import { findLibrary, type LibraryRow } from '../db/repos/libraries.ts';
-import type { Logger } from '../logger.ts';
-import { errorCode, type FsOps } from './fs-ops.ts';
+import { errorCode, type FsOps } from '../platform/fs-ops.ts';
+import type { Logger } from '../platform/logger.ts';
 
 /**
  * Records a recycled original (`insertRecycled`) and logs when that replaced a stale row: one whose

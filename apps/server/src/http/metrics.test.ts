@@ -1,7 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { createTestApp, type TestApp } from '../app/test-app.ts';
+import {
+  asSession,
+  bearer,
+  createToken,
+  HOST,
+  login,
+  type Session,
+  send,
+} from '../app/test-http.ts';
 import { parseExposition } from '../metrics/parse-exposition.ts';
-import { createTestApp, type TestApp } from '../test-app.ts';
-import { asSession, bearer, createToken, HOST, login, type Session, send } from '../test-http.ts';
 
 let t: TestApp;
 let s: Session;

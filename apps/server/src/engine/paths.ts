@@ -4,8 +4,8 @@ import { basename, extname, join, resolve, sep } from 'node:path';
 import { MEDIA_EXTENSIONS } from '@transcoda/shared';
 import type { Database } from '../db/open.ts';
 import { type LibraryRow, listLibraries, trimSlash } from '../db/repos/libraries.ts';
+import { errorCode, type FsOps, nodeFsOps } from '../platform/fs-ops.ts';
 import type { Fingerprint } from './fingerprint.ts';
-import { errorCode, type FsOps, nodeFsOps } from './fs-ops.ts';
 import { defaultRecycleFolder } from './recycle.ts';
 
 /**

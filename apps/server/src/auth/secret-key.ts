@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-import { ConfigError } from '../config.ts';
+import { ConfigError } from '../platform/config.ts';
 
 const HEX_KEY = /^[0-9a-fA-F]{64}$/;
 

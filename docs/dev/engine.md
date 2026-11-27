@@ -24,7 +24,7 @@ The rules in force today for `apps/server/src/engine/`, `apps/server/src/capabil
 - **Never re-run a processed file.** `findPriorRun` makes a file `already_processed` when a real job of the same workflow, at any version, ended `done`, `nothing_to_do` or `kept_original` with it as source or as output. A `failed` result counts for its own version only. Only Process again (`force`) overrides it. A dry run checks its own version only (`sameVersion`). A file moved back from the recycle folder matches its old `done` source and stays processed.
 - **Restore** (`restore.ts`, `restoreRecycled`) has its own journal, moves with `renameNoClobber` and is a person's session only. Recycle rows are removed only through `removeRecycledRow`, which never touches a row whose job has a replace or restore journal. `insertRecycled` replaces a stale row for the same path.
 - **Sidecar media info** (`nfo.ts`, `media-info.ts`, `poster-store.ts`) is read at queue time, never through a symlink, never outside the library, and nothing is ever written into a library for it.
-- **Child processes.** ffmpeg runs from an argv array, no shell, in its own process group; every ffprobe/ffmpeg call outside the encode takes the job's abort signal (`makeExec` SIGKILLs on abort). `child-caps.ts` drops the server's ambient capabilities for every ffmpeg and ffprobe child.
+- **Child processes.** ffmpeg runs from an argv array, no shell, in its own process group; every ffprobe/ffmpeg call outside the encode takes the job's abort signal (`makeExec` SIGKILLs on abort). `platform/child-caps.ts` drops the server's ambient capabilities for every ffmpeg and ffprobe child.
 
 ## Verify
 
@@ -33,7 +33,7 @@ The rules in force today for `apps/server/src/engine/`, `apps/server/src/capabil
 - `verifyFullDecode` on a library adds a whole-file decode (6 h timeout); other verify calls get 300 s.
 - In-pass checks read ffmpeg's stderr live: `classifyErrorLine` sorts each error line to source or output. A source error must be reproduced on the source before the original is kept (`kept_original`, never retried); otherwise it is output-invalid and retried once. The frame count is compared with `nb_frames` only.
 - `source-damaged` needs proof on the source stream by stream; duration failures are always `output-invalid`.
-- `TRANSCODA_DECODE_MEMORY_GB` (`memory-guard.ts`) stops a read-only decode whose memory keeps growing.
+- `TRANSCODA_DECODE_MEMORY_GB` (`platform/memory-guard.ts`) stops a read-only decode whose memory keeps growing.
 
 ## Encoders, GPUs and slots
 

@@ -1,9 +1,6 @@
 import type { JsonValue, NodeInstance, WorkflowGraph } from '@transcoda/shared';
 import { describe, expect, it, vi } from 'vitest';
-import { SESSION_COOKIE } from '../../auth/cookies.ts';
-import { insertLibrary } from '../../db/repos/libraries.ts';
-import type { Logger } from '../../logger.ts';
-import { createTestApp, type TestApp, type TestAppOptions } from '../../test-app.ts';
+import { createTestApp, type TestApp, type TestAppOptions } from '../../app/test-app.ts';
 import {
   asSession,
   bearer,
@@ -13,7 +10,10 @@ import {
   ORIGIN,
   type Session,
   send,
-} from '../../test-http.ts';
+} from '../../app/test-http.ts';
+import { SESSION_COOKIE } from '../../auth/cookies.ts';
+import { insertLibrary } from '../../db/repos/libraries.ts';
+import type { Logger } from '../../platform/logger.ts';
 import {
   bumpV1,
   bumpV2,

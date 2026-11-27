@@ -3,12 +3,12 @@ import fsp, { type FileHandle } from 'node:fs/promises';
 import { basename, extname } from 'node:path';
 import { Readable } from 'node:stream';
 import type { Context } from 'hono';
+import { requestHost } from '../auth/request-info.ts';
 import { findJob, findJobResult } from '../db/repos/jobs.ts';
 import type { AppDeps } from '../rpc/context.ts';
 import { sameOriginOk } from '../rpc/middleware.ts';
 import type { ResolvedAuth } from './auth-context.ts';
 import { parseRange } from './range.ts';
-import { requestHost } from './request-info.ts';
 
 /** Route of a kept test output, under /api/v1 (outside the oRPC contract: it streams a file). */
 export const TEST_OUTPUT_PATH = '/api/v1/jobs/:id/test-output';

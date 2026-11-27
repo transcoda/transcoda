@@ -10,9 +10,9 @@ import { insertRun } from '../db/repos/runs.ts';
 import { setSetting } from '../db/repos/settings.ts';
 import { insertWorkflow } from '../db/repos/workflows.ts';
 import { createTestDb } from '../db/test-db.ts';
-import type { Logger } from '../logger.ts';
+import { type FsOps, nodeFsOps } from '../platform/fs-ops.ts';
+import type { Logger } from '../platform/logger.ts';
 import { tempDir } from './fixtures.ts';
-import { type FsOps, nodeFsOps } from './fs-ops.ts';
 import { buildPreview } from './preview.ts';
 import {
   scratchMinFreeBytes,

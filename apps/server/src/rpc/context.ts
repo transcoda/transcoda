@@ -6,15 +6,15 @@ import type { LoginRateLimiter } from '../auth/rate-limit.ts';
 import type { SessionService } from '../auth/sessions.ts';
 import type { TokenService } from '../auth/tokens.ts';
 import type { GpuLoadSampler } from '../capabilities/gpu-load.ts';
-import type { Config } from '../config.ts';
 import type { EngineService } from '../engine/engine.ts';
-import type { HealthService } from '../health.ts';
-import type { Logger } from '../logger.ts';
 import type { MetricsService } from '../metrics/service.ts';
 import type { NodeRegistry } from '../nodes/registry.ts';
+import type { Config } from '../platform/config.ts';
+import type { Logger } from '../platform/logger.ts';
 import type { PluginService } from '../plugins/service.ts';
 import type { SettingsDeps } from '../settings/service.ts';
-import type { AppUpdateChecker } from '../updates/app-update.ts';
+import type { AppUpdateChecker } from '../system/app-update.ts';
+import type { HealthService } from '../system/health.ts';
 import type { WorkflowService } from '../workflows/service.ts';
 
 export type AuthContext =
@@ -22,7 +22,7 @@ export type AuthContext =
   | { kind: 'session'; user: User; sessionIdHash: string }
   | { kind: 'token'; user: User; tokenId: string; scopes: TokenScope[] };
 
-// Single definition; later tasks add fields (capabilities). Built by `createAppDeps` (src/deps.ts).
+// Single definition; later tasks add fields (capabilities). Built by `createAppDeps` (app/deps.ts).
 export interface AppDeps {
   config: Config;
   db: Database;

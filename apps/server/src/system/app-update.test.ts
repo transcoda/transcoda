@@ -1,6 +1,6 @@
 import type { ReleaseNotes } from '@transcoda/contract';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { Logger } from '../logger.ts';
+import type { Logger } from '../platform/logger.ts';
 import {
   AppUpdateChecker,
   type AppUpdateCheckerOptions,

@@ -74,7 +74,7 @@
       "linter": { "rules": { "style": { "useConsistentTestIt": "off" } } }
     },
     {
-      "includes": ["apps/server/src/logger.ts"],
+      "includes": ["apps/server/src/platform/logger.ts"],
       "linter": { "rules": { "suspicious": { "noConsole": "off" } } }
     },
     {

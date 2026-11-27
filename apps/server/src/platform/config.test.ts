@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import { OFFICIAL_BLOCKLIST_URL, OFFICIAL_CATALOG_URL } from '../plugins/catalog-url.ts';
+import { OFFICIAL_SIGNING_KEYS } from '../plugins/official-keys.ts';
 import { ConfigError, loadConfig, parseIsolation, requireIsolationInProduction } from './config.ts';
-import { OFFICIAL_BLOCKLIST_URL, OFFICIAL_CATALOG_URL } from './plugins/catalog-url.ts';
-import { OFFICIAL_SIGNING_KEYS } from './plugins/official-keys.ts';
 
 describe('loadConfig', () => {
   it('applies defaults', () => {

@@ -45,22 +45,25 @@ describe('layers (Rule A)', () => {
   it('lets a file import its own layer and lower ones', () => {
     expect(
       check({
-        [`${S}/db/open.ts`]: imp('../logger.ts'),
-        [`${S}/logger.ts`]: leaf,
-        [`${S}/platform/config.ts`]: imp('../logger.ts'),
+        [`${S}/db/open.ts`]: imp('../platform/logger.ts'),
+        [`${S}/platform/logger.ts`]: leaf,
+        [`${S}/platform/config.ts`]: imp('./logger.ts'),
       }),
     ).toEqual([]);
   });
 
   it('fails an upward import, and an allowlisted one passes until it is gone', () => {
-    const files = { [`${S}/logger.ts`]: imp('./db/open.ts'), [`${S}/db/open.ts`]: leaf };
+    const files = { [`${S}/platform/logger.ts`]: imp('../db/open.ts'), [`${S}/db/open.ts`]: leaf };
     expect(check(files).join('\n')).toMatch(
-      /apps\/server\/src\/logger\.ts \(layer platform\) imports apps\/server\/src\/db\/open\.ts \(layer db\), a higher layer/,
+      /apps\/server\/src\/platform\/logger\.ts \(layer platform\) imports apps\/server\/src\/db\/open\.ts \(layer db\), a higher layer/,
     );
-    const edge = `${S}/logger.ts -> ${S}/db/open.ts`;
+    const edge = `${S}/platform/logger.ts -> ${S}/db/open.ts`;
     expect(check(files, { upwardImports: [edge] })).toEqual([]);
     expect(
-      check({ [`${S}/logger.ts`]: leaf, [`${S}/db/open.ts`]: leaf }, { upwardImports: [edge] }),
+      check(
+        { [`${S}/platform/logger.ts`]: leaf, [`${S}/db/open.ts`]: leaf },
+        { upwardImports: [edge] },
+      ),
     ).toEqual([
       `"${edge}" in upwardImports in scripts/structure-allowlist.json no longer breaks the rule: remove the entry.`,
     ]);

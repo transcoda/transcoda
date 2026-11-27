@@ -1,36 +1,36 @@
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { Capabilities } from '@transcoda/contract';
-import { LoginRateLimiter } from './auth/rate-limit.ts';
-import { SessionService } from './auth/sessions.ts';
-import { TokenService } from './auth/tokens.ts';
-import { effectiveCapabilities, readEncodeDevice } from './capabilities/devices.ts';
-import type { Exec } from './capabilities/ffmpeg.ts';
-import { GpuLoadSampler } from './capabilities/gpu-load.ts';
-import { IntelLoadReader } from './capabilities/intel-load.ts';
-import type { Config } from './config.ts';
-import type { Database } from './db/open.ts';
-import { findJob, findJobProbe } from './db/repos/jobs.ts';
-import { listLibraries } from './db/repos/libraries.ts';
-import { countUsers } from './db/repos/users.ts';
-import { EngineService } from './engine/engine.ts';
-import { type FsOps, nodeFsOps } from './engine/fs-ops.ts';
-import { nodeSpawner, type ProcessSpawner } from './engine/process.ts';
-import { usableInstallDir } from './fs/browse.ts';
-import { HealthService } from './health.ts';
-import { createAllowedHosts } from './http/host-check.ts';
-import { parseTrustedProxies } from './http/request-info.ts';
-import type { Logger } from './logger.ts';
-import { MetricsRecorder } from './metrics/recorder.ts';
-import { MetricsService } from './metrics/service.ts';
-import { createCoreRegistry, NodeRegistry, type RegisteredNode } from './nodes/registry.ts';
-import { PluginHooksRunner } from './plugins/hooks.ts';
-import { loadLimits } from './plugins/limits.ts';
-import { PluginRestartGate } from './plugins/restart-gate.ts';
-import { PluginService, type PluginServiceDeps } from './plugins/service.ts';
-import type { AppDeps } from './rpc/context.ts';
-import { AppUpdateChecker } from './updates/app-update.ts';
-import { WorkflowService } from './workflows/service.ts';
+import { createAllowedHosts } from '../auth/host-check.ts';
+import { LoginRateLimiter } from '../auth/rate-limit.ts';
+import { parseTrustedProxies } from '../auth/request-info.ts';
+import { SessionService } from '../auth/sessions.ts';
+import { TokenService } from '../auth/tokens.ts';
+import { effectiveCapabilities, readEncodeDevice } from '../capabilities/devices.ts';
+import type { Exec } from '../capabilities/ffmpeg.ts';
+import { GpuLoadSampler } from '../capabilities/gpu-load.ts';
+import { IntelLoadReader } from '../capabilities/intel-load.ts';
+import type { Database } from '../db/open.ts';
+import { findJob, findJobProbe } from '../db/repos/jobs.ts';
+import { listLibraries } from '../db/repos/libraries.ts';
+import { countUsers } from '../db/repos/users.ts';
+import { EngineService } from '../engine/engine.ts';
+import { nodeSpawner, type ProcessSpawner } from '../engine/process.ts';
+import { MetricsRecorder } from '../metrics/recorder.ts';
+import { MetricsService } from '../metrics/service.ts';
+import { createCoreRegistry, NodeRegistry, type RegisteredNode } from '../nodes/registry.ts';
+import type { Config } from '../platform/config.ts';
+import { type FsOps, nodeFsOps } from '../platform/fs-ops.ts';
+import type { Logger } from '../platform/logger.ts';
+import { PluginHooksRunner } from '../plugins/hooks.ts';
+import { loadLimits } from '../plugins/limits.ts';
+import { PluginRestartGate } from '../plugins/restart-gate.ts';
+import { PluginService, type PluginServiceDeps } from '../plugins/service.ts';
+import type { AppDeps } from '../rpc/context.ts';
+import { AppUpdateChecker } from '../system/app-update.ts';
+import { usableInstallDir } from '../system/browse.ts';
+import { HealthService } from '../system/health.ts';
+import { WorkflowService } from '../workflows/service.ts';
 
 export interface AppDepsInput {
   config: Config;
@@ -65,6 +65,12 @@ export interface AppDepsInput {
   fetchAddresses?: PluginServiceDeps['fetchAddresses'];
   /** Names of the TRANSCODA_* variables set at start (default: read from `process.env`, names only). */
   envSet?: ReadonlySet<string>;
+  /**
+   * The install folder: `apps/server/` under `pnpm dev`, `/app/` in the image. main.ts passes it (one
+   * up from main.ts, and from the bundled main.js); the default, two up from this file, is the same
+   * folder when running from source (tests).
+   */
+  installDir?: string;
   /** Generated third-party list (default: `third-party.json` in the install folder). */
   thirdPartyFile?: string;
   /** The update check's fetch (tests; default the global one). */
@@ -79,6 +85,8 @@ export function transcodaEnvNames(env: NodeJS.ProcessEnv = process.env): Readonl
 /** Wires the services around one db and one clock. Used by main.ts and the test app. */
 export function createAppDeps(input: AppDepsInput): AppDeps {
   const now = input.now ?? (() => new Date());
+  const installDir =
+    input.installDir ?? resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
   const { config, db } = input;
   const caps: Capabilities = input.capabilities ?? {
     available: false,
@@ -178,12 +186,9 @@ export function createAppDeps(input: AppDepsInput): AppDeps {
     allowedHosts: createAllowedHosts(db, config),
     trustedProxies: parseTrustedProxies(config.trustedProxies),
     secretKey: input.secretKey,
-    // `src/` in development, `/app/server/` in the image (main.js is bundled there): one up is the install folder.
-    installDir: usableInstallDir(resolve(dirname(fileURLToPath(import.meta.url)), '..'), input.log),
-    // Same base as installDir: `apps/server/` under `pnpm dev`, `/app/` in the image (`pnpm licences` writes it).
-    thirdPartyFile:
-      input.thirdPartyFile ??
-      resolve(dirname(fileURLToPath(import.meta.url)), '..', 'third-party.json'),
+    installDir: usableInstallDir(installDir, input.log),
+    // In the install folder: `pnpm notices` writes it there, the image copies it to `/app/`.
+    thirdPartyFile: input.thirdPartyFile ?? resolve(installDir, 'third-party.json'),
     sessions: new SessionService(db, now),
     tokens: new TokenService(db, now),
     limiter: new LoginRateLimiter({ now: () => now().getTime() }),

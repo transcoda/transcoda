@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { SESSION_COOKIE } from '../../auth/cookies.ts';
-import { createTestApp } from '../../test-app.ts';
+import { createTestApp } from '../../app/test-app.ts';
 import {
   asSession,
   bearer,
@@ -9,7 +8,8 @@ import {
   ORIGIN,
   secondUser,
   send,
-} from '../../test-http.ts';
+} from '../../app/test-http.ts';
+import { SESSION_COOKIE } from '../../auth/cookies.ts';
 
 describe('tokens procedures', () => {
   it('create returns the plaintext once and list omits it', async () => {

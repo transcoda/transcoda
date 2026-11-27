@@ -1,13 +1,13 @@
 import type { Capabilities } from '@transcoda/contract';
 import { emptyGraph, type JobState } from '@transcoda/shared';
 import { describe, expect, it } from 'vitest';
-import { insertJob, updateJob } from './db/repos/jobs.ts';
-import { insertLibrary } from './db/repos/libraries.ts';
-import { insertRun } from './db/repos/runs.ts';
-import { SETTING_KEYS, setSetting } from './db/repos/settings.ts';
-import { insertWorkflow } from './db/repos/workflows.ts';
-import { createTestDb } from './db/test-db.ts';
-import type { JobSpaceWait } from './engine/space-waits.ts';
+import { insertJob, updateJob } from '../db/repos/jobs.ts';
+import { insertLibrary } from '../db/repos/libraries.ts';
+import { insertRun } from '../db/repos/runs.ts';
+import { SETTING_KEYS, setSetting } from '../db/repos/settings.ts';
+import { insertWorkflow } from '../db/repos/workflows.ts';
+import { createTestDb } from '../db/test-db.ts';
+import type { JobSpaceWait } from '../engine/space-waits.ts';
 import { DEEP_HEALTH_CACHE_MS, HealthService } from './health.ts';
 
 const T0 = new Date('2026-03-01T12:00:00.000Z');

@@ -3,7 +3,9 @@ import type { User } from '@transcoda/contract';
 import { z } from 'zod';
 import { clearSessionCookie, sessionCookie } from '../../auth/cookies.ts';
 import { csrfTokenFor } from '../../auth/csrf.ts';
+import { ALWAYS_ALLOWED_HOSTS, hostnameOf } from '../../auth/host-check.ts';
 import { hashPassword, needsRehash, verifyPassword } from '../../auth/password.ts';
+import { clientIp, isHttps, requestHost } from '../../auth/request-info.ts';
 import type { Database } from '../../db/open.ts';
 import { deleteOtherSessions, deleteSession } from '../../db/repos/sessions.ts';
 import { getSetting, setSetting } from '../../db/repos/settings.ts';
@@ -14,8 +16,6 @@ import {
   type UserWithHash,
   updatePasswordHash,
 } from '../../db/repos/users.ts';
-import { ALWAYS_ALLOWED_HOSTS, hostnameOf } from '../../http/host-check.ts';
-import { clientIp, isHttps, requestHost } from '../../http/request-info.ts';
 import { readAppearance } from '../../settings/service.ts';
 import type { ServerContext } from '../context.ts';
 import {

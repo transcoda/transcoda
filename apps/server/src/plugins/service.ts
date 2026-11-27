@@ -31,7 +31,6 @@ import {
 } from '@transcoda/shared';
 import semver from 'semver';
 import type { z } from 'zod';
-import type { Config } from '../config.ts';
 import type { Database } from '../db/open.ts';
 import {
   addCatalog,
@@ -50,9 +49,10 @@ import {
   updatePlugin,
 } from '../db/repos/plugins.ts';
 import type { EngineEvents } from '../engine/events.ts';
-import type { Logger } from '../logger.ts';
 import type { NodeRegistry, RegisteredNode } from '../nodes/registry.ts';
 import { type RemoteHooks, remoteNodeDefinition } from '../nodes/remote.ts';
+import type { Config } from '../platform/config.ts';
+import type { Logger } from '../platform/logger.ts';
 import type { WorkflowService } from '../workflows/service.ts';
 import { stepsBetween } from '../workflows/upgrade.ts';
 import { BlocklistClient, type BlockMatch } from './blocklist.ts';

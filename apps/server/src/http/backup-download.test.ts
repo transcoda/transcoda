@@ -2,8 +2,8 @@ import fs, { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from '
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createTestApp, type TestApp } from '../test-app.ts';
-import { asSession, bearer, createToken, login, type Session, send } from '../test-http.ts';
+import { createTestApp, type TestApp } from '../app/test-app.ts';
+import { asSession, bearer, createToken, login, type Session, send } from '../app/test-http.ts';
 
 const NAME = 'transcoda-20261021-180001-v7-build.sqlite';
 const BYTES = Buffer.from('SQLite format 3\0 backup bytes');

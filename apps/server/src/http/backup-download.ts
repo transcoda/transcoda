@@ -1,11 +1,11 @@
 import fs from 'node:fs';
 import { Readable } from 'node:stream';
 import type { Context } from 'hono';
+import { requestHost } from '../auth/request-info.ts';
 import { backupDirOf, findBackupFile } from '../db/backup.ts';
 import type { AppDeps } from '../rpc/context.ts';
 import { sameOriginOk } from '../rpc/middleware.ts';
 import type { ResolvedAuth } from './auth-context.ts';
-import { requestHost } from './request-info.ts';
 
 /** Route of the download, under /api/v1 (outside the oRPC contract: it streams a file). */
 export const BACKUP_DOWNLOAD_PATH = '/api/v1/system/backups/:name/download';

@@ -2,8 +2,8 @@
 // sidecars beside it (`.nfo` files and poster images). Read only, best effort, never throws.
 import { basename, dirname, extname, join } from 'node:path';
 import { isSeasonFolder, parseFileName, type StoredJobMedia } from '@transcoda/shared';
-import type { Logger } from '../logger.ts';
-import { type FsOps, why } from './fs-ops.ts';
+import { type FsOps, why } from '../platform/fs-ops.ts';
+import type { Logger } from '../platform/logger.ts';
 import { type Nfo, type NfoRoot, readNfo } from './nfo.ts';
 import { isWithin } from './paths.ts';
 

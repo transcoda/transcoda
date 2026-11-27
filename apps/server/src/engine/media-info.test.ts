@@ -2,8 +2,8 @@ import type { Dirent, Stats } from 'node:fs';
 import { basename, dirname } from 'node:path';
 import type { StoredJobMedia } from '@transcoda/shared';
 import { describe, expect, it } from 'vitest';
-import type { Logger } from '../logger.ts';
-import type { FsOps } from './fs-ops.ts';
+import type { FsOps } from '../platform/fs-ops.ts';
+import type { Logger } from '../platform/logger.ts';
 import { createMediaResolver, NFO_MAX_BYTES } from './media-info.ts';
 import { isWithin } from './paths.ts';
 

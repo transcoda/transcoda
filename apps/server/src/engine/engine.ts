@@ -13,7 +13,6 @@ import {
 import { z } from 'zod';
 import { encodeSlots, readEncodeDevice, readGpuOrder } from '../capabilities/devices.ts';
 import type { Exec } from '../capabilities/ffmpeg.ts';
-import type { Config } from '../config.ts';
 import type { Database } from '../db/open.ts';
 import {
   allTimeSaved,
@@ -45,8 +44,10 @@ import { findActiveRestore } from '../db/repos/restores.ts';
 import { getSettingOr, SETTING_DEFAULTS, SETTING_KEYS } from '../db/repos/settings.ts';
 import { findUserById } from '../db/repos/users.ts';
 import { findVersion } from '../db/repos/workflows.ts';
-import type { Logger } from '../logger.ts';
 import type { NodeRegistry } from '../nodes/registry.ts';
+import type { Config } from '../platform/config.ts';
+import type { FsOps } from '../platform/fs-ops.ts';
+import type { Logger } from '../platform/logger.ts';
 import type { PluginHooksRunner } from '../plugins/hooks.ts';
 import type { PluginRestartGate } from '../plugins/restart-gate.ts';
 import { graphUpgrade, type WorkflowService } from '../workflows/service.ts';
@@ -55,7 +56,6 @@ import { LibraryCatchUp } from './catch-up.ts';
 import { contentHash } from './content-hash.ts';
 import { EngineEvents } from './events.ts';
 import { fingerprintKey } from './fingerprint.ts';
-import type { FsOps } from './fs-ops.ts';
 import { readCondensedTail } from './log-condense.ts';
 import { MediaPass } from './media-pass.ts';
 import { logPathFor, Pipeline } from './pipeline.ts';

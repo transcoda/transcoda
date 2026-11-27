@@ -5,6 +5,7 @@ import { promisify } from 'node:util';
 import type { BuildModel, ProbeResult } from '@transcoda/sdk';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { Exec } from '../capabilities/ffmpeg.ts';
+import { MemoryLimitError } from '../platform/memory-guard.ts';
 import { fitToContainer, modelFromProbe } from './build-model.ts';
 import {
   type FixtureName,
@@ -13,7 +14,6 @@ import {
   tempDir,
   toolPaths,
 } from './fixtures.ts';
-import { MemoryLimitError } from './memory-guard.ts';
 import { probeFile } from './probe.ts';
 import { coverExtractArgs, renderArgs } from './render.ts';
 import { packetRows, probeOf, withSidecar, withStream } from './test-helpers.ts';

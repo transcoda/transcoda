@@ -4,7 +4,7 @@ import type { WorkflowGraph } from '@transcoda/shared';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Database } from '../db/open.ts';
 import { createTestDb } from '../db/test-db.ts';
-import type { Logger } from '../logger.ts';
+import type { Logger } from '../platform/logger.ts';
 import { WorkflowService } from '../workflows/service.ts';
 import { bumpV1, bumpV2, bumpV3, chain, node, testRegistry } from '../workflows/test-helpers.ts';
 import { loadWorkflowForJob } from './load-workflow.ts';

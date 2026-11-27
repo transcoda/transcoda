@@ -4,8 +4,8 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
-const root = (p: string) => fileURLToPath(new URL(`../../../${p}`, import.meta.url));
-const CONFIG = readFileSync(root('apps/server/src/config.ts'), 'utf8');
+const root = (p: string) => fileURLToPath(new URL(`../../../../${p}`, import.meta.url));
+const CONFIG = readFileSync(root('apps/server/src/platform/config.ts'), 'utf8');
 const DOCS = readFileSync(root('docs/env.md'), 'utf8');
 
 /** Read by config.ts but described in another variable's row or in the text, not a row of their own. */

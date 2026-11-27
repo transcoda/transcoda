@@ -3,8 +3,8 @@
 import { spawn } from 'node:child_process';
 import { createWriteStream, rmSync, writeFileSync } from 'node:fs';
 import { createInterface } from 'node:readline';
-import type { Logger } from '../logger.ts';
-import { wrapChild } from './child-caps.ts';
+import { wrapChild } from '../platform/child-caps.ts';
+import type { Logger } from '../platform/logger.ts';
 import { type ProgressSample, parseProgressBlock } from './progress.ts';
 
 export interface ProcessResult {

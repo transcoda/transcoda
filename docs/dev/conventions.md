@@ -18,7 +18,7 @@ Today's rules for how code is written here. Most of them are checked by `pnpm ch
 - **Exports:** no default exports (`noDefaultExport`). Exempt: tool config files (`*.config.{ts,mts,js,mjs}`, in the shared base), plugin fixtures (the plugin format is a default export) and Vitest's `globalSetup`.
 - **Types:** no `any` (`noExplicitAny`), no non-null `!` (`noNonNullAssertion`), `T[]` rather than `Array<T>` (`useConsistentArrayType`).
 - **Promises:** no floating promises, no `await` on a non-promise (`noFloatingPromises`, `useAwaitThenable`).
-- **Console:** no `console` in app and package source (`noConsole`). The server logs through `apps/server/src/logger.ts`, the one exempt file.
+- **Console:** no `console` in app and package source (`noConsole`). The server logs through `apps/server/src/platform/logger.ts`, the one exempt file.
 - **Tests:** `it`, not `test`; hooks above the tests; never commit `.only` or `.skip` (`skipIf` is fine) (`useConsistentTestIt`, `useTestHooksOnTop`, `noFocusedTests`, `noSkippedTests`).
 - **File names** (`useFilenamingConvention`): kebab-case in server, package, script and e2e code. Migrations are `NNNN_snake_case.ts`. In `apps/web/src`, kebab-case or PascalCase:
   - a module whose main export is a React component is PascalCase (`JobPage.tsx`, `JobsHistory.tsx`);

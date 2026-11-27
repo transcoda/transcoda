@@ -2,15 +2,15 @@ import { copyFile, readFile, rm, utimes, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { planSummary } from '@transcoda/shared';
 import { describe, expect, it } from 'vitest';
+import { createTestApp } from '../app/test-app.ts';
 import type { Exec } from '../capabilities/ffmpeg.ts';
 import { findJob, findJobResult, listRecycled, listTrace } from '../db/repos/jobs.ts';
 import { findWorkflow } from '../db/repos/workflows.ts';
 import { setOrder } from '../nodes/core/stream-rules.ts';
-import { createTestApp } from '../test-app.ts';
+import { nodeFsOps } from '../platform/fs-ops.ts';
 import { edge, mainGraph, node } from '../workflows/test-helpers.ts';
 import { fitToContainer, modelFromProbe, normalizeDefaults } from './build-model.ts';
 import { fingerprintOf } from './fingerprint.ts';
-import { nodeFsOps } from './fs-ops.ts';
 import { estimateBytes, planOf } from './pipeline-plan.ts';
 import { redactUrl } from './pipeline-steps.ts';
 import {

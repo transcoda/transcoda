@@ -2,8 +2,8 @@ import { mkdir, mkdtemp, realpath, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { createTestApp, type TestApp } from '../../test-app.ts';
-import { asSession, bearer, createToken, login, type Session, send } from '../../test-http.ts';
+import { createTestApp, type TestApp } from '../../app/test-app.ts';
+import { asSession, bearer, createToken, login, type Session, send } from '../../app/test-http.ts';
 
 const ALL_SCOPES = ['read', 'plan', 'jobs:create', 'jobs:manage', 'workflows:write'];
 

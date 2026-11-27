@@ -4,7 +4,7 @@ import { readFile, rm, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
-import type { Logger } from '../logger.ts';
+import type { Logger } from '../platform/logger.ts';
 import { fixturePath, fixturesAvailable, tempDir, toolPaths } from './fixtures.ts';
 import {
   FakeSpawner,

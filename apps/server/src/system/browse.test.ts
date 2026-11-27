@@ -2,7 +2,7 @@ import { chmod, mkdir, mkdtemp, realpath, rm, symlink, writeFile } from 'node:fs
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { loadConfig } from '../config.ts';
+import { loadConfig } from '../platform/config.ts';
 import { ALWAYS_HIDDEN, browseDirs, hiddenRoots, usableInstallDir } from './browse.ts';
 
 const isRoot = process.getuid?.() === 0;

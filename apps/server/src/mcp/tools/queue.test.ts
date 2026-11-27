@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { createTestApp } from '../../test-app.ts';
-import { createToken, login } from '../../test-http.ts';
+import { createTestApp } from '../../app/test-app.ts';
+import { createToken, login } from '../../app/test-http.ts';
 import { mcpClient } from '../test-client.ts';
 import { defineTool, mcpNote, NoteInput, ToolFailure, toolsFor } from '../tool.ts';
 import { queueTools } from './queue.ts';

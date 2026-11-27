@@ -13,6 +13,7 @@ import {
 import type { JsonValue } from '@transcoda/shared';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
+import { asSession, createToken, login, send } from '../app/test-http.ts';
 import { findJobResult, listTrace } from '../db/repos/jobs.ts';
 import { mcpClient } from '../mcp/test-client.ts';
 import { filePort } from '../nodes/core/common.ts';
@@ -20,7 +21,6 @@ import type { RegisteredNode } from '../nodes/registry.ts';
 import { RemoteHookError, remoteNodeDefinition } from '../nodes/remote.ts';
 import { type HookName, PluginHooksRunner } from '../plugins/hooks.ts';
 import { fixturePluginPath } from '../plugins/testing/build.ts';
-import { asSession, createToken, login, send } from '../test-http.ts';
 import { edge, mainGraph, node } from '../workflows/test-helpers.ts';
 import { PLUGIN_RETRY_MS } from './pipeline-steps.ts';
 import {

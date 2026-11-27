@@ -6,11 +6,11 @@ import { RPCLink } from '@orpc/client/fetch';
 import type { ApiClient } from '@transcoda/contract';
 import { HTTPException } from 'hono/http-exception';
 import { describe, expect, it, vi } from 'vitest';
-import { type Config, loadConfig } from './config.ts';
-import { createUser } from './db/repos/users.ts';
-import { createTestDb } from './db/test-db.ts';
-import { nodeFsOps } from './engine/fs-ops.ts';
-import { ALWAYS_ALLOWED_HOSTS, createAllowedHosts } from './http/host-check.ts';
+import { ALWAYS_ALLOWED_HOSTS, createAllowedHosts } from '../auth/host-check.ts';
+import { createUser } from '../db/repos/users.ts';
+import { createTestDb } from '../db/test-db.ts';
+import { type Config, loadConfig } from '../platform/config.ts';
+import { nodeFsOps } from '../platform/fs-ops.ts';
 import { createTestApp } from './test-app.ts';
 
 function makeApp(overrides: Partial<Config> = {}, opts: { withUser?: boolean } = {}) {

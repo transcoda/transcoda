@@ -5,12 +5,12 @@ import { join } from 'node:path';
 import { promisify } from 'node:util';
 import { emptyGraph, type StoredJobMedia } from '@transcoda/shared';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { createTestApp, type TestApp } from '../app/test-app.ts';
 import { insertJob } from '../db/repos/jobs.ts';
 import { insertLibrary, softDeleteLibrary } from '../db/repos/libraries.ts';
 import { insertRun } from '../db/repos/runs.ts';
 import { insertWorkflow } from '../db/repos/workflows.ts';
-import type { Logger } from '../logger.ts';
-import { createTestApp, type TestApp } from '../test-app.ts';
+import type { Logger } from '../platform/logger.ts';
 import { tempDir } from './fixtures.ts';
 import {
   POSTER_BUILD_TIMEOUT_MS,

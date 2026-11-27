@@ -6,7 +6,7 @@ import { RPCHandler } from '@orpc/server/fetch';
 import { ResponseHeadersPlugin } from '@orpc/server/plugins';
 import { ZodToJsonSchemaConverter } from '@orpc/zod/zod4';
 import { contract } from '@transcoda/contract';
-import type { Logger } from '../logger.ts';
+import type { Logger } from '../platform/logger.ts';
 import type { ServerContext } from './context.ts';
 import type { Router } from './router.ts';
 

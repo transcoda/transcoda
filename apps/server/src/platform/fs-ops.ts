@@ -1,7 +1,7 @@
 import type { Dirent, Stats } from 'node:fs';
 import * as fsp from 'node:fs/promises';
 import { fmtBytes } from '@transcoda/shared';
-import type { Logger } from '../logger.ts';
+import type { Logger } from './logger.ts';
 
 /**
  * Every disk touch the engine makes (queueing, the pipeline, the replace, the recycle prune and the

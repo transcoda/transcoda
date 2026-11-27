@@ -1,9 +1,9 @@
 {
   "$comment": "What broke a rule of scripts/check-structure.ts before the check existed. Every list only shrinks: fix the code, then remove the entry (the check fails until you do). Never add an entry to get past a new failure. Rules and fixes: docs/dev/structure.md.",
   "upwardImports": [
-    "apps/server/src/config.ts -> apps/server/src/plugins/catalog-url.ts",
-    "apps/server/src/config.ts -> apps/server/src/plugins/official-keys.ts",
-    "apps/server/src/config.ts -> apps/server/src/plugins/signature.ts",
+    "apps/server/src/platform/config.ts -> apps/server/src/plugins/catalog-url.ts",
+    "apps/server/src/platform/config.ts -> apps/server/src/plugins/official-keys.ts",
+    "apps/server/src/platform/config.ts -> apps/server/src/plugins/signature.ts",
     "apps/server/src/db/repos/jobs.ts -> apps/server/src/engine/fingerprint.ts",
     "apps/server/src/engine/test-outputs.ts -> apps/server/src/engine/preview.ts",
     "apps/server/src/nodes/core/already-processed.ts -> apps/server/src/engine/check-source.ts",
@@ -24,6 +24,8 @@
   "barrels": [],
   "testSupportImports": [],
   "testSupportNames": [
+    "apps/server/src/app/test-app.ts",
+    "apps/server/src/app/test-http.ts",
     "apps/server/src/db/test-db.ts",
     "apps/server/src/engine/fixtures.ts",
     "apps/server/src/engine/pipeline-test-harness.ts",
@@ -31,8 +33,6 @@
     "apps/server/src/mcp/test-client.ts",
     "apps/server/src/metrics/parse-exposition.ts",
     "apps/server/src/plugins/fake-child.ts",
-    "apps/server/src/test-app.ts",
-    "apps/server/src/test-http.ts",
     "apps/server/src/workflows/test-helpers.ts",
     "apps/web/src/pages/settings/settings-fixture.ts",
     "apps/web/src/styles/css-source.ts",
@@ -45,16 +45,14 @@
   ],
   "folderNames": [],
   "smallFolders": [
-    "apps/server/src/fs",
     "apps/server/src/settings",
-    "apps/server/src/updates",
     "apps/web/src/auth",
     "apps/web/src/data",
     "apps/web/src/examples",
     "apps/web/src/recycle"
   ],
   "orphanTests": [
-    "apps/server/src/config-docs.test.ts",
+    "apps/server/src/platform/config-docs.test.ts",
     "apps/server/src/db/migration-conventions.test.ts",
     "apps/server/src/db/repos/engine-repos.test.ts",
     "apps/server/src/db/repos/repos.test.ts",

@@ -8,14 +8,14 @@ import { insertJobResult, listJobs, updateJob } from '../db/repos/jobs.ts';
 import type { LibraryRow } from '../db/repos/libraries.ts';
 import { listRuns } from '../db/repos/runs.ts';
 import { createTestDb } from '../db/test-db.ts';
-import type { Logger } from '../logger.ts';
+import { nodeFsOps } from '../platform/fs-ops.ts';
+import type { Logger } from '../platform/logger.ts';
 import { WorkflowService } from '../workflows/service.ts';
 import { chain, node, testRegistry } from '../workflows/test-helpers.ts';
 import { CATCH_UP_BY, LibraryCatchUp, type WatchFn } from './catch-up.ts';
 import { EngineEvents } from './events.ts';
 import { fingerprintKey, fingerprintOf } from './fingerprint.ts';
 import { tempDir } from './fixtures.ts';
-import { nodeFsOps } from './fs-ops.ts';
 import type { MediaResolver } from './media-info.ts';
 import { QueueService } from './queue-service.ts';
 

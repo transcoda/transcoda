@@ -4,15 +4,15 @@ import { join } from 'node:path';
 import type { Capabilities } from '@transcoda/contract';
 import type { JobState } from '@transcoda/shared';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { createTestApp, type TestApp } from '../../app/test-app.ts';
+import { asSession, bearer, createToken, login, type Session, send } from '../../app/test-http.ts';
 import type { Exec } from '../../capabilities/ffmpeg.ts';
 import { findJob, type JobRow, updateJob } from '../../db/repos/jobs.ts';
 import { setSetting } from '../../db/repos/settings.ts';
 import { tempDir } from '../../engine/fixtures.ts';
-import { type FsOps, nodeFsOps } from '../../engine/fs-ops.ts';
 import { FakeSpawner } from '../../engine/process.ts';
 import { packetRows } from '../../engine/test-helpers.ts';
-import { createTestApp, type TestApp } from '../../test-app.ts';
-import { asSession, bearer, createToken, login, type Session, send } from '../../test-http.ts';
+import { type FsOps, nodeFsOps } from '../../platform/fs-ops.ts';
 import { chain, node } from '../../workflows/test-helpers.ts';
 import { redactGraph } from '../redact.ts';
 

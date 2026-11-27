@@ -9,6 +9,9 @@ on:
   pull_request:
     paths:
       - apps/server/src/engine/**
+      - apps/server/src/platform/fs-ops*
+      - apps/server/src/platform/child-caps*
+      - apps/server/src/platform/memory-guard*
       - apps/server/src/capabilities/**
       - apps/server/src/nodes/core/**
       - apps/server/src/http/test-output*

@@ -19,8 +19,6 @@ import {
   updateJob,
 } from '../db/repos/jobs.ts';
 import { findVersion } from '../db/repos/workflows.ts';
-import type { Logger } from '../logger.ts';
-import { sameFingerprint } from './fingerprint.ts';
 import {
   ClobberRefused,
   errorCode,
@@ -28,7 +26,9 @@ import {
   renameNoClobber,
   syncDir,
   syncDirs,
-} from './fs-ops.ts';
+} from '../platform/fs-ops.ts';
+import type { Logger } from '../platform/logger.ts';
+import { sameFingerprint } from './fingerprint.ts';
 import { recordRecycledRow } from './recycle.ts';
 import { fingerprintFromStats } from './replace.ts';
 import { rollBackRestore } from './restore.ts';

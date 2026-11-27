@@ -2,7 +2,7 @@ import { constants } from 'node:fs';
 import { access, opendir, realpath, stat } from 'node:fs/promises';
 import { dirname, resolve, sep } from 'node:path';
 import { BROWSE_DIRS_MAX, type FsBrowseDirsOutput, type FsDirEntry } from '@transcoda/contract';
-import type { Config } from '../config.ts';
+import type { Config } from '../platform/config.ts';
 
 /**
  * System folders the folder picker never shows or enters, whatever their permissions (the

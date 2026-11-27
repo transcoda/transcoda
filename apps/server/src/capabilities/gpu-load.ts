@@ -1,7 +1,7 @@
 // The GPUs' video engines over the last hour, for the Jobs page: `nvidia-smi` for NVIDIA and the
 // i915 fdinfo counters for Intel, every few seconds, kept in memory only (nothing is stored, so the graph starts empty after a restart).
 import type { GpuLoadOutput } from '@transcoda/contract';
-import type { Logger } from '../logger.ts';
+import type { Logger } from '../platform/logger.ts';
 import type { Gpu } from './devices.ts';
 import { type Exec, makeExec } from './ffmpeg.ts';
 import { IntelLoadReader } from './intel-load.ts';

@@ -1,5 +1,5 @@
 import { BlockList, isIP } from 'node:net';
-import { ConfigError } from '../config.ts';
+import { ConfigError } from '../platform/config.ts';
 
 function family(addr: string): 'ipv4' | 'ipv6' | null {
   const v = isIP(addr);

@@ -8,11 +8,11 @@ import { join } from 'node:path';
 import { TEST_ENCODE_KEEP_HOURS_MAX } from '@transcoda/contract';
 import type { JobPlan } from '@transcoda/shared';
 import { z } from 'zod';
-import type { Config } from '../config.ts';
 import type { Database } from '../db/open.ts';
 import { getSetting, SETTING_DEFAULTS, SETTING_KEYS } from '../db/repos/settings.ts';
-import type { Logger } from '../logger.ts';
-import { errorCode, type FsOps } from './fs-ops.ts';
+import type { Config } from '../platform/config.ts';
+import { errorCode, type FsOps } from '../platform/fs-ops.ts';
+import type { Logger } from '../platform/logger.ts';
 import { buildPreview, MAX_PREVIEW_BUILDS } from './preview.ts';
 
 /** The folder under the transcode dir that holds the kept outputs (the startup sweep skips it). */

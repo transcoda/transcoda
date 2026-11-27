@@ -2,9 +2,9 @@ import { implement, ORPCError } from '@orpc/server';
 import { contract, errorDefs } from '@transcoda/contract';
 import type { TokenScope } from '@transcoda/shared';
 import { CSRF_HEADER, verifyCsrfToken } from '../auth/csrf.ts';
+import { checkOrigin, hostnameOf } from '../auth/host-check.ts';
+import { requestHost } from '../auth/request-info.ts';
 import { hasScope } from '../auth/tokens.ts';
-import { checkOrigin, hostnameOf } from '../http/host-check.ts';
-import { requestHost } from '../http/request-info.ts';
 import type { AuthContext, ServerContext } from './context.ts';
 
 /** The contract implementer every procedure is built from. */

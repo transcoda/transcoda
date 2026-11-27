@@ -3,13 +3,7 @@ import { mkdir, rm, symlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { emptyGraph } from '@transcoda/shared';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { insertJob } from '../db/repos/jobs.ts';
-import { insertLibrary } from '../db/repos/libraries.ts';
-import { insertRun } from '../db/repos/runs.ts';
-import { insertWorkflow } from '../db/repos/workflows.ts';
-import { tempDir } from '../engine/fixtures.ts';
-import { logPathFor } from '../engine/pipeline.ts';
-import { createTestApp, type TestApp } from '../test-app.ts';
+import { createTestApp, type TestApp } from '../app/test-app.ts';
 import {
   asSession,
   bearer,
@@ -20,7 +14,13 @@ import {
   type Session,
   send,
   trackFileHandles,
-} from '../test-http.ts';
+} from '../app/test-http.ts';
+import { insertJob } from '../db/repos/jobs.ts';
+import { insertLibrary } from '../db/repos/libraries.ts';
+import { insertRun } from '../db/repos/runs.ts';
+import { insertWorkflow } from '../db/repos/workflows.ts';
+import { tempDir } from '../engine/fixtures.ts';
+import { logPathFor } from '../engine/pipeline.ts';
 
 const LOG = 'ffmpeg version 7\nset_mempolicy: Operation not permitted\nframe=100\n';
 

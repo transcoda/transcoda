@@ -10,9 +10,9 @@ import {
   setJobMedia,
   setShowPosterPath,
 } from '../db/repos/library-files.ts';
-import type { Logger } from '../logger.ts';
+import type { FsOps } from '../platform/fs-ops.ts';
+import type { Logger } from '../platform/logger.ts';
 import type { EngineEvent } from './events.ts';
-import type { FsOps } from './fs-ops.ts';
 import { createMediaResolver, type MediaResolver } from './media-info.ts';
 
 /** Files resolved at once (the same bound as queueing). */
