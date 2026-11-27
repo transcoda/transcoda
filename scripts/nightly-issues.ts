@@ -1,12 +1,14 @@
 // Turns the nightly run's test reports into GitHub issues: one per failing test, labelled `nightly`.
 // A test that already has an open issue gets a comment instead of a second issue; a test that passes
 // again gets its issue closed. A run that failed before any report said why (install, build) gets
-// one "the nightly run failed" issue. Used by .github/workflows/nightly.yml:
-//   node scripts/nightly-issues.ts <vitest.json> <playwright.json>
+// one "the nightly run failed" issue. Used by .github/workflows/nightly.yml, and by
+// transcoda-plugins' nightly from its checkout of this repo:
+//   node scripts/nightly-issues.ts <report.json>...
+// Each report is vitest's or Playwright's JSON report (told apart by their shape).
 // Env: GITHUB_TOKEN, GITHUB_REPOSITORY (owner/name), RUN_URL, SHA, RUN_FAILED ("true" when a step
-// failed), TEST_ROOT (where the tests ran, to make vitest's paths relative; default: here).
-// A missing report counts as "nothing ran there": none of its issues are closed. DRY_RUN=true prints
-// what it would do and writes nothing.
+// failed), STEP_FAILED ("true" when a step that is not a test failed, whatever the tests did), TEST_ROOT (where the tests ran, to make vitest's paths relative; default: here).
+// A missing report counts as "nothing ran there": none of its issues are closed, and the run counts
+// as failed. DRY_RUN=true prints what it would do and writes nothing.
 import { existsSync, readFileSync } from 'node:fs';
 import { relative } from 'node:path';
 
@@ -123,7 +125,7 @@ export function parsePlaywright(report: { suites?: PwSuite[] }): TestResult[] {
 /** The issue title for a test id (GitHub allows 256 characters). */
 export function titleOf(id: string): string {
   const named: Record<string, string> = {
-    [RUN_ID]: 'Nightly: the run failed before its tests',
+    [RUN_ID]: 'Nightly: the run failed outside its tests',
     [MANY_ID]: 'Nightly: many tests fail',
   };
   const title = named[id] ?? `Nightly: ${id}`;
@@ -133,12 +135,13 @@ export function titleOf(id: string): string {
 /**
  * What to do with GitHub: create an issue for a failing test without one, comment on one that has
  * one, close the open issue of a test that passed. `runFailed` without a failing test means the run
- * broke before its tests (or a report is missing): that gets the run issue. A passing run closes it.
+ * broke outside its tests (or a report is missing): that gets the run issue. `stepFailed` (a step
+ * that is not a test failed) gets it even when tests fail too. A passing run closes it.
  */
 export function plan(
   results: TestResult[],
   open: OpenIssue[],
-  ctx: { runFailed: boolean; runUrl: string; sha: string },
+  ctx: { runFailed: boolean; stepFailed?: boolean; runUrl: string; sha: string },
 ): Action[] {
   const actions: Action[] = [];
   const byId = new Map(open.map((i) => [i.id, i.number]));
@@ -156,7 +159,8 @@ export function plan(
       return;
     }
     const whats: Record<string, string> = {
-      [RUN_ID]: 'The nightly run failed before its tests reported (install, build or fixtures).',
+      [RUN_ID]:
+        'The nightly run failed in a step that is not a test (install, build, fixtures or a check script): its log says which.',
       [MANY_ID]:
         'The nightly run found more failing tests than it opens issues for: look for one cause first (the build, a shared helper, a page every screenshot shows).',
     };
@@ -176,10 +180,10 @@ export function plan(
   } else {
     for (const r of failing) fail(r.id, r.error);
   }
-  if (ctx.runFailed && failing.length === 0) fail(RUN_ID, '');
+  if ((ctx.runFailed && failing.length === 0) || ctx.stepFailed) fail(RUN_ID, '');
 
   const passed = new Set(results.filter((r) => r.passed).map((r) => r.id));
-  if (!ctx.runFailed) passed.add(RUN_ID);
+  if (!ctx.runFailed && !ctx.stepFailed) passed.add(RUN_ID);
   if (failing.length === 0 && !ctx.runFailed) passed.add(MANY_ID);
   for (const issue of open) {
     if (passed.has(issue.id)) {
@@ -230,21 +234,43 @@ async function openIssues(): Promise<OpenIssue[]> {
   }
 }
 
-function readJson(path: string | undefined): unknown {
-  return path && existsSync(path) ? JSON.parse(readFileSync(path, 'utf8')) : null;
+/**
+ * The results of every report: vitest's (it has `testResults`) or Playwright's (`suites`). A
+ * report that is missing (null) or neither marks the run as failed.
+ */
+export function readReports(
+  reports: unknown[],
+  root: string,
+): { results: TestResult[]; missing: boolean } {
+  const results: TestResult[] = [];
+  let missing = false;
+  for (const r of reports) {
+    if (r && typeof r === 'object' && 'testResults' in r) {
+      results.push(...parseVitest(r as VitestReport, root));
+    } else if (r && typeof r === 'object' && 'suites' in r) {
+      results.push(...parsePlaywright(r as { suites?: PwSuite[] }));
+    } else {
+      missing = true;
+    }
+  }
+  return { results, missing };
+}
+
+function readJson(path: string): unknown {
+  return existsSync(path) ? JSON.parse(readFileSync(path, 'utf8')) : null;
 }
 
 async function main() {
-  const [vitestPath, playwrightPath] = process.argv.slice(2);
-  const vitest = readJson(vitestPath) as VitestReport | null;
-  const playwright = readJson(playwrightPath) as { suites?: PwSuite[] } | null;
-  const results = [
-    ...(vitest ? parseVitest(vitest, process.env.TEST_ROOT ?? process.cwd()) : []),
-    ...(playwright ? parsePlaywright(playwright) : []),
-  ];
-  const runFailed = process.env.RUN_FAILED === 'true' || !vitest || !playwright;
+  const paths = process.argv.slice(2);
+  if (paths.length === 0) throw new Error('usage: nightly-issues.ts <report.json>...');
+  const { results, missing } = readReports(
+    paths.map(readJson),
+    process.env.TEST_ROOT ?? process.cwd(),
+  );
+  const runFailed = process.env.RUN_FAILED === 'true' || missing;
   const actions = plan(results, await openIssues(), {
     runFailed,
+    stepFailed: process.env.STEP_FAILED === 'true',
     runUrl: process.env.RUN_URL ?? '',
     sha: process.env.SHA ?? '',
   });
