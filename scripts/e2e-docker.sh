@@ -22,11 +22,11 @@ docker build -q --platform "$platform" -t "$image" -f e2e/Dockerfile \
 
 tty=; [ -t 1 ] && tty=-t
 # shellcheck disable=SC2016 # expanded inside the container
-docker run --rm --platform "$platform" $tty --init --ipc=host -e CI -e GITHUB_ACTIONS \
+docker run --rm --platform "$platform" $tty --init -u "$(id -u):$(id -g)" --ipc=host -e CI -e GITHUB_ACTIONS \
   -v "$PWD:/src" -v transcoda-e2e-pnpm-store:/pnpm-store \
   "$image" sh -euc '
-    rsync -a --exclude node_modules --exclude dist --exclude .local --exclude .git /src/ /work/
-    cd /work
+    mkdir /work/repo && cd /work/repo
+    rsync -a --exclude node_modules --exclude dist --exclude .local --exclude .git /src/ ./
     pnpm config set store-dir /pnpm-store >/dev/null
     pnpm install --frozen-lockfile --reporter=silent
     pnpm build >/dev/null

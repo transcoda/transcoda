@@ -24,5 +24,9 @@ RUN set -eux; \
     apt-get install -y --no-install-recommends "jellyfin-ffmpeg8=${JELLYFIN_FFMPEG_VERSION%-*}-$codename"; \
     rm -rf /var/lib/apt/lists/*
 ENV PATH="/usr/lib/jellyfin-ffmpeg:${PATH}" \
+    TRANSCODA_E2E_CONTAINER=1 \
     TRANSCODA_FIXTURE_FONT=/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf
+# Runs as the calling user (the script passes -u): the copy, the store and corepack's cache are open.
+RUN mkdir -p /work /pnpm-store && chmod 1777 /work /pnpm-store
+ENV HOME=/tmp COREPACK_HOME=/pnpm-store/corepack
 WORKDIR /work

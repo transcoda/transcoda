@@ -42,36 +42,16 @@ jobs:
             -e TRANSCODA_CONFIG_DIR=/tmp/cfg -e TRANSCODA_TRANSCODE_DIR=/tmp/tc \
             -e TRANSCODA_PLUGIN_RUN_DIR=/tmp/run "$node_image" sh /t/entrypoint.test.sh
 
-  # Browser tests (Playwright) against the built server and the fixture media. Strategy and time
-  # budget: docs/decisions.md, "Test tiers".
+  # Browser tests (Playwright) against the built server and the fixture media, screenshots included.
+  # They run in e2e/Dockerfile's container, as `pnpm e2e:docker` does locally, so the baselines
+  # match. Strategy and time budget: docs/decisions.md, "Test tiers".
   e2e:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version-file: .node-version
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      # The ffmpeg the image ships (jellyfin-ffmpeg, same version as JELLYFIN_FFMPEG_VERSION in
-      # docker/Dockerfile, built for the runner's Ubuntu): the distro ffmpeg fails the capability probe.
-      - name: Install jellyfin-ffmpeg
-        run: |
-          set -eu
-          version=$(sed -n 's/^ARG JELLYFIN_FFMPEG_VERSION=//p' docker/Dockerfile)
-          codename=$(. /etc/os-release && echo "$VERSION_CODENAME")
-          curl -fsSL https://repo.jellyfin.org/jellyfin_team.gpg.key | sudo gpg --dearmor -o /usr/share/keyrings/jellyfin.gpg
-          echo "deb [signed-by=/usr/share/keyrings/jellyfin.gpg] https://repo.jellyfin.org/ubuntu $codename main" \
-            | sudo tee /etc/apt/sources.list.d/jellyfin.list
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends "jellyfin-ffmpeg8=${version%-*}-$codename"
-          echo /usr/lib/jellyfin-ffmpeg >> "$GITHUB_PATH"
-      - run: pnpm build
-      - run: pnpm fixtures
-      - run: pnpm exec playwright install --with-deps chromium
-      - run: pnpm e2e
+      - run: sh scripts/e2e-docker.sh
+      # On a screenshot failure the results hold the actual image and the diff next to the baseline.
       - if: ${{ !cancelled() }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:

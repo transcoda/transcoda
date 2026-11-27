@@ -63,6 +63,11 @@
       "enabled": false
     },
     {
+      "description": "Playwright: the npm package and the container image the browser tests run in (e2e/Dockerfile) move together. Its PR changes how screenshots render: run `pnpm e2e:update` on it and commit the new baselines.",
+      "matchPackageNames": ["@playwright/test", "mcr.microsoft.com/playwright"],
+      "groupName": "Playwright"
+    },
+    {
       "description": "The Docker base image, pinned by digest next to its tag.",
       "matchManagers": ["dockerfile"],
       "pinDigests": true
