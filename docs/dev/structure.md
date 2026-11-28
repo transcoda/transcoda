@@ -225,5 +225,5 @@ Steps 1 (the check and this doc), 2, 3, 4, 5, 6, 7, 8, 9, 10 and 11 are done. Ea
 - [x] 9. Web: `shell/`, `test/` to `testing/`, the CSS guard tests into `styles/`.
 - [x] 10. Web: pages into their features, in three pull requests; then delete `pages/`.
 - [x] 11. Web splits: the editor page's hooks, the jobs page, the over-budget page tests, the two largest stylesheets.
-- [ ] 12. Packages: `shared/src/workflow` to `workflows`; split `contract.test.ts` per router.
+- [x] 12. Packages: `shared/src/workflow` to `workflows`; split `contract.test.ts` per router, into a test beside each router file.
 - [ ] 13. Tighten: empty `upwardImports`, remove the "today" entries from `LAYERS`, and check this doc's paths too (`DOC_PATHS_SKIP`).
