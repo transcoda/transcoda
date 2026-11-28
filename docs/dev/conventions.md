@@ -54,7 +54,7 @@ Today's rules for how code is written here. Most of them are checked by `pnpm ch
 
 ## Checked by tests
 
-- **Migrations** (`apps/server/src/db/migration-conventions.test.ts`): named `NNNN_snake_case.ts`, numbered 1..N without gaps, registered in `apps/server/src/db/migrations/index.ts` in order with a matching `version` and `name`, each with its own test. The allowlist of old untested migrations may only shrink.
+- **Migrations** (`apps/server/src/db/migrate.conventions.test.ts`): named `NNNN_snake_case.ts`, numbered 1..N without gaps, registered in `apps/server/src/db/migrations/index.ts` in order with a matching `version` and `name`, each with its own test. The allowlist of old untested migrations may only shrink.
 - **Design rules** (the guard tests in `apps/web/src/styles/`): spacing, radius, colour, focus, motion, z-index and icon rules from DESIGN.md, read from the stylesheets through `apps/web/src/styles/css-source.ts`. Every exception is in `apps/web/src/styles/design-exceptions.ts`, with its reason. Details in [web-ui.md](web-ui.md).
 - **Licences** (`pnpm check-licences`): production dependencies must be under an allowed licence (`ALLOWED` in `scripts/third-party-notices.ts`); exceptions go in `scripts/licences/overrides.json` with a `reason`.
 - **Docs in sync:** the node catalogue fixture, `docs/metrics.md`, `docs/env.md` (variables and settings), `docs/mcp.md` (tools), DESIGN.md's quoted values and the release notes in `.changes/` (see [testing.md](testing.md#fixtures-that-are-checked)).

@@ -51,7 +51,7 @@ Today's rules for the server outside the encode engine. The engine is in [engine
 - SQL lives in repositories, `apps/server/src/db/repos/*.ts`. Services and procedures call them. IDs are `crypto.randomUUID()`; times are ISO-8601 UTC strings.
 - Migrations:
   - One file per migration in `db/migrations/`, named `NNNN_snake_case.ts`, numbered 1..N with no gaps, exporting a `Migration` with a matching `version` and `name`.
-  - Register it in order in `db/migrations/index.ts`, and give it its own `NNNN_snake_case.test.ts`. `db/migration-conventions.test.ts` checks all of this.
+  - Register it in order in `db/migrations/index.ts`, and give it its own `NNNN_snake_case.test.ts`. `db/migrate.conventions.test.ts` checks all of this.
   - Write frozen SQL: literal names and values, no imports of application constants, so the file never changes after it ships. Never edit a shipped migration; write a new one.
   - Keep data. A table rebuild sets `foreignKeys: 'off'`; `migrate()` then refuses to commit while `foreign_key_check` reports a violation.
 - `app/bootstrap.ts` runs `migrate()` at start. A schema newer than the build refuses to start (`SchemaTooNewError`) and names the backup to restore.
@@ -59,7 +59,7 @@ Today's rules for the server outside the encode engine. The engine is in [engine
 
 ## Settings and environment variables
 
-- **Database settings** are things a person changes in the UI without a restart. Keys and defaults are `SETTING_KEYS` and `SETTING_DEFAULTS` in `db/repos/settings.ts`. `settings/service.ts` reads them; a row that fails its schema reads as the default. `settings.update` is session only and allow-lists its fields in `SettingsUpdateInputSchema`. No MCP tool reads or changes settings.
+- **Database settings** are things a person changes in the UI without a restart. Keys and defaults are `SETTING_KEYS` and `SETTING_DEFAULTS` in `db/repos/settings.ts`. `settings.ts` reads them; a row that fails its schema reads as the default. `settings.update` is session only and allow-lists its fields in `SettingsUpdateInputSchema`. No MCP tool reads or changes settings.
 - **Environment variables** are deployment facts that need a restart. They are parsed only in `loadConfig()` (`apps/server/src/platform/config.ts`) into `Config`, with a `ConfigError` for a bad value. Document each in a table row in `docs/env.md`; `config.docs.test.ts` compares the rows with the variables `config.ts` reads.
 - The Settings page shows some variables read-only (`source.kind: 'env'`) with their effective values from `Config`. The service learns which variables are set by name only (`transcodaEnvNames` in `app/deps.ts`), and `settings.get` never returns a secret.
 
@@ -75,7 +75,7 @@ Today's rules for the server outside the encode engine. The engine is in [engine
 - `/mcp` (`mcp/handler.ts`): stateless Streamable HTTP on `@modelcontextprotocol/sdk`, bearer tokens only. Cookies are never read. The host check, Origin check and body limit apply.
 - Tools call the router in process (`ToolContext.api`), so scopes, validation, redaction and error codes are the REST ones. A tool adds input shapes, text and structured output only.
 - A token sees only the tools its scopes allow (`toolsFor`). A hidden tool answers "not found".
-- Never, and tested in `mcp/never.test.ts`: no tool activates, deactivates or queues a real run (`dry_run` always sends `dryRun: true`); no tool reads a secret or settings; no auth, token or events tool. A `metrics` token sees no tool (`mcp/metrics-scope.test.ts`).
+- Never, and tested in `mcp/never.test.ts`: no tool activates, deactivates or queues a real run (`dry_run` always sends `dryRun: true`); no tool reads a secret or settings; no auth, token or events tool. A `metrics` token sees no tool (`mcp/tool.metrics-scope.test.ts`).
 - Logging: one `mcp tool call` line per call with tool, token id, ok and code. Never arguments or results.
 
 ## Metrics

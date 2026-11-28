@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { Database } from '../open.ts';
-import { createTestDb } from '../test-db.ts';
+import { createTestDb } from '../testing.ts';
 import { deleteExpiredSessions, findSession, insertSession } from './sessions.ts';
 import { createUser } from './users.ts';
 

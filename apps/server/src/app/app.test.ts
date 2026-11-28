@@ -8,7 +8,7 @@ import { HTTPException } from 'hono/http-exception';
 import { describe, expect, it, vi } from 'vitest';
 import { ALWAYS_ALLOWED_HOSTS, createAllowedHosts } from '../auth/host-check.ts';
 import { createUser } from '../db/repos/users.ts';
-import { createTestDb } from '../db/test-db.ts';
+import { createTestDb } from '../db/testing.ts';
 import { type Config, loadConfig } from '../platform/config.ts';
 import { nodeFsOps } from '../platform/fs-ops.ts';
 import { createTestApp } from './testing/app.ts';

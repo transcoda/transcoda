@@ -19,7 +19,7 @@ import { findRecycled, insertRecycled, listRecycled } from '../../db/repos/recyc
 import { findActiveRestore } from '../../db/repos/restores.ts';
 import { insertRun } from '../../db/repos/runs.ts';
 import { insertWorkflow } from '../../db/repos/workflows.ts';
-import { createTestDb } from '../../db/test-db.ts';
+import { createTestDb } from '../../db/testing.ts';
 import { failingAt, nodeFsOps } from '../../platform/fs-ops.ts';
 import type { Logger } from '../../platform/logger.ts';
 import { tempDir } from '../testing/fixtures.ts';

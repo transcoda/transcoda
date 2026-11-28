@@ -1,7 +1,7 @@
 import { emptyGraph, RENDER_TYPE, upgradeGraphJson } from '@transcoda/shared';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { Database } from '../open.ts';
-import { createTestDb } from '../test-db.ts';
+import { createTestDb } from '../testing.ts';
 import {
   appendVersion,
   clearActiveVersion,

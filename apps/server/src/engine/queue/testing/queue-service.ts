@@ -7,7 +7,7 @@ import { afterEach, beforeEach, expect, type Mock, vi } from 'vitest';
 import type { Database } from '../../../db/open.ts';
 import { insertJobResult, type JobResultRow } from '../../../db/repos/jobs/jobs.ts';
 import type { LibraryRow } from '../../../db/repos/libraries.ts';
-import { createTestDb } from '../../../db/test-db.ts';
+import { createTestDb } from '../../../db/testing.ts';
 import type { Logger } from '../../../platform/logger.ts';
 import { WorkflowService } from '../../../workflows/service.ts';
 import { chain, node, testRegistry } from '../../../workflows/test-helpers.ts';

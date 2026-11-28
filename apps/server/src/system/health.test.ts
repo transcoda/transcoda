@@ -6,7 +6,7 @@ import { insertLibrary } from '../db/repos/libraries.ts';
 import { insertRun } from '../db/repos/runs.ts';
 import { SETTING_KEYS, setSetting } from '../db/repos/settings.ts';
 import { insertWorkflow } from '../db/repos/workflows.ts';
-import { createTestDb } from '../db/test-db.ts';
+import { createTestDb } from '../db/testing.ts';
 import type { JobSpaceWait } from '../engine/files/space-waits.ts';
 import { DEEP_HEALTH_CACHE_MS, HealthService } from './health.ts';
 

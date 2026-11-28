@@ -1,6 +1,6 @@
 import { emptyGraph } from '@transcoda/shared';
 import type { Database } from '../../open.ts';
-import { createTestDb } from '../../test-db.ts';
+import { createTestDb } from '../../testing.ts';
 import { insertLibrary } from '../libraries.ts';
 import { insertRun } from '../runs.ts';
 import { insertWorkflow } from '../workflows.ts';

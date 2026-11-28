@@ -16,7 +16,7 @@ import {
   parseHostMessage,
   parseServerMessage,
   TraceEntrySchema,
-} from '../index.ts';
+} from './index.ts';
 
 const manifest = {
   name: 'sonarr',

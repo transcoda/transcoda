@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { findSession } from '../db/repos/sessions.ts';
 import { createUser } from '../db/repos/users.ts';
-import { createTestDb } from '../db/test-db.ts';
+import { createTestDb } from '../db/testing.ts';
 import { hashSessionId, SESSION_TTL_MS, SessionService } from './sessions.ts';
 
 function setup() {

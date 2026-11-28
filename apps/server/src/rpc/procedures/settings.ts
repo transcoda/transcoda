@@ -1,4 +1,4 @@
-import { readSettings, updateSettings } from '../../settings/service.ts';
+import { readSettings, updateSettings } from '../../settings.ts';
 import { os, requireHumanSessionWith, requireScope } from '../middleware.ts';
 
 // Changing a setting is a person's job: an API token never updates one, whatever its scopes, and
