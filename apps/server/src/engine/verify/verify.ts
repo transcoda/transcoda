@@ -93,7 +93,9 @@ export async function verifyOutput(input: VerifyInput): Promise<VerifyResult> {
   const warnings = [...targets.warnings];
   const output = await mediaFile(exec, input.ffprobePath, input.outputPath, probe);
   const source = await mediaFile(exec, input.ffprobePath, input.sourcePath, input.sourceProbe);
-  source.start = await decodableStart(exec, input.ffprobePath, input.model, source);
+  const decodable = await decodableStart(exec, input.ffprobePath, input.model, source);
+  source.skipped = decodable - source.start;
+  source.start = decodable;
   const duration = await durationCheck(exec, input.ffprobePath, input.model, source, output, tick);
   const stated = input.sourceProbe.durationSeconds;
   if (stated > 0 && duration.sourceEnds.length > 0) {

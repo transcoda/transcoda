@@ -124,6 +124,11 @@ export interface MediaFile {
   byteSeek: boolean;
   /** Stream ends (file time) found so far, by stream index. */
   ends: Map<number, number>;
+  /**
+   * Seconds between where ffmpeg's input `-ss` counts from and `start`: more than 0 only when
+   * `start` was moved past undecodable packets (see decodableStart).
+   */
+  skipped: number;
 }
 
 /**
@@ -140,9 +145,10 @@ export async function mediaFile(
   const byteSeek = probe.formatName.split(',').some((f) => BYTE_SEEK_FORMATS.has(f));
   const own = num(format.start_time);
   const ends = new Map<number, number>();
-  if (own !== null) return { path, probe, start: own, byteSeek, ends };
+  if (own !== null) return { path, probe, start: own, byteSeek, ends, skipped: 0 };
   const starts = streams.map((s) => num(s.start_time)).filter((t): t is number => t !== null);
-  if (starts.length > 0) return { path, probe, start: Math.min(...starts), byteSeek, ends };
+  if (starts.length > 0)
+    return { path, probe, start: Math.min(...starts), byteSeek, ends, skipped: 0 };
   const r = await run(exec, ffprobePath, [
     '-v',
     'error',
@@ -155,7 +161,7 @@ export async function mediaFile(
     path,
   ]);
   const first = r.ok ? num(firstLine(r.stdout)?.split(',')[0]) : null;
-  return { path, probe, start: first ?? 0, byteSeek, ends };
+  return { path, probe, start: first ?? 0, byteSeek, ends, skipped: 0 };
 }
 
 /** ffprobe `-read_intervals` for [from, to] in file time (open start when at the file start). */

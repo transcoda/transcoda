@@ -80,7 +80,8 @@ export async function endSeek(
           from: pick.pts,
         };
       }
-      return { args: ['-ss', Math.max(0, pick.pts).toFixed(6), '-i', file.path], from: pick.pts };
+      const ss = Math.max(0, pick.pts + file.skipped);
+      return { args: ['-ss', ss.toFixed(6), '-i', file.path], from: pick.pts };
     }
     if (from <= 0 || back >= MAX_KEYFRAME_SEARCH) return null;
     back = Math.min(back * 4, MAX_KEYFRAME_SEARCH);
@@ -179,6 +180,36 @@ export function mediaMaps(probe: ProbeResult, byId = false): string[] {
   });
 }
 
+/** The stream a file's seeks are made by: its first video stream other than covers, else audio. */
+function anchorOf(file: MediaFile) {
+  const streams = [...file.probe.streams].sort((a, b) => a.index - b.index);
+  return (
+    streams.find((s) => s.type === 'video' && !isPicture(s, streams)) ??
+    streams.find((s) => s.type === 'audio')
+  );
+}
+
+/**
+ * The input options and URL that open `file` at its start (`file.start`). A source whose first
+ * packets cannot be decoded (see decodableStart) is opened at its first keyframe, where the output
+ * starts: by time (`-ss`), or for a byte-seek format at the keyframe's byte offset. Null when that
+ * keyframe is not found.
+ */
+async function openAtStart(
+  exec: Exec,
+  ffprobePath: string,
+  file: MediaFile,
+): Promise<string[] | null> {
+  if (file.skipped <= 0) return ['-i', file.path];
+  if (!file.byteSeek) return ['-ss', file.skipped.toFixed(6), '-i', file.path];
+  const anchor = anchorOf(file);
+  if (!anchor) return null;
+  // endSeek picks the last keyframe at least DECODE_END_SECONDS before the given end: here the
+  // first one, at file time 0.
+  const seek = await endSeek(exec, ffprobePath, file, anchor.index, DECODE_END_SECONDS);
+  return seek?.args ?? null;
+}
+
 /** How decode-start and decode-end open `file` (stream maps are added per run). */
 async function decodeInputs(
   exec: Exec,
@@ -186,11 +217,9 @@ async function decodeInputs(
   file: MediaFile,
   isOutput: boolean,
 ): Promise<Record<'decode-start' | 'decode-end', { input: string[]; where: string } | null>> {
-  const start = { input: ['-t', '1', '-i', file.path], where: 'the first second' };
-  const streams = [...file.probe.streams].sort((a, b) => a.index - b.index);
-  const anchor =
-    streams.find((s) => s.type === 'video' && !isPicture(s, streams)) ??
-    streams.find((s) => s.type === 'audio');
+  const opened = await openAtStart(exec, ffprobePath, file);
+  const start = opened && { input: ['-t', '1', ...opened], where: 'the first second' };
+  const anchor = anchorOf(file);
   if (!anchor) return { 'decode-start': start, 'decode-end': null };
   let end = file.ends.get(anchor.index) ?? null;
   if (end === null) {
@@ -241,7 +270,8 @@ export function spotTimes(probe: ProbeResult, n: number): Set<number> {
  * keyframe: input `-ss` on mkv/mp4 seeks to the keyframe before the spot; a byte-seek format
  * (mpegts), whose time seek lands mid-GOP, is opened at the byte offset of the anchor stream's last
  * keyframe at or before the spot (as decode-end does). The source is opened the same way at the
- * same time from its own start; a spot without a keyframe found is decoded on neither side.
+ * same content: the same time from its start, past any undecodable packets the output left out
+ * (see decodableStart); a spot without a keyframe found is decoded on neither side.
  */
 export async function sampleSpots(
   exec: Exec,
@@ -252,17 +282,12 @@ export async function sampleSpots(
   skip: () => void,
 ): Promise<Spot[]> {
   const times = spotTimes(output.probe, n);
-  const anchorOf = (file: MediaFile) => {
-    const streams = [...file.probe.streams].sort((a, b) => a.index - b.index);
-    return (
-      streams.find((s) => s.type === 'video' && !isPicture(s, streams)) ??
-      streams.find((s) => s.type === 'audio')
-    );
-  };
   const open = async (file: MediaFile, t: number) => {
     const where = `1 s at ${secs(t)}`;
     if (!file.byteSeek) {
-      return { input: ['-ss', t.toFixed(3), '-t', '1', '-i', file.path], where };
+      // ffmpeg's `-ss` counts from where the file's own timeline starts, before any skipped part.
+      const ss = (t + file.skipped).toFixed(3);
+      return { input: ['-ss', ss, '-t', '1', '-i', file.path], where };
     }
     const anchor = anchorOf(file);
     if (!anchor) return null;
@@ -292,7 +317,8 @@ export async function sampleSpots(
  * near its end, ~10 one-second spots across it (`sampleSpots`), and the whole file when
  * `fullDecode`. When the output fails a decode, each media stream is decoded alone to find the
  * broken ones, and their source streams are decoded the same way: `explained` is true only when
- * every broken output stream's source stream fails that decode too.
+ * every failed decode was a decode error (not a read error or a timeout) and every broken output
+ * stream's source stream fails that decode too.
  */
 export async function decodeChecks(
   exec: Exec,
@@ -323,11 +349,11 @@ export async function decodeChecks(
     )),
   );
   if (input.fullDecode) {
-    const whole = (path: string) => ({ input: ['-i', path], where: 'the whole file' });
+    const whole = (opened: string[] | null) => opened && { input: opened, where: 'the whole file' };
     spots.push({
       check: 'decode-full',
-      out: whole(output.path),
-      src: whole(source.path),
+      out: { input: ['-i', output.path], where: 'the whole file' },
+      src: whole(await openAtStart(exec, input.ffprobePath, source)),
       exec: withSignal(input.exec ?? fullDecodeExec, input.signal),
     });
   }
@@ -337,7 +363,8 @@ export async function decodeChecks(
     return side === 'out' ? outInputs[spot.check] : (await sourceInputs())[spot.check];
   };
   const execOf = (spot: (typeof spots)[number]): Exec => ('exec' in spot ? spot.exec : exec);
-  const failed: (typeof spots)[number][] = [];
+  /** The failed spots, and whether each failed decoding (not reading or running out of time). */
+  const failed: { spot: (typeof spots)[number]; decodeError: boolean }[] = [];
   const failures: VerifyFailure[] = [];
   const report = input.onProgress;
   const durationSeconds = referenceDuration(output.probe);
@@ -368,7 +395,7 @@ export async function decodeChecks(
     // Any failure fails the output, a decode error or not (the safe direction).
     if (f) {
       failures.push(f.failure);
-      failed.push(spot);
+      failed.push({ spot, decodeError: f.decodeError });
     }
   }
   // Each stream alone, without find_stream_info: it decodes a little of every stream while
@@ -384,7 +411,13 @@ export async function decodeChecks(
     const rawStreams = rawOf(source.probe).streams;
     const sourceFailures: VerifyFailure[] = [];
     let explained = failed.length > 0;
-    for (const spot of failed) {
+    for (const { spot, decodeError } of failed) {
+      // A failure that says nothing about the content (a read error, a timeout) cannot be the
+      // source's, whatever a later decode of it reports.
+      if (!decodeError) {
+        explained = false;
+        continue;
+      }
       const outHow = await resolve(spot, 'out');
       const srcHow = await resolve(spot, 'src');
       const run = execOf(spot);
