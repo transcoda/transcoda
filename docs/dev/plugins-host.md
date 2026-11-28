@@ -68,7 +68,7 @@ Server-level backstops: `platform/process-guards.ts` logs an unhandled rejection
 
 ## Tests
 
-- Unit tests sit beside each module and use `fake-child.ts` instead of a real host. Tests that need a real host (`sandbox-expectations.test.ts`, `supervisor.real.test.ts`, the `service/service*.test.ts` files, `plugin-host/host.test.ts`) use the host and the fixture plugins in `plugins/testing/fixtures/`, built once per run by `plugins/testing/global-setup.ts` and started with `plugins/testing/spawn.ts`.
+- Unit tests sit beside each module and use `fake-child.ts` instead of a real host. Tests that need a real host (`sandbox-expectations.test.ts`, `supervisor.real.test.ts`, the `service/service*.test.ts` files, `plugin-host/main.test.ts`) use the host and the fixture plugins in `plugins/testing/fixtures/`, built once per run by `plugins/testing/global-setup.ts` and started with `plugins/testing/spawn.ts`.
 - The `fetch-proxy*.test.ts` files stand a loopback server in for a LAN or public one through `FetchProxyDeps.classify` and `resolve` (`network/testing.ts`); production never sets them.
 - `docker/entrypoint.test.sh` (run by `ci.yml` and `docker.yml`) checks the plugin user and the isolation-off paths; the image's `sandbox` and `hardening` jobs check the built image (see [`ci-release.md`](ci-release.md)).
 - The plugins repository runs every bundle through core's real host with `scripts/host-check.mjs` (`--check-plugin` against a core checkout) in its CI and release workflows. A change to the host, the protocol or the SDK should keep those bundles passing.

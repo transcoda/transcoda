@@ -7,7 +7,7 @@ import type { Issue, JsonValue, NodeInstance, WorkflowGraph } from '@transcoda/s
 import { beforeEach, type Mock, vi } from 'vitest';
 import { z } from 'zod';
 import type { Database } from '../db/open.ts';
-import { createTestDb } from '../db/test-db.ts';
+import { createTestDb } from '../db/testing.ts';
 import { filePort } from '../nodes/core/common.ts';
 import type { Logger } from '../platform/logger.ts';
 import { WorkflowService } from './service.ts';

@@ -8,7 +8,7 @@ import type { Capabilities } from '@transcoda/contract';
 import type { Hono } from 'hono';
 import type { Exec } from '../../capabilities/ffmpeg.ts';
 import type { Database } from '../../db/open.ts';
-import { createTestDb } from '../../db/test-db.ts';
+import { createTestDb } from '../../db/testing.ts';
 import type { ProcessSpawner } from '../../engine/encode/process.ts';
 import type { AnyToolDef } from '../../mcp/tool.ts';
 import type { RegisteredNode } from '../../nodes/registry.ts';

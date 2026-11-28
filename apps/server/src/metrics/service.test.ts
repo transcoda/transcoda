@@ -5,11 +5,11 @@ import { insertJob, insertJobResult, updateJob } from '../db/repos/jobs/jobs.ts'
 import { insertLibrary } from '../db/repos/libraries.ts';
 import { insertRun } from '../db/repos/runs.ts';
 import { insertWorkflow } from '../db/repos/workflows.ts';
-import { createTestDb } from '../db/test-db.ts';
+import { createTestDb } from '../db/testing.ts';
 import { METRICS } from './catalog.ts';
-import { parseExposition } from './parse-exposition.ts';
 import { MetricsRecorder } from './recorder.ts';
 import { METRICS_CACHE_MS, MetricsService, type MetricsServiceDeps } from './service.ts';
+import { parseExposition } from './testing.ts';
 
 const t0 = Date.parse('2026-01-01T00:00:00.000Z');
 let db: Database;

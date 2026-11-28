@@ -32,10 +32,10 @@ A change gets its test in the lowest tier that can catch the bug.
 Use these instead of writing your own:
 
 - **Server app and HTTP:** `createTestApp` (`apps/server/src/app/testing/app.ts`) builds the whole app over a migrated in-memory database, with a fixed secret key and a manual clock. `apps/server/src/app/testing/http.ts` has `send`, `login`, `withCsrf`, `secondUser`, `createToken`, `bearer` and the file-handle leak check (`trackFileHandles`, `expectAllClosed`).
-- **Database:** `createTestDb` (`apps/server/src/db/test-db.ts`), a migrated in-memory SQLite.
+- **Database:** `createTestDb` (`apps/server/src/db/testing.ts`), a migrated in-memory SQLite.
 - **Workflow graphs and registries:** `apps/server/src/workflows/test-helpers.ts`: `node`, `edge`, `mainGraph`, `subGraph`, `chain`, `testRegistry`, `withSetting` and the test node definitions. Don't re-declare graph builders in a test file.
 - **Engine inputs:** `apps/server/src/engine/testing/builders.ts`: `probeOf`, `fileOf`, `capsOf`, `withStream`, `withSidecar`, `packetRows`.
-- **MCP:** `apps/server/src/mcp/test-client.ts`.
+- **MCP:** `apps/server/src/mcp/testing.ts`.
 - **Web:** `renderAt` (`apps/web/src/testing/render.tsx`) renders inside a router on an in-memory location, with the toast provider; `renderFlow` (`apps/web/src/testing/flow.tsx`) renders a bare React Flow for canvas tests; `apps/web/src/testing/fake-event-stream.ts` for the live event stream. The node catalogue fixture is `apps/web/src/testing/fixtures/nodes.json` (see "Fixtures that are checked" below).
 
 ## Real-ffmpeg fixtures
@@ -58,10 +58,10 @@ Use these instead of writing your own:
 
 - `apps/web/src/testing/fixtures/nodes.json` must match the live core node catalogue (`apps/server/src/nodes/web-fixture.test.ts`). Regenerate it with `pnpm --filter @transcoda/server dump-nodes > apps/web/src/testing/fixtures/nodes.json`, then re-add the hand-written `test:unavailable` entry (see `apps/web/src/testing/fixtures/catalog.ts`).
 - `docs/metrics.md` and the Grafana example must match the metrics catalogue (`apps/server/src/metrics/catalog.sync.test.ts`).
-- `docs/env.md`'s tables must name every environment variable `config.ts` reads, and no variable nothing reads (`apps/server/src/platform/config.docs.test.ts`). Its "Settings in the database" table must list `SETTING_KEYS` with their defaults (`apps/server/src/settings/settings-docs.test.ts`).
+- `docs/env.md`'s tables must name every environment variable `config.ts` reads, and no variable nothing reads (`apps/server/src/platform/config.docs.test.ts`). Its "Settings in the database" table must list `SETTING_KEYS` with their defaults (`apps/server/src/settings.docs.test.ts`).
 - `docs/mcp.md`'s Tools table and tool count must match `ALL_TOOLS`, with each tool's scopes (`apps/server/src/mcp/mcp-docs.test.ts`).
 - DESIGN.md's quoted values must match the stylesheets (the guard tests in `apps/web/src/styles/`).
-- Every migration has its own test (`apps/server/src/db/migration-conventions.test.ts`).
+- Every migration has its own test (`apps/server/src/db/migrate.conventions.test.ts`).
 - The `.changes/` release notes are linted on every `pnpm check` (`scripts/changes.test.ts`).
 
 ## Nightly

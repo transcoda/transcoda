@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { escapeHelp, escapeLabelValue, formatValue, renderExposition } from './exposition.ts';
-import { parseExposition } from './parse-exposition.ts';
+import { parseExposition } from './testing.ts';
 
 describe('formatValue', () => {
   it('writes integers plainly, keeps decimals and spells the special values', () => {

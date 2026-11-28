@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { findTokenByHash } from '../db/repos/tokens.ts';
 import { createUser } from '../db/repos/users.ts';
-import { createTestDb } from '../db/test-db.ts';
+import { createTestDb } from '../db/testing.ts';
 import {
   generateToken,
   hashToken,

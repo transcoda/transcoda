@@ -4,7 +4,7 @@ import { fcRuns } from '@transcoda/shared/testing';
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { renderExposition, type ScalarFamily } from './exposition.ts';
-import { parseExposition } from './parse-exposition.ts';
+import { parseExposition } from './testing.ts';
 
 const RUNS = fcRuns();
 

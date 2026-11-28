@@ -12,7 +12,7 @@ import {
   node,
   testRegistry,
 } from '../../workflows/test-helpers.ts';
-import { mcpClient } from '../test-client.ts';
+import { mcpClient } from '../testing.ts';
 import { workflowReadTools } from './workflows-read.ts';
 
 const SECRET = 'hook-secret-7f3a';

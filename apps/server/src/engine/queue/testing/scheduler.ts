@@ -8,7 +8,7 @@ import { findJob, insertJob, type JobRow, updateJob } from '../../../db/repos/jo
 import { insertLibrary } from '../../../db/repos/libraries.ts';
 import { insertRun } from '../../../db/repos/runs.ts';
 import { insertWorkflow } from '../../../db/repos/workflows.ts';
-import { createTestDb } from '../../../db/test-db.ts';
+import { createTestDb } from '../../../db/testing.ts';
 import type { Logger } from '../../../platform/logger.ts';
 import type { ProcessResult, RunnerProcess } from '../../encode/process.ts';
 import { EngineEvents } from '../../events.ts';

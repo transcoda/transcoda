@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { migrate } from '../migrate.ts';
 import { closeDatabase, type Database, openDatabase } from '../open.ts';
 import { insertJob, updateJob } from '../repos/jobs/jobs.ts';
-import { createTestDb } from '../test-db.ts';
+import { createTestDb } from '../testing.ts';
 import { migrations } from './index.ts';
 
 const T = '2026-01-01T00:00:00.000Z';
