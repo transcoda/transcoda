@@ -115,7 +115,8 @@ shell/              app chrome: Shell, ActivityButton, AuthLayout
 auth/               the auth provider, use-auth, LoginPage, SetupPage, HostNotAllowedPage
 workflows/          WorkflowsPage, NewWorkflowPage, EmptyWorkflows, the bundled examples,
                     activation (ActivateDialog, ActivationControl)
-editor/             EditorPage/, model/ (pure), flow/ (React Flow, on-node rows), ui/, trace/
+editor/             EditorPage/, model/ (pure), flow/ (React Flow, on-node rows), ui/, trace/;
+                    LibrarySelect.tsx, which the card and the inspector share
 jobs/               JobsPage/, JobPage/, RunPage/, and what those pages share at the root
 libraries/          LibrariesPage, LibraryPage, LibraryFilePage, and their shared parts
 plugins/            PluginsPage/ and its parts
