@@ -307,6 +307,7 @@ export async function encode(
       ffmpegPath: config.ffmpegPath,
       ffprobePath: config.ffprobePath,
       times: sourceErrors.map((e) => e.at),
+      model: p.model,
       signal: ctl.signal,
       ...(core.deps.exec ? { exec: core.deps.exec } : {}),
     });
