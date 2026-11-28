@@ -89,5 +89,3 @@ Today's rules for the server outside the encode engine. The engine is in [engine
 
 - Log through the `Logger` from `apps/server/src/platform/logger.ts` (JSON lines in production, plain text otherwise). It is the only server file allowed to use `console`.
 - Pass `{ msg, ...fields }`. Never log a secret, token, webhook URL, request body or procedure input.
-
-History: [M0](../decisions/2026-10-m0.md), [M1 workflows](../decisions/2026-10-m1-workflows.md), [activation and MCP](../decisions/2026-10-activation-mcp.md), [October](../decisions/2026-10.md) (library trigger, backup on build change), [November](../decisions/2026-11.md) (metrics, failure codes, code consistency checks).

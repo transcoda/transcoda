@@ -127,7 +127,7 @@ The most common ones are `PUID`, `PGID` and `UMASK` (container user; the server 
 - [MCP server for AI assistants](docs/mcp.md)
 - [Metrics for Prometheus, Grafana and Home Assistant](docs/metrics.md)
 - [Releases and versioning](docs/releasing.md) · [Changelog](CHANGELOG.md)
-- [Developer docs](docs/dev/) · [Decision log](docs/decisions/README.md)
+- [Developer docs](docs/dev/)
 
 ## Contributing
 

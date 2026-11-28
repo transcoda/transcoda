@@ -59,8 +59,8 @@ export const KEYFRAME_PROPERTY_OK: Record<string, string> = {
 };
 
 /** DESIGN.md › Components and states: hover styles apply only under `@media (hover: hover)`.
- *  These undo a hover or reveal on focus as well, so they stay ungated (docs/decisions/2026-11.md,
- *  "2026-11-20 Design audit fixes"). */
+ *  These undo a hover or reveal on focus as well, so they stay ungated: gating them would
+ *  leave the hover or reveal stuck on touch devices. */
 export const UNGATED_HOVER: Record<string, string> = {
   '.canvas .react-flow__controls-button:disabled:hover':
     "undoes React Flow's hover on a disabled control",

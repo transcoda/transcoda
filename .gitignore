@@ -7,6 +7,8 @@ coverage
 .superpowers/
 CLAUDE.local.md
 .claude/settings.local.json
+.claude/*.local/
+.claude/*.local.md
 dist-types
 packages/sdk/build
 docs/plans/

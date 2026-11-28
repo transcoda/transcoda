@@ -63,11 +63,8 @@ Use these instead of writing your own:
 - DESIGN.md's quoted values must match the stylesheets (the guard tests in `apps/web/src/styles/`).
 - Every migration has its own test (`apps/server/src/db/migration-conventions.test.ts`).
 - The `.changes/` release notes are linted on every `pnpm check` (`scripts/changes.test.ts`).
-- Every decision-log entry is dated and listed in its index (`scripts/decisions-index.test.ts`).
 
 ## Nightly
 
 - `.github/workflows/nightly.yml` runs once a night when `main` moved since the last finished nightly (a manual run always runs): the unit tests with fixtures in the e2e container (`pnpm test:docker`, with `FC_NUM_RUNS=10000` for the property tests), and the browser and screenshot tests.
 - A failing test gets a GitHub issue labelled `nightly`, titled `Nightly: <file> > <test>` (the org's `nightly-issues` action, from `transcoda/.github`). A test that fails again gets a comment, a test that passes again gets its issue closed, more than 10 new failures get one "many tests fail" issue, and a run that fails outside its tests gets one "the run failed outside its tests" issue.
-
-History: [2026-11](../decisions/2026-11.md) ("Source layout and its check", "Test tiers", "Nightly tests and their issues", "Property tests with fast-check"), [M2 editor](../decisions/2026-10-m2-editor.md) ("M2 Task 1").
