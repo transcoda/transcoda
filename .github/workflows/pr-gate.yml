@@ -31,7 +31,9 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  pr-gate:
+  # Not named pr-gate: this job's own check run would then share the status's name, and a
+  # required `pr-gate` check could be met by the job finishing rather than by the verdict.
+  evaluate:
     if: >-
       (github.event_name != 'workflow_dispatch' || github.ref == 'refs/heads/main') &&
       (github.event_name != 'workflow_run' || github.event.workflow_run.event == 'pull_request_review')

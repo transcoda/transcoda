@@ -17,7 +17,8 @@ The rules in force today for `.github/workflows/`, `docker/`, `renovate.json`, `
 `pr-gate.yml` posts a commit status `pr-gate` on every pull request's head commit (`scripts/pr-gate.ts`, tests beside it). It fails unless:
 
 - **A high-risk change carries `risk-approved`.** A pull request that changes `.github/`, `scripts/`, `docker/`, `e2e/`, any `Dockerfile*`, `.dockerignore`, `package.json`, `.npmrc`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, `.node-version`, `renovate.json`, `.coderabbit.yaml` or `apps/server/src/platform/official-plugins.ts` (`RISKY` in the script) needs the `risk-approved` label. A maintainer adds it by hand after reviewing the head commit, and it counts only when it was added after that commit was pushed. Every push removes it, so a reviewed change can't be changed afterwards; re-review and add it again. Agents never add this label, the owner does.
-- **An external pull request is approved by both CodeRabbit and the owner on its head commit.** External means from a fork, or opened by anyone but the owner account (Renovate's pull requests count as external). Both approvals have to be on the current head commit: a later push makes them stale.
+- **An external pull request is approved by both CodeRabbit and the owner on its head commit.** External means from a fork, or opened by anyone but the owner account. Both approvals have to be on the current head commit: a later push makes them stale.
+- **Renovate's pull requests need the owner's approval on the head commit**, not CodeRabbit's (plus the label, since they change dependency files). Only a pull request opened by the `renovate[bot]` app (a Bot account) from a branch of this repository counts; a fork or a look-alike name is external.
 
 How it stays out of the pull request's reach:
 

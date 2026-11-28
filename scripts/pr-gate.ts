@@ -4,7 +4,8 @@
 //    commit was pushed. Every push removes the label (pr-gate.yml), so an approved change cannot
 //    be changed afterwards.
 // 2. An external pull request (from a fork, or by anyone but OWNER) needs approving reviews on its
-//    current head commit from both CodeRabbit and OWNER. A later push makes both stale.
+//    current head commit from both CodeRabbit and OWNER. A later push makes both stale. Renovate's
+//    own pull requests (the renovate[bot] app, on a branch of this repository) need only OWNER's.
 // Runs from main's copy only (pull_request_target, workflow_run, workflow_dispatch on main), reads
 // the pull request through the API and never checks out or runs its code. Rules and setup:
 // docs/dev/ci-release.md, "The pr-gate check".
@@ -16,6 +17,7 @@ export const OWNER = 'jhadenfeldt';
 export const LABEL = 'risk-approved';
 export const CONTEXT = 'pr-gate';
 export const CODERABBIT = 'coderabbitai[bot]';
+export const RENOVATE = 'renovate[bot]';
 const ACTIONS_BOT = 'github-actions[bot]';
 const MAINTAINER_PERMISSIONS = ['admin', 'maintain', 'write'];
 
@@ -53,15 +55,24 @@ export function riskyPaths(files: PullFile[]): string[] {
 export interface Pull {
   number: number;
   state: string;
-  user: { login: string } | null;
+  user: { login: string; type: string } | null;
   head: { sha: string; repo: { full_name: string } | null };
   labels: { name: string }[];
   changed_files: number;
 }
 
-/** From a fork (or a deleted one), or opened by anyone but the owner. */
-export function isExternal(pr: Pull, repository: string): boolean {
-  return pr.head.repo?.full_name !== repository || pr.user?.login !== OWNER;
+/**
+ * Who opened the pull request. `owner`: OWNER, from a branch of this repository. `renovate`: the
+ * Renovate app (login exactly RENOVATE and a Bot account), from a branch of this repository.
+ * Anything else, a fork or a look-alike name included, is `external`.
+ */
+export type Author = 'owner' | 'renovate' | 'external';
+
+export function authorOf(pr: Pull, repository: string): Author {
+  if (pr.head.repo?.full_name !== repository) return 'external';
+  if (pr.user?.login === OWNER && pr.user.type === 'User') return 'owner';
+  if (pr.user?.login === RENOVATE && pr.user.type === 'Bot') return 'renovate';
+  return 'external';
 }
 
 export interface IssueEvent {
@@ -132,7 +143,7 @@ export interface Facts {
   label: { at: string; by: string; maintainer: boolean } | null;
   /** When the gate first saw the head commit; now when it never has. */
   headSeenAt: string;
-  external: boolean;
+  author: Author;
   /** Approving reviews on the head commit. */
   coderabbitApproved: boolean;
   ownerApproved: boolean;
@@ -155,18 +166,22 @@ export function decide(f: Facts): Verdict {
     else if (Date.parse(f.label.at) <= Date.parse(f.headSeenAt))
       problems.push(`${LABEL} predates the last push: add it again`);
   }
-  if (f.external) {
+  if (f.author === 'external') {
     const missing = [f.coderabbitApproved ? '' : 'CodeRabbit', f.ownerApproved ? '' : OWNER].filter(
       Boolean,
     );
     if (missing.length > 0)
       problems.push(`external: needs ${missing.join(' and ')} to approve the head commit`);
   }
+  if (f.author === 'renovate' && !f.ownerApproved) {
+    problems.push(`Renovate: needs ${OWNER} to approve the head commit`);
+  }
   if (problems.length === 0) {
     const notes = [
       f.risky.length > 0 || f.truncated ? `${LABEL} by ${f.label?.by}` : 'no high-risk paths',
     ];
-    if (f.external) notes.push(`CodeRabbit and ${OWNER} approved`);
+    if (f.author === 'external') notes.push(`CodeRabbit and ${OWNER} approved`);
+    if (f.author === 'renovate') notes.push(`${OWNER} approved`);
     return { state: 'success', description: notes.join('; ') };
   }
   const text = problems.join('; ');
@@ -250,7 +265,7 @@ async function gate(call: Api, repo: string, number: number, removeLabel: boolea
       maintainer: !added.bot && (await maintainer(call, repo, added.by)),
     },
     headSeenAt: headSeenAt(statuses) ?? new Date().toISOString(),
-    external: isExternal(pr, repo),
+    author: authorOf(pr, repo),
     coderabbitApproved: approvedOnHead(reviews, sha, CODERABBIT),
     ownerApproved: approvedOnHead(reviews, sha, OWNER),
   };
