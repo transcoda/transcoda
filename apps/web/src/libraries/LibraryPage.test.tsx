@@ -160,7 +160,7 @@ describe('LibraryPage', () => {
 
   it('renders posters by default and the table after switching; the choice survives a remount', async () => {
     const first = await renderPage();
-    expect(screen.getByRole('region', { name: 'Titles' })).toBeTruthy();
+    expect(await screen.findByRole('region', { name: 'Titles' })).toBeTruthy();
     expect(screen.queryByRole('table', { name: 'Files' })).toBeNull();
     fireEvent.click(screen.getByRole('radio', { name: 'Table' }));
     expect(await screen.findByRole('table', { name: 'Files' })).toBeTruthy();
@@ -180,7 +180,7 @@ describe('LibraryPage', () => {
       throw new Error('denied');
     });
     await renderPage();
-    expect(screen.getByRole('region', { name: 'Titles' })).toBeTruthy();
+    expect(await screen.findByRole('region', { name: 'Titles' })).toBeTruthy();
     fireEvent.click(screen.getByRole('radio', { name: 'Table' }));
     expect(await screen.findByRole('table', { name: 'Files' })).toBeTruthy();
   });

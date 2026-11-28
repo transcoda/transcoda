@@ -31,7 +31,7 @@ A change gets its test in the lowest tier that can catch the bug.
 
 Use these instead of writing your own:
 
-- **Server app and HTTP:** `createTestApp` (`apps/server/src/app/testing/app.ts`) builds the whole app over a migrated in-memory database, with a fixed secret key and a manual clock. `apps/server/src/app/testing/http.ts` has `send`, `login`, `withCsrf`, `secondUser`, `createToken`, `bearer` and the file-handle leak check (`trackFileHandles`, `expectAllClosed`).
+- **Server app and HTTP:** `createTestApp` (`apps/server/src/app/testing/app.ts`) builds the whole app over a migrated in-memory database, with a fixed secret key and a manual clock. `apps/server/src/app/testing/http.ts` has `send`, `login`, `withCsrf`, `secondUser`, `createToken`, `bearer`, the file-handle leak check (`trackFileHandles`, `expectAllClosed`), and `abortableGet` for a client that goes away mid-request: never pass `signal` to `app.request`, whose copy of the request follows it only weakly, so a garbage collection can drop the abort.
 - **Database:** `createTestDb` (`apps/server/src/db/testing.ts`), a migrated in-memory SQLite.
 - **Workflow graphs and registries:** `apps/server/src/workflows/testing.ts`: `node`, `edge`, `mainGraph`, `subGraph`, `chain`, `testRegistry`, `withSetting` and the test node definitions. Don't re-declare graph builders in a test file.
 - **Engine inputs:** `apps/server/src/engine/testing/builders.ts`: `probeOf`, `fileOf`, `capsOf`, `withStream`, `withSidecar`, `packetRows`.

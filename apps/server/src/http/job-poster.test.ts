@@ -5,6 +5,7 @@ import { emptyGraph, type StoredJobMedia } from '@transcoda/shared';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createTestApp, type TestApp } from '../app/testing/app.ts';
 import {
+  abortableGet,
   asSession,
   bearer,
   createToken,
@@ -344,17 +345,14 @@ describe('GET /jobs/{id}/poster', () => {
       mtimeMs: 1,
     });
     const opened = trackFileHandles();
-    const abort = new AbortController();
-    const res = await t.app.request(`/api/v1${url('a')}`, {
-      headers: { host: HOST, ...asSession(s, false) },
-      signal: abort.signal,
-    });
+    const client = abortableGet(t, url('a'), asSession(s, false));
+    const res = await client.response;
     expect(res.status).toBe(200);
     await new Promise((r) => setTimeout(r, 50));
     expect(opened).toHaveLength(1);
     expect(opened[0]?.close).not.toHaveBeenCalled();
     expect(opened[0]?.handle.fd).toBeGreaterThan(-1);
-    abort.abort();
+    client.abort();
     await expectAllClosed(opened);
   });
 

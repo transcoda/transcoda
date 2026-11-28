@@ -5,6 +5,7 @@ import { emptyGraph } from '@transcoda/shared';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createTestApp, type TestApp } from '../app/testing/app.ts';
 import {
+  abortableGet,
   asSession,
   bearer,
   createToken,
@@ -154,15 +155,12 @@ describe('GET /jobs/{id}/log/download', () => {
   it('a client that goes away mid-download destroys the file stream (and closes its fd)', async () => {
     await writeLog('a', LOG);
     const stream = vi.spyOn(fs, 'createReadStream');
-    const abort = new AbortController();
-    const res = await t.app.request(`/api/v1${url('a')}`, {
-      headers: { host: HOST, ...asSession(s, false) },
-      signal: abort.signal,
-    });
+    const client = abortableGet(t, url('a'), asSession(s, false));
+    const res = await client.response;
     expect(res.status).toBe(200);
     const file = stream.mock.results[0]?.value as fs.ReadStream;
     expect(file.destroyed).toBe(false);
-    abort.abort();
+    client.abort();
     expect(file.destroyed).toBe(true);
     await vi.waitFor(() => expect(file.closed).toBe(true));
   });
@@ -269,14 +267,11 @@ describe('GET /jobs/{id}/log/download', () => {
   it('a client that goes away mid-download closes the file handle', async () => {
     await writeLog('a', LOG);
     const opened = trackFileHandles();
-    const abort = new AbortController();
-    const res = await t.app.request(`/api/v1${url('a')}`, {
-      headers: { host: HOST, ...asSession(s, false) },
-      signal: abort.signal,
-    });
+    const client = abortableGet(t, url('a'), asSession(s, false));
+    const res = await client.response;
     expect(res.status).toBe(200);
     expect(opened[0]?.handle.fd).toBeGreaterThan(-1);
-    abort.abort();
+    client.abort();
     await expectAllClosed(opened);
   });
 });

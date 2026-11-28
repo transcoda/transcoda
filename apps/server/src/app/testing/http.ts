@@ -30,6 +30,39 @@ export async function send(
   });
 }
 
+/** A request under way that the test can abort, as a client that goes away. */
+export interface AbortableRequest {
+  response: Promise<Response>;
+  /** Aborts the request; the route's `c.req.raw.signal` has fired when this returns. */
+  abort(): void;
+}
+
+/**
+ * A GET under `/api/v1` that the test aborts later. Never pass `signal` to `app.request` for this:
+ * it wraps the signal in a new Request that follows it only through a weak reference (undici), so
+ * once nothing holds that Request a garbage collection cuts the link and the abort never reaches
+ * the route. Here `abort` holds the Request the route gets, so the abort always arrives.
+ */
+export function abortableGet(
+  t: Pick<TestApp, 'app'>,
+  path: string,
+  headers: Record<string, string> = {},
+): AbortableRequest {
+  const controller = new AbortController();
+  const request = new Request(`http://localhost/api/v1${path}`, {
+    headers: { host: HOST, ...headers },
+    signal: controller.signal,
+  });
+  return {
+    response: Promise.resolve(t.app.request(request)),
+    abort() {
+      controller.abort();
+      // Uses `request` after the abort, so nothing may collect it before.
+      expect(request.signal.aborted).toBe(true);
+    },
+  };
+}
+
 export async function login(t: TestApp): Promise<Session> {
   const res = await send(t, 'POST', '/auth/setup', { body: CREDS });
   expect(res.status).toBe(200);
