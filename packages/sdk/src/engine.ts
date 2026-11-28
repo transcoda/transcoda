@@ -53,7 +53,16 @@ export interface FinishContext extends HookContextBase {
 export type FinishAction =
   /** Core's Render step: the encode happens here; `qualityCheck` makes a damaged source take Damaged. */
   | { kind: 'render'; qualityCheck: boolean }
-  | { kind: 'size-gate'; minSavingPercent: number }
+  /**
+   * Core's Size gate. `belowMinimum` (since 1.4.0; absent means `keep-original`) is what a result
+   * that saves too little does: keep the original and take No, or write the plan's other changes
+   * with the video kept as it is and take Yes.
+   */
+  | {
+      kind: 'size-gate';
+      minSavingPercent: number;
+      belowMinimum?: 'keep-original' | 'write-track-changes' | undefined;
+    }
   | { kind: 'replace'; recycleFolder: string | null }
   | { kind: 'move-copy'; mode: 'move' | 'copy'; outputRoot: string }
   | { kind: 'notify'; url: string; method: 'POST' | 'PUT' }

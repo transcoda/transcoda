@@ -47,6 +47,8 @@ export async function verifyEncoded(
   job: JobRow,
   ctl: JobControl,
   p: Prepared,
+  /** False for a size gate's track changes: the Render's Done was traced already. */
+  traceRender = true,
 ): Promise<End | null> {
   const { config } = core.deps;
   // Each check is written as it is done; the whole-file decode is throttled like an encode.
@@ -77,7 +79,7 @@ export async function verifyEncoded(
   if (verified.ok) {
     p.outputProbe = verified.probe;
     p.runningNode = null;
-    if (p.renderNodeId !== null) {
+    if (p.renderNodeId !== null && traceRender) {
       traceFinish(core, job, ctl, {
         nodeId: p.renderNodeId,
         workflowPath: [],

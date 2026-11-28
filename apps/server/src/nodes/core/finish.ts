@@ -49,9 +49,11 @@ export const render = defineNode({
 
 export const sizeGate = defineNode({
   ...finish,
-  version: 2,
+  version: 3,
   // `pass` (shown "Yes"): the result saves enough, the finish steps continue. `else` (shown "No"):
-  // it does not; the original is kept and only the non-writing finish steps wired to it run.
+  // it does not; the original is kept and only the non-writing finish steps wired to it run. With
+  // `belowMinimum: 'write-track-changes'` a result that saves too little takes Yes after all, with
+  // the video kept as it is (docs/dev/engine.md, "Size gate: write track changes").
   outputs: passElse,
   migrations: [
     {
@@ -62,21 +64,38 @@ export const sizeGate = defineNode({
       renameOutputs: { file: 'pass' },
       migrate: (settings) => settings,
     },
+    {
+      from: 2,
+      to: 3,
+      risk: 'safe',
+      note: 'Size gate can now write the track changes when the result saves too little; it keeps the original, as before',
+      migrate: (settings) =>
+        settings !== null && typeof settings === 'object' && !Array.isArray(settings)
+          ? { ...settings, belowMinimum: settings.belowMinimum ?? 'keep-original' }
+          : settings,
+    },
   ],
   type: 'core:size-gate',
   finishPhase: 'gate',
   title: 'Size gate',
   description:
-    'Did the result save enough space? Yes: the finish steps continue. No: the original is kept and only the steps wired to No run.',
+    'Did the result save enough space? Yes: the finish steps continue. No: the original is kept and only the steps wired to No run, unless the gate is set to write the track changes alone.',
   icon: 'scale',
   onNodeSettings: ['minSavingPercent'],
   settings: z.object({
     minSavingPercent: z.number().min(0).max(100).default(10).describe('Saved at least (%)'),
+    belowMinimum: z
+      .enum(['keep-original', 'write-track-changes'])
+      .default('keep-original')
+      .describe(
+        'When it saves less; keep original takes No and writes nothing. Write track changes keeps the video as it is, writes the other changes (tracks removed, default track, order, titles) without re-encoding and takes Yes; with no such changes the original is kept',
+      ),
   }),
-  async finish(_ctx, { minSavingPercent }) {
+  async finish(_ctx, { minSavingPercent, belowMinimum }) {
+    const tracks = belowMinimum === 'write-track-changes';
     return {
-      actions: [{ kind: 'size-gate', minSavingPercent }],
-      reason: `size gate: at least ${minSavingPercent}% smaller`,
+      actions: [{ kind: 'size-gate', minSavingPercent, ...(tracks ? { belowMinimum } : {}) }],
+      reason: `size gate: at least ${minSavingPercent}% smaller${tracks ? '; else write the track changes only' : ''}`,
     };
   },
 });

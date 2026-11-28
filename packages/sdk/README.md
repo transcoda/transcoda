@@ -1,6 +1,6 @@
 # @transcoda/sdk
 
-The plugin SDK (version `1.3.0`), on npm as [`@transcoda/sdk`](https://www.npmjs.com/package/@transcoda/sdk): `npm install --save-dev @transcoda/sdk zod`. Plugins bundle it, so it is a dev dependency; a bundle has no runtime `dependencies`. The author guide (manifest, limits, secrets, finish phases, dev mode, releasing, the security promise) is [`docs/plugin-sdk.md`](../../docs/plugin-sdk.md). `@transcoda/sdk/testing` holds the test helpers.
+The plugin SDK (version `1.4.0`), on npm as [`@transcoda/sdk`](https://www.npmjs.com/package/@transcoda/sdk): `npm install --save-dev @transcoda/sdk zod`. Plugins bundle it, so it is a dev dependency; a bundle has no runtime `dependencies`. The author guide (manifest, limits, secrets, finish phases, dev mode, releasing, the security promise) is [`docs/plugin-sdk.md`](../../docs/plugin-sdk.md). `@transcoda/sdk/testing` holds the test helpers.
 
 ## Surface
 
@@ -10,7 +10,7 @@ The plugin SDK (version `1.3.0`), on npm as [`@transcoda/sdk`](https://www.npmjs
 - `defineIntegration({ id, title, settings, allowedOrigins, test, requires? })`. `test` returns `{ ok: true, message, version?, warnings?, roots? }` or `{ ok: false, kind, message }`; `roots` (since 1.2.0) lists the folders the service keeps media in, as it sees them, and Transcoda warns about any that its path mappings do not place inside a library. `allowedOrigins` entries are `'$settings.<field>'` (a setting of the schema) or an origin literal such as `'https://api.example.com'`. Setting helpers: `url()`, `secret()` (may be optional, never nullable), `pathMappings()`, `allowInsecureTls()`. `secretPaths(schema)` lists the top-level secret keys. Settings schemas are not recursive.
 - `defineTrigger({ id, title, description, icon, settings, auth, handle })`; `handle` returns `files`, `ignore` or `test`.
 - `PluginContext` (every hook gets it as `ctx.plugin`; integration `test`, hooks and `setup` get it directly): `settings` (decrypted integration settings), `fetch` (only to the integration's allowed origins; throws `FetchRefused`, `FetchTimeout`, `FetchRateLimited` or `FetchFailed`; classify with `fetchErrorKind(e)`, never `instanceof`, since the host and each bundle carry their own SDK copy), `paths` (`toRemote`/`toLocal`, longest segment-aware prefix of the user's path mappings), `cache` (`get`/`set` with a ttl, bounded), `lang`, `log`, `dryRun`, `job`.
-- Finish nodes return `{ kind: 'plugin', description, required }` from `finish`; `run(ctx, settings)` does the work after the write and returns `{ ok: true, message }` or `{ ok: false, message, retryable? }`.
+- Finish nodes return `{ kind: 'plugin', description, required }` from `finish`; the other `FinishAction` kinds are core's (since 1.4.0 core's `size-gate` action may carry `belowMinimum`); `run(ctx, settings)` does the work after the write and returns `{ ok: true, message }` or `{ ok: false, message, retryable? }`.
 - Hooks (`onJobDone`, `onJobFailed`, `afterReplace`) are best effort and never change a job.
 
 ## Compatibility

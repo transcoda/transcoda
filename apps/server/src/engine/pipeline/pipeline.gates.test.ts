@@ -193,7 +193,10 @@ describe('pipeline: size gate pass and else', () => {
       'render-1.done',
       'sg.pass',
     ]);
-    expect(g?.nodes.find((n) => n.id === 'sg')?.typeVersion).toBe(2);
+    expect(g?.nodes.find((n) => n.id === 'sg')).toMatchObject({
+      typeVersion: 3,
+      settings: { minSavingPercent: 50, belowMinimum: 'keep-original' },
+    });
   });
 
   it('an else notify that fails is a warning on the kept_original job', async () => {

@@ -14,11 +14,12 @@ const STEP_X = 300;
 const STEP_Y = 240;
 
 /**
- * The nodes past version 1: the size gate (pass and else outputs) and Encode video (the source
- * bitrate cap) at 2, Encode audio (track titles) at 3; everything else is at 1.
+ * The nodes past version 1: the size gate (pass and else outputs, then what it does below the
+ * minimum) at 3, Encode video (the source bitrate cap) at 2, Encode audio (track titles) at 3;
+ * everything else is at 1.
  */
 const VERSIONS: Record<string, number> = {
-  'core:size-gate': 2,
+  'core:size-gate': 3,
   'core:encode-video': 2,
   'core:encode-audio': 3,
 };

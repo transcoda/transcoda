@@ -67,9 +67,10 @@
     {
       "id": "gate",
       "type": "core:size-gate",
-      "typeVersion": 2,
+      "typeVersion": 3,
       "settings": {
-        "minSavingPercent": 15
+        "minSavingPercent": 15,
+        "belowMinimum": "keep-original"
       },
       "position": {
         "x": 1200,

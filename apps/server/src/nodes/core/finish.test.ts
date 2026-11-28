@@ -23,6 +23,12 @@ describe('finish nodes', () => {
       actions: [{ kind: 'size-gate', minSavingPercent: 10 }],
       reason: 'size gate: at least 10% smaller',
     });
+    expect(
+      await finish(sizeGate, ctx, { minSavingPercent: 20, belowMinimum: 'write-track-changes' }),
+    ).toEqual({
+      actions: [{ kind: 'size-gate', minSavingPercent: 20, belowMinimum: 'write-track-changes' }],
+      reason: 'size gate: at least 20% smaller; else write the track changes only',
+    });
     expect(await finish(replaceOriginal, ctx)).toEqual({
       actions: [{ kind: 'replace', recycleFolder: null }],
       reason: 'replace the original (recycle folder: library default)',

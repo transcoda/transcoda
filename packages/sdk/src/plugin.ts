@@ -11,7 +11,7 @@ import { type AnyIntegration, checkIntegration } from './integration.ts';
 import type { AnyNodeDefinition } from './node.ts';
 import type { AnyTrigger } from './trigger.ts';
 
-export const SDK_VERSION = '1.3.0';
+export const SDK_VERSION = '1.4.0';
 
 export interface HookJob {
   id: string;

@@ -9,6 +9,8 @@ export interface AlreadyProcessedSubject {
   jobId: string;
   /** The workflow the job runs: "This workflow". */
   jobWorkflowId: string;
+  /** The version of it the job runs (see `findProcessedResult`'s `askingVersion`). */
+  jobWorkflowVersion: number;
   /** `fingerprintKey` of the file now at the job's path. */
   fingerprint: string;
   /**
@@ -60,6 +62,9 @@ export async function alreadyProcessed(
   const name = findWorkflow(s.db, workflowId, { includeDeleted: true })?.name || workflowId;
   const wanted = q.version === null ? name : `${name} v${q.version}`;
   const base = { workflowId, version: q.version };
+  // Asked about its own workflow at any version, the job's version decides whether a file a size
+  // gate kept counts (a version that writes track changes takes it again), as the queue does.
+  const own = workflowId === s.jobWorkflowId && q.version === null;
   const find = (by: 'fingerprint' | 'hash', key: string) =>
     findProcessedResult(s.db, {
       by,
@@ -67,6 +72,7 @@ export async function alreadyProcessed(
       workflowId,
       workflowVersion: q.version,
       excludeJobId: s.jobId,
+      ...(own ? { askingVersion: s.jobWorkflowVersion } : {}),
     });
 
   let r = find('fingerprint', s.fingerprint);

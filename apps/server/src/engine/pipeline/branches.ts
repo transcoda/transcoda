@@ -37,7 +37,7 @@ export async function takeElse(
   ctl: JobControl,
   p: Prepared,
   gate: GateBranch | undefined,
-  g: { saving: number; minSavingPercent: number; afterBytes: number; why: string },
+  g: { saving: number; minSavingPercent: number; afterBytes: number; why: string; note?: string },
 ): Promise<string[]> {
   if (!gate) return [];
   recordElseBranch(core, job, ctl, p, gate, g);
@@ -94,6 +94,7 @@ async function runNoWriteSteps(
     replacedTo: null,
     dest: null,
     mode: 'kept',
+    note: null,
     lateCancel: false,
     problems: [],
   };

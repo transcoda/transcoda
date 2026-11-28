@@ -198,7 +198,9 @@ export async function encode(
     // (never for a software job); else the same plan once more on the software encoder, in
     // this attempt.
     const gpuStalled = stalledAfterOutput && p.fit !== 'software';
-    if (!p.softwareFallback && (looksLikeGpuFailure(tail) || gpuStalled)) {
+    // A size gate's track changes copy the video: no GPU took part, whatever the log says.
+    const onGpu = p.trackChanges === null;
+    if (onGpu && !p.softwareFallback && (looksLikeGpuFailure(tail) || gpuStalled)) {
       const { slot } = p;
       const failed = slot?.gpuId ? [...job.failedGpus, slot.gpuId] : null;
       if (slot && failed && p.fit !== 'software' && core.deps.otherGpuFor?.(p.fit, failed)) {
