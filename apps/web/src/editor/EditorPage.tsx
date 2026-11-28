@@ -1,28 +1,14 @@
-import { ORPCError } from '@orpc/client';
-import type { NodeInfo, WorkflowDetail, WorkflowSummary } from '@transcoda/contract';
-import {
-  hasErrors,
-  type Issue,
-  RUN_SUBWORKFLOW_TYPE,
-  SUBWORKFLOW_END_TYPE,
-  shortId,
-  type WorkflowGraph,
-} from '@transcoda/shared';
-import {
-  getViewportForBounds,
-  ReactFlowProvider,
-  useReactFlow,
-  useReactFlowStoreApi,
-} from '@xyflow/react';
+import type { WorkflowDetail } from '@transcoda/contract';
+import { hasErrors, type Issue, type WorkflowGraph } from '@transcoda/shared';
+import { ReactFlowProvider, useReactFlowStoreApi } from '@xyflow/react';
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
-import { Link, useLocation, useParams, useSearch } from 'wouter';
-import { api, isDefinedError, safe } from '../api/client.ts';
+import { useLocation, useParams, useSearch } from 'wouter';
+import { api, safe } from '../api/client.ts';
 import { describeError } from '../api/errors.ts';
 import { Icon } from '../components/Icon.tsx';
 import { Loading } from '../components/Loading.tsx';
-import { NotFound } from '../components/NotFound.tsx';
 import { useToast } from '../components/Toast.tsx';
-import { type Catalog, type PortSpec, useCatalog } from '../hooks/use-catalog.ts';
+import { type Catalog, useCatalog } from '../hooks/use-catalog.ts';
 import { useLibraries } from '../hooks/use-libraries.ts';
 import { useWorkflows } from '../hooks/use-workflows.ts';
 import { runBlocked, useRunOnFile } from '../jobs/use-run-on-file.tsx';
@@ -31,50 +17,39 @@ import { usePageTitle } from '../lib/page-title.ts';
 import { ActivateDialog } from '../workflows/ActivateDialog.tsx';
 import { activateBlocked, hasActivation, useActivation } from '../workflows/ActivationControl.tsx';
 import { type EditorActions, EditorActionsContext } from './flow/actions-context.ts';
-import { fitPaddingPx } from './flow/open-viewport.ts';
 import { SubworkflowsContext } from './flow/subworkflows-context.ts';
 import { TRY_BLOCKED } from './flow/TcToolbar.tsx';
 import { withViewCollapse } from './flow/to-flow.ts';
+import { LoadFailed } from './LoadFailed.tsx';
 import { freeOutputs, nextNodeRule } from './model/connection.ts';
-import { type EditorAction, editorReducer, initialEditorState } from './model/editor-state.ts';
-import { graphEquals } from './model/equality.ts';
+import { editorReducer, initialEditorState } from './model/editor-state.ts';
 import {
-  addNode,
-  connect,
   createGroup,
   duplicateNode,
   joinGroup,
-  NODE_SIZE,
-  type Position,
   removeNodes,
-  removeSelection,
-  type Size,
   setGroupCollapsed,
   setSettings,
   toggleBypass,
 } from './model/graph-ops.ts';
-import { dropHiddenPortEdges, removedNotice } from './model/hidden-ports.ts';
 import { libraryShift } from './model/library-shift.ts';
-import { addNote, addValuesCard } from './model/notes-values.ts';
-import { freeSpot, type ViewRect } from './model/placement.ts';
-import { saveNoteFor } from './model/save-note.ts';
-import { type ApplyOptions, Canvas, FIT_VIEW, type GraphOp } from './ui/Canvas.tsx';
+import { type ApplyOptions, Canvas, type GraphOp } from './ui/Canvas.tsx';
 import { Banner, CanvasBanner, PastVersionBanner } from './ui/CanvasBanner.tsx';
 import { ConflictDialog } from './ui/ConflictDialog.tsx';
 import { EditorHeader } from './ui/EditorHeader.tsx';
 import { Inspector } from './ui/Inspector.tsx';
-import { IssuesPanel, type IssueTarget, subjectOf } from './ui/IssuesPanel.tsx';
+import { IssuesPanel, subjectOf } from './ui/IssuesPanel.tsx';
 import { LeaveDialog } from './ui/LeaveDialog.tsx';
 import { NodeSearch } from './ui/NodeSearch.tsx';
-import { Palette, type PaletteItem } from './ui/Palette.tsx';
+import { Palette } from './ui/Palette.tsx';
 import { useEditorKeys } from './ui/use-editor-keys.ts';
 import { useLeaveGuard } from './ui/use-leave-guard.ts';
 import { useValidation } from './ui/use-validation.ts';
 import { useViewportMemory } from './ui/use-viewport-memory.ts';
 import { useVersionList, VersionsPanel } from './ui/VersionsPanel.tsx';
-
-/** Horizontal step between a node and the one added after it. */
-const NEXT_STEP_X = NODE_SIZE.width + 70;
+import { hiddenUrlText, loadedAction, useEditorSave } from './use-editor-save.ts';
+import { useEditorSelection } from './use-editor-selection.ts';
+import { type SearchState, usePaletteAdd } from './use-palette-add.ts';
 
 function versionParam(search: string): number | undefined {
   const raw = new URLSearchParams(search).get('version');
@@ -86,8 +61,6 @@ function versionParam(search: string): number | undefined {
 const NARROW_QUERY = '(max-width: 1023px)';
 const NARROW_NOTICE = 'The editor needs a wider window (1024 px). You can look, not edit.';
 const CATALOG_UNAVAILABLE = 'Node catalog unavailable';
-/** The key, zoom controls and minimap sit along the canvas bottom (44 px controls + 16 px margin + gap). */
-const BOTTOM_OVERLAYS = 72;
 
 function useNarrow(): boolean {
   const [narrow, setNarrow] = useState(() => window.matchMedia(NARROW_QUERY).matches);
@@ -101,104 +74,6 @@ function useNarrow(): boolean {
   return narrow;
 }
 
-const nodeElement = (id: string) =>
-  document.querySelector<HTMLElement>(`.react-flow__node[data-id="${CSS.escape(id)}"]`);
-
-function chain(steps: GraphOp[]): GraphOp {
-  return (g) => {
-    let graph = g;
-    for (const step of steps) {
-      const r = step(graph);
-      if (!r.ok) return r;
-      graph = r.graph;
-    }
-    return { ok: true, graph };
-  };
-}
-
-/** What a palette item adds, selected once it is on the canvas (the values card is not). */
-type AddedSelection = { nodes: string[]; edges: string[]; group?: string } | null;
-
-/** The graph op that adds a palette item at `pos`, and the selection that shows the new item. */
-function addItem(
-  item: PaletteItem,
-  pos: Position,
-  catalog: Catalog,
-  view: ViewRect | undefined,
-): { op: GraphOp; select: AddedSelection } {
-  const id = shortId();
-  const node = (nodeId: string): AddedSelection => ({ nodes: [nodeId], edges: [] });
-  if (item.kind === 'node')
-    return {
-      op: (g) => addNode(g, item.def.type, freeSpot(g, pos, view), catalog, { id }),
-      select: node(id),
-    };
-  if (item.kind === 'end')
-    return {
-      op: (g) => addNode(g, SUBWORKFLOW_END_TYPE, freeSpot(g, pos, view), catalog, { id }),
-      select: node(id),
-    };
-  if (item.kind === 'note')
-    return { op: (g) => addNote(g, pos, id), select: { nodes: [], edges: [], group: id } };
-  if (item.kind === 'values') return { op: (g) => addValuesCard(g, pos), select: null };
-  const { workflow } = item;
-  return {
-    op: chain([
-      (g) => addNode(g, RUN_SUBWORKFLOW_TYPE, freeSpot(g, pos, view), catalog, { id }),
-      (g) =>
-        setSettings(g, id, {
-          subworkflowId: workflow.id,
-          version: workflow.currentVersion,
-          overrides: {},
-        }),
-    ]),
-    select: node(id),
-  };
-}
-
-type SaveOutcome =
-  | { kind: 'saved'; graph: WorkflowGraph }
-  | { kind: 'conflict'; currentVersion: number }
-  /** `hiddenUrl`: the nodes whose redacted webhook URL the server could not match (I4). */
-  | { kind: 'failed'; message: string; hiddenUrl?: string[] }
-  | { kind: 'skipped' };
-const SKIPPED: SaveOutcome = { kind: 'skipped' };
-
-/**
- * The conflict dialog: the newer version, what runs, and the inline failure to retry. `for` is
- * what hit the conflict: the draft's save (with the user's note, kept for "Save over it") or the
- * restore of a past version.
- */
-type ConflictState = {
-  version: number;
-  busy: 'reload' | 'save' | null;
-  error: string | null;
-  failed: 'reload' | 'save' | null;
-  for: { kind: 'draft'; note: string | undefined } | { kind: 'restore'; viewing: number };
-};
-
-/** HIDDEN_URL_UNKNOWN's nodes, or undefined for any other error. */
-function hiddenUrlNodes(error: unknown): string[] | undefined {
-  if (!(error instanceof ORPCError) || !error.defined || error.code !== 'HIDDEN_URL_UNKNOWN') {
-    return undefined;
-  }
-  const nodeIds = (error.data as { nodeIds?: unknown } | undefined)?.nodeIds;
-  return Array.isArray(nodeIds) ? nodeIds.filter((n): n is string => typeof n === 'string') : [];
-}
-
-/** What the editor says for HIDDEN_URL_UNKNOWN: the nodes to enter the URL again in. */
-function hiddenUrlText(nodeIds: string[], graph: WorkflowGraph, catalog: Catalog | null): string {
-  const names = nodeIds.map((nodeId) => subjectOf({ nodeId } as Issue, graph, catalog));
-  return `A hidden webhook URL could not be matched to a saved one. Enter the URL again in ${names.join(', ')}.`;
-}
-
-function loadedAction(w: WorkflowDetail, readOnly: boolean): EditorAction {
-  const { version, graph, issues, settings: _settings, activeIssues, ...workflow } = w;
-  return { type: 'loaded', workflow, version, graph, issues, activeIssues, readOnly };
-}
-
-type SearchState = { from: { nodeId: string; port: PortSpec } | null };
-
 function Editor({
   id,
   version,
@@ -209,7 +84,6 @@ function Editor({
   focusPalette: boolean;
 }) {
   const toast = useToast();
-  const rf = useReactFlow();
   const store = useReactFlowStoreApi();
   const { catalog, error: catalogError, reload: reloadCatalog } = useCatalog();
   const { libraries } = useLibraries();
@@ -219,10 +93,7 @@ function Editor({
   const [state, dispatch] = useReducer(editorReducer, initialEditorState());
   const [loadError, setLoadError] = useState<unknown>(null);
   const [loadTick, setLoadTick] = useState(0);
-  const [saving, setSaving] = useState(false);
-  const [conflict, setConflict] = useState<ConflictState | null>(null);
   const [versionsOpen, setVersionsOpen] = useState(false);
-  const [restoring, setRestoring] = useState(false);
   /** The version the Activate dialog is open for (the past-version banner, the can't-run banner). */
   const [activating, setActivating] = useState<number | null>(null);
   /** The header's version pill: focus returns here when an Activate dialog closes. */
@@ -230,15 +101,8 @@ function Editor({
   /** The nodes whose hidden webhook URL the last save could not match (HIDDEN_URL_UNKNOWN). */
   const [hiddenUrl, setHiddenUrl] = useState<string[] | null>(null);
   const [, navigate] = useLocation();
-  const conflictRef = useRef(conflict);
-  conflictRef.current = conflict;
   const [search, setSearch] = useState<SearchState | null>(null);
   const [collapse, setCollapse] = useState<ReadonlyMap<string, boolean>>(new Map());
-  /**
-   * A field the inspector focuses once its target is the selection: a node's setting (issues
-   * panel, on-node row) or a new group's `name`.
-   */
-  const [focusRequest, setFocusRequest] = useState<{ targetId: string; key: string } | null>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const paletteFocused = useRef(false);
@@ -306,9 +170,6 @@ function Editor({
   latest.current.state = state;
   latest.current.editable = editable;
   latest.current.catalog = catalog;
-  const savingRef = useRef(false);
-  /** The save that is running, for "Save, then try" to wait for. */
-  const inFlight = useRef<Promise<SaveOutcome> | null>(null);
   // A save answered after leaving the page (or a "Try again" toast clicked later) does nothing.
   const alive = useRef(true);
   useEffect(() => {
@@ -343,222 +204,21 @@ function Editor({
     [refuse],
   );
 
-  /**
-   * One save of the current draft. Skipped when nothing would be saved (not dirty, unless a
-   * `baseVersion` override saves over a newer version), while another save runs, or after the
-   * page is gone; the outcome tells the caller what to show.
-   */
-  const runSave = useCallback(
-    async (
-      opts: { baseVersion?: number; note?: string | undefined } = {},
-    ): Promise<SaveOutcome> => {
-      const { state: cur, draft, editable: canEdit } = latest.current;
-      if (!alive.current || !cur || !draft || !canEdit || savingRef.current) return SKIPPED;
-      if (opts.baseVersion === undefined && !cur.dirty) return SKIPPED;
-      // An edge from an output the settings now hide (Damaged, Quality check turned off) would be
-      // refused: the save removes it first, as an undoable change, and says so.
-      let graph = draft;
-      const cat = latest.current.catalog;
-      if (cat) {
-        const pruned = dropHiddenPortEdges(draft, cat);
-        if (pruned.removed.length > 0) {
-          graph = pruned.graph;
-          latest.current.draft = graph;
-          dispatch({ type: 'apply', result: { ok: true, graph } });
-          toast.info(removedNotice(pruned.removed, draft, cat));
-        }
-      }
-      const baseVersion = opts.baseVersion ?? cur.savedVersion;
-      // "Save over it" saves on top of someone else's version: "Layout only" against the version
-      // this draft was loaded from would describe the wrong change, so only the user's note goes.
-      const note =
-        opts.baseVersion !== undefined
-          ? opts.note?.trim() || undefined
-          : saveNoteFor(cur.saved, graph, opts.note);
-      savingRef.current = true;
-      setSaving(true);
-      const request = safe(
-        api.workflows.save({ id, baseVersion, graph, ...(note !== undefined ? { note } : {}) }),
-      );
-      const outcome = (async (): Promise<SaveOutcome> => {
-        const [error, data] = await request;
-        savingRef.current = false;
-        if (!alive.current) return SKIPPED;
-        setSaving(false);
-        if (error) {
-          if (isDefinedError(error) && error.code === 'VERSION_CONFLICT') {
-            return { kind: 'conflict', currentVersion: error.data.currentVersion };
-          }
-          const hidden = hiddenUrlNodes(error);
-          if (hidden) {
-            const message = hiddenUrlText(hidden, graph, latest.current.catalog);
-            return { kind: 'failed', message, hiddenUrl: hidden };
-          }
-          return { kind: 'failed', message: describeError(error).message };
-        }
-        setHiddenUrl(null);
-        dispatch({
-          type: 'saved',
-          graph,
-          version: data.version,
-          issues: data.issues,
-          active: data.active,
-          changes: data.changes,
-          // Client clock (the response has no timestamp); "saved just now" tolerates the skew.
-          savedAt: new Date().toISOString(),
-        });
-        toast.info(
-          `Saved v${data.version}${data.active ? ` · v${data.active.version} stays active` : ''}`,
-        );
-        return { kind: 'saved', graph };
-      })();
-      inFlight.current = outcome;
-      void outcome.finally(() => {
-        if (inFlight.current === outcome) inFlight.current = null;
-      });
-      return outcome;
-    },
-    [id, toast],
-  );
-
-  /**
-   * Save from the header, ⌘S, a "Try again" toast or "Save, then try": a conflict opens the
-   * dialog. True once nothing unsaved is left.
-   */
-  const save = useCallback(
-    async (note?: string): Promise<boolean> => {
-      const out = await runSave({ note });
-      if (!alive.current) return false;
-      if (out.kind === 'saved') return true;
-      if (out.kind === 'conflict') {
-        setConflict({
-          version: out.currentVersion,
-          busy: null,
-          error: null,
-          failed: null,
-          for: { kind: 'draft', note },
-        });
-      } else if (out.kind === 'failed') {
-        if (out.hiddenUrl) setHiddenUrl(out.hiddenUrl);
-        else toast.error(out.message, { label: 'Try again', onClick: () => void save(note) });
-      }
-      return out.kind === 'skipped' && !latest.current.state?.dirty;
-    },
-    [runSave, toast],
-  );
-
-  /**
-   * "Save, then try": a save already running is waited for (its outcome is shown by whoever
-   * started it); when it saved the draft as it is now, nothing is left to save.
-   */
-  const saveForTry = useCallback(async (): Promise<boolean> => {
-    const running = inFlight.current;
-    if (running) {
-      const out = await running;
-      if (!alive.current || out.kind !== 'saved') return false;
-      const now = latest.current.draft;
-      if (now === null || now === out.graph || graphEquals(now, out.graph)) return true;
-    }
-    return save();
-  }, [save]);
-
-  /**
-   * "Restore as new version": the viewed past version's graph saved on top of `baseVersion` (the
-   * current one, or the newer one from a conflict), then the editor on the current route.
-   */
-  const restore = useCallback(
-    async (baseVersion: number) => {
-      const cur = latest.current.state;
-      if (!alive.current || !cur || savingRef.current) return;
-      const viewing = cur.savedVersion;
-      savingRef.current = true;
-      setRestoring(true);
-      setConflict((c) => c && { ...c, busy: 'save', error: null });
-      const [error, data] = await safe(
-        api.workflows.save({
-          id,
-          baseVersion,
-          graph: cur.saved,
-          note: `Restored from v${viewing}`,
-          // Its webhook URLs are the ones this version had (they arrive redacted).
-          restoredFrom: viewing,
-        }),
-      );
-      savingRef.current = false;
-      if (!alive.current) return;
-      setRestoring(false);
-      if (!error) {
-        toast.success(`Restored v${viewing} as v${data.version}`);
-        // Raw navigate, not the guarded one: a restore runs from a past version, which is
-        // read-only and so never dirty; there is no draft for the leave guard to protect.
-        navigate(`/workflows/${id}`);
-        return;
-      }
-      if (isDefinedError(error) && error.code === 'VERSION_CONFLICT') {
-        const version = error.data.currentVersion;
-        setConflict({
-          version,
-          busy: null,
-          error: null,
-          failed: null,
-          for: { kind: 'restore', viewing },
-        });
-        return;
-      }
-      const hidden = hiddenUrlNodes(error);
-      const message = hidden
-        ? hiddenUrlText(hidden, cur.saved, latest.current.catalog)
-        : describeError(error).message;
-      // Inside the dialog the failure stays there; from the banner it is a toast to retry.
-      if (conflictRef.current) {
-        setConflict((c) => c && { ...c, busy: null, error: message, failed: 'save' });
-      } else if (hidden) {
-        setHiddenUrl(hidden);
-      } else {
-        toast.error(message, { label: 'Try again', onClick: () => void restore(baseVersion) });
-      }
-    },
-    [id, toast, navigate],
-  );
-
-  /** "Reload the latest version": the dialog stays (busy) until the load answers. */
-  const reloadLatest = useCallback(async () => {
-    setConflict((c) => c && { ...c, busy: 'reload', error: null });
-    const [error, w] = await safe(api.workflows.get({ id }));
-    if (!alive.current) return;
-    if (error) {
-      setConflict(
-        (c) => c && { ...c, busy: null, error: describeError(error).message, failed: 'reload' },
-      );
-      return;
-    }
-    dispatch(loadedAction(w, false));
-    setConflict(null);
-  }, [id]);
-
-  /** "Save over it": a new version on top of the one someone else saved. */
-  const saveOver = useCallback(
-    async (version: number, note: string | undefined) => {
-      setConflict((c) => c && { ...c, busy: 'save', error: null });
-      dispatch({ type: 'rebase', version });
-      const out = await runSave({ baseVersion: version, note });
-      if (!alive.current) return;
-      if (out.kind === 'saved') setConflict(null);
-      else if (out.kind === 'conflict') {
-        // Someone saved again meanwhile: the same choice against the newer version.
-        setConflict({
-          version: out.currentVersion,
-          busy: null,
-          error: null,
-          failed: null,
-          for: { kind: 'draft', note },
-        });
-      } else if (out.kind === 'failed') {
-        setConflict((c) => c && { ...c, busy: null, error: out.message, failed: 'save' });
-      } else setConflict((c) => c && { ...c, busy: null });
-    },
-    [runSave],
-  );
+  const {
+    saving,
+    conflict,
+    setConflict,
+    restoring,
+    save,
+    saveForTry,
+    restore,
+    reloadLatest,
+    saveOverFor,
+    saveForLeave,
+    leaveError,
+    setLeaveError,
+    cancelLeaveRef,
+  } = useEditorSave({ id, latest, alive, dispatch, setHiddenUrl });
 
   async function rename(name: string) {
     const [error, data] = await safe(api.workflows.rename({ id, name }));
@@ -570,134 +230,31 @@ function Editor({
     dispatch({ type: 'workflow', patch: { name: data.name, updatedAt: data.updatedAt } });
   }
 
-  function saveOverFor(c: ConflictState) {
-    if (c.for.kind === 'restore') void restore(c.version);
-    else void saveOver(c.version, c.for.note);
-  }
-
-  /** The visible part of the canvas in flow coordinates; undefined before layout. */
-  /**
-   * The canvas area cards can be seen in, on screen: the canvas less the banners on top and the
-   * key, zoom controls and minimap row at the bottom. Null before layout.
-   */
-  const clearBox = useCallback((): {
-    left: number;
-    top: number;
-    right: number;
-    bottom: number;
-  } | null => {
-    const wrap = canvasRef.current;
-    const box = wrap?.getBoundingClientRect();
-    if (!wrap || !box || box.width === 0 || box.height === 0) return null;
-    const banners = wrap.querySelector('.canvas-banners');
-    const bannerBottom =
-      banners && banners.childElementCount > 0
-        ? banners.getBoundingClientRect().bottom + 8
-        : box.top;
-    const top = Math.min(Math.max(box.top, bannerBottom), box.bottom);
-    const bottom = Math.max(top, box.bottom - BOTTOM_OVERLAYS);
-    return { left: box.left, top, right: box.right, bottom };
-  }, []);
-
-  /** The visible part of the canvas in flow coordinates; undefined before layout. */
-  const viewRect = useCallback((): ViewRect | undefined => {
-    const box = clearBox();
-    if (!box) return undefined;
-    const a = rf.screenToFlowPosition({ x: box.left, y: box.top });
-    const b = rf.screenToFlowPosition({ x: box.right, y: box.bottom });
-    return { x: a.x, y: a.y, width: b.x - a.x, height: b.y - a.y };
-  }, [rf, clearBox]);
-
-  /** The flow position of the canvas centre, less half a card so the card is centred. */
-  const centre = useCallback((): Position => {
-    const box = clearBox();
-    const p = rf.screenToFlowPosition({
-      x: box ? (box.left + box.right) / 2 : 0,
-      y: box ? (box.top + box.bottom) / 2 : 0,
-    });
-    return {
-      x: Math.round(p.x - NODE_SIZE.width / 2),
-      y: Math.round(p.y - NODE_SIZE.height / 2),
-    };
-  }, [rf, clearBox]);
-
-  const addFromPalette = useCallback(
-    (item: PaletteItem, pos: Position) => {
-      const cat = latest.current.catalog;
-      if (!cat) return;
-      const { op, select } = addItem(item, pos, cat, viewRect());
-      // The new item becomes the selection: its inspector opens instead of the last one's.
-      if (apply(op) && select) dispatch({ type: 'select', ...select });
-    },
-    [apply, viewRect],
-  );
-
-  /** `workflow`: a named sub-workflow was picked; the new Run node pins its current version. */
-  function pickFromSearch(def: NodeInfo, workflow?: WorkflowSummary) {
-    const cat = latest.current.catalog;
-    const from = search?.from ?? null;
-    setSearch(null);
-    if (!cat) return;
-    const view = viewRect();
-    const newId = shortId();
-    const pinned: GraphOp = (g) =>
-      workflow
-        ? setSettings(g, newId, {
-            subworkflowId: workflow.id,
-            version: workflow.currentVersion,
-            overrides: {},
-          })
-        : { ok: true, graph: g };
-    const selectNew = (added: boolean) => {
-      if (added) dispatch({ type: 'select', nodes: [newId], edges: [] });
-    };
-    if (!from) {
-      selectNew(
-        apply(
-          chain([
-            (g) => addNode(g, def.type, freeSpot(g, centre(), view), cat, { id: newId }),
-            pinned,
-          ]),
-        ),
-      );
-      return;
-    }
-    const input = def.inputs.find((p) => p.type === from.port.type);
-    const added = apply(
-      chain([
-        (g) => {
-          const origin = g.nodes.find((n) => n.id === from.nodeId);
-          const pos = origin
-            ? { x: origin.position.x + NEXT_STEP_X, y: origin.position.y }
-            : centre();
-          return addNode(g, def.type, freeSpot(g, pos, view), cat, { id: newId });
-        },
-        pinned,
-        (g) =>
-          input
-            ? connect(
-                g,
-                { node: from.nodeId, port: from.port.id },
-                { node: newId, port: input.id },
-                cat,
-              )
-            : { ok: true, graph: g },
-      ]),
-    );
-    selectNew(added);
-  }
-
-  const measuredSizes = useCallback(
-    (ids: string[]): Map<string, Size> => {
-      const sizes = new Map<string, Size>();
-      for (const nodeId of ids) {
-        const m = rf.getInternalNode(nodeId)?.measured;
-        if (m?.width && m.height) sizes.set(nodeId, { width: m.width, height: m.height });
-      }
-      return sizes;
-    },
-    [rf],
-  );
+  const { clearBox, centre, addFromPalette, pickFromSearch, measuredSizes } = usePaletteAdd({
+    canvasRef,
+    latest,
+    apply,
+    dispatch,
+    search,
+    setSearch,
+  });
+  const {
+    focusTarget,
+    onFocused,
+    focusField,
+    setFocusRequest,
+    onSelect,
+    selectNode,
+    removeSelected,
+    focusIssue,
+  } = useEditorSelection({
+    selection: state?.selection,
+    latest,
+    apply,
+    dispatch,
+    canvasRef,
+    clearBox,
+  });
 
   // "Dry run on a file" / "Try this node" (Task 24): a workflow only (a sub-workflow runs inside
   // one). On a past version the dry run plans that version.
@@ -742,10 +299,7 @@ function Editor({
       startConnectFrom: (nodeId, port) => setSearch({ from: { nodeId, port } }),
       setSettings: (nodeId, settings) =>
         apply((g) => setSettings(g, nodeId, settings), { coalesce: 'settings', key: nodeId }),
-      focusField: (nodeId, key) => {
-        dispatch({ type: 'select', nodes: [nodeId], edges: [] });
-        setFocusRequest({ targetId: nodeId, key });
-      },
+      focusField,
       groupSelection: (name) => {
         const ids = latest.current.state?.selection.nodes ?? [];
         let groupId: string | undefined;
@@ -768,24 +322,7 @@ function Editor({
       joinGroup: (nodeId, groupId) =>
         apply((g) => joinGroup(g, nodeId, groupId, measuredSizes([nodeId]).get(nodeId))),
     };
-  }, [editable, apply, measuredSizes, canTry, openTry]);
-
-  const onSelect = useCallback(
-    (next: { nodes: string[]; edges: string[]; group?: string }) =>
-      dispatch({ type: 'select', ...next }),
-    [],
-  );
-
-  /** Select one node and move keyboard focus to it (React Flow pans to a focused node). */
-  const selectNode = useCallback((nodeId: string) => {
-    dispatch({ type: 'select', nodes: [nodeId], edges: [] });
-    nodeElement(nodeId)?.focus();
-  }, []);
-
-  const removeSelected = useCallback(() => {
-    const sel = latest.current.state?.selection;
-    if (sel) apply((g) => removeSelection(g, sel));
-  }, [apply]);
+  }, [editable, apply, measuredSizes, canTry, openTry, focusField, setFocusRequest]);
 
   const connectFrom = useCallback(
     (nodeId: string) => {
@@ -810,50 +347,6 @@ function Editor({
     if (latest.current.editable) dispatch({ type: 'redo' });
   }, []);
 
-  /** Why "Save and leave" failed, shown inside the leave dialog. */
-  const [leaveError, setLeaveError] = useState<string | null>(null);
-  const cancelLeaveRef = useRef(() => {});
-  /**
-   * "Save and leave": true once nothing unsaved is left. A conflict closes the leave dialog for
-   * the conflict dialog (a different decision); any other failure stays in the leave dialog.
-   */
-  const saveForLeave = useCallback(async (): Promise<boolean> => {
-    setLeaveError(null);
-    const out = await runSave();
-    if (!alive.current) return false;
-    if (out.kind === 'saved') {
-      // Edited while the save ran: those edits are not saved, so leaving would drop them.
-      const now = latest.current.draft;
-      if (now === null || now === out.graph || graphEquals(now, out.graph)) return true;
-      setLeaveError('It changed while saving. Save again to keep the new changes.');
-      return false;
-    }
-    if (out.kind === 'conflict') {
-      cancelLeaveRef.current();
-      setConflict({
-        version: out.currentVersion,
-        busy: null,
-        error: null,
-        failed: null,
-        for: { kind: 'draft', note: undefined },
-      });
-      return false;
-    }
-    if (out.kind === 'failed') {
-      setLeaveError(out.message);
-      return false;
-    }
-    const { state: cur, editable: canEdit } = latest.current;
-    if (!cur?.dirty) return true;
-    setLeaveError(
-      savingRef.current
-        ? 'A save is still running. Try again in a moment.'
-        : canEdit
-          ? 'Could not save. Try again.'
-          : 'This draft cannot be saved here.',
-    );
-    return false;
-  }, [runSave]);
   const leave = useLeaveGuard({ dirty: ready && state.dirty, save: saveForLeave });
   cancelLeaveRef.current = leave.cancelLeave;
 
@@ -878,71 +371,6 @@ function Editor({
       connectFrom,
     },
   });
-
-  /** An issues panel entry: select and centre its node or edge (and focus the setting). */
-  const focusIssue = useCallback(
-    (target: IssueTarget) => {
-      const g = latest.current.state?.draft;
-      if (!g) return;
-      const visible = (nodeId: string) => {
-        const node = g.nodes.find((n) => n.id === nodeId);
-        const group = g.groups.find((gr) => gr.id === node?.groupId);
-        return group?.collapsed ? group.id : nodeId;
-      };
-      // Direct viewport math: React Flow's fitView is queued until the next node update.
-      const centreOn = (ids: string[]) => {
-        const { width, height } = store.viewportStore.getState();
-        const { minZoom } = store.optionsStore.getState();
-        if (ids.length === 0 || width === 0 || height === 0) return;
-        // Fit into the part of the canvas the banners and bottom controls leave clear.
-        const wrapTop = canvasRef.current?.getBoundingClientRect().top ?? 0;
-        const box = clearBox();
-        const insetTop = box ? box.top - wrapTop : 0;
-        const clearHeight = box ? box.bottom - box.top : height;
-        const bounds = rf.getNodesBounds(ids);
-        const fitHeight = clearHeight > 0 ? clearHeight : height;
-        const viewport = getViewportForBounds(
-          bounds,
-          width,
-          fitHeight,
-          minZoom,
-          FIT_VIEW.maxZoom,
-          fitPaddingPx(0.4, width, fitHeight),
-        );
-        void rf.setViewport({ ...viewport, y: viewport.y + insetTop }, { duration: 200 });
-      };
-      if (target.nodeId !== undefined && g.nodes.some((n) => n.id === target.nodeId)) {
-        if (target.settingPath !== undefined) actions.focusField(target.nodeId, target.settingPath);
-        else dispatch({ type: 'select', nodes: [target.nodeId], edges: [] });
-        centreOn([visible(target.nodeId)]);
-        return;
-      }
-      const edge = g.edges.find((e) => e.id === target.edgeId);
-      if (edge) {
-        dispatch({ type: 'select', nodes: [], edges: [edge.id] });
-        centreOn([visible(edge.from.node), visible(edge.to.node)]);
-        return;
-      }
-      centreOn([...new Set(g.nodes.map((n) => visible(n.id)))]);
-    },
-    [rf, store, actions, clearBox],
-  );
-
-  const onFocused = useCallback(() => setFocusRequest(null), []);
-  const sel = state?.selection;
-  const [onlySelected] = sel?.nodes ?? [];
-  const focusTarget =
-    focusRequest !== null &&
-    sel !== undefined &&
-    (sel.nodes.length === 1
-      ? onlySelected === focusRequest.targetId
-      : sel.nodes.length === 0 && sel.group === focusRequest.targetId)
-      ? focusRequest.key
-      : null;
-  // A request for a target that is no longer the selection is dropped, not kept for later.
-  useEffect(() => {
-    if (focusRequest !== null && focusTarget === null) setFocusRequest(null);
-  }, [focusRequest, focusTarget]);
 
   const activation = useActivation({
     workflow: ready ? state.workflow : null,
@@ -1281,46 +709,6 @@ const EMPTY_GRAPH: WorkflowGraph = {
   edges: [],
   groups: [],
 };
-
-function LoadFailed({
-  error,
-  id,
-  version,
-  onRetry,
-}: {
-  error: unknown;
-  id: string;
-  version: number | undefined;
-  onRetry(): void;
-}) {
-  const notFound = describeError(error).code === 'NOT_FOUND';
-  if (notFound && version !== undefined) {
-    return (
-      <div className="page editor-load-failed">
-        <p role="alert" className="alert alert-danger">
-          Version {version} doesn't exist
-        </p>
-        <p>
-          <Link href={`/workflows/${id}`}>Open the current version</Link>
-        </p>
-      </div>
-    );
-  }
-  if (notFound) return <NotFound what="workflow" />;
-  return (
-    <div className="page editor-load-failed">
-      <p role="alert" className="alert alert-danger">
-        {describeError(error).message}
-      </p>
-      <p>
-        <button type="button" className="btn btn-secondary" onClick={onRetry}>
-          Try again
-        </button>{' '}
-        <Link href="/">Back to workflows</Link>
-      </p>
-    </div>
-  );
-}
 
 /**
  * "/workflows/:id" (+ `?version=N`: that version read-only, with "Restore as new version";
