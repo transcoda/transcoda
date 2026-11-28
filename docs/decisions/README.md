@@ -211,4 +211,3 @@ Entries from M0 to M3 had no date of their own; they carry the day their milesto
 - 2026-11-27 · Structure · [Web jobs page split into its parts](2026-11.md)
 - 2026-11-27 · Structure · [Web editor page split into hooks](2026-11.md)
 - 2026-11-27 · Structure · [Web plugins page test split](2026-11.md)
-- 2026-11-27 · Structure · [Web jobs stylesheets split in place](2026-11.md)
