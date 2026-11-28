@@ -2,6 +2,45 @@
 
 All notable changes to Transcoda, newest first. Generated from the notes in `.changes/` when a release is cut.
 
+## 0.8.0 — 2026-11-27
+
+#### Keep the track changes when the encode doesn't pay off
+
+Until now, when an encode saved less than the size gate asked for, Transcoda kept the original and threw away everything else the workflow had changed too. The size gate has a new setting for that: set **When it saves less** to **Write track changes**, and removed languages, the default track, the track order and titles are still written, without re-encoding the video.
+
+<img src="docs/releases/0.8.0/size-gate-setting.png" width="340" alt="The size gate's settings: saved at least 30%, and When it saves less set to Write track changes">
+
+The job's page says when that happened, so you can tell a job that wrote only the track changes from a full encode. Files the size gate kept before are picked up again on the next library scan.
+
+![A job whose re-encode didn't save enough: the video was kept as it is, and the German audio track was still removed](docs/releases/0.8.0/size-gate-job.png)
+
+#### Fewer encodes that fail on the GPU first
+
+Transcoda now checks which hardware encoders can actually run on your machine, and no longer picks VA-API on its own. Jobs on a server without a matching GPU encode in software from the start, instead of failing on the GPU for every file. When a job does fall back to software, its page says so.
+
+#### Smaller fixes you may notice
+
+The workflow editor warns less often about paths that never write a result, the editor's Key fits on a phone again, and HEVC encodes work in Docker Desktop on a Mac or Windows PC.
+
+### New
+
+- The size gate can now write the track changes when the encode saves too little: set "When it saves less" to "Write track changes" and removed languages, the default track, the track order and titles are written without re-encoding the video, instead of being thrown away with the encode. Files the gate kept before are taken again on the next library scan.
+
+### Improved
+
+- A job whose size gate wrote only the track changes says so on its page, and a test encode shows what a real run would write instead of the encode's size.
+
+### Fixed
+
+- The editor's Key fits on a phone screen again and only explains what the canvas doesn't already say: line styles, port shapes and the state badges, plus the keyboard shortcuts where you can edit.
+- When a GPU encode fails and the job finishes in software, the job page's steps now say it was encoded in software instead of naming the GPU encoder.
+- Matroska copies of videos with B-frames no longer fail verify with "non monotonically increasing dts". An encode that copies a cover image stored as a video track now shows its progress, and a long one is no longer stopped as "wrote no output".
+- Transcoda no longer tries GPU encoders that can't run on your machine, such as NVIDIA's on a server without an NVIDIA GPU or Intel's when no GPU is passed into the container. Jobs encode in software from the start instead of failing over on every file.
+- The workflow editor no longer warns that a path never writes the result when a step leaves one output open beside a connected one, such as Check source's OK on a branch that only checks files, or anywhere below Already processed's Yes. Elsewhere, a step with nothing connected at all on a path that never writes is still warned about.
+- A running job with just under a minute left now reads "about 1 min left" instead of "about 60 s left".
+- The automatic encoder choice no longer picks VA-API, which Transcoda can't drive yet. On machines that reached it, jobs now encode in software from the start instead of failing on the GPU first.
+- HEVC encodes no longer fail with "Failed to genrate CPU mask" when Transcoda runs in Docker Desktop on a Mac or Windows PC.
+
 ## 0.7.0 — 2026-11-26
 
 #### Browse your libraries
