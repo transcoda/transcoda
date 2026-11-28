@@ -47,7 +47,7 @@ export interface ClientErrorEvent {
 }
 
 const URL_RE = /\b[a-z][a-z0-9+.-]*:\/\/[^\s'"`<>()]*|\b(?:blob|data|file|mailto):[^\s'"`<>()]+/gi;
-const EMAIL_RE = /[^\s@<>"'`()]+@[^\s@<>"'`()]+\.[^\s@<>"'`()]+/g;
+const EMAIL_RE = /[^\s@<>"'`()]+@[^\s@<>"'`().]+(?:\.[^\s@<>"'`().]+)+/g;
 // Where a path starts. A folder or file name can hold spaces, so nothing tells where a path ends:
 // a path hides the rest of the message.
 const PATH_START_RE =
@@ -156,9 +156,8 @@ export function isExtensionSource(text: string): boolean {
   return EXTENSION_RE.test(text);
 }
 
-// `at fn (where:1:2)`, `at where:1:2` (V8) and `fn@where:1:2` (Firefox, Safari).
-const V8_FRAME = /^\s*at\s+(?:(.*?)\s+\()?(.+?):(\d+):(\d+)\)?\s*$/;
-const AT_FRAME = /^\s*(.*?)@(.+?):(\d+):(\d+)\s*$/;
+// The line and column that end a frame, and its closing parenthesis.
+const POSITION_RE = /:(\d{1,9}):(\d{1,9})(\)?)$/;
 const SCRIPT_PATH = /^\/[\w@.-]+(?:\/[\w@.-]+)*\.(?:m?js|tsx?|jsx)$/;
 
 function scrubFunctionName(raw: string | undefined): string {
@@ -188,14 +187,37 @@ function scrubWhere(raw: string): string {
 }
 
 /**
+ * `at fn (where:1:2)`, `at where:1:2` (V8) and `fn@where:1:2` (Firefox, Safari), split with string
+ * operations: a regular expression for the whole line backtracks badly on a crafted one.
+ */
+function parseFrame(raw: string): { fn: string; where: string; row: string; col: string } | null {
+  const line = raw.trim();
+  const pos = POSITION_RE.exec(line);
+  if (!pos) return null;
+  const [, row = '', col = '', paren] = pos;
+  const head = line.slice(0, pos.index);
+  if (head.startsWith('at ')) {
+    const body = head.slice(3).trimStart();
+    const open = body.lastIndexOf(' (');
+    if (open >= 0 !== (paren === ')')) return null;
+    return open >= 0
+      ? { fn: body.slice(0, open), where: body.slice(open + 2), row, col }
+      : { fn: '', where: body, row, col };
+  }
+  const at = head.indexOf('@');
+  if (at < 0 || paren === ')') return null;
+  return { fn: head.slice(0, at), where: head.slice(at + 1), row, col };
+}
+
+/**
  * One stack line as `at fn (/assets/x.js:1:2)`, with the script's host and query dropped; null for
  * a line that is not a frame (the message line, an empty line).
  */
 export function scrubFrame(line: string): string | null {
-  const m = V8_FRAME.exec(line) ?? AT_FRAME.exec(line);
+  const m = parseFrame(line);
   if (!m) return null;
-  const [, fn, where, row, col] = m;
-  if (where === undefined || /\s/.test(where.replace(/^async\s+/, ''))) return null;
+  const { fn, where, row, col } = m;
+  if (where === '' || /\s/.test(where.replace(/^async\s+/, ''))) return null;
   const name = scrubFunctionName(fn);
   const at = `${scrubWhere(where)}:${row}:${col}`;
   return (name === '' ? `at ${at}` : `at ${name} (${at})`).slice(0, CLIENT_ERROR_LIMITS.frame);
@@ -289,14 +311,16 @@ export function scrubVersion(raw: string): string {
   return /^[\w.+-]{1,64}$/.test(raw) ? raw : 'unknown';
 }
 
+// What the browser sends is already scrubbed and short; a little room over those limits, and no
+// more, keeps the server's second scrub cheap whatever a client sends.
 const EventSchema = z
   .object({
     kind: z.enum(CLIENT_ERROR_KINDS),
-    route: z.string().max(200),
-    version: z.string().max(100),
-    name: z.string().max(100),
-    message: z.string().max(2000),
-    stack: z.array(z.string().max(1000)).max(50),
+    route: z.string().max(100),
+    version: z.string().max(64),
+    name: z.string().max(60),
+    message: z.string().max(CLIENT_ERROR_LIMITS.message * 2),
+    stack: z.array(z.string().max(CLIENT_ERROR_LIMITS.frame * 2)).max(CLIENT_ERROR_LIMITS.frames),
     count: z.number().int().min(1).max(CLIENT_ERROR_LIMITS.count),
   })
   .strict()

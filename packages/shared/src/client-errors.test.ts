@@ -228,7 +228,9 @@ describe('ClientErrorBatchSchema', () => {
     ['an extra field', { ...event, url: 'http://h/jobs/1' }],
     ['a zero count', { ...event, count: 0 }],
     ['a huge count', { ...event, count: 1_000_000 }],
-    ['a long message', { ...event, message: 'x'.repeat(5000) }],
+    ['a long message', { ...event, message: 'x'.repeat(401) }],
+    ['a long frame', { ...event, stack: ['x'.repeat(401)] }],
+    ['too many frames', { ...event, stack: Array.from({ length: 16 }, () => 'at f (/a.js:1:1)') }],
   ])('refuses %s', (_, bad) => {
     expect(ClientErrorBatchSchema.safeParse({ csrf: 't', events: [bad] }).success).toBe(false);
   });
