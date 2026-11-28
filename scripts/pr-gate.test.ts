@@ -1,16 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import {
   approvedOnHead,
+  authorOf,
   CODERABBIT,
   decide,
   type Facts,
   headSeenAt,
   type IssueEvent,
-  isExternal,
   LABEL,
   labelAdded,
   OWNER,
   type Pull,
+  RENOVATE,
   type Review,
   riskyPaths,
   targets,
@@ -28,7 +29,7 @@ const facts = (over: Partial<Facts> = {}): Facts => ({
   truncated: false,
   label: null,
   headSeenAt: PUSHED,
-  external: false,
+  author: 'owner',
   coderabbitApproved: false,
   ownerApproved: false,
   ...over,
@@ -84,7 +85,7 @@ describe('decide', () => {
   });
 
   it('fails an external pull request with only CodeRabbit approving', () => {
-    const v = decide(facts({ external: true, ...approvals([review(CODERABBIT, 'APPROVED')]) }));
+    const v = decide(facts({ author: 'external', ...approvals([review(CODERABBIT, 'APPROVED')]) }));
     expect(v).toEqual({
       state: 'failure',
       description: `external: needs ${OWNER} to approve the head commit`,
@@ -92,7 +93,7 @@ describe('decide', () => {
   });
 
   it('fails an external pull request with only the owner approving', () => {
-    const v = decide(facts({ external: true, ...approvals([review(OWNER, 'APPROVED')]) }));
+    const v = decide(facts({ author: 'external', ...approvals([review(OWNER, 'APPROVED')]) }));
     expect(v).toEqual({
       state: 'failure',
       description: 'external: needs CodeRabbit to approve the head commit',
@@ -100,14 +101,14 @@ describe('decide', () => {
   });
 
   it('fails an external pull request with no approval', () => {
-    expect(decide(facts({ external: true })).description).toBe(
+    expect(decide(facts({ author: 'external' })).description).toBe(
       `external: needs CodeRabbit and ${OWNER} to approve the head commit`,
     );
   });
 
   it('passes an external pull request both approved on the head commit', () => {
     const both = approvals([review(CODERABBIT, 'APPROVED'), review(OWNER, 'APPROVED')]);
-    expect(decide(facts({ external: true, ...both }))).toEqual({
+    expect(decide(facts({ author: 'external', ...both }))).toEqual({
       state: 'success',
       description: `no high-risk paths; CodeRabbit and ${OWNER} approved`,
     });
@@ -116,22 +117,68 @@ describe('decide', () => {
   it('fails an external pull request both approved on an older commit', () => {
     const old = approvals([review(CODERABBIT, 'APPROVED', OLD), review(OWNER, 'APPROVED', OLD)]);
     expect(old).toEqual({ coderabbitApproved: false, ownerApproved: false });
-    expect(decide(facts({ external: true, ...old })).state).toBe('failure');
+    expect(decide(facts({ author: 'external', ...old })).state).toBe('failure');
   });
 
   it('an external pull request on a high-risk path needs the label too', () => {
     const both = approvals([review(CODERABBIT, 'APPROVED'), review(OWNER, 'APPROVED')]);
-    expect(decide(facts({ external: true, risky: ['docker/Dockerfile'], ...both })).state).toBe(
+    expect(decide(facts({ author: 'external', risky: ['docker/Dockerfile'], ...both })).state).toBe(
       'failure',
     );
     expect(
-      decide(facts({ external: true, risky: ['docker/Dockerfile'], label: label(), ...both }))
+      decide(facts({ author: 'external', risky: ['docker/Dockerfile'], label: label(), ...both }))
         .state,
     ).toBe('success');
   });
 
+  it("passes Renovate with the owner's approval and the label on a high-risk path", () => {
+    const owner = approvals([review(OWNER, 'APPROVED')]);
+    expect(
+      decide(facts({ author: 'renovate', risky: ['pnpm-lock.yaml'], label: label(), ...owner })),
+    ).toEqual({
+      state: 'success',
+      description: `${LABEL} by ${OWNER}; ${OWNER} approved`,
+    });
+  });
+
+  it('fails Renovate on a high-risk path without the label', () => {
+    const owner = approvals([review(OWNER, 'APPROVED')]);
+    expect(decide(facts({ author: 'renovate', risky: ['pnpm-lock.yaml'], ...owner }))).toEqual({
+      state: 'failure',
+      description: `changes pnpm-lock.yaml: needs the ${LABEL} label`,
+    });
+  });
+
+  it("fails Renovate without the owner's approval, even with CodeRabbit's", () => {
+    const coderabbit = approvals([review(CODERABBIT, 'APPROVED')]);
+    expect(
+      decide(
+        facts({ author: 'renovate', risky: ['pnpm-lock.yaml'], label: label(), ...coderabbit }),
+      ),
+    ).toEqual({
+      state: 'failure',
+      description: `Renovate: needs ${OWNER} to approve the head commit`,
+    });
+  });
+
+  it('a renovate-named user from a fork stays external and needs both approvals', () => {
+    const fake: Pull = {
+      number: 1,
+      state: 'open',
+      user: { login: 'renovate', type: 'User' },
+      head: { sha: HEAD, repo: { full_name: 'renovate/transcoda' } },
+      labels: [],
+      changed_files: 1,
+    };
+    const owner = approvals([review(OWNER, 'APPROVED')]);
+    expect(decide(facts({ author: authorOf(fake, REPO), ...owner }))).toEqual({
+      state: 'failure',
+      description: 'external: needs CodeRabbit to approve the head commit',
+    });
+  });
+
   it('reports both rules when both fail, within 140 characters', () => {
-    const v = decide(facts({ external: true, risky: ['.github/CODEOWNERS', 'renovate.json'] }));
+    const v = decide(facts({ author: 'external', risky: ['.github/CODEOWNERS', 'renovate.json'] }));
     expect(v.description).toBe(
       `changes .github/CODEOWNERS and 1 more: needs the ${LABEL} label; external: needs CodeRabbit and ${OWNER} to approve the head commit`,
     );
@@ -202,21 +249,29 @@ describe('riskyPaths', () => {
   });
 });
 
-describe('isExternal', () => {
-  const pr = (login: string, headRepo: string | null): Pull => ({
+describe('authorOf', () => {
+  const pr = (login: string, headRepo: string | null, type = 'User'): Pull => ({
     number: 1,
     state: 'open',
-    user: { login },
+    user: { login, type },
     head: { sha: HEAD, repo: headRepo === null ? null : { full_name: headRepo } },
     labels: [],
     changed_files: 1,
   });
 
-  it('our own branch is internal; a fork, a deleted fork or another author is external', () => {
-    expect(isExternal(pr(OWNER, REPO), REPO)).toBe(false);
-    expect(isExternal(pr(OWNER, 'someone/transcoda'), REPO)).toBe(true);
-    expect(isExternal(pr(OWNER, null), REPO)).toBe(true);
-    expect(isExternal(pr('someone', REPO), REPO)).toBe(true);
+  it('our own branch is the owner; a fork, a deleted fork or another author is external', () => {
+    expect(authorOf(pr(OWNER, REPO), REPO)).toBe('owner');
+    expect(authorOf(pr(OWNER, 'someone/transcoda'), REPO)).toBe('external');
+    expect(authorOf(pr(OWNER, null), REPO)).toBe('external');
+    expect(authorOf(pr('someone', REPO), REPO)).toBe('external');
+  });
+
+  it('Renovate only as the renovate[bot] app on a branch of this repository', () => {
+    expect(authorOf(pr(RENOVATE, REPO, 'Bot'), REPO)).toBe('renovate');
+    expect(authorOf(pr(RENOVATE, 'someone/transcoda', 'Bot'), REPO)).toBe('external');
+    expect(authorOf(pr(RENOVATE, REPO, 'User'), REPO)).toBe('external');
+    expect(authorOf(pr('renovate', 'renovate/transcoda'), REPO)).toBe('external');
+    expect(authorOf(pr('renovate', REPO), REPO)).toBe('external');
   });
 });
 
@@ -224,7 +279,7 @@ describe('labelAdded and headSeenAt', () => {
   const withLabel: Pull = {
     number: 1,
     state: 'open',
-    user: { login: OWNER },
+    user: { login: OWNER, type: 'User' },
     head: { sha: HEAD, repo: { full_name: REPO } },
     labels: [{ name: LABEL }],
     changed_files: 1,
