@@ -8,7 +8,7 @@ The rules in force today for `apps/server/src/engine/`, `apps/server/src/capabil
 2. **Schedule** (`queue/scheduler.ts`). Probe, decide and build run outside the lanes, at most `prepWorkers` (2) at once and at most `MAX_READY` (4) jobs preparing or ready. Then a job waits for its lane: `encode` (one slot per usable GPU, see below) or `quick` (one job).
 3. **Prepare.** The path is checked again, a real job re-pins to the version active now (`loadWorkflowForJob` in `walk/load-workflow.ts`) and re-checks history, the file is probed (`media/probe.ts`) and fingerprinted (`files/fingerprint.ts`, plus a sampled `media/content-hash.ts`). The walk (`walk/walk.ts`: `walkDecide`, then `walkBuild`) runs each node's hook and records a trace entry per node; Build gives a `BuildModel` (`model/model.ts`, `normalizeDefaults`), which `model/render.ts` turns into an ffmpeg argv (`renderArgs`). An identity model is `nothing_to_do`; a plan-only dry run ends here as `dry_run`.
 4. **Execute.** The pipeline (the `Pipeline` class and its phase modules under `apps/server/src/engine/pipeline/`) re-renders for the granted slot's device, extracts covers, runs ffmpeg (`encode/process.ts`, progress from `encode/progress.ts`), then verifies (`verify/verify.ts`), then runs the finish steps in order: size gate, the write (`files/replace.ts` or move-copy), plugin steps, notify. Results go to `job_results`.
-5. **Start-up** (`engine.ts`, `files/sweep.ts`). `startupSweep` settles every job with a replace or restore journal from what is on disk, kills stale ffmpeg groups by their `ffmpeg.pid`, empties the transcode dir (except `<transcodeDir>/test-outputs/`), then `pruneRecycle` runs and the scheduler starts.
+5. **Start-up** (`engine.ts`, `files/sweep.ts`). `startupSweep` settles every job with a replace or restore journal from what is on disk, fails the jobs whose result waited for approval ([Approval](#approval)), kills stale ffmpeg groups by their `ffmpeg.pid`, empties the transcode dir (except `<transcodeDir>/test-outputs/`), then `pruneRecycle` runs and the scheduler starts.
 
 ## Safety rules that must hold
 
@@ -72,6 +72,20 @@ A size gate with **When it saves less: Write track changes** (`belowMinimum: 'wr
 - **Write.** Otherwise the encoded output is deleted and the plan is rendered into `<tempDir>/tracks.<ext>` with `encode()` (no lane: the encode slot is already free; no GPU fallback) into the same attempt log, then verified like any output (`verifyEncoded`, without a second Render trace entry). The job continues on Yes as if the gate had passed: replace or move-copy, plugin steps, notify. It ends `done` with the reason `saved only 4.0%, below 20% → wrote track changes without re-encoding`, the result's plan, command and size are the remux's, and the gate's trace entry is `pass` with `findings.trackChanges: true`. A later size gate on the path does not measure again (traced as a pass).
 - **Failure.** A remux or verify failure keeps the original (No, `kept_original`, the gate's reason) with a warning on the gate, `could not write the track changes: …`. It is never retried: a retry would encode the whole file again.
 - **Dry runs.** A test encode does not remux: it ends `dry_run` with `… → would write track changes without re-encoding`. A plan-only dry run does not depend on size for such a gate when the plan has track changes (`sizeGateDecides`).
+
+## Approval
+
+The Approval node (`core:approval`, `nodes/core/approval.ts`) is a finish step of the `gate` phase with the size gate's ports: `pass` (Approved) and `else` (Rejected). Its finish hook returns no SDK action; the walk adds a core-only `ApprovalAction` for it (`approvalActionOf`), so the 1.x SDK's `FinishAction` union is unchanged. The walk and validation treat it like the size gate (`isGateType`): it must be alone on its output, and only non-writing steps may follow Rejected (`ELSE_ONLY_NOTIFY`, worded for Approval).
+
+At run time (`pipeline/approval.ts`, `awaitApproval`), after verify and before anything is written:
+
+- **Park.** The verified output stays in the job's temp dir. A `job_approvals` row (migration 23) keeps when it was parked, when it expires (`expireAfterDays`, 1 to 30, default 7), the sizes, the plan and the output probe; the job page and the Jobs list read it (`approval` on a job, the `awaitingApproval` list filter and count). The job stays `verifying` with the reason `waiting for approval` and gives up its lane (`JobControl.releaseLane`, the quick lane too), so other jobs run meanwhile.
+- **Limit.** A result that would take the parked results past `TRANSCODA_APPROVAL_MAX_GB` (default 100 GB) is not parked: the job fails (`workflow`), the temp dir is removed and the original is untouched.
+- **Answer.** `jobs.approve` and `jobs.reject` (a person's session only, refusal "Approval is a UI action"; no MCP tool) resolve the wait in memory (`ApprovalDesk`). Approved traces `pass` ("Approval: approved by <user>"), waits while the job is paused, and the remaining finish steps run as usual. Rejected traces `else`, runs the non-writing steps behind Rejected and ends `kept_original` ("rejected by <user>"); the output is discarded with the temp dir.
+- **Expiry.** `engine.expireApprovals()` runs every minute and rejects the results past `expiresAt` the same way ("not approved within 7 days").
+- **Cancel and shutdown.** A cancel deletes the row and ends the job `cancelled` like any other. A shutdown writes nothing.
+- **Restart.** The wait does not survive a restart. Start-up step 2c of `startupSweep` (`failParkedApprovals`) deletes every row and fails its job (`interrupted`, never requeued): "the server restarted while the result waited for approval; the result was discarded and the original is untouched". The sweep then empties the temp dir as usual. Nothing was written, so the original is always untouched.
+- **Health.** The deep health `queue` check does not count a job with a row as stalled.
 
 ## Verify
 

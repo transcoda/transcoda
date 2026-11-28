@@ -1271,6 +1271,55 @@
       }
     },
     {
+      "type": "core:approval",
+      "version": 1,
+      "kind": "finish",
+      "title": "Approval",
+      "description": "Holds the result until a person approves it on the job page. Approved: the finish steps continue. Rejected, or no answer in time: the original is kept.",
+      "icon": "user-check",
+      "inputs": [
+        {
+          "id": "file",
+          "label": "File",
+          "type": "file"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "pass",
+          "label": "Approved",
+          "type": "file"
+        },
+        {
+          "id": "else",
+          "label": "Rejected",
+          "type": "file"
+        }
+      ],
+      "settingsSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "expireAfterDays": {
+            "default": 7,
+            "description": "Wait at most (days)",
+            "help": "With no answer by then the result is rejected: it is discarded and the original kept.",
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 30
+          }
+        }
+      },
+      "onNodeSettings": [],
+      "finishPhase": "gate",
+      "source": {
+        "kind": "core"
+      },
+      "availability": {
+        "available": true
+      }
+    },
+    {
       "type": "core:replace-original",
       "version": 1,
       "kind": "finish",

@@ -19,11 +19,17 @@ export interface JobsFilter {
   problems?: boolean;
   /** true: only plan-only dry runs whose size gate decides after encoding. */
   dependsOnSize?: boolean;
+  /** true: only jobs whose result an Approval step holds for a person. */
+  awaitingApproval?: boolean;
   /** A scope like the library: true only dry runs, false only real runs, null/absent both. */
   dryRun?: boolean | null;
 }
 
 type JobChanged = Extract<EngineEvent, { type: 'job.changed' }>;
+
+/** The engine's reason while an Approval step holds the result (pipeline/approval.ts). */
+const WAITING_FOR_APPROVAL = 'waiting for approval';
+const waits = (reason: string | null) => reason === WAITING_FOR_APPROVAL;
 
 /** The scope a list's counts cover (library and dry-run facet), as one comparable key. */
 export function countsScopeOf(libraryId: string | null, dryRun: boolean | null): string {
@@ -56,6 +62,7 @@ interface ListState {
   countsScope: string | null;
   problemCount: number | null;
   dependsOnSizeCount: number | null;
+  awaitingApprovalCount: number | null;
   loading: boolean;
   error: unknown;
 }
@@ -73,6 +80,8 @@ function patchJob(j: Job, e: JobChanged): Job {
         lane: e.lane,
         problems: e.problems,
         reason: e.reason,
+        // An answered approval is over; a new one comes with the reload its reason asks for.
+        approval: waits(e.reason) ? j.approval : null,
       }
     : j;
 }
@@ -84,6 +93,7 @@ export function useJobsList(filter: JobsFilter): {
   countsScope: string | null;
   problemCount: number | null;
   dependsOnSizeCount: number | null;
+  awaitingApprovalCount: number | null;
   pausedCount: number;
   loading: boolean;
   error: unknown;
@@ -92,8 +102,9 @@ export function useJobsList(filter: JobsFilter): {
   const { libraryId, states } = filter;
   const problems = filter.problems === true;
   const depends = filter.dependsOnSize === true;
+  const approval = filter.awaitingApproval === true;
   const dryRun = filter.dryRun ?? null;
-  const key = `${libraryId ?? ''}|${states?.join(',') ?? '*'}|${problems ? 'p' : ''}|${depends ? 'd' : ''}|${dryRun ?? ''}`;
+  const key = `${libraryId ?? ''}|${states?.join(',') ?? '*'}|${problems ? 'p' : ''}|${depends ? 'd' : ''}|${approval ? 'a' : ''}|${dryRun ?? ''}`;
   const [state, setState] = useState<ListState>({
     jobs: [],
     active: null,
@@ -101,6 +112,7 @@ export function useJobsList(filter: JobsFilter): {
     countsScope: null,
     problemCount: null,
     dependsOnSizeCount: null,
+    awaitingApprovalCount: null,
     loading: true,
     error: null,
   });
@@ -121,6 +133,7 @@ export function useJobsList(filter: JobsFilter): {
       ...withStates,
       ...(problems ? { problems: true } : {}),
       ...(depends ? { dependsOnSize: true } : {}),
+      ...(approval ? { awaitingApproval: true } : {}),
     };
     try {
       const [page, active] = await Promise.all([
@@ -137,6 +150,7 @@ export function useJobsList(filter: JobsFilter): {
         countsScope: countsScopeOf(libraryId, dryRun),
         problemCount: page.problemCount,
         dependsOnSizeCount: page.dependsOnSizeCount ?? null,
+        awaitingApprovalCount: page.awaitingApprovalCount ?? null,
         loading: false,
         error: null,
       });
@@ -192,6 +206,8 @@ export function useJobsList(filter: JobsFilter): {
     const onPage = jobs.find((j) => j.id === e.jobId);
     const known = onPage ?? active?.find((j) => j.id === e.jobId);
     if (!known) return unseen.current(e);
+    // A result parked or answered: its approval facts and the count change in the same state.
+    if (waits(known.reason) !== waits(e.reason)) return true;
     if (known.state === e.state) return false;
     if (isFinalState(e.state)) return true;
     const fits = f.states === null || f.states.includes(e.state);
@@ -207,6 +223,7 @@ export function useJobsList(filter: JobsFilter): {
     countsScope: state.countsScope,
     problemCount: state.problemCount,
     dependsOnSizeCount: state.dependsOnSizeCount,
+    awaitingApprovalCount: state.awaitingApprovalCount,
     pausedCount: pausedFrom.filter((j) => j.paused).length,
     loading: state.loading,
     error: state.error,
@@ -232,8 +249,15 @@ export function useProblemCount(): number | null {
 }
 
 /** Jobs per state for the nav pill (`jobs.list` with the smallest page; only `counts` is read). */
-export function useJobsCounts(): Record<JobState, number> | null {
-  const { data, reload } = useAsync(async () => (await api.jobs.list({ limit: 1 })).counts, []);
+export function useJobsCounts(): {
+  counts: Record<JobState, number>;
+  /** Jobs parked at an Approval step: `verifying`, but not running. */
+  awaitingApproval: number;
+} | null {
+  const { data, reload } = useAsync(async () => {
+    const list = await api.jobs.list({ limit: 1 });
+    return { counts: list.counts, awaitingApproval: list.awaitingApprovalCount ?? 0 };
+  }, []);
   const changed = useRef(stateChangeTracker());
   useRefetchOn(
     (e) => e.type === 'run.changed' || (e.type === 'job.changed' && changed.current(e)),

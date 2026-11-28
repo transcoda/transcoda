@@ -3,13 +3,7 @@
 import type { Stats } from 'node:fs';
 import { join } from 'node:path';
 import type { Capabilities } from '@transcoda/contract';
-import type {
-  AnyFinishAction,
-  BuildModel,
-  FileStats,
-  FinishRunContext,
-  ProbeResult,
-} from '@transcoda/sdk';
+import type { BuildModel, FileStats, FinishRunContext, ProbeResult } from '@transcoda/sdk';
 import type { FailureCode, JobPlan, JobState, JsonValue, NodeProblem } from '@transcoda/shared';
 import type { EncodeSlot } from '../../capabilities/devices.ts';
 import type { Exec } from '../../capabilities/ffmpeg.ts';
@@ -17,6 +11,7 @@ import type { Database } from '../../db/open.ts';
 import type { Fingerprint } from '../../db/repos/files.ts';
 import type { WalkStep } from '../../db/repos/jobs/jobs.ts';
 import type { LibraryRow } from '../../db/repos/libraries.ts';
+import type { EngineFinishAction } from '../../nodes/core/approval.ts';
 import type { NodeRegistry } from '../../nodes/registry.ts';
 import type { Config } from '../../platform/config.ts';
 import type { FsOps } from '../../platform/fs-ops.ts';
@@ -33,6 +28,7 @@ import { jobProbeOf } from '../media/probe.ts';
 import type { RenderInput } from '../model/model.ts';
 import type { JobControl, SlotFit } from '../queue/scheduler.ts';
 import type { ActionNode, DamagedBranch, GateBranch } from '../walk/walk.ts';
+import type { ApprovalDesk } from './approval.ts';
 
 /** Job progress is written at most this often. */
 export const PROGRESS_INTERVAL_MS = 1000;
@@ -75,6 +71,8 @@ export interface PipelineDeps {
    * encode then goes to software at once.)
    */
   otherGpuFor?(fit: SlotFit, failed: string[]): boolean;
+  /** Where results parked by an Approval step wait for their answer (absent: none can park). */
+  approvals?: ApprovalDesk;
 }
 
 /** What prepare learned about a job, kept in memory until it finishes. */
@@ -95,7 +93,7 @@ export interface Prepared {
   autoStreams: Set<number>;
   /** The encode slots the job fits, as computed at prepare. */
   fit: SlotFit;
-  actions: AnyFinishAction[];
+  actions: EngineFinishAction[];
   /** Per size gate, the non-writing steps behind its `else` (run when the gate fails). */
   gates: GateBranch[];
   /** The steps behind the path's Render's Damaged (Quality check on and wired); else null. */

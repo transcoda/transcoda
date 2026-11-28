@@ -128,7 +128,7 @@ export type NextRule =
   | { kind: 'any' }
   /**
    * After a finish node: finish nodes whose phase rank is >= `minRank` (a node with no declared
-   * phase always fits); `noWrite` after the size gate's No (else) output: no 'gate' or 'write'
+   * phase always fits); `noWrite` after a gate's else output (the size gate's No, Approval's Rejected): no 'gate' or 'write'
    * phase. `afterTitle`: the source node as the canvas names it, for the hint. `damaged`: on a
    * Damaged side (only non-writing steps, and `damagedOnly` nodes fit there only).
    */
@@ -140,9 +140,12 @@ export type NextRule =
       damaged?: boolean;
     };
 
-/** Mirrors the server's SIZE_GATE_TYPE / SIZE_GATE_ELSE_PORT (apps/server/src/nodes/availability.ts). */
-const SIZE_GATE_TYPE = 'core:size-gate';
-const SIZE_GATE_ELSE_PORT = 'else';
+/**
+ * Mirrors the server's isGateType / SIZE_GATE_ELSE_PORT (apps/server/src/nodes/availability.ts):
+ * the size gate and Approval, whose `else` (No, Rejected) leads only to non-writing steps.
+ */
+const GATE_TYPES: ReadonlySet<string> = new Set(['core:size-gate', 'core:approval']);
+const GATE_ELSE_PORT = 'else';
 /** The core write nodes (validate.ts WRITE_TYPES); both also declare the 'write' phase. */
 const WRITE_TYPES: ReadonlySet<string> = new Set(['core:replace-original', 'core:move-copy']);
 const WRITING_PHASES: readonly FinishPhase[] = ['gate', 'write'];
@@ -177,8 +180,8 @@ export function nextNodeRule(
   if (def.type === RENDER_TYPE) {
     return { kind: 'finish-after', minRank: finishPhaseRank('gate'), noWrite: false, afterTitle };
   }
-  if (def.type === SIZE_GATE_TYPE) {
-    const noWrite = port === SIZE_GATE_ELSE_PORT;
+  if (GATE_TYPES.has(def.type)) {
+    const noWrite = port === GATE_ELSE_PORT;
     const minRank = finishPhaseRank(noWrite ? 'library-manager' : 'write');
     return { kind: 'finish-after', minRank, noWrite, afterTitle };
   }
@@ -194,11 +197,11 @@ function fitsRule(n: NodeInfo, rule: NextRule): boolean {
   const phase = n.finishPhase ?? null;
   // A path renders once, before its finish steps (RENDER_TWICE): Render never follows one.
   if (phase === 'render') return false;
-  // After the size gate's No only a node that declares a non-writing phase may follow.
+  // After a gate's else only a node that declares a non-writing phase may follow.
   if (
     rule.noWrite &&
     (phase === null ||
-      n.type === SIZE_GATE_TYPE ||
+      GATE_TYPES.has(n.type) ||
       WRITE_TYPES.has(n.type) ||
       WRITING_PHASES.includes(phase))
   ) {

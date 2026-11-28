@@ -7,6 +7,7 @@ const AFTER_HEADER: Record<AfterSource, string> = {
   'not-kept': 'After (not kept)',
   planned: 'After (planned)',
   'from-plan': 'After (from the plan)',
+  waiting: 'After (waiting for approval)',
 };
 
 /** What the legend adds about where After comes from (nothing for the verified output). */
@@ -15,6 +16,7 @@ const AFTER_NOTE: Record<AfterSource, string | null> = {
   'not-kept': 'After is the output this job measured, then threw away.',
   planned: 'After is the plan: nothing was encoded.',
   'from-plan': "This job's output details weren't kept; After is the plan with the measured size.",
+  waiting: 'After is the verified output. Nothing on disk changes until it is approved.',
 };
 
 /**

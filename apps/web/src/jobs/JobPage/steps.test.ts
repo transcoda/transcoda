@@ -587,6 +587,44 @@ describe('steps: one sentence and a badge per node', () => {
     );
   });
 
+  it('Approval: what it would do, that it waits, and who answered', () => {
+    const gate = d({
+      key: '8',
+      nodeId: 'ap',
+      title: 'Approval',
+      kind: 'finish',
+      type: 'core:approval',
+      phase: 'finish',
+      settings: { expireAfterDays: 3 },
+      reason: 'wait for a person to approve the result (up to 3 days)',
+    });
+    expect(one(gate).sentence).toBe('Would wait for a person to approve the result, up to 3 days');
+    expect(one(gate).badge).toBe('finish');
+    const running: StepContext = { ...DONE, state: 'verifying', replacedTo: null };
+    expect(one(gate, running).sentence).toBe(
+      'Waits for a person to approve the result, up to 3 days',
+    );
+    const waiting = {
+      ...gate,
+      branch: 'depends' as const,
+      port: null,
+      reason: 'Approval: waiting for a person, at most 3 days',
+    };
+    expect(one(waiting, running).sentence).toBe('Waiting for a person, at most 3 days');
+    const approved = { ...gate, branch: 'pass' as const, reason: 'Approval: approved by admin' };
+    expect(one(approved, DONE).sentence).toBe('Approved by admin, so the finish steps went ahead');
+    const kept: StepContext = { ...DONE, state: 'kept_original', replacedTo: null };
+    const rejected = { ...gate, branch: 'else' as const, reason: 'Approval: rejected by admin' };
+    expect(one(rejected, kept).sentence).toBe('Rejected by admin, so the original was kept');
+    const expired = {
+      ...rejected,
+      reason: 'Approval: not approved within 3 days',
+    };
+    expect(one(expired, kept).sentence).toBe(
+      'Not approved within 3 days, so the original was kept',
+    );
+  });
+
   it('a gate that wrote the track changes says the video was kept; a plan says it would', () => {
     const gate = d({
       key: '7',

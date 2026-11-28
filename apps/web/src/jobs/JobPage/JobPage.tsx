@@ -56,6 +56,7 @@ import { Poster } from '../Poster.tsx';
 import { ProcessAgain } from '../ProcessAgain.tsx';
 import { encodeStopped, useQueue } from '../use-queue.ts';
 import { useNodeParam } from '../use-try-on-file.ts';
+import { ApprovalPanel } from './ApprovalPanel.tsx';
 import { BeforeAfter } from './BeforeAfter.tsx';
 import { FfmpegNotes, RawOutput, useJobLog } from './FfmpegNotes.tsx';
 import { JobPlanSection } from './JobPlanSection.tsx';
@@ -236,8 +237,8 @@ function JobView({ id }: { id: string }) {
   // While ffmpeg runs the Render is at work, then each finish step: the node a failure or cancel
   // is traced on is the one lit.
   const lit = useMemo(() => {
-    // Planned and waiting for a lane: no node is current, the job is between build and encode.
-    if (job && isWaitingForLane(job)) return null;
+    // Planned and waiting for a lane, or a result waiting for approval: nothing is at work.
+    if (job && (isWaitingForLane(job) || job.approval)) return null;
     if (job?.graph && ENCODE_STATES.includes(job.state)) {
       return executingNode(job.state, job.path, job.graph, subgraphs, currentNode);
     }
@@ -344,9 +345,10 @@ function JobView({ id }: { id: string }) {
   }
 
   const active = !isFinalState(job.state);
-  const running = RUNNING_JOB_STATES.includes(job.state);
+  // A result waiting for approval: the panel below says what waits; no bar, nothing at work.
+  const running = RUNNING_JOB_STATES.includes(job.state) && !job.approval;
   const percent = percentOf(job);
-  const detail = active && job.state !== 'queued' ? detailLine(job) : null;
+  const detail = active && job.state !== 'queued' && !job.approval ? detailLine(job) : null;
   const activity = activityLine(job);
   const at = currentNodeOf(source);
   const atText =
@@ -533,8 +535,9 @@ function JobView({ id }: { id: string }) {
       {showResult && (
         <JobResult job={job} testEncodeAction={<TestEncodeFile job={job} />} raw={raw} />
       )}
+      {active && <ApprovalPanel job={job} onChanged={reload} />}
       <JobPlanSection job={job} />
-      {!active && <BeforeAfter job={job} />}
+      {(!active || job.approval) && <BeforeAfter job={job} />}
       {job.testEncode && !active && <TestOutputPanel job={job} onChanged={reload} />}
       {stepContext && (
         <JobSteps

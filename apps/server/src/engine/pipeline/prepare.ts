@@ -3,7 +3,7 @@
 
 import type { Stats } from 'node:fs';
 import { dirname, extname, join } from 'node:path';
-import type { AnyFinishAction, ProbeResult, StreamPlan } from '@transcoda/sdk';
+import type { ProbeResult, StreamPlan } from '@transcoda/sdk';
 import type { Issue, JsonValue, Lane, TraceEntry, WorkflowGraph } from '@transcoda/shared';
 import { type Exec, makeExec } from '../../capabilities/ffmpeg.ts';
 import { type Fingerprint, fingerprintKey, upsertFile } from '../../db/repos/files.ts';
@@ -17,6 +17,7 @@ import {
   type WalkStep,
 } from '../../db/repos/jobs/jobs.ts';
 import { findRun } from '../../db/repos/runs.ts';
+import type { EngineFinishAction } from '../../nodes/core/approval.ts';
 import type { CoreTools } from '../../nodes/core-tools.ts';
 import type { CurrentNode } from '../events.ts';
 import { checkPath, skipReasonFor } from '../files/paths.ts';
@@ -594,7 +595,7 @@ function walkDepsOf(
 }
 
 /** The minimum saving of a size-gate action (0 if the action is something else). */
-function gateMinimum(action: AnyFinishAction | undefined): number {
+function gateMinimum(action: EngineFinishAction | undefined): number {
   return action?.kind === 'size-gate' ? action.minSavingPercent : 0;
 }
 

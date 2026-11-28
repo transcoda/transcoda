@@ -453,6 +453,17 @@ describe('never tests', () => {
     expect(await del.text()).toContain('Test outputs are handled in the UI');
   });
 
+  it('approval: no tool approves or rejects a waiting result, and the API refuses the all-scopes token', async () => {
+    const client = await mcpClient(t, token);
+    const { tools } = await client.listTools();
+    expect(tools.filter((x) => /approv|reject/i.test(x.name))).toEqual([]);
+    for (const action of ['approve', 'reject']) {
+      const res = await send(t, 'POST', `/jobs/any/${action}`, { headers: bearer(token) });
+      expect(res.status).toBe(403);
+      expect(await res.text()).toContain('Approval is a UI action');
+    }
+  });
+
   it('settings: no tool reads or changes settings or passwords, and the API refuses the all-scopes token', async () => {
     const client = await mcpClient(t, token);
     const { tools } = await client.listTools();

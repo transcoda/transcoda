@@ -5,7 +5,7 @@ import type {
   PosterRef,
 } from '@transcoda/contract';
 import { Link } from 'wouter';
-import { VERDICT_WORD, verdictOf } from '../jobs/job-text.ts';
+import { APPROVAL_WORD, VERDICT_WORD, verdictOf } from '../jobs/job-text.ts';
 import { Poster } from '../jobs/Poster.tsx';
 import { fmtBytes } from '../lib/bytes.ts';
 
@@ -99,7 +99,7 @@ export function TitleGrid({ libraryId, items }: { libraryId: string; items: Libr
             title={t.latest.media.title}
             lines={[
               t.latest.media.year === null ? null : String(t.latest.media.year),
-              VERDICT_WORD[verdictOf(t.latest)],
+              t.latest.approval ? APPROVAL_WORD : VERDICT_WORD[verdictOf(t.latest)],
             ]}
           />
         ),

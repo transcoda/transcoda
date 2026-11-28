@@ -18,6 +18,7 @@ import {
 } from '../model/model.ts';
 import type { ExecuteOutcome, JobControl, JobExecutor, SlotFit } from '../queue/scheduler.ts';
 import { actionNode } from '../walk/walk.ts';
+import { awaitApproval } from './approval.ts';
 import { takeElse } from './branches.ts';
 import { PipelineCore } from './core.ts';
 import { coverFailure, coverTimeoutMs, encode } from './encode.ts';
@@ -51,6 +52,7 @@ import {
   type Written,
 } from './types.ts';
 
+export { APPROVAL_EXPIRY_CHECK_MS, ApprovalDesk } from './approval.ts';
 export { redactUrl } from './steps.ts';
 export { logPathFor, type PipelineDeps } from './types.ts';
 
@@ -358,6 +360,16 @@ export class Pipeline implements JobExecutor {
           } else if (gate) {
             traceGatePass(this.core, job, ctl, gate, saving, action.minSavingPercent);
           }
+        } else if (action.kind === 'approval') {
+          if (wrote()) {
+            // Validation (FINISH_ORDER) puts a gate before the write; checked again here.
+            problem('approval after a write: the result was already written');
+            continue;
+          }
+          const gate = p.gates.find((g) => g.actionIndex === actionIndex);
+          const answer = await awaitApproval(this.core, job, ctl, p, action, gate, afterBytes);
+          if (answer.kind === 'end') return answer.end;
+          job = answer.job;
         } else if (action.kind === 'replace') {
           const r = await replace(this.core, job, ctl, p, action.recycleFolder);
           if (r.kind === 'requeue') {

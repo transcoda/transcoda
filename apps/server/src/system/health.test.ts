@@ -1,7 +1,7 @@
 import type { Capabilities } from '@transcoda/contract';
 import { emptyGraph, type JobState } from '@transcoda/shared';
 import { describe, expect, it } from 'vitest';
-import { insertJob, updateJob } from '../db/repos/jobs/jobs.ts';
+import { insertApproval, insertJob, updateJob } from '../db/repos/jobs/jobs.ts';
 import { insertLibrary } from '../db/repos/libraries.ts';
 import { insertRun } from '../db/repos/runs.ts';
 import { SETTING_KEYS, setSetting } from '../db/repos/settings.ts';
@@ -226,6 +226,22 @@ describe('HealthService.deep', () => {
     addJob(b.db, 'j1', 'encoding', hoursAgo(7));
     setSetting(b.db, SETTING_KEYS.queuePaused, true, T0);
     expect((await b.svc.deep()).queue).toBe('ok');
+  });
+
+  it('does not page for a job whose result waits for approval', async () => {
+    const t = setup();
+    addJob(t.db, 'j1', 'verifying', hoursAgo(30));
+    insertApproval(t.db, {
+      jobId: 'j1',
+      nodeId: 'ap',
+      parkedAt: hoursAgo(30).toISOString(),
+      expiresAt: T0.toISOString(),
+      beforeBytes: 10,
+      afterBytes: 5,
+      plan: null,
+      outputProbe: null,
+    });
+    expect((await t.svc.deep()).queue).toBe('ok');
   });
 
   it('answers fail for a check that hangs, and caches the result', async () => {

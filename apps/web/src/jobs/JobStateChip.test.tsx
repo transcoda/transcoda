@@ -51,6 +51,18 @@ describe('JobStateChip', () => {
     expect(container.querySelector('.job-chip')?.classList.contains('is-working')).toBe(false);
     cleanup();
     expect(chipOf(fx.queued).working).toBe(false);
+    // A result waiting for a person: nothing works on it, so the icon stands still.
+    const approval = {
+      parkedAt: '2026-10-16T18:20:00.000Z',
+      expiresAt: '2026-10-23T18:20:00.000Z',
+      beforeBytes: 2,
+      afterBytes: 1,
+    };
+    expect(chipOf(job({ ...fx.running, state: 'verifying', approval }))).toEqual({
+      word: 'Waiting for approval',
+      working: false,
+      icon: 'user-check',
+    });
   });
 
   it('a damaged job gets the is-damaged chip with the alert icon', () => {

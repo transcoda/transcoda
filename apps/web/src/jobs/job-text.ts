@@ -90,6 +90,9 @@ export const PHASE_WORD: Record<RunningState, string> = {
 /** The chip word of a planned job that waits for its lane. */
 const PLANNED_WORD = 'Planned';
 
+/** The chip word of a job whose result an Approval step holds for a person. */
+export const APPROVAL_WORD = 'Waiting for approval';
+
 const isRunning = (s: JobState): s is RunningState => RUNNING_JOB_STATES.includes(s);
 
 /**
@@ -133,9 +136,11 @@ export function stateWord(
     result?: { sourceDamaged?: boolean } | null;
     dryRun?: boolean;
     dependsOnSize?: Job['dependsOnSize'];
+    approval?: Job['approval'];
   },
 ): string {
   if (job.state === 'building' && job.lane) return PLANNED_WORD;
+  if (job.approval) return APPROVAL_WORD;
   if (isRunning(job.state)) return PHASE_WORD[job.state];
   const depends = dependsWord(job);
   if (depends) return depends;
@@ -457,6 +462,12 @@ function verifyDetail(job: Job): string {
   return RUNNING_DETAIL.verifying;
 }
 
+/** A waiting result's line: its sizes, and when it is rejected without an answer. */
+export function approvalDetail(a: NonNullable<Job['approval']>): string {
+  const sizes = `${fmtBytes(a.beforeBytes)} → ${fmtBytes(a.afterBytes)}, ${fmtSaving(a.beforeBytes, a.afterBytes)}`;
+  return `${sizes} · rejected on ${fmtDate(a.expiresAt)} without an answer`;
+}
+
 /**
  * What a running job's node and header say ("Encoding · 42%", "Verifying · 3 of 14 checks"):
  * the phase word and its measure, if any; "Paused" while paused; undefined for a job not running.
@@ -465,6 +476,7 @@ function verifyDetail(job: Job): string {
 export function activityLine(job: Job): string | undefined {
   if (job.paused) return 'Paused';
   if (!isRunning(job.state)) return undefined;
+  if (job.approval) return APPROVAL_WORD;
   const word = PHASE_WORD[job.state];
   const pct = percentOf(job);
   const v = job.progress?.verify;
@@ -536,7 +548,7 @@ export function detailLine(job: Job, opts: { queuePaused?: boolean; now?: Date }
       // C4: the replace waits for free space ("waiting for 5.40 GB free on /media (5.10 GB free)").
       return job.reason ? sentence(job.reason) : RUNNING_DETAIL.replacing;
     case 'verifying':
-      return verifyDetail(job);
+      return job.approval ? approvalDetail(job.approval) : verifyDetail(job);
     case 'probing':
     case 'deciding':
       return RUNNING_DETAIL[job.state];
@@ -685,6 +697,8 @@ export const FILTERS: ReadonlyArray<{
   problems?: true;
   /** Only plan-only dry runs whose size gate decides after encoding (#41). */
   dependsOnSize?: true;
+  /** Only jobs whose result an Approval step holds for a person. */
+  awaitingApproval?: true;
 }> = [
   { label: 'All', states: [] },
   { label: 'Running', states: [...RUNNING_JOB_STATES] },
@@ -698,6 +712,7 @@ export const FILTERS: ReadonlyArray<{
   // every page words it (a dry run that would do nothing counts under Nothing to do).
   { label: 'Would replace', states: ['dry_run'] },
   { label: 'Depends on size', states: ['dry_run'], dependsOnSize: true },
+  { label: APPROVAL_WORD, states: [], awaitingApproval: true },
   { label: 'Canceled', states: ['cancelled'] },
   { label: 'Needs attention', states: [], problems: true },
   { label: 'Paused', states: ['queued', ...RUNNING_JOB_STATES], paused: true },

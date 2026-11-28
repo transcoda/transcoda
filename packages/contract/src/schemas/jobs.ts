@@ -144,6 +144,19 @@ export const JobSchema = z.object({
   heldByRunHours: z
     .object({ opensAt: z.iso.datetime().nullable(), timeZone: z.string() })
     .nullable(),
+  /**
+   * The job reached an Approval step: its rendered, verified result is parked (state `verifying`)
+   * until a person approves or rejects it, or `expiresAt` passes (rejected, the original kept).
+   * Null otherwise.
+   */
+  approval: z
+    .object({
+      parkedAt: z.iso.datetime(),
+      expiresAt: z.iso.datetime(),
+      beforeBytes: z.number().int(),
+      afterBytes: z.number().int(),
+    })
+    .nullable(),
 });
 
 export const JobResultSchema = z.object({
@@ -341,6 +354,8 @@ export const JobsListInputSchema = z.object({
   problems: z.boolean().optional(),
   /** true: only plan-only dry runs whose outcome depends on the size gate. */
   dependsOnSize: z.boolean().optional(),
+  /** true: only jobs whose result waits for approval. */
+  awaitingApproval: z.boolean().optional(),
   /** true: only dry runs; false: only real runs. A scope: the counts cover it too. */
   dryRun: z.boolean().optional(),
 });
@@ -355,6 +370,8 @@ export const JobsListOutputSchema = z.object({
   problemCount: z.number().int(),
   /** Dry runs that depend on size within the list's scope; the `state` filter and paging do not apply. */
   dependsOnSizeCount: z.number().int(),
+  /** Jobs waiting for approval within the list's scope; the `state` filter and paging do not apply. */
+  awaitingApprovalCount: z.number().int(),
 });
 
 /** `since` omitted: the start of today in the server's time zone. */

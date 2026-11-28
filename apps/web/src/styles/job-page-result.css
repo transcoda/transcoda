@@ -208,6 +208,48 @@
   }
 }
 
+/* A result an Approval step holds (job page): sizes, plan, until when, Approve / Reject. */
+.approval {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-4) var(--sp-5);
+}
+
+.approval-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  color: var(--accent-text);
+}
+
+.approval-title {
+  margin: 0;
+  color: var(--text);
+  font-size: var(--fs-h3);
+  font-weight: 700;
+}
+
+.approval-sizes {
+  margin: 0;
+  font-size: var(--fs-small);
+}
+
+.approval-plan,
+.approval-note {
+  max-width: 70ch;
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--fs-small);
+}
+
+.approval-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  margin-top: var(--sp-1);
+}
+
 /* A test-encode's kept output (job page): until when, the size, Play / Download / Delete now. */
 .test-output {
   display: flex;

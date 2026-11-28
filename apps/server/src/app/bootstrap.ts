@@ -10,6 +10,7 @@ import { migrate } from '../db/migrate.ts';
 import { migrations } from '../db/migrations/index.ts';
 import { openDatabase } from '../db/open.ts';
 import { TEST_OUTPUT_SWEEP_MS } from '../engine/files/test-outputs.ts';
+import { APPROVAL_EXPIRY_CHECK_MS } from '../engine/pipeline/pipeline.ts';
 import { setChildCapDrop } from '../platform/child-caps.ts';
 import { type Config, requireIsolationInProduction } from '../platform/config.ts';
 import type { Logger } from '../platform/logger.ts';
@@ -157,6 +158,15 @@ export async function createDeps(
     TEST_OUTPUT_SWEEP_MS,
   );
   testOutputTimer.unref();
+  // Results nobody approved in time are rejected (the original kept).
+  const approvalTimer = setInterval(() => {
+    try {
+      deps.engine.expireApprovals();
+    } catch (err) {
+      log.warn(`approval expiry failed: ${err instanceof Error ? err.message : 'unknown error'}`);
+    }
+  }, APPROVAL_EXPIRY_CHECK_MS);
+  approvalTimer.unref();
 
   return {
     ...deps,
@@ -166,6 +176,7 @@ export async function createDeps(
       deps.engine.catchUp.stop();
       clearInterval(timer);
       clearInterval(testOutputTimer);
+      clearInterval(approvalTimer);
       if (db.open) db.close();
     },
   };

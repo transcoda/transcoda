@@ -148,6 +148,8 @@ describe('connection rules', () => {
     ['core:move-copy', 'file', WRITE_AND_LATER, false],
     ['core:size-gate', 'pass', WRITE_AND_LATER, false],
     ['core:size-gate', 'else', NON_WRITING, true],
+    ['core:approval', 'pass', WRITE_AND_LATER, false],
+    ['core:approval', 'else', NON_WRITING, true],
     ['example:library', 'file', NON_WRITING, false],
     ['example:media', 'file', ['core:notify-webhook', 'example:media'], false],
     ['core:notify-webhook', 'file', ['core:notify-webhook'], false],
@@ -196,7 +198,9 @@ describe('connection rules', () => {
     const rule = nextNodeRule(single('example:loose'), 'src', 'file', loose);
     expect(rule).toMatchObject({ kind: 'finish-after', minRank: 0, noWrite: false });
     const listed = compatibleTargets(loose, 'file', 'workflow', rule).map((n) => n.type);
-    expect(listed.sort()).toEqual(['core:size-gate', ...WRITE_AND_LATER, 'example:loose'].sort());
+    expect(listed.sort()).toEqual(
+      ['core:approval', 'core:size-gate', ...WRITE_AND_LATER, 'example:loose'].sort(),
+    );
     // ... and a phase-less finish node may follow any finish node.
     const after = nextNodeRule(single('core:notify-webhook'), 'src', 'file', loose);
     expect(
@@ -356,7 +360,7 @@ describe('connection rules', () => {
         afterTitle: 'Render',
       });
       expect(listed(graph(true), 'r', 'done')).toEqual(
-        ['core:size-gate', ...WRITE_AND_LATER].sort(),
+        ['core:approval', 'core:size-gate', ...WRITE_AND_LATER].sort(),
       );
       // After Check source's OK anything goes, except a damagedOnly node.
       expect(listed(graph(true), 'cs', 'ok')).not.toContain('example:replace-damaged');

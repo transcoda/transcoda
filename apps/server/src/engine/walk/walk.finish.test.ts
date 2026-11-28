@@ -400,6 +400,85 @@ describe('walk', () => {
     });
   });
 
+  describe('approval', () => {
+    const notify = (id: string) =>
+      node(id, 'core:notify-webhook', { url: 'https://example.test/h' });
+    /** in → ap; ap.pass → ro → after; ap.else → `rejected` (a chain). */
+    const approved = (rejected: ReturnType<typeof node>[] = [notify('nw')]) =>
+      mainGraph(
+        [
+          node('in', 'core:input-manual'),
+          node('ap', 'core:approval', { expireAfterDays: 3 }),
+          node('ro', 'core:replace-original'),
+          notify('after'),
+          ...rejected,
+        ],
+        [
+          edge('in', 'ap'),
+          edge('ap', 'ro', { from: 'pass' }),
+          edge('ro', 'after'),
+          ...(rejected[0] ? [edge('ap', rejected[0].id, { from: 'else' })] : []),
+          ...rejected.slice(1).map((n, i) => edge((rejected[i] as { id: string }).id, n.id)),
+        ],
+      );
+
+    it('adds its core-only action where it sits, and walks Rejected apart like a gate’s else', async () => {
+      const { deps, trace } = setup();
+      const result = await walk(deps, input(approved()));
+      if (result.kind !== 'built') throw new Error(JSON.stringify(result));
+      expect(ids(result.path)).toEqual(['in', 'ap', 'ro', 'after']);
+      expect(result.path.find((s) => s.nodeId === 'ap')?.port).toBe('pass');
+      expect(result.actions.map((a) => a.kind)).toEqual(['approval', 'replace', 'notify']);
+      expect(result.actions[0]).toEqual({
+        kind: 'approval',
+        expireAfterDays: 3,
+        nodeId: 'ap',
+        workflowPath: [],
+      });
+      expect(result.gates).toEqual([
+        {
+          nodeId: 'ap',
+          actionIndex: 0,
+          elseActions: [
+            {
+              kind: 'notify',
+              url: 'https://example.test/h',
+              method: 'POST',
+              nodeId: 'nw',
+              workflowPath: [],
+            },
+          ],
+          elsePath: [{ workflowPath: [], nodeId: 'nw', port: 'file' }],
+        },
+      ]);
+      expect(trace.filter((e) => e.nodeId === 'ap').map((e) => [e.phase, e.reason])).toEqual([
+        ['finish', 'wait for a person to approve the result (up to 3 days)'],
+      ]);
+    });
+
+    it('a write step behind Rejected fails the walk', async () => {
+      const { deps } = setup();
+      expect(
+        await walk(deps, input(approved([node('rb', 'core:replace-original')]))),
+      ).toMatchObject({
+        kind: 'failed',
+        nodeId: 'rb',
+        reason: 'a step that writes the result cannot follow Approval\u2019s Rejected branch',
+      });
+    });
+
+    it('a bypassed approval adds no action and no branch', async () => {
+      const { deps } = setup();
+      const graph = approved();
+      const ap = graph.nodes.find((n) => n.id === 'ap');
+      if (ap) ap.bypassed = true;
+      const result = await walk(deps, input(graph));
+      if (result.kind !== 'built') throw new Error(JSON.stringify(result));
+      expect(result.actions.map((a) => a.kind)).toEqual(['replace', 'notify']);
+      expect(result.gates).toEqual([]);
+    });
+  });
+
   describe('Render', () => {
     const notify = (id: string) =>
       node(id, 'core:notify-webhook', { url: 'https://example.test/h' });

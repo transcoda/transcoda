@@ -49,12 +49,14 @@ export function useActivity(opts: { detailsFor: readonly string[] }): Activity {
   const paused = queue.status?.paused ?? false;
   const queued = list.counts?.queued ?? 0;
   const counts = list.counts;
+  // A result waiting for approval is not at work: the Jobs page and its filter show it instead.
   const runningCount = counts
-    ? RUNNING_JOB_STATES.reduce((n, s) => n + (counts[s] ?? 0), 0)
+    ? RUNNING_JOB_STATES.reduce((n, s) => n + (counts[s] ?? 0), 0) -
+      (list.awaitingApprovalCount ?? 0)
     : undefined;
   // A job that just left the running states stays on the page until the list reloads.
   const running = useMemo(
-    () => list.jobs.filter((j) => RUNNING_JOB_STATES.includes(j.state)),
+    () => list.jobs.filter((j) => RUNNING_JOB_STATES.includes(j.state) && !j.approval),
     [list.jobs],
   );
 

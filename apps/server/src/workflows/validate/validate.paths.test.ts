@@ -271,6 +271,61 @@ describe('validateWorkflow', () => {
       expect(validateWorkflow(notify, ctx())).toEqual([]);
     });
 
+    describe('approval', () => {
+      const REJECTED_TEXT =
+        'After Approval\u2019s \u201cRejected\u201d, only notifications and other non-writing finish steps can follow.';
+      /** in → ap; ap.pass → ro; ap.else → `after`. */
+      const approval = (after: ReturnType<typeof node>[], elseEdges: ReturnType<typeof edge>[]) =>
+        mainGraph(
+          [
+            node('in', 'core:input-manual'),
+            node('ap', 'core:approval'),
+            node('ro', 'core:replace-original'),
+            ...after,
+          ],
+          [edge('in', 'ap'), edge('ap', 'ro', { from: 'pass' }), ...elseEdges],
+        );
+      const rejectedTo = (id: string) => edge('ap', id, { from: 'else' });
+
+      it('Approved → replace, with Rejected → notify or unconnected, is valid', () => {
+        const nw = node('nw', 'core:notify-webhook', { url: 'https://example.test/hook' });
+        expect(validateWorkflow(approval([nw], [rejectedTo('nw')]), ctx())).toEqual([]);
+        expect(validateWorkflow(approval([], []), ctx())).toEqual([]);
+      });
+
+      it('a write behind Rejected is an error that names Approval', () => {
+        expect(
+          validateWorkflow(
+            approval([node('rb', 'core:replace-original')], [rejectedTo('rb')]),
+            ctx(),
+          ),
+        ).toEqual([
+          { severity: 'error', code: 'ELSE_ONLY_NOTIFY', message: REJECTED_TEXT, nodeId: 'rb' },
+        ]);
+      });
+
+      it('an approval after the write, or sharing an output, is refused like a size gate', () => {
+        const late = mainGraph(
+          [
+            node('in', 'core:input-manual'),
+            node('ro', 'core:replace-original'),
+            node('ap', 'core:approval'),
+          ],
+          [edge('in', 'ro'), edge('ro', 'ap')],
+        );
+        expect(codes(validateWorkflow(late, ctx()))).toContain('error:FINISH_ORDER');
+        const shared = mainGraph(
+          [
+            node('in', 'core:input-manual'),
+            node('ap', 'core:approval'),
+            node('ro', 'core:replace-original'),
+          ],
+          [edge('in', 'ap'), edge('in', 'ro'), edge('ap', 'ro', { from: 'pass' })],
+        );
+        expect(codes(validateWorkflow(shared, ctx()))).toContain('error:SIZE_GATE_SHARED_OUTPUT');
+      });
+    });
+
     describe('size gate else', () => {
       const ELSE_TEXT =
         'After the size gate\u2019s \u201cNo\u201d, only notifications and other non-writing finish steps can follow.';

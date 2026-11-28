@@ -17,9 +17,11 @@ import type { Database } from '../db/open.ts';
 import { fingerprintKey } from '../db/repos/files.ts';
 import {
   allTimeSaved,
+  countAwaitingApproval,
   countDependsOnSize,
   countJobsByState,
   countProblems,
+  findApproval,
   findJob,
   findJobListRow,
   findJobProbe,
@@ -32,6 +34,7 @@ import {
   jobHistory,
   jobStats,
   jobsWithReplaceJournal,
+  listApprovals,
   listJobs,
   listTrace,
   type ReplaceJournal,
@@ -70,7 +73,7 @@ import { type TestOutputRow, TestOutputStore } from './files/test-outputs.ts';
 import { contentHash } from './media/content-hash.ts';
 import { PosterStore, type Thumbnail } from './media/poster-store.ts';
 import { type JobProbe, jobProbeOf } from './media/probe.ts';
-import { logPathFor, Pipeline } from './pipeline/pipeline.ts';
+import { ApprovalDesk, logPathFor, Pipeline } from './pipeline/pipeline.ts';
 import { LibraryCatchUp } from './queue/catch-up.ts';
 import { MediaPass } from './queue/media-pass.ts';
 import { QueueService } from './queue/queue-service.ts';
@@ -150,6 +153,8 @@ export class EngineService {
   readonly testOutputs: TestOutputStore;
   /** Small cached thumbnails of the posters beside library files. */
   readonly posters: PosterStore;
+  /** The results an Approval step parked, waiting for a person's answer (in memory). */
+  readonly approvals = new ApprovalDesk();
   /** The zone libraries' run hours are read in. */
   readonly timeZone: string;
   private readonly db: Database;
@@ -195,6 +200,7 @@ export class EngineService {
       ...(deps.hooks ? { hooks: deps.hooks } : {}),
       ...(deps.restartGate ? { restartGate: deps.restartGate } : {}),
       testOutputs: this.testOutputs,
+      approvals: this.approvals,
       otherGpuFor: (fit, failed) => {
         const all = slots();
         return pickSlot(all, all, fit, failed) !== undefined;
@@ -284,6 +290,29 @@ export class EngineService {
     await this.scheduler.stop();
     this.mediaPass.stop();
     await this.mediaPass.idle();
+  }
+
+  /**
+   * A person's answer to a result an Approval step parked: `not-waiting` when the job has no
+   * result waiting (answered already, finished, or never parked).
+   */
+  approve(jobId: string, by: string): 'ok' | 'not-waiting' {
+    return this.approvals.answer(jobId, { kind: 'approved', by }) ? 'ok' : 'not-waiting';
+  }
+
+  reject(jobId: string, by: string): 'ok' | 'not-waiting' {
+    return this.approvals.answer(jobId, { kind: 'rejected', by }) ? 'ok' : 'not-waiting';
+  }
+
+  /** Rejects the parked results past their time (every minute); returns how many. */
+  expireApprovals(): number {
+    const now = this.deps.now().toISOString();
+    let expired = 0;
+    for (const row of listApprovals(this.db)) {
+      if (row.expiresAt > now) continue;
+      if (this.approvals.answer(row.jobId, { kind: 'expired' })) expired += 1;
+    }
+    return expired;
   }
 
   /** Deletes expired and stray test outputs (hourly and at start); never rejects. */
@@ -422,7 +451,12 @@ export class EngineService {
     // The job's own probe, never the file's latest: after a replace the file has other streams.
     const ownProbe = findJobProbe(db, id) as ProbeResult | null;
     // Stored as a JobProbe; the first builds stored the whole ProbeResult (with `raw`).
-    const output = result?.outputProbe as (JobProbe | ProbeResult) | null | undefined;
+    // A result waiting for approval has no job result yet: its parked plan and probe stand in.
+    const parked = result ? null : findApproval(db, id);
+    const output = (result?.outputProbe ?? parked?.outputProbe) as
+      | (JobProbe | ProbeResult)
+      | null
+      | undefined;
     const stored = findVersion(
       db,
       row.workflowId,
@@ -437,7 +471,7 @@ export class EngineService {
       outputProbe: !output ? null : 'raw' in output ? jobProbeOf(output) : output,
       // As the job ran it: a version stored by an older server shows its migrated edges.
       graph: stored?.ok ? migratePinned(stored.row.graph, this.deps.registry).graph : null,
-      plan: result?.plan ?? null,
+      plan: result?.plan ?? parked?.plan ?? null,
       path: row.walkPath ?? [],
       testOutput: this.testOutputs.find(id),
       testOutputNote: this.testOutputs.note(id),
@@ -462,6 +496,7 @@ export class EngineService {
     counts: Record<JobState, number>;
     problemCount: number;
     dependsOnSizeCount: number;
+    awaitingApprovalCount: number;
   } {
     // The list's scope (run, library) applies; its state filter and paging do not.
     const scope = {
@@ -475,6 +510,7 @@ export class EngineService {
       counts: countJobsByState(this.db, scope),
       problemCount: countProblems(this.db, scope),
       dependsOnSizeCount: countDependsOnSize(this.db, scope),
+      awaitingApprovalCount: countAwaitingApproval(this.db, scope),
     };
   }
 

@@ -108,6 +108,29 @@ describe('useActivity', () => {
     expect(mocks.jobs.get).not.toHaveBeenCalled();
   });
 
+  it('a result waiting for approval is not counted as running', async () => {
+    const waiting = job({
+      ...fx.verifying,
+      id: 'w',
+      reason: 'waiting for approval',
+      approval: {
+        parkedAt: '2026-10-16T18:20:00.000Z',
+        expiresAt: '2026-10-23T18:20:00.000Z',
+        beforeBytes: 2,
+        afterBytes: 1,
+      },
+    });
+    mocks.jobs.list.mockResolvedValue({
+      jobs: [A, waiting],
+      counts: counts({ queued: 3, encoding: 1, verifying: 1 }),
+      problemCount: 0,
+      awaitingApprovalCount: 1,
+    });
+    const hook = await mount();
+    expect(hook.result.current.summary?.text).toBe('Encoding 1 · 3 queued');
+    expect(hook.result.current.running.map((j) => j.id)).toEqual(['a']);
+  });
+
   it('keeps the node each job.changed reports', async () => {
     serve([A], 0);
     const hook = await mount();

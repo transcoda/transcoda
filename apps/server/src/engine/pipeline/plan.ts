@@ -1,6 +1,6 @@
 // What prepare plans from a built model: the lane and encode slots a job fits, the per-stream
 // plan the job screens show, the size estimate, and whether a size gate decides the outcome.
-import type { AnyFinishAction, BuildModel, ProbeResult, StreamPlan } from '@transcoda/sdk';
+import type { BuildModel, ProbeResult, StreamPlan } from '@transcoda/sdk';
 import {
   isPicture,
   type JobPlan,
@@ -12,6 +12,7 @@ import {
 } from '@transcoda/shared';
 import type { Database } from '../../db/open.ts';
 import { recentRatios } from '../../db/repos/jobs/jobs.ts';
+import type { EngineFinishAction } from '../../nodes/core/approval.ts';
 import {
   containerCanHold,
   diffFromProbe,
@@ -245,7 +246,7 @@ export function renderOnPath(
  * the video): the file is written either way.
  */
 export function sizeGateDecides(
-  actions: readonly AnyFinishAction[],
+  actions: readonly EngineFinishAction[],
   tracksWritable = false,
 ): { minSavingPercent: number } | null {
   let min: number | null = null;

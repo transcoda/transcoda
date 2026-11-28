@@ -25,6 +25,7 @@ import {
 import type { Decision } from '../../editor/trace/trace-overlay.ts';
 import { fmtKbps } from '../../lib/rate.ts';
 import { languageNameOf } from '../plan-text.ts';
+import { approvalSentence, notifyOutcome } from './finish-step-words.ts';
 import { sizeGateSentence } from './size-gate-step.ts';
 
 export type Badge =
@@ -785,20 +786,6 @@ function finishStep(
   }
 }
 
-/** What the engine's notify warning on the step says went wrong; null when it sent. */
-function notifyOutcome(
-  problems: readonly NodeProblem[],
-): { failed?: string; status?: string } | null {
-  for (const p of problems) {
-    if (!p.message.startsWith('notify ')) continue;
-    const failed = p.message.indexOf(' failed: ');
-    if (failed >= 0) return { failed: p.message.slice(failed + ' failed: '.length) };
-    const status = /\sanswered (\d+)$/.exec(p.message)?.[1];
-    if (status !== undefined) return { status };
-  }
-  return null;
-}
-
 function step(d: Decision, ctx: StepContext, around: Around): Step {
   let past = pastOf(ctx);
   const base = { key: d.key, decision: d, notes: [], detail: null };
@@ -872,6 +859,10 @@ function step(d: Decision, ctx: StepContext, around: Around): Step {
       }
       const what = finishStep(d, ctx, false);
       const sentence = ctx.sourceDamaged ? what : `If the source is damaged: ${what}`;
+      return { ...base, badge: 'finish', quiet: false, sentence };
+    }
+    if (d.type === 'core:approval') {
+      const sentence = approvalSentence(d, reasonSentence(d), ctx.dryRun);
       return { ...base, badge: 'finish', quiet: false, sentence };
     }
     if (d.type === 'core:size-gate') {
