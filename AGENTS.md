@@ -6,12 +6,12 @@ Today's rules for each area are in [`docs/dev/`](docs/dev/): [structure](docs/de
 
 ## Repo map
 
-Where a new file or folder goes, the layer order and the naming rules: [docs/dev/structure.md](docs/dev/structure.md). Read it first. `pnpm check-structure` enforces it; parts of the tree below are still moving to the layout it describes.
+Where a new file or folder goes, the layer order and the naming rules: [docs/dev/structure.md](docs/dev/structure.md). Read it first. `pnpm check-structure` enforces it.
 
 Dependencies point one way: `packages/shared` ← `packages/sdk` ← `packages/contract` ← `apps/server` and `apps/web`. `pnpm check-deps` enforces this and refuses relative imports across packages.
 
 - **`packages/`**: `shared` (types and pure helpers both sides use), `sdk` (the published plugin and node SDK, `defineNode`), `contract` (every API procedure's route, input, output and errors, oRPC).
-- **`apps/server/src`**: `app/` (the composition root: app, bootstrap, deps wiring), `platform/` (logger, `config.ts` with the environment variables, process guards, disk and child-process helpers); `rpc/` (procedures, guards), `http/` (plain routes), `auth/` (sessions, tokens, host check, proxies); `db/` (SQLite, migrations, repos, backups), `settings/`, `system/` (health, app update, folder browsing); `engine/` (`model/` what to do to a file, `files/` the library on disk, `media/` probing and sidecars, `encode/` the ffmpeg child, `verify/`, `walk/` the workflow walk, `queue/` the queue and scheduler, `pipeline/` a job's run), `capabilities/` (ffmpeg and GPU probes), `nodes/` (core nodes, registry), `workflows/` (validation, versions, activation); `plugins/` and `plugin-host/` (sandboxed plugin processes), `mcp/`, `metrics/`.
+- **`apps/server/src`**: `app/` (the composition root: app, bootstrap, deps wiring), `platform/` (logger, `config.ts` with the environment variables, process guards, disk and child-process helpers); `rpc/` (procedures, guards), `http/` (plain routes), `auth/` (sessions, tokens, host check, proxies); `db/` (SQLite, migrations, repos, backups), `settings.ts`, `system/` (health, app update, folder browsing); `engine/` (`model/` what to do to a file, `files/` the library on disk, `media/` probing and sidecars, `encode/` the ffmpeg child, `verify/`, `walk/` the workflow walk, `queue/` the queue and scheduler, `pipeline/` a job's run), `capabilities/` (ffmpeg and GPU probes), `nodes/` (core nodes, registry), `workflows/` (validation, versions, activation); `plugins/` and `plugin-host/` (sandboxed plugin processes), `mcp/`, `metrics/`.
 - **`apps/web/src`**: `App.tsx` (routes), `jobs/` (the Jobs, job and run pages and their parts), `libraries/`, `plugins/`, `recycle/`, `settings/`, `auth/` (sign-in, setup and their pages), `editor/` (`EditorPage/` the page and its hooks, `model/` pure, `flow/` React Flow and the on-node rows, `ui/`, `trace/`), `api/`, `hooks/`, `components/`, `shell/` (nav and app chrome), `workflows/` (the Workflows and new-workflow pages, activation, examples), `lib/`, `styles/` (tokens, per-area stylesheets, design guard tests), `testing/`.
 - **Elsewhere**: `e2e/` (Playwright flows, screenshot baselines), `docker/` (the image), `examples/` (shipped workflows, Grafana dashboard), `scripts/` (repo checks, fixtures, release tooling).
 
@@ -25,7 +25,7 @@ Dependencies point one way: `packages/shared` ← `packages/sdk` ← `packages/c
 - **Docs:** update `README.md` and `docs/` for users, and the topic doc in `docs/dev/` when a rule changes.
 - **UI changes:** add the screenshots described under "UI changes".
 - **Pull request title:** `Area: what changed`, e.g. `Engine: drop hardware encoders that cannot run here`.
-  - Areas in use: Engine, Jobs, Libraries, Workflows, Editor, Plugins, Settings, Metrics, Design, UI, Docker, CI, Tests, Docs, Release, Dependencies, Structure (moving files and folders to the layout in [structure.md](docs/dev/structure.md)).
+  - Areas in use: Engine, Jobs, Libraries, Workflows, Editor, Plugins, Settings, Metrics, Design, UI, Docker, CI, Tests, Docs, Release, Dependencies, Structure (the source layout and its check, [structure.md](docs/dev/structure.md)).
   - No `feat:` or `fix(x):`, and no full stop ([details](CONTRIBUTING.md#pr-titles)).
 - **Names:** fixtures, docs and screenshots use invented titles and names only. Never a real show, film, person, host or address.
 
