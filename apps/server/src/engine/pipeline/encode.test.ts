@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { Exec } from '../../capabilities/ffmpeg.ts';
 import { findJobResult } from '../../db/repos/jobs/jobs.ts';
-import { node } from '../../workflows/test-helpers.ts';
+import { node } from '../../workflows/testing.ts';
 import { probeOf } from '../testing/builders.ts';
 import { coverFailure, coverTimeoutMs } from './encode.ts';
 import {

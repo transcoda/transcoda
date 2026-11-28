@@ -21,7 +21,7 @@ import {
   testRegistry,
   withExtraNode,
   withSetting,
-} from './test-helpers.ts';
+} from './testing.ts';
 import {
   applyPluginUpgrades,
   comparePinChange,

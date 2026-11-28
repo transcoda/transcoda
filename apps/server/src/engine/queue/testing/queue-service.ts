@@ -10,7 +10,7 @@ import type { LibraryRow } from '../../../db/repos/libraries.ts';
 import { createTestDb } from '../../../db/testing.ts';
 import type { Logger } from '../../../platform/logger.ts';
 import { WorkflowService } from '../../../workflows/service.ts';
-import { chain, node, testRegistry } from '../../../workflows/test-helpers.ts';
+import { chain, node, testRegistry } from '../../../workflows/testing.ts';
 import { type EngineEvent, EngineEvents } from '../../events.ts';
 import { tempDir } from '../../testing/fixtures.ts';
 import { type QueueInput, QueueService } from '../queue-service.ts';

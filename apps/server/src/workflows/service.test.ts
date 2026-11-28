@@ -4,37 +4,35 @@ import { insertLibrary, softDeleteLibrary } from '../db/repos/libraries.ts';
 import { NotFoundError, VersionConflictError } from '../db/repos/workflows.ts';
 import { CorruptGraphError, FORMAT_2_NOTE, KindMismatchError, WorkflowService } from './service.ts';
 import {
+  activate,
+  activeOf,
   bumpNoPath,
   bumpV1,
   bumpV2,
   bumpV3,
+  caps,
   chain,
   childGraph,
-  mainGraph,
-  moveNodes,
-  node,
-  testRegistry,
-  withSetting,
-} from './test-helpers.ts';
-import {
-  activate,
-  activeOf,
-  caps,
   codes,
   corrupt,
   current,
   db,
   log,
+  mainGraph,
   mainWith,
   make,
+  moveNodes,
   NOW,
+  node,
   run,
   save,
   summary,
   svc,
   svcWith,
+  testRegistry,
   USER,
   useServiceDb,
+  withSetting,
 } from './testing.ts';
 import { NOTIFY_NODE } from './webhook-urls.ts';
 

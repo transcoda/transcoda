@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { asSession, bearer, createToken, send } from '../../app/testing/http.ts';
 import { updateJob } from '../../db/repos/jobs/jobs.ts';
 import { setSetting } from '../../db/repos/settings.ts';
-import { chain, node } from '../../workflows/test-helpers.ts';
+import { chain, node } from '../../workflows/testing.ts';
 import {
   base,
   createLibrary,

@@ -11,7 +11,7 @@ import { EngineEvents } from '../engine/events.ts';
 import { type QueueResult, QueueService } from '../engine/queue/queue-service.ts';
 import { tempDir } from '../engine/testing/fixtures.ts';
 import { WorkflowService } from './service.ts';
-import { bumpV1, bumpV2, bumpV3, chain, node, testRegistry } from './test-helpers.ts';
+import { bumpV1, bumpV2, bumpV3, chain, node, testRegistry } from './testing.ts';
 
 const caps: Capabilities = {
   available: true,

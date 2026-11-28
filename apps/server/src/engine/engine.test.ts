@@ -14,7 +14,7 @@ import {
 } from '../db/repos/jobs/jobs.ts';
 import { setSetting } from '../db/repos/settings.ts';
 import { type FsOps, nodeFsOps } from '../platform/fs-ops.ts';
-import { chain, node } from '../workflows/test-helpers.ts';
+import { chain, node } from '../workflows/testing.ts';
 import { FakeSpawner } from './encode/process.ts';
 import { fingerprintOf } from './files/fingerprint.ts';
 import { packetRows } from './testing/builders.ts';

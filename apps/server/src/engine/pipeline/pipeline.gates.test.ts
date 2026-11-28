@@ -7,7 +7,7 @@ import type { WorkflowGraph } from '@transcoda/shared';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { findJobResult, listTrace } from '../../db/repos/jobs/jobs.ts';
 import { listRecycled } from '../../db/repos/recycled.ts';
-import { chain, edge, mainGraph, node } from '../../workflows/test-helpers.ts';
+import { chain, edge, mainGraph, node } from '../../workflows/testing.ts';
 import {
   base,
   fake,

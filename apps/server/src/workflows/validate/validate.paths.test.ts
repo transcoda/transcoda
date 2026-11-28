@@ -19,7 +19,7 @@ import {
   node,
   subGraph,
   testRegistry,
-} from '../test-helpers.ts';
+} from '../testing.ts';
 import { walkPathRules } from './paths.ts';
 import { codes, ctx, find, mainWith, runNode } from './testing.ts';
 import { type SubworkflowRef, validateWorkflow } from './validate.ts';

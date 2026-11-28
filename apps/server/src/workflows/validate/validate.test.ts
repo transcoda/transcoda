@@ -13,7 +13,7 @@ import {
   subGraph,
   testRegistry,
   withExtraNode,
-} from '../test-helpers.ts';
+} from '../testing.ts';
 import { caps, codes, ctx, find, mainWith } from './testing.ts';
 import { validateWorkflow } from './validate.ts';
 
