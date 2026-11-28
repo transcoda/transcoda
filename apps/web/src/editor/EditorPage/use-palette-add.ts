@@ -4,8 +4,8 @@ import type { NodeInfo, WorkflowSummary } from '@transcoda/contract';
 import { RUN_SUBWORKFLOW_TYPE, SUBWORKFLOW_END_TYPE, shortId } from '@transcoda/shared';
 import { useReactFlow } from '@xyflow/react';
 import { type Dispatch, type RefObject, useCallback } from 'react';
-import type { Catalog, PortSpec } from '../hooks/use-catalog.ts';
-import type { EditorAction } from './model/editor-state.ts';
+import type { Catalog, PortSpec } from '../../hooks/use-catalog.ts';
+import type { EditorAction } from '../model/editor-state.ts';
 import {
   addNode,
   connect,
@@ -13,11 +13,11 @@ import {
   type Position,
   type Size,
   setSettings,
-} from './model/graph-ops.ts';
-import { addNote, addValuesCard } from './model/notes-values.ts';
-import { freeSpot, type ViewRect } from './model/placement.ts';
-import type { GraphOp } from './ui/Canvas.tsx';
-import type { PaletteItem } from './ui/Palette.tsx';
+} from '../model/graph-ops.ts';
+import { addNote, addValuesCard } from '../model/notes-values.ts';
+import { freeSpot, type ViewRect } from '../model/placement.ts';
+import type { GraphOp } from '../ui/Canvas.tsx';
+import type { PaletteItem } from '../ui/Palette.tsx';
 import type { EditorLatest } from './use-editor-save.ts';
 
 /** Horizontal step between a node and the one added after it. */

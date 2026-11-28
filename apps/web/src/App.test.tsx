@@ -32,7 +32,7 @@ vi.mock('./workflows/WorkflowsPage.tsx', () => ({ WorkflowsPage: () => <p>workfl
 vi.mock('./workflows/NewWorkflowPage.tsx', () => ({
   NewWorkflowPage: () => <p>new workflow page</p>,
 }));
-vi.mock('./editor/EditorPage.tsx', () => ({ EditorPage: () => <p>editor page</p> }));
+vi.mock('./editor/EditorPage/EditorPage.tsx', () => ({ EditorPage: () => <p>editor page</p> }));
 vi.mock('./libraries/LibraryFilePage.tsx', async () => {
   const { useState } = await import('react');
   return {

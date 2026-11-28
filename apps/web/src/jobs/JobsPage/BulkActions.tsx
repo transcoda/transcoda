@@ -1,11 +1,11 @@
 // The Jobs page's whole-list actions in its header: "Retry failed" and "Cancel all".
 import { CANCELLABLE_JOB_STATES, type JobState } from '@transcoda/shared';
 import { useState } from 'react';
-import { api, safe } from '../api/client.ts';
-import { describeError } from '../api/errors.ts';
-import { Dialog } from '../components/Dialog.tsx';
-import { Icon } from '../components/Icon.tsx';
-import { useToast } from '../components/Toast.tsx';
+import { api, safe } from '../../api/client.ts';
+import { describeError } from '../../api/errors.ts';
+import { Dialog } from '../../components/Dialog.tsx';
+import { Icon } from '../../components/Icon.tsx';
+import { useToast } from '../../components/Toast.tsx';
 
 const num = new Intl.NumberFormat('en-US');
 

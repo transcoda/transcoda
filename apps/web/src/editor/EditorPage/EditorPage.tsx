@@ -3,26 +3,29 @@ import { hasErrors, type Issue, type WorkflowGraph } from '@transcoda/shared';
 import { ReactFlowProvider, useReactFlowStoreApi } from '@xyflow/react';
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { useLocation, useParams, useSearch } from 'wouter';
-import { api, safe } from '../api/client.ts';
-import { describeError } from '../api/errors.ts';
-import { Icon } from '../components/Icon.tsx';
-import { Loading } from '../components/Loading.tsx';
-import { useToast } from '../components/Toast.tsx';
-import { type Catalog, useCatalog } from '../hooks/use-catalog.ts';
-import { useLibraries } from '../hooks/use-libraries.ts';
-import { useWorkflows } from '../hooks/use-workflows.ts';
-import { runBlocked, useRunOnFile } from '../jobs/use-run-on-file.tsx';
-import { useTryOnFile } from '../jobs/use-try-on-file.ts';
-import { usePageTitle } from '../lib/page-title.ts';
-import { ActivateDialog } from '../workflows/ActivateDialog.tsx';
-import { activateBlocked, hasActivation, useActivation } from '../workflows/ActivationControl.tsx';
-import { type EditorActions, EditorActionsContext } from './flow/actions-context.ts';
-import { SubworkflowsContext } from './flow/subworkflows-context.ts';
-import { TRY_BLOCKED } from './flow/TcToolbar.tsx';
-import { withViewCollapse } from './flow/to-flow.ts';
-import { LoadFailed } from './LoadFailed.tsx';
-import { freeOutputs, nextNodeRule } from './model/connection.ts';
-import { editorReducer, initialEditorState } from './model/editor-state.ts';
+import { api, safe } from '../../api/client.ts';
+import { describeError } from '../../api/errors.ts';
+import { Icon } from '../../components/Icon.tsx';
+import { Loading } from '../../components/Loading.tsx';
+import { useToast } from '../../components/Toast.tsx';
+import { type Catalog, useCatalog } from '../../hooks/use-catalog.ts';
+import { useLibraries } from '../../hooks/use-libraries.ts';
+import { useWorkflows } from '../../hooks/use-workflows.ts';
+import { runBlocked, useRunOnFile } from '../../jobs/use-run-on-file.tsx';
+import { useTryOnFile } from '../../jobs/use-try-on-file.ts';
+import { usePageTitle } from '../../lib/page-title.ts';
+import { ActivateDialog } from '../../workflows/ActivateDialog.tsx';
+import {
+  activateBlocked,
+  hasActivation,
+  useActivation,
+} from '../../workflows/ActivationControl.tsx';
+import { type EditorActions, EditorActionsContext } from '../flow/actions-context.ts';
+import { SubworkflowsContext } from '../flow/subworkflows-context.ts';
+import { TRY_BLOCKED } from '../flow/TcToolbar.tsx';
+import { withViewCollapse } from '../flow/to-flow.ts';
+import { freeOutputs, nextNodeRule } from '../model/connection.ts';
+import { editorReducer, initialEditorState } from '../model/editor-state.ts';
 import {
   createGroup,
   duplicateNode,
@@ -31,22 +34,23 @@ import {
   setGroupCollapsed,
   setSettings,
   toggleBypass,
-} from './model/graph-ops.ts';
-import { libraryShift } from './model/library-shift.ts';
-import { type ApplyOptions, Canvas, type GraphOp } from './ui/Canvas.tsx';
-import { Banner, CanvasBanner, PastVersionBanner } from './ui/CanvasBanner.tsx';
-import { ConflictDialog } from './ui/ConflictDialog.tsx';
-import { EditorHeader } from './ui/EditorHeader.tsx';
-import { Inspector } from './ui/Inspector.tsx';
-import { IssuesPanel, subjectOf } from './ui/IssuesPanel.tsx';
-import { LeaveDialog } from './ui/LeaveDialog.tsx';
-import { NodeSearch } from './ui/NodeSearch.tsx';
-import { Palette } from './ui/Palette.tsx';
-import { useEditorKeys } from './ui/use-editor-keys.ts';
-import { useLeaveGuard } from './ui/use-leave-guard.ts';
-import { useValidation } from './ui/use-validation.ts';
-import { useViewportMemory } from './ui/use-viewport-memory.ts';
-import { useVersionList, VersionsPanel } from './ui/VersionsPanel.tsx';
+} from '../model/graph-ops.ts';
+import { libraryShift } from '../model/library-shift.ts';
+import { type ApplyOptions, Canvas, type GraphOp } from '../ui/Canvas.tsx';
+import { Banner, CanvasBanner, PastVersionBanner } from '../ui/CanvasBanner.tsx';
+import { ConflictDialog } from '../ui/ConflictDialog.tsx';
+import { EditorHeader } from '../ui/EditorHeader.tsx';
+import { Inspector } from '../ui/Inspector.tsx';
+import { IssuesPanel, subjectOf } from '../ui/IssuesPanel.tsx';
+import { LeaveDialog } from '../ui/LeaveDialog.tsx';
+import { NodeSearch } from '../ui/NodeSearch.tsx';
+import { Palette } from '../ui/Palette.tsx';
+import { useEditorKeys } from '../ui/use-editor-keys.ts';
+import { useLeaveGuard } from '../ui/use-leave-guard.ts';
+import { useValidation } from '../ui/use-validation.ts';
+import { useViewportMemory } from '../ui/use-viewport-memory.ts';
+import { useVersionList, VersionsPanel } from '../ui/VersionsPanel.tsx';
+import { LoadFailed } from './LoadFailed.tsx';
 import { hiddenUrlText, loadedAction, useEditorSave } from './use-editor-save.ts';
 import { useEditorSelection } from './use-editor-selection.ts';
 import { type SearchState, usePaletteAdd } from './use-palette-add.ts';

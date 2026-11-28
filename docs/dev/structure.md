@@ -213,7 +213,7 @@ A move pull request updates the paths in the allowlists and the "today" entries 
 
 ## Migration status
 
-Steps 1 (the check and this doc), 2, 3, 4, 5, 6, 7, 8, 9 and 10 are done. Each later pull request ticks its line.
+Steps 1 (the check and this doc), 2, 3, 4, 5, 6, 7, 8, 9, 10 and 11 are done. Each later pull request ticks its line.
 
 - [x] 2. Server: `platform/`, `app/` and `system/`; `host-check.ts` and `request-info.ts` into `auth/`.
 - [x] 3. Server: fix the upward imports (`fingerprintKey` into the repository layer, the official plugin constants out of `plugins/`, `CoreTools` into `nodes/`).
@@ -224,7 +224,7 @@ Steps 1 (the check and this doc), 2, 3, 4, 5, 6, 7, 8, 9 and 10 are done. Each l
 - [x] 8. Server: test names in the dot form; split the over-budget tests.
 - [x] 9. Web: `shell/`, `test/` to `testing/`, the CSS guard tests into `styles/`.
 - [x] 10. Web: pages into their features, in three pull requests; then delete `pages/`.
-- [ ] 11. Web splits: the editor page's hooks, the jobs page, the over-budget page tests, the two largest stylesheets.
+- [x] 11. Web splits: the editor page's hooks, the jobs page, the over-budget page tests, the two largest stylesheets.
 - [ ] 12. Packages: `shared/src/workflow` to `workflows`; split `contract.test.ts` per router.
 - [ ] 13. Tighten: empty `upwardImports`, remove the "today" entries from `LAYERS`, and check this doc's paths too (`DOC_PATHS_SKIP`).
 

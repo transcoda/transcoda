@@ -5,10 +5,10 @@ import type { WorkflowDetail, WorkflowSummary } from '@transcoda/contract';
 import type { WorkflowGraph } from '@transcoda/shared';
 import { afterEach, beforeEach, type Mock, vi } from 'vitest';
 import { Route } from 'wouter';
-import { resetCatalogCache } from '../hooks/use-catalog.ts';
-import { nodesFixture } from '../testing/fixtures/catalog.ts';
-import { chainMainReplace } from '../testing/fixtures/graphs.ts';
-import { renderAt } from '../testing/render.tsx';
+import { resetCatalogCache } from '../../hooks/use-catalog.ts';
+import { nodesFixture } from '../../testing/fixtures/catalog.ts';
+import { chainMainReplace } from '../../testing/fixtures/graphs.ts';
+import { renderAt } from '../../testing/render.tsx';
 import { EditorPage } from './EditorPage.tsx';
 
 /** The mocked client calls each editor page test file declares with vi.hoisted. */

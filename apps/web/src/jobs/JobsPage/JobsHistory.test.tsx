@@ -2,7 +2,7 @@ import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({ gpuLoad: vi.fn() }));
-vi.mock('../api/client.ts', () => ({ api: { system: { gpuLoad: mocks.gpuLoad } } }));
+vi.mock('../../api/client.ts', () => ({ api: { system: { gpuLoad: mocks.gpuLoad } } }));
 
 import { EncoderCard } from './JobsHistory.tsx';
 

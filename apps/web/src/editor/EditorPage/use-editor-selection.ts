@@ -2,11 +2,11 @@
 // or a node brought into view.
 import { getViewportForBounds, useReactFlow, useReactFlowStoreApi } from '@xyflow/react';
 import { type Dispatch, type RefObject, useCallback, useEffect, useState } from 'react';
-import { fitPaddingPx } from './flow/open-viewport.ts';
-import type { EditorAction, EditorState } from './model/editor-state.ts';
-import { removeSelection } from './model/graph-ops.ts';
-import { FIT_VIEW, type GraphOp } from './ui/Canvas.tsx';
-import type { IssueTarget } from './ui/IssuesPanel.tsx';
+import { fitPaddingPx } from '../flow/open-viewport.ts';
+import type { EditorAction, EditorState } from '../model/editor-state.ts';
+import { removeSelection } from '../model/graph-ops.ts';
+import { FIT_VIEW, type GraphOp } from '../ui/Canvas.tsx';
+import type { IssueTarget } from '../ui/IssuesPanel.tsx';
 import type { EditorLatest } from './use-editor-save.ts';
 
 const nodeElement = (id: string) =>

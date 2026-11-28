@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { api } from '../api/client.ts';
-import { StatTile } from '../components/StatTile.tsx';
-import { useAsync } from '../hooks/use-async.ts';
-import { useRefetchOn } from '../hooks/use-refetch-on.ts';
-import { fmtBytes } from '../lib/bytes.ts';
-import { stateChangeTracker } from './use-jobs-list.ts';
+import { api } from '../../api/client.ts';
+import { StatTile } from '../../components/StatTile.tsx';
+import { useAsync } from '../../hooks/use-async.ts';
+import { useRefetchOn } from '../../hooks/use-refetch-on.ts';
+import { fmtBytes } from '../../lib/bytes.ts';
+import { stateChangeTracker } from '../use-jobs-list.ts';
 
 const num = new Intl.NumberFormat('en-US');
 

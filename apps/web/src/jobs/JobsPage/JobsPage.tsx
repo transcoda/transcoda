@@ -5,21 +5,19 @@
 import type { JobState } from '@transcoda/shared';
 import { useState } from 'react';
 import { Link } from 'wouter';
-import { api } from '../api/client.ts';
-import { SectionHeading } from '../components/Headings.tsx';
-import { Icon } from '../components/Icon.tsx';
-import { ListboxSelect } from '../components/ListboxSelect.tsx';
-import { LiveDot } from '../components/LiveDot.tsx';
-import { Loading } from '../components/Loading.tsx';
-import { useAsync } from '../hooks/use-async.ts';
-import { usePageTitle } from '../lib/page-title.ts';
-import { usePhone } from '../lib/use-phone.ts';
-import { CancelAll, RetryFailed } from './BulkActions.tsx';
-import { TitleSub } from './JobCells.tsx';
-import { JobProgress } from './JobProgress.tsx';
-import { JobStateChip, VERDICT_ICON } from './JobStateChip.tsx';
-import { AllTimeTile, JobsHistory, useJobsHistory } from './JobsHistory.tsx';
-import { isActive, JobActions, JobTable, TitleLink } from './JobTable.tsx';
+import { api } from '../../api/client.ts';
+import { SectionHeading } from '../../components/Headings.tsx';
+import { Icon } from '../../components/Icon.tsx';
+import { ListboxSelect } from '../../components/ListboxSelect.tsx';
+import { LiveDot } from '../../components/LiveDot.tsx';
+import { Loading } from '../../components/Loading.tsx';
+import { useAsync } from '../../hooks/use-async.ts';
+import { usePageTitle } from '../../lib/page-title.ts';
+import { usePhone } from '../../lib/use-phone.ts';
+import { TitleSub } from '../JobCells.tsx';
+import { JobProgress } from '../JobProgress.tsx';
+import { JobStateChip, VERDICT_ICON } from '../JobStateChip.tsx';
+import { isActive, JobActions, JobTable, TitleLink } from '../JobTable.tsx';
 import {
   detailLine,
   FILTERS,
@@ -28,14 +26,16 @@ import {
   phoneRunningLine,
   QUEUED_VERSION_NOTE,
   verdictOf,
-} from './job-text.ts';
-import { jobTitle } from './media-text.ts';
-import { QueueLanes, QueuePausedNote, QueueToggle } from './QueueBar.tsx';
+} from '../job-text.ts';
+import { jobTitle } from '../media-text.ts';
+import { QueueLanes, QueuePausedNote, QueueToggle } from '../QueueBar.tsx';
+import { useJobsList, useProblemCount } from '../use-jobs-list.ts';
+import { encodeStopped, useQueue } from '../use-queue.ts';
+import { CancelAll, RetryFailed } from './BulkActions.tsx';
+import { AllTimeTile, JobsHistory, useJobsHistory } from './JobsHistory.tsx';
 import { StatTiles, useTodayStats } from './StatTiles.tsx';
 import { useCancelCounts } from './use-cancel-counts.ts';
 import { useJobControls } from './use-job-controls.tsx';
-import { useJobsList, useProblemCount } from './use-jobs-list.ts';
-import { encodeStopped, useQueue } from './use-queue.ts';
 
 const num = new Intl.NumberFormat('en-US');
 

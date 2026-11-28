@@ -1,7 +1,7 @@
 import { ORPCError } from '@orpc/client';
 import { act, cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { chainMainReplace } from '../testing/fixtures/graphs.ts';
+import { chainMainReplace } from '../../testing/fixtures/graphs.ts';
 
 const mocks = vi.hoisted(() => ({
   get: vi.fn(),
@@ -18,7 +18,7 @@ const mocks = vi.hoisted(() => ({
   librariesList: vi.fn(),
   browse: vi.fn(),
 }));
-vi.mock('../api/client.ts', async () => {
+vi.mock('../../api/client.ts', async () => {
   const orpc = await import('@orpc/client');
   return {
     api: {

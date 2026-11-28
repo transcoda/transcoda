@@ -3,14 +3,14 @@
 // come from the server in its own time zone, never the browser's.
 import type { GpuLoadOutput, JobHistoryOutput } from '@transcoda/contract';
 import { useEffect, useState } from 'react';
-import { api } from '../api/client.ts';
-import { LoadStrip } from '../components/LoadStrip.tsx';
-import { WeekBars } from '../components/WeekBars.tsx';
-import { useAsync } from '../hooks/use-async.ts';
-import { useRefetchOn } from '../hooks/use-refetch-on.ts';
-import { fmtBytes } from '../lib/bytes.ts';
-import { fmtStamp } from '../lib/time.ts';
-import { stateChangeTracker } from './use-jobs-list.ts';
+import { api } from '../../api/client.ts';
+import { LoadStrip } from '../../components/LoadStrip.tsx';
+import { WeekBars } from '../../components/WeekBars.tsx';
+import { useAsync } from '../../hooks/use-async.ts';
+import { useRefetchOn } from '../../hooks/use-refetch-on.ts';
+import { fmtBytes } from '../../lib/bytes.ts';
+import { fmtStamp } from '../../lib/time.ts';
+import { stateChangeTracker } from '../use-jobs-list.ts';
 
 const num = new Intl.NumberFormat('en-US');
 const hours = (seconds: number) => `${num.format(Math.round(seconds / 3600))} h`;

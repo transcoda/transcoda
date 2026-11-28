@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { api, isDefinedError, safe } from '../api/client.ts';
-import { Dialog } from '../components/Dialog.tsx';
-import { useToast } from '../components/Toast.tsx';
-import type { Job } from './job-text.ts';
-import { jobTitle } from './media-text.ts';
+import { api, isDefinedError, safe } from '../../api/client.ts';
+import { Dialog } from '../../components/Dialog.tsx';
+import { useToast } from '../../components/Toast.tsx';
+import type { Job } from '../job-text.ts';
+import { jobTitle } from '../media-text.ts';
 
 /** Pause / Resume / Cancel (with its confirmation) for one job. */
 export function useJobControls(reload: () => void) {
