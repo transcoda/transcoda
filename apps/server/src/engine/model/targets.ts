@@ -9,8 +9,8 @@ import {
   normalizeProfile,
   type ProbeStream,
 } from '@transcoda/shared';
-import { extraInputOf, isExtraStream, kept } from './model.ts';
 import { yuv420Depth } from './render.ts';
+import { extraInputOf, isExtraStream, kept } from './streams.ts';
 
 export type TargetIssue = {
   target: DeviceProfileId;

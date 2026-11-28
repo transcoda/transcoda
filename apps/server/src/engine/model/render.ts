@@ -1,7 +1,7 @@
 // Renders a BuildModel to an ffmpeg argv. Version-specific encoder flags live in ENCODER_ARGS.
 import { isAbsolute } from 'node:path';
 import type { BuildModel, StreamPlan } from '@transcoda/sdk';
-import { containerCanHold, coverFile, isExtraStream, isMkvCover, kept } from './model.ts';
+import { containerCanHold, coverFile, isExtraStream, isMkvCover, kept } from './streams.ts';
 
 /** A model that cannot be rendered safely; the pipeline fails the job with `render: <message>`. */
 export class RenderError extends Error {

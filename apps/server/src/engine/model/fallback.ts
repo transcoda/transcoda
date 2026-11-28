@@ -1,5 +1,5 @@
 import type { BuildModel, StreamPlan } from '@transcoda/sdk';
-import { kept } from './model.ts';
+import { kept } from './streams.ts';
 
 /** Hardware encoder families: the suffix ffmpeg gives each one. */
 const HARDWARE = /_(nvenc|qsv|vaapi|videotoolbox|amf|v4l2m2m)$/;
