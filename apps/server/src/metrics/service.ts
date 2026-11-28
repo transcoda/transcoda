@@ -1,7 +1,7 @@
 // One snapshot of the numbers behind `/metrics` and `system.status`: a few aggregate queries plus
 // the engine's in-memory state, cached so a tight scrape interval cannot load the database.
 import type { GpuLoadOutput, StatusOutput } from '@transcoda/contract';
-import { FAILURE_CODES, RUNNING_JOB_STATES } from '@transcoda/shared';
+import { type ClientErrorKind, FAILURE_CODES, RUNNING_JOB_STATES } from '@transcoda/shared';
 import type { Database } from '../db/open.ts';
 import { type MetricsTotals, metricsTotals } from '../db/repos/metrics.ts';
 import { METRICS, type MetricName } from './catalog.ts';
@@ -50,6 +50,7 @@ interface Snapshot {
   durations: ReturnType<MetricsRecorder['jobDurations']>;
   media: ReturnType<MetricsRecorder['jobMediaSeconds']>;
   gpus: GpuLoadOutput['gpus'];
+  clientErrors: ReturnType<MetricsRecorder['clientErrorCounts']>;
 }
 
 const RUNNING = new Set<string>(RUNNING_JOB_STATES);
@@ -108,7 +109,13 @@ export class MetricsService {
       durations: deps.recorder.jobDurations(),
       media: deps.recorder.jobMediaSeconds(),
       gpus: deps.gpuLoad().gpus,
+      clientErrors: deps.recorder.clientErrorCounts(),
     };
+  }
+
+  /** Counts errors the web UI reported (`/api/client-errors`); a scrape sees them within 5 s. */
+  countClientErrors(kind: ClientErrorKind, count: number): void {
+    this.deps.recorder.countClientErrors(kind, count);
   }
 
   async exposition(): Promise<string> {
@@ -173,6 +180,10 @@ export class MetricsService {
       })),
       transcoda_scratch_free_bytes:
         s.scratchFreeBytes === null ? [] : [{ labels: {}, value: s.scratchFreeBytes }],
+      transcoda_client_errors_total: s.clientErrors.map((e) => ({
+        labels: { kind: e.kind },
+        value: e.value,
+      })),
     };
     return METRICS.map((m): MetricFamily => {
       if (m.name === 'transcoda_job_duration_seconds') {

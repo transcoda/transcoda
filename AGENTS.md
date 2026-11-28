@@ -72,7 +72,8 @@ A code comment that rests on a rule cites the topic doc, or gives the reason its
 4. Web: call it through `api` (`apps/web/src/api/client.ts`) from a hook.
 
 **Add a page**
-- The page in its feature folder (`apps/web/src/recycle/RecyclePage.tsx`; a page with parts of its own is a folder, `apps/web/src/jobs/JobPage/`) and its route in `apps/web/src/App.tsx`. Only `App.tsx` imports a page.
+- The page in its feature folder (`apps/web/src/recycle/RecyclePage.tsx`; a page with parts of its own is a folder, `apps/web/src/jobs/JobPage/`) and its route in `apps/web/src/App.tsx`.
+- Its route pattern in `ROUTE_PATTERNS` (`packages/shared/src/client-errors.ts`), so error reports can name the page; `apps/web/src/lib/client-errors/routes.test.ts` checks the two lists match. Only `App.tsx` imports a page.
 - A nav item in `apps/web/src/shell/Shell.tsx` if it needs one.
 - `usePageTitle` for the tab title, and the shared `Loading` and `NotFound` states.
 - Its styles in its area's file under `apps/web/src/styles/`, or a new file imported from `styles/index.css` at the right place in the cascade (a guard test fails on a file that is not imported). Never add to `assorted.css`.

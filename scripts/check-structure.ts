@@ -279,7 +279,7 @@ export function findProblems(root: string, allowlist: Allowlist): Findings {
   }
   walkFiles(root, 'e2e', importerOnly);
   walkFiles(root, 'scripts', importerOnly);
-  // Config files next to each package.json (tsdown.config.ts imports src/platform/build-version.ts).
+  // Config files next to each package.json (tsdown.config.ts and vite.config.ts import `@transcoda/shared`).
   for (const group of ['apps', 'packages']) {
     if (!existsSync(join(root, group))) continue;
     for (const name of readdirSync(join(root, group))) {

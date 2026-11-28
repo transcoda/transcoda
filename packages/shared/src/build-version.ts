@@ -1,5 +1,6 @@
 /**
- * The version a build reports (baked in by tsdown as `TRANSCODA_VERSION`). A release build is the
+ * The version a build reports (baked into the server by tsdown as `TRANSCODA_VERSION`, into the web
+ * app by Vite as `__TRANSCODA_VERSION__`). A release build is the
  * package version; any other build (main, a branch, a local build) is `<version>-dev`, with the
  * short commit as build metadata when known, so it is never mistaken for the release. Being a
  * pre-release version, it also never checks GitHub for updates (see `AppUpdateChecker`).

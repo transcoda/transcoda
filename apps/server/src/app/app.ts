@@ -1,6 +1,7 @@
 import { getConnInfo } from '@hono/node-server/conninfo';
 import { ORPCError } from '@orpc/server';
 import { errorDefs } from '@transcoda/contract';
+import { CLIENT_ERRORS_PATH } from '@transcoda/shared';
 import { type Context, Hono } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
 import { HTTPException } from 'hono/http-exception';
@@ -9,6 +10,10 @@ import { checkHost, hostnameOf } from '../auth/host-check.ts';
 import { isHttps, requestHost } from '../auth/request-info.ts';
 import { type ResolvedAuth, resolveAuth } from '../http/auth-context.ts';
 import { BACKUP_DOWNLOAD_PATH, backupDownload } from '../http/backup-download.ts';
+import {
+  clientErrorsBodyLimit,
+  createClientErrorsHandler,
+} from '../http/client-errors/client-errors.ts';
 import { JOB_LOG_PATH, jobLogResponse } from '../http/job-log.ts';
 import { JOB_POSTER_PATH, jobPosterResponse } from '../http/job-poster.ts';
 import { METRICS_PATH, metricsResponse } from '../http/metrics.ts';
@@ -200,6 +205,13 @@ export function createApp(opts: AppOptions): Hono {
 
   // (3f) Plugin trigger webhooks (Sonarr, Radarr): tokens only, the plugin reads the body.
   app.on(['POST', 'PUT'], TRIGGER_PATH, (c) => triggerResponse(c, deps));
+
+  // (3g) The web UI's error reports: a session only, logged and counted, never stored.
+  const clientErrors = createClientErrorsHandler(deps, log);
+  app.post(CLIENT_ERRORS_PATH, clientErrorsBodyLimit, async (c) => {
+    const { ctx, resolved } = await buildCtx(c);
+    return respond(c, await clientErrors(c, resolved), ctx, resolved);
+  });
 
   // (4) REST.
   app.use('/api/v1/*', async (c, next) => {

@@ -16,7 +16,7 @@ The rules in force today for `apps/web/**`. Where this page and the code disagre
 - `settings/`: `SettingsPage`, its sections (listed in `sections.ts`) and their form parts.
 - `auth/`: the auth provider, `use-auth`, and the `LoginPage`, `SetupPage` and `HostNotAllowedPage` pages.
 - `components/`: shared primitives that know no feature (`Dialog`, `Toast`, `Chips`, `Icon`, `Loading`, `NotFound`, `Headings`, `RowMenu`, `ListboxSelect`, `Disclosure`, `FilePath`, ...).
-- `api/` (client, CSRF, error mapping), `hooks/` (data and event hooks), `lib/` (formatting, page title, guarded navigation, breakpoints, theme, the codec and language tables).
+- `api/` (client, CSRF, error mapping), `hooks/` (data and event hooks), `lib/` (formatting, page title, guarded navigation, breakpoints, theme, the codec and language tables, the error reports in `client-errors/`).
 - `styles/`: `tokens.css` (vendored from the design handoff, excluded from Biome, never hand-edited except the additions DESIGN.md lists), the design guard tests (each named after the stylesheet it reads, `shell.activity.test.ts`) and their one exceptions file.
 - `testing/`: setup, helpers and fixtures for the web tests.
 
@@ -27,9 +27,17 @@ The rules in force today for `apps/web/**`. Where this page and the code disagre
 - Loading data: `useAsync(fn, deps)` (`hooks/use-async.ts`). A failed `reload()` keeps the last data next to the error. Shared lists have their own hooks: `useCatalog` (one `nodes.list` for every consumer), `useWorkflows` / `useWorkflow`, `useLibraries`.
 - Live updates: one event stream per tab, `EventsProvider` in `App.tsx`, above the routes so navigating does not reconnect. Subscribe with `useEvents`; refetch with `useRefetchOn(filter, reload)`, which also reloads after every reconnect or resync and coalesces to one reload a second. Never open a second `api.events.subscribe()`.
 
+## Error reports
+
+- `lib/client-errors/` sends the errors the page hits to the Transcoda server that served it, and nowhere else; there is no analytics. `installClientErrors()` in `main.tsx` listens for uncaught errors, unhandled rejections and CSP violations; `reactRootOptions()` is createRoot's `onUncaughtError`, for a render error no error boundary caught; `clientErrorInterceptor` in `api/client.ts` reports an API call that fails with anything but a contract-defined error (pages show those) or an abort, as `<procedure> <status> <code>`, never the server's message.
+- `ClientErrorReporter` (`reporter.ts`, plain TypeScript) builds each event with `clientErrorEvent` from `@transcoda/shared`, which drops noise (the ResizeObserver loop notice, aborted requests, a bare cross-origin `Script error.`, anything from a browser extension) and scrubs the rest. Repeats of a queued error raise its `count`; at most 10 new errors a minute and 100 for the page; the queue is sent 5 s after its first error, at 20 events, when the tab is hidden and on `pagehide` (then nothing more until `pageshow`). It goes out with `navigator.sendBeacon` (fetch with `keepalive` when that refuses) to `/api/client-errors`, with the session's CSRF token in the body. Signed out, nothing is sent.
+- An event is `{ kind, route, version, name, message, stack, count }`. `route` is the route pattern (`/jobs/:id`) that `routes.ts` finds in `ROUTE_PATTERNS` (`packages/shared/src/client-errors.ts`), never the URL; `routes.test.ts` checks the list against `App.tsx`, so a new route goes in both. `version` is the build's version (`__TRANSCODA_VERSION__`, set in `vite.config.ts` like the server's). `message` loses URLs, email addresses, quoted text, IP addresses, `host:port`, ids and tokens; a path hides the rest of the message and a media or image file name its clause. `stack` keeps at most 15 frames as `at fn (/assets/x.js:1:2)`: the script's path on this server, no host or query. The property tests in `apps/server/src/http/client-errors/client-errors.property.test.ts` hold this for any input (the shared package has no test dependencies).
+- The server's side, the log line and the metric: [server-api.md](server-api.md#web-ui-error-reports).
+
 ## Adding a page
 
 - Register the route in `App.tsx` inside `<RequireAuth><Shell>...</Shell></RequireAuth>` (the editor uses `<Shell rail>`). A Settings section goes in `settings/sections.ts`, not in `App.tsx`. Keep old URLs working with a `<Redirect>`.
+- Add its route pattern to `ROUTE_PATTERNS` in `packages/shared/src/client-errors.ts` too, for the error reports; `lib/client-errors/routes.test.ts` fails until you do.
 - Nav items live in `shell/Shell.tsx` (`NavLink`).
 - Name the tab with `usePageTitle(...)` from `lib/page-title.ts`; never set `document.title` yourself. The title reads "Page · server name · Transcoda".
 - Loading: the shared `Loading` component (a test fails if a page types its own "Loading…"). Missing item: `NotFound` (it sets its own title with `useOverrideTitle`). Load errors: a `role="alert"` line with the `describeError` message and "Try again".
