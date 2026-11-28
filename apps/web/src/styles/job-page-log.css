@@ -1,0 +1,208 @@
+/* ---------- Job page: the ffmpeg command, notes from ffmpeg and its log ---------- */
+
+.command-block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  padding: var(--sp-4) var(--sp-5);
+}
+
+.command-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+.command-head .btn {
+  margin-left: auto;
+}
+
+.command-text,
+.job-log-text {
+  margin: 0;
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--r-md);
+  background: var(--bg);
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: var(--fs-mono);
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.job-log-text {
+  max-height: 420px;
+  overflow: auto;
+}
+
+/* Screen 06b "Notes from ffmpeg": known warnings as cards, the raw output collapsed below. */
+.ffmpeg-notes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  padding: var(--sp-5) var(--sp-6);
+}
+
+.ffmpeg-notes-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--sp-1) var(--sp-3);
+}
+
+.ffmpeg-notes-summary {
+  font-size: var(--fs-ui);
+  color: var(--muted);
+}
+
+.ffmpeg-notes-error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-3);
+  color: var(--danger-text);
+}
+
+.ffmpeg-notes-error p {
+  margin: 0;
+}
+
+.ffmpeg-note-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
+  gap: var(--sp-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ffmpeg-note {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--r-md);
+  background: var(--raised);
+}
+
+.ffmpeg-note-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: var(--fs-ui);
+}
+
+.ffmpeg-note p {
+  margin: 0;
+  font-size: var(--fs-small);
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.ffmpeg-note-tag {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 var(--sp-2);
+  border-radius: var(--r-pill);
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.ffmpeg-note-tag.is-warning {
+  background: var(--st-dry-bg);
+  color: var(--st-dry);
+}
+
+.ffmpeg-note-tag.is-expected {
+  background: var(--st-noop);
+  color: var(--st-noop-ink);
+}
+
+.ffmpeg-raw {
+  /* Part of the card it sits in (the result, the notes), not a box inside it: a divider above. */
+  border-top: 1px solid var(--line);
+}
+
+.job-result .ffmpeg-raw {
+  margin-top: var(--sp-2);
+  padding-top: var(--sp-1);
+}
+
+.ffmpeg-raw > summary {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-height: var(--target-min);
+  padding: 0;
+  border-radius: var(--r-md);
+  font-size: var(--fs-ui);
+  font-weight: 600;
+  list-style: none;
+  cursor: pointer;
+}
+
+.ffmpeg-raw > summary::-webkit-details-marker {
+  display: none;
+}
+
+.ffmpeg-raw > summary:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* The chevron says the summary opens, and turns when it is open. */
+.ffmpeg-raw[open] > summary .icon {
+  transform: rotate(90deg);
+}
+
+.ffmpeg-raw-count {
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  font-weight: 400;
+  color: var(--faint);
+}
+
+.ffmpeg-raw-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: 0 0 var(--sp-2);
+}
+
+/* The command inside the raw output is part of it, not a panel of its own. */
+.ffmpeg-raw .command-block {
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.ffmpeg-raw .command-head h3,
+.ffmpeg-raw-label {
+  margin: 0;
+  font-size: var(--fs-ui);
+  font-weight: 600;
+}
+
+.ffmpeg-raw .command-text,
+.ffmpeg-raw .job-log-text {
+  padding: 0;
+  background: transparent;
+}
+
+.ffmpeg-raw-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+
+.job-missing {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-4) var(--sp-5);
+}

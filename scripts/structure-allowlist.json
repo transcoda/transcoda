@@ -82,8 +82,6 @@
     "apps/server/src/workflows/service.ts": 1123,
     "apps/web/src/jobs/JobPage/steps.ts": 1066,
     "apps/web/src/libraries/LibrariesPage.tsx": 863,
-    "apps/web/src/styles/job-page.css": 1415,
-    "apps/web/src/styles/jobs.css": 1100,
     "apps/web/src/styles/plugins.css": 835
   },
   "docPaths": ["docs/dev/plugins-host.md: scripts/host-check.mjs"]
