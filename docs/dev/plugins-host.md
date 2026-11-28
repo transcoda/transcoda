@@ -1,6 +1,6 @@
 # The plugin host
 
-The rules in force today for how core runs, sandboxes, installs, verifies and calls plugins: `apps/server/src/plugins/`, `apps/server/src/plugin-host/`, `packages/shared/src/plugins/` and `packages/sdk/`. Plugin authors read [`plugin-sdk.md`](../plugin-sdk.md); users read [`plugins.md`](../plugins.md). History is in the decision files linked at the end; where they disagree with this page, the code wins.
+The rules in force today for how core runs, sandboxes, installs, verifies and calls plugins: `apps/server/src/plugins/`, `apps/server/src/plugin-host/`, `packages/shared/src/plugins/` and `packages/sdk/`. Plugin authors read [`plugin-sdk.md`](../plugin-sdk.md); users read [`plugins.md`](../plugins.md). Where this page and the code disagree, the code wins.
 
 ## Overview
 
@@ -72,5 +72,3 @@ Server-level backstops: `platform/process-guards.ts` logs an unhandled rejection
 - The `fetch-proxy*.test.ts` files stand a loopback server in for a LAN or public one through `FetchProxyDeps.classify` and `resolve` (`network/testing.ts`); production never sets them.
 - `docker/entrypoint.test.sh` (run by `ci.yml` and `docker.yml`) checks the plugin user and the isolation-off paths; the image's `sandbox` and `hardening` jobs check the built image (see [`ci-release.md`](ci-release.md)).
 - The plugins repository runs every bundle through core's real host with `scripts/host-check.mjs` (`--check-plugin` against a core checkout) in its CI and release workflows. A change to the host, the protocol or the SDK should keep those bundles passing.
-
-History: [M3 plugins and security hardening](../decisions/2026-10-m3-plugins.md), [integrations, the sandbox review and finish-step ordering](../decisions/2026-10.md), [plugin hosts before install](../decisions/2026-11.md).

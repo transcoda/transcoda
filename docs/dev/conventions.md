@@ -64,6 +64,4 @@ Today's rules for how code is written here. Most of them are checked by `pnpm ch
 - **Spelling.** UI text, messages users and API clients see, and docs use US spelling: "Canceled", "color", "license", "behavior" (#104). Identifiers that already ship keep their spelling (`check-licences`, `scripts/licences/`, `LicencesSection`).
 - **Words.** Every size a person reads or types is SI (1 kB = 1000 B), printed by `fmtBytes` from `@transcoda/shared`; binary units stay in internal byte math only. Times are stored and logged in UTC. UI text is short, plain and says what happened; match the words existing pages use (see [web-ui.md](web-ui.md)).
 - **Names in public text.** Fixtures, tests, docs, screenshots and commit messages use invented titles (Otter and Finch, Harbor Lights, ...). Never a real show or film, a real person, an email address, a hostname or a private IP.
-- **Comments** say why, not what. A comment that cites a decision points to the topic doc in `docs/dev/` or to the log entry by its heading (`docs/decisions/<file>.md`, "M1 engine Task 13: replace").
-
-History: [2026-11](../decisions/2026-11.md) ("Source layout and its check", "Code consistency checks", "Design rule checks", "SI units everywhere"), [M0](../decisions/2026-10-m0.md) ("M0 tooling", "Task 5").
+- **Comments** say why, not what. A comment that rests on a rule points to the topic doc in `docs/dev/` that states it, or gives the reason itself in a sentence or two.

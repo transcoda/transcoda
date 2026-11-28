@@ -227,5 +227,3 @@ Steps 1 (the check and this doc), 2, 3, 4, 5, 6, 7, 8, 9, 10 and 11 are done. Ea
 - [x] 11. Web splits: the editor page's hooks, the jobs page, the over-budget page tests, the two largest stylesheets.
 - [ ] 12. Packages: `shared/src/workflow` to `workflows`; split `contract.test.ts` per router.
 - [ ] 13. Tighten: empty `upwardImports`, remove the "today" entries from `LAYERS`, and check this doc's paths too (`DOC_PATHS_SKIP`).
-
-History: [2026-11](../decisions/2026-11.md) ("Source layout and its check").

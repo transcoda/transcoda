@@ -383,8 +383,11 @@ export function settleReplaceNow(
 }
 
 /**
- * Decides one journaled job from the disk (the table in docs/decisions/2026-10-m1-engine.md,
- * "M1 engine Task 13: replace").
+ * Decides one journaled job from the disk, not from the journal's step. With O, T and C for "the
+ * original, the tmp and the copy exist": O without C requeues once (interrupted); O and C is a
+ * conflict (two copies); T and C without O installs the tmp (completed); C alone restores the
+ * original (rolled back, not requeued); neither O nor C fails (original missing). The checks
+ * below refine this by size and fingerprint where a crash left an ambiguous state.
  */
 async function settleJournal(
   db: Database,

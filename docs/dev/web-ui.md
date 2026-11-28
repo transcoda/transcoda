@@ -1,6 +1,6 @@
 # The web app
 
-The rules in force today for `apps/web/**`. History is in the decision files linked at the end; where they disagree with this page, the code wins. Colours, type, spacing, motion and icons are in [DESIGN.md](../../DESIGN.md); this page does not repeat its values.
+The rules in force today for `apps/web/**`. Where this page and the code disagree, the code wins. Colours, type, spacing, motion and icons are in [DESIGN.md](../../DESIGN.md); this page does not repeat its values.
 
 ## Layout of `apps/web/src`
 
@@ -92,5 +92,3 @@ The rules in force today for `apps/web/**`. History is in the decision files lin
 - Node definitions in tests come from `catalogFixture` / `nodesFixture` (`testing/fixtures/catalog.ts`), never from `nodes.json` directly. `testing/fixtures/nodes.json` is generated: `pnpm --filter @transcoda/server dump-nodes > apps/web/src/testing/fixtures/nodes.json` (`apps/server/scripts/dump-nodes.ts`), then re-add the hand-written `test:unavailable` entry. `apps/server/src/nodes/web-fixture.test.ts` fails when the core nodes in it drift from the server.
 - No `toMatchSnapshot` of component HTML. Assert what a user sees.
 - A change to a page the browser tests cover: run `pnpm e2e:docker`, and update screenshot baselines with `pnpm e2e:update` when the change is on purpose (see [AGENTS.md](../../AGENTS.md)).
-
-History: [M0 web scaffold, shell and Patchbay design](../decisions/2026-10-m0.md), [M2 editor](../decisions/2026-10-m2-editor.md), [M2 jobs, event stream and job pages](../decisions/2026-10-m2-jobs.md), [activation](../decisions/2026-10-activation-mcp.md), [editor patterns and UI rounds](../decisions/2026-10.md), [SI units, design audit, design rule checks, icon stroke](../decisions/2026-11.md).

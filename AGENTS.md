@@ -2,7 +2,7 @@
 
 For coding agents working in this repository. Everything in [CONTRIBUTING.md](CONTRIBUTING.md) applies, and setup is there too. This file adds the rules agents tend to skip.
 
-Today's rules for each area are in [`docs/dev/`](docs/dev/): [structure](docs/dev/structure.md), [testing](docs/dev/testing.md), [engine](docs/dev/engine.md), [server and API](docs/dev/server-api.md), [plugin host](docs/dev/plugins-host.md), [web UI](docs/dev/web-ui.md), [conventions](docs/dev/conventions.md), [CI and releases](docs/dev/ci-release.md). [`docs/decisions/`](docs/decisions/README.md) is the dated history behind them. Where it disagrees with `docs/dev/` or the code, the history is out of date.
+Today's rules for each area are in [`docs/dev/`](docs/dev/): [structure](docs/dev/structure.md), [testing](docs/dev/testing.md), [engine](docs/dev/engine.md), [server and API](docs/dev/server-api.md), [plugin host](docs/dev/plugins-host.md), [web UI](docs/dev/web-ui.md), [conventions](docs/dev/conventions.md), [CI and releases](docs/dev/ci-release.md). Where a topic doc and the code disagree, the code wins and the doc needs updating.
 
 ## Repo map
 
@@ -29,14 +29,11 @@ Dependencies point one way: `packages/shared` ← `packages/sdk` ← `packages/c
   - No `feat:` or `fix(x):`, and no full stop ([details](CONTRIBUTING.md#pr-titles)).
 - **Names:** fixtures, docs and screenshots use invented titles and names only. Never a real show, film, person, host or address.
 
-## New decisions
+## Changing a rule
 
-A decision that changes how things work goes in two places:
+A change to how things work updates the rule, as it stands now, in its topic doc in `docs/dev/`. The pull request says why.
 
-1. **The rule**, as it stands now, in its topic doc in `docs/dev/`.
-2. **The history:** a dated entry in the newest file of `docs/decisions/`, plus one index line in [its README](docs/decisions/README.md). `scripts/decisions-index.test.ts` checks both.
-
-A code comment cites the topic doc, or a log entry by file and heading.
+A code comment that rests on a rule cites the topic doc, or gives the reason itself.
 
 ## Recipes
 

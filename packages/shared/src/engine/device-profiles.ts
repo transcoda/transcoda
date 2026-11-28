@@ -22,8 +22,9 @@ export interface DeviceProfile {
 
 /**
  * Device profiles are data. Each value was checked against the listed sources; a value they do
- * not confirm is left out (unsupported) or lowered. See docs/decisions/2026-10-m1-engine.md,
- * "M1 engine Task 2".
+ * not confirm is left out (unsupported) or lowered. Level ceilings no source states are generous
+ * (a file above them counts as unplayable there). Chrome lists text subtitles beside WebVTT
+ * because Jellyfin's web player extracts them server-side; image subtitles (PGS) do not play.
  */
 export const DEVICE_PROFILES: Record<DeviceProfileId, DeviceProfile> = {
   'android-tv': {

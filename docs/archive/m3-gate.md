@@ -2,7 +2,7 @@
 
 > **Historical record.** This is the manual run that closed phase 1 of M3 on 2026-10-17, before the security hardening. For today's plugin host rules see [`docs/dev/plugins-host.md`](../dev/plugins-host.md). It is kept as a record and is not updated.
 
-The manual run that closes phase 1 of M3 (plugins): the example plugin installed from a local catalog, run in a workflow, a plugin crash, the crash loop and the sandbox suite. Performed on 2026-10-17 on branch `m3-plugins` (core) with the plugins repo's `m3-plugins` branch. Rulings and the open findings are in [the decision log](../decisions/2026-10-m3-plugins.md) under "M3 plugins (phase 1)". The security hardening that followed (plugin user, signatures, blocklist) is under "M3 security hardening" there; this record is the state before it, so its 17 probes are 19 today.
+The manual run that closes phase 1 of M3 (plugins): the example plugin installed from a local catalog, run in a workflow, a plugin crash, the crash loop and the sandbox suite. Performed on 2026-10-17 on branch `m3-plugins` (core) with the plugins repo's `m3-plugins` branch. The security hardening that followed (plugin user, signatures, blocklist) came after this run; this record is the state before it, so its 17 probes are 19 today.
 
 ## Setup
 

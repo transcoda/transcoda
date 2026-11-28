@@ -1,6 +1,6 @@
 # The encode engine
 
-The rules in force today for `apps/server/src/engine/`, `apps/server/src/capabilities/` and the core nodes in `apps/server/src/nodes/core/`. History is in the decision files linked at the end; where they disagree with this page, the code wins.
+The rules in force today for `apps/server/src/engine/`, `apps/server/src/capabilities/` and the core nodes in `apps/server/src/nodes/core/`. Where this page and the code disagree, the code wins.
 
 ## A job's path
 
@@ -79,7 +79,3 @@ The image ships jellyfin-ffmpeg 8 (`JELLYFIN_FFMPEG_VERSION` in `docker/Dockerfi
 - Real-ffmpeg tests (`*.real.test.ts`, and others that call `fixturesAvailable()`) read `.local/fixtures` through `engine/testing/fixtures.ts`; generate them with `pnpm fixtures`. They skip without fixtures, so run them before changing verify, render or progress. `pnpm test:docker` runs them against the image's jellyfin-ffmpeg, as the nightly does.
 - The ffmpeg argv is snapshot-tested in `engine/model/render.test.ts`; review every snapshot change. Tests use `libx264`/`libx265` only; hardware paths are covered by argv and scheduler tests.
 - `engine/walk/walk.examples.test.ts` walks every bundled example workflow; `engine/engine.examples.test.ts` runs the core ones over real ffmpeg.
-
-## History
-
-[M1 engine](../decisions/2026-10-m1-engine.md) · [M2 jobs](../decisions/2026-10-m2-jobs.md) · [Activation](../decisions/2026-10-activation-mcp.md) · [October 2026](../decisions/2026-10.md) · [November 2026](../decisions/2026-11.md)

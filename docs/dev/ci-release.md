@@ -1,6 +1,6 @@
 # CI, the image and releases
 
-The rules in force today for `.github/workflows/`, `docker/`, `renovate.json`, `scripts/` and cutting a release. History is in the decision files linked at the end; where they disagree with this page, the files in the repo win.
+The rules in force today for `.github/workflows/`, `docker/`, `renovate.json`, `scripts/` and cutting a release. Where this page and the files in the repo disagree, the files in the repo win.
 
 ## On a pull request
 
@@ -71,5 +71,3 @@ The plugins repository's nightly uses the same two actions.
 - npm dependencies are exact pins (`save-exact=true` in `.npmrc`, `rangeStrategy: pin` in Renovate). `engine-strict=true`.
 - Every action is pinned by full commit SHA with the version in a comment; Renovate updates both. The Dockerfile syntax and the base image are pinned by digest, and corepack by its lockfile's integrity hash.
 - Workflows declare `permissions: contents: read` (Scorecard: `read-all`) at the top and grant write access per job only.
-
-History: [M0 tooling, image and Actions](../decisions/2026-10-m0.md), [plugin isolation and image hardening](../decisions/2026-10-m3-plugins.md), [versioned releases](../decisions/2026-10.md), [Node 26, test tiers, nightly](../decisions/2026-11.md).
