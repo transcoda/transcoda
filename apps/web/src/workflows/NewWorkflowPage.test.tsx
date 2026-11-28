@@ -45,13 +45,15 @@ describe('NewWorkflowPage', () => {
     ).toBeTruthy();
   });
 
-  it('has a Cancel that goes back to the list, before the primary (primary last)', () => {
-    renderAt('/workflows/new', <NewWorkflowPage />);
+  it('has a Cancel that goes back to the list at /, before the primary (primary last)', () => {
+    const view = renderAt('/workflows/new', <NewWorkflowPage />);
     const cancel = screen.getByRole('link', { name: 'Cancel' });
-    expect(cancel.getAttribute('href')).toBe('/workflows');
     const create = screen.getByRole('button', { name: 'Create and open' });
     expect(cancel.parentElement).toBe(create.parentElement);
     expect(cancel.parentElement?.lastElementChild).toBe(create);
+    // The workflows list is the `/` route; there is no `/workflows` route (#241).
+    fireEvent.click(cancel);
+    expect(view.location()).toBe('/');
   });
 
   it('defaults to a workflow, marks the name required, and keeps Create disabled until it has one, with no "Enter a name" line', async () => {

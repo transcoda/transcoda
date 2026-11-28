@@ -19,6 +19,12 @@ test('a library and a workflow built from an example, then activated', async ({ 
   await expect(page.getByRole('link', { name: 'Movies' })).toBeVisible();
 
   await page.getByRole('link', { name: 'Workflows' }).click();
+  // New workflow, then Cancel: back on the list, not on "Page not found" (#241).
+  await page.getByRole('link', { name: 'New workflow' }).click();
+  await expect(page.getByRole('heading', { name: 'New workflow', level: 1 })).toBeVisible();
+  await page.getByRole('link', { name: 'Cancel' }).click();
+  await expect(page.getByRole('heading', { name: 'Workflows', level: 1 })).toBeVisible();
+
   await page.getByRole('button', { name: /^Save space/ }).click();
   await expect(page.getByRole('heading', { name: 'Save space', level: 1 })).toBeVisible();
 
