@@ -16,7 +16,15 @@ import {
   spotTimes,
 } from './decode-checks.ts';
 import { durationCheck } from './durations.ts';
-import { firstLine, mediaFile, mediaPairs, secs, verifyExec, withSignal } from './media.ts';
+import {
+  firstLine,
+  type MediaFile,
+  mediaFile,
+  mediaPairs,
+  secs,
+  verifyExec,
+  withSignal,
+} from './media.ts';
 import { defaultFailures, sidecarFailures, streamFailures } from './stream-checks.ts';
 import type { VerifyFailure, VerifyInput, VerifyResult } from './types.ts';
 
@@ -93,9 +101,7 @@ export async function verifyOutput(input: VerifyInput): Promise<VerifyResult> {
   const warnings = [...targets.warnings];
   const output = await mediaFile(exec, input.ffprobePath, input.outputPath, probe);
   const source = await mediaFile(exec, input.ffprobePath, input.sourcePath, input.sourceProbe);
-  const decodable = await decodableStart(exec, input.ffprobePath, input.model, source);
-  source.skipped = decodable - source.start;
-  source.start = decodable;
+  await skipUndecodableStart(exec, input.ffprobePath, input.model, source);
   const duration = await durationCheck(exec, input.ffprobePath, input.model, source, output, tick);
   const stated = input.sourceProbe.durationSeconds;
   if (stated > 0 && duration.sourceEnds.length > 0) {
@@ -130,6 +136,21 @@ export async function verifyOutput(input: VerifyInput): Promise<VerifyResult> {
   };
 }
 
+/**
+ * Moves `source`'s start to where the output starts (see decodableStart), so that output times are
+ * file times of the source, and keeps how far it moved in `skipped` for ffmpeg's `-ss`.
+ */
+async function skipUndecodableStart(
+  exec: Exec,
+  ffprobePath: string,
+  model: BuildModel,
+  source: MediaFile,
+): Promise<void> {
+  const decodable = await decodableStart(exec, ffprobePath, model, source);
+  source.skipped = decodable - source.start;
+  source.start = decodable;
+}
+
 /** A confirmation decode of the source starts this long before the spot… */
 const CONFIRM_BEFORE = 1;
 
@@ -143,6 +164,8 @@ const CONFIRM_SECONDS = 7;
  * confirms nothing.
  * mkv/mp4 sources are opened with input `-ss` (keyframe before the spot); byte-seek formats at the
  * anchor stream's last keyframe at or before it (`subfile`); a spot without one is not confirmed.
+ * With `model`, `times` are output times: a source whose undecodable first packets the output left
+ * out (see decodableStart) is decoded that much later.
  */
 export async function confirmSourceDamage(input: {
   sourcePath: string;
@@ -150,6 +173,8 @@ export async function confirmSourceDamage(input: {
   ffmpegPath: string;
   ffprobePath: string;
   times: number[];
+  /** The plan the output was written with, when `times` are output times (an encode's). */
+  model?: BuildModel;
   /** How long each decode runs (default CONFIRM_SECONDS). */
   seconds?: number;
   exec?: Exec;
@@ -158,6 +183,7 @@ export async function confirmSourceDamage(input: {
   const seconds = input.seconds ?? CONFIRM_SECONDS;
   const exec = withSignal(input.exec ?? verifyExec, input.signal);
   const file = await mediaFile(exec, input.ffprobePath, input.sourcePath, input.sourceProbe);
+  if (input.model) await skipUndecodableStart(exec, input.ffprobePath, input.model, file);
   const streams = [...file.probe.streams].sort((a, b) => a.index - b.index);
   const anchor =
     streams.find((s) => s.type === 'video' && !isPicture(s, streams)) ??
@@ -170,7 +196,9 @@ export async function confirmSourceDamage(input: {
     let open: string[] | null;
     let where = `${seconds} s from ${secs(from)}`;
     if (!file.byteSeek) {
-      open = ['-ss', from.toFixed(3), '-t', String(seconds), '-i', file.path];
+      // ffmpeg's `-ss` counts from where the file's own timeline starts, before any skipped part.
+      const ss = (from + file.skipped).toFixed(3);
+      open = ['-ss', ss, '-t', String(seconds), '-i', file.path];
     } else if (anchor) {
       const seek = await endSeek(
         exec,

@@ -423,6 +423,29 @@ describe('confirmSourceDamage without ffmpeg', () => {
     expect(await confirm(exec)).toEqual([]);
   });
 
+  it('a video-only source cut mid-GOP is decoded where the output was', async () => {
+    // The source's first keyframe is 2 s in, so the output (and the encode's error times) start
+    // there: output second 30 is source second 32, and the decode starts a second before it.
+    const runs: string[][] = [];
+    const exec: Exec = async (file, args) => {
+      if (args.includes('packet=stream_index,pts_time,flags')) {
+        return { stdout: packetRows('0.000000,___\n1.000000,___\n2.000000,K__'), stderr: '' };
+      }
+      if (file === 'ffmpeg') runs.push(args);
+      return { stdout: '', stderr: '' };
+    };
+    await confirmSourceDamage({
+      sourcePath: '/lib/in.mkv',
+      sourceProbe: source,
+      model: modelFromProbe(source),
+      ffmpegPath: 'ffmpeg',
+      ffprobePath: 'ffprobe',
+      times: [30],
+      exec,
+    });
+    expect(runs.map((a) => a[a.indexOf('-ss') + 1])).toEqual(['31.000']);
+  });
+
   it('a decoder error the source reproduces confirms it', async () => {
     const exec: Exec = async () => {
       throw Object.assign(new Error('Command failed: ffmpeg'), {
