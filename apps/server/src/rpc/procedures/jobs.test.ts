@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs';
 import { mkdir, symlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
-import { asSession, bearer, createToken, send } from '../../app/testing/http.ts';
+import { abortableGet, asSession, bearer, createToken, send } from '../../app/testing/http.ts';
 import { updateJob } from '../../db/repos/jobs/jobs.ts';
 import { setSetting } from '../../db/repos/settings.ts';
 import { chain, node } from '../../workflows/testing.ts';
@@ -245,11 +245,11 @@ describe('jobs', () => {
     );
     const { wf, id: libraryId } = await fedLibrary({ notify: true });
     // Every event of the run, to check none carries the webhook URL.
-    const abort = new AbortController();
-    const stream = await t.app.request('/api/v1/events', {
-      headers: { host: 'localhost:8080', accept: 'text/event-stream', ...asSession(s, false) },
-      signal: abort.signal,
+    const client = abortableGet(t, '/events', {
+      accept: 'text/event-stream',
+      ...asSession(s, false),
     });
+    const stream = await client.response;
     const streamed = readEvents(stream, (ev) =>
       ev.some((e) => e.type === 'job.changed' && (e as { state?: string }).state === 'done'),
     );
@@ -260,7 +260,7 @@ describe('jobs', () => {
     await until('final', () => isFinal(id));
     expect(row(id).state).toBe('done');
     const events = await streamed;
-    abort.abort();
+    client.abort();
     expect(events.some((e) => e.type === 'job.trace')).toBe(true);
     expect(JSON.stringify(events)).not.toContain(SECRET);
 

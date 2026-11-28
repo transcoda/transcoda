@@ -1,6 +1,6 @@
 import { join } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
-import { asSession, bearer, createToken, send } from '../../app/testing/http.ts';
+import { abortableGet, asSession, bearer, createToken, send } from '../../app/testing/http.ts';
 import {
   fedLibrary,
   get,
@@ -38,11 +38,11 @@ describe('queue and events', () => {
     const { jobIds } = await queued({ path: join(root, 'a.mkv') });
     const id = jobIds[0] as string;
 
-    const abort = new AbortController();
-    const res = await t.app.request('/api/v1/events', {
-      headers: { host: 'localhost:8080', accept: 'text/event-stream', ...bearer(read.token) },
-      signal: abort.signal,
+    const client = abortableGet(t, '/events', {
+      accept: 'text/event-stream',
+      ...bearer(read.token),
     });
+    const res = await client.response;
     expect(res.status).toBe(200);
     expect(res.headers.get('content-type')).toContain('text/event-stream');
     const reading = readEvents(
@@ -54,7 +54,7 @@ describe('queue and events', () => {
       (await send(t, 'POST', `/jobs/${id}/pause`, { headers: asSession(s, true) })).status,
     ).toBe(200);
     const events = await reading;
-    abort.abort();
+    client.abort();
     expect(events[0]).toEqual({
       type: 'queue.changed',
       paused: true,
@@ -77,15 +77,15 @@ describe('queue and events', () => {
 
   it('closing the stream releases the engine subscription', async () => {
     const subscribe = vi.spyOn(t.deps.engine.events, 'subscribe');
-    const abort = new AbortController();
-    const res = await t.app.request('/api/v1/events', {
-      headers: { host: 'localhost:8080', accept: 'text/event-stream', ...asSession(s, false) },
-      signal: abort.signal,
+    const client = abortableGet(t, '/events', {
+      accept: 'text/event-stream',
+      ...asSession(s, false),
     });
+    const res = await client.response;
     await readEvents(res, (ev) => ev.length >= 2);
     expect(subscribe).toHaveBeenCalledTimes(1);
     const iterator = subscribe.mock.results[0]?.value as AsyncIterableIterator<unknown>;
-    abort.abort();
+    client.abort();
     // A live subscription keeps yielding its 10 ms ping; a released one is done. The abort reaches
     // the generator's `finally` through several hops (stream cancel → oRPC return()), so poll.
     await vi.waitFor(
