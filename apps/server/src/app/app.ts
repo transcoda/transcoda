@@ -14,6 +14,7 @@ import { JOB_POSTER_PATH, jobPosterResponse } from '../http/job-poster.ts';
 import { METRICS_PATH, metricsResponse } from '../http/metrics.ts';
 import { mountStatic } from '../http/static.ts';
 import { TEST_OUTPUT_PATH, testOutputResponse } from '../http/test-output.ts';
+import { TRIGGER_PATH, triggerResponse } from '../http/trigger.ts';
 import { createMcpHandler } from '../mcp/handler.ts';
 import { jsonRpcError } from '../mcp/jsonrpc.ts';
 import type { AnyToolDef } from '../mcp/tool.ts';
@@ -196,6 +197,9 @@ export function createApp(opts: AppOptions): Hono {
     const { ctx, resolved } = await buildCtx(c);
     return respond(c, await metricsResponse(c, deps, resolved), ctx, resolved);
   });
+
+  // (3f) Plugin trigger webhooks (Sonarr, Radarr): tokens only, the plugin reads the body.
+  app.on(['POST', 'PUT'], TRIGGER_PATH, (c) => triggerResponse(c, deps));
 
   // (4) REST.
   app.use('/api/v1/*', async (c, next) => {
