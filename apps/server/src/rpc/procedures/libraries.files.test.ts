@@ -1,5 +1,12 @@
-import { emptyGraph, type JobState, type StoredJobMedia } from '@transcoda/shared';
+import { defineNode } from '@transcoda/sdk';
+import {
+  emptyGraph,
+  type JobState,
+  type NodeInstance,
+  type StoredJobMedia,
+} from '@transcoda/shared';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { z } from 'zod';
 import { createTestApp, type TestApp } from '../../app/testing/app.ts';
 import {
   asSession,
@@ -20,7 +27,9 @@ import { insertLibrary, softDeleteLibrary } from '../../db/repos/libraries.ts';
 import { showKey } from '../../db/repos/library-files.ts';
 import { insertRestore } from '../../db/repos/restores.ts';
 import { insertRun } from '../../db/repos/runs.ts';
-import { insertWorkflow } from '../../db/repos/workflows.ts';
+import { insertWorkflow, setActiveVersion } from '../../db/repos/workflows.ts';
+import { filePort } from '../../nodes/core/common.ts';
+import { mainGraph, node, testRegistry } from '../../workflows/testing.ts';
 
 const now = new Date('2026-10-26T00:04:00.000Z');
 const at = (min: number) => new Date(now.getTime() + min * 60_000);
@@ -492,5 +501,147 @@ describe('library browser read routes', () => {
     expect(
       (await send(t, 'GET', '/libraries/l1/files', { headers: bearer(create.token) })).status,
     ).toBe(403);
+  });
+});
+
+describe('damaged files (the library health page)', () => {
+  /** f4 and f5 kept as damaged (f5 later), f6 damaged then fine, f7 damaged and gone. */
+  function damagedFiles(): void {
+    const damaged = { sourceDamaged: true };
+    file('f4', '/media/tv/Lanternfish.mkv', 400);
+    job('j4', 'f4', { state: 'kept_original', queuedAt: 6, result: damaged });
+    file('f5', '/media/tv/S01E05.mkv', 400);
+    job('j5', 'f5', { state: 'kept_original', queuedAt: 8, result: damaged });
+    file('f6', '/media/tv/S01E06.mkv', 400);
+    job('j6a', 'f6', { state: 'kept_original', queuedAt: 6, result: damaged });
+    job('j6b', 'f6', { state: 'done', queuedAt: 7, result: {} });
+    file('f7', '/media/tv/S01E07.mkv', 400);
+    job('j7', 'f7', { state: 'kept_original', queuedAt: 6, result: damaged });
+    t.db.prepare('UPDATE files SET gone_at = ? WHERE id = ?').run(at(9).toISOString(), 'f7');
+  }
+
+  it('GET /libraries/:id/files?damaged=true lists the present files whose latest job found the source damaged', async () => {
+    damagedFiles();
+    const { status, body } = await get('/libraries/l1/files?damaged=true&sort=lastRun&desc=true');
+    expect(status).toBe(200);
+    expect(body.total).toBe(2);
+    expect(body.files.map((f: { id: string }) => f.id)).toEqual(['f5', 'f4']);
+    expect(body.files[0]).toMatchObject({
+      latest: { id: 'j5', state: 'kept_original', result: { sourceDamaged: true } },
+    });
+    // Without the filter every listed file is there, damaged or not.
+    expect((await get('/libraries/l1/files')).body.total).toBe(6);
+    expect((await get('/libraries/l1/files?damaged=false')).body.total).toBe(6);
+    expect((await get('/libraries/l2/files?damaged=true')).body).toEqual({ files: [], total: 0 });
+  });
+
+  it('GET /libraries/:id counts the damaged files the health page lists', async () => {
+    expect((await get('/libraries/l1')).body).toMatchObject({ damagedCount: 0 });
+    damagedFiles();
+    const { body } = await get('/libraries/l1');
+    expect(body.damagedCount).toBe(2);
+    expect(body.damagedCount).toBe((await get('/libraries/l1/files?damaged=true')).body.total);
+    expect((await get('/libraries/l2')).body.damagedCount).toBe(0);
+  });
+
+  it('a library with no feeder, or one without a Replace damaged file step, has no replace steps', async () => {
+    expect((await get('/libraries/l1')).body.replaceDamaged).toEqual([]);
+    setActiveVersion(t.db, 'w1', 1, 'u', now, 'l1');
+    expect((await get('/libraries/l1')).body).toMatchObject({
+      feeds: { workflowId: 'w1' },
+      replaceDamaged: [],
+    });
+  });
+
+  describe('with a Replace damaged file plugin step', () => {
+    const SOURCE = { kind: 'plugin', name: 'example', version: '1.0.0' } as const;
+    const replaceDamaged = (type: string, title: string) =>
+      defineNode({
+        type,
+        version: 1,
+        kind: 'finish',
+        finishPhase: 'library-manager',
+        damagedOnly: true,
+        title,
+        description: 'Asks the media manager for a new copy.',
+        icon: 'bell',
+        inputs: [filePort],
+        outputs: [],
+        settings: z.object({}),
+        async finish() {
+          return { actions: [], reason: 'would ask for a new copy' };
+        },
+      });
+    let down: string | null;
+
+    beforeEach(async () => {
+      await t.close();
+      down = null;
+      t = createTestApp({
+        start: now,
+        nodes: [
+          ...testRegistry().list(),
+          {
+            def: replaceDamaged('example:replace-damaged', 'Replace damaged file (Example)'),
+            source: SOURCE,
+          },
+          {
+            def: replaceDamaged('other:replace-damaged', 'Replace damaged file (Other)'),
+            source: { ...SOURCE, name: 'other' },
+            unavailable: () => down,
+          },
+        ],
+      });
+      s = await login(t);
+      insertLibrary(
+        t.db,
+        {
+          id: 'l1',
+          name: 'Movies',
+          path: '/media/movies',
+          recycleFolder: null,
+          processHardlinked: false,
+        },
+        now,
+      );
+    });
+
+    function feeder(nodes: NodeInstance[], libraryId = 'l1'): void {
+      insertWorkflow(
+        t.db,
+        { id: 'w2', kind: 'workflow', name: 'Check', graph: mainGraph(nodes), createdBy: 'u' },
+        now,
+      );
+      setActiveVersion(t.db, 'w2', 1, 'u', now, libraryId);
+    }
+
+    it("names the steps of the feeder's active version whose plugin is running", async () => {
+      feeder([node('a', 'example:replace-damaged'), node('b', 'other:replace-damaged')]);
+      expect((await get('/libraries/l1')).body.replaceDamaged).toEqual([
+        'Replace damaged file (Example)',
+        'Replace damaged file (Other)',
+      ]);
+      down = 'the plugin is stopped';
+      expect((await get('/libraries/l1')).body.replaceDamaged).toEqual([
+        'Replace damaged file (Example)',
+      ]);
+    });
+
+    it('leaves out a bypassed step, and a step of a workflow that is not active for this library', async () => {
+      feeder([{ ...node('a', 'example:replace-damaged'), bypassed: true }]);
+      expect((await get('/libraries/l1')).body.replaceDamaged).toEqual([]);
+      insertWorkflow(
+        t.db,
+        {
+          id: 'w3',
+          kind: 'workflow',
+          name: 'Inactive',
+          graph: mainGraph([node('a', 'example:replace-damaged')]),
+          createdBy: 'u',
+        },
+        now,
+      );
+      expect((await get('/libraries/l1')).body.replaceDamaged).toEqual([]);
+    });
   });
 });

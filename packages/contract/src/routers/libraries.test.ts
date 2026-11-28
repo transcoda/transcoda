@@ -8,6 +8,7 @@ import {
   LibraryFeedsSchema,
   LibraryFileInputSchema,
   LibraryFilesInputSchema,
+  LibraryGetOutputSchema,
   LibraryRefSchema,
   LibrarySchema,
   LibraryUpdateInputSchema,
@@ -35,6 +36,44 @@ describe('libraries router', () => {
       true,
     );
     expect(LibraryFilesInputSchema.safeParse({ id: 'l', sort: 'path' }).success).toBe(false);
+  });
+
+  it('the library files input can ask for damaged files only', () => {
+    expect(LibraryFilesInputSchema.parse({ id: 'l', damaged: true })).toMatchObject({
+      damaged: true,
+    });
+    expect(LibraryFilesInputSchema.safeParse({ id: 'l', damaged: 'yes' }).success).toBe(false);
+  });
+
+  it('a library read carries its damaged count and the Replace damaged file steps it runs', () => {
+    const library = {
+      id: 'l',
+      name: 'Movies',
+      path: '/media/movies',
+      recycleFolder: null,
+      processHardlinked: false,
+      verifyFullDecode: false,
+      runHours: null,
+      watchFolder: true,
+      feeds: null,
+      namedByInactive: [],
+      createdAt: '2026-11-01T00:00:00.000Z',
+      updatedAt: '2026-11-01T00:00:00.000Z',
+      clock: { now: '2026-11-01T00:00:00.000Z', timeZone: 'UTC' },
+      fileCount: 3,
+    };
+    expect(
+      LibraryGetOutputSchema.safeParse({
+        ...library,
+        damagedCount: 1,
+        replaceDamaged: ['Replace damaged file (Radarr)'],
+      }).success,
+    ).toBe(true);
+    expect(LibraryGetOutputSchema.safeParse(library).success).toBe(false);
+    expect(
+      LibraryGetOutputSchema.safeParse({ ...library, damagedCount: -1, replaceDamaged: [] })
+        .success,
+    ).toBe(false);
   });
 
   it('library file detail bounds the job history page', () => {
