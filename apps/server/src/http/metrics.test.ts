@@ -9,7 +9,7 @@ import {
   type Session,
   send,
 } from '../app/testing/http.ts';
-import { parseExposition } from '../metrics/parse-exposition.ts';
+import { parseExposition } from '../metrics/testing.ts';
 
 let t: TestApp;
 let s: Session;

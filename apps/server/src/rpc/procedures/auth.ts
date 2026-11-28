@@ -16,7 +16,7 @@ import {
   type UserWithHash,
   updatePasswordHash,
 } from '../../db/repos/users.ts';
-import { readAppearance } from '../../settings/service.ts';
+import { readAppearance } from '../../settings.ts';
 import type { ServerContext } from '../context.ts';
 import {
   os,

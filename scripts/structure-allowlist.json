@@ -32,25 +32,17 @@
   "barrels": [],
   "testSupportImports": [],
   "testSupportNames": [
-    "apps/server/src/db/test-db.ts",
-    "apps/server/src/mcp/test-client.ts",
-    "apps/server/src/metrics/parse-exposition.ts",
     "apps/server/src/workflows/test-helpers.ts",
     "apps/web/src/styles/css-source.ts",
     "apps/web/src/styles/design-exceptions.ts"
   ],
   "pageImports": [],
   "folderNames": [],
-  "smallFolders": ["apps/server/src/settings", "apps/web/src/data"],
+  "smallFolders": ["apps/web/src/data"],
   "orphanTests": [
-    "apps/server/src/db/migration-conventions.test.ts",
     "apps/server/src/mcp/mcp-docs.test.ts",
-    "apps/server/src/mcp/metrics-scope.test.ts",
     "apps/server/src/mcp/never.test.ts",
     "apps/server/src/mcp/sdk.test.ts",
-    "apps/server/src/nodes/core/core.test.ts",
-    "apps/server/src/plugin-host/host.test.ts",
-    "apps/server/src/settings/settings-docs.test.ts",
     "apps/server/src/workflows/e2e.test.ts",
     "apps/server/src/workflows/examples-plugins.test.ts",
     "apps/web/src/design-source.test.tsx",
@@ -68,11 +60,7 @@
     "apps/web/src/styles/shell-css.test.ts",
     "apps/web/src/styles/spacing-radius-css.test.ts",
     "apps/web/src/styles/theme.test.ts",
-    "apps/web/src/styles/type-scale-css.test.ts",
-    "packages/sdk/src/sdk.test.ts",
-    "packages/shared/src/engine/engine.test.ts",
-    "packages/shared/src/engine/picture.test.ts",
-    "packages/shared/src/plugins/plugins.test.ts"
+    "apps/web/src/styles/type-scale-css.test.ts"
   ],
   "softSizeLimit": {
     "apps/server/src/engine/queue/queue-service.ts": 1131,

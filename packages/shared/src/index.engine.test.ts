@@ -17,7 +17,7 @@ import {
   RUNNING_JOB_STATES,
   sameLanguage,
   TraceEntrySchema,
-} from '../index.ts';
+} from './index.ts';
 
 describe('job states', () => {
   it('states split into 7 active and 8 final, in order', () => {

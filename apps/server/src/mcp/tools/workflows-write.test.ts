@@ -10,7 +10,7 @@ import { FakeSpawner } from '../../engine/encode/process.ts';
 import { tempDir } from '../../engine/testing/fixtures.ts';
 import { type FsOps, nodeFsOps } from '../../platform/fs-ops.ts';
 import { bumpV1, chain, childGraph, node, testRegistry } from '../../workflows/test-helpers.ts';
-import { mcpClient } from '../test-client.ts';
+import { mcpClient } from '../testing.ts';
 import { workflowReadTools } from './workflows-read.ts';
 import { WEBHOOK_HINT, workflowWriteTools } from './workflows-write.ts';
 

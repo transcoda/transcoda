@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { Database } from '../open.ts';
-import { createTestDb } from '../test-db.ts';
+import { createTestDb } from '../testing.ts';
 import { findTokenByHash, insertToken, revokeToken } from './tokens.ts';
 import { createUser } from './users.ts';
 

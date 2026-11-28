@@ -8,7 +8,7 @@ import { fingerprintKey } from '../../db/repos/files.ts';
 import { insertJobResult, listJobs, updateJob } from '../../db/repos/jobs/jobs.ts';
 import type { LibraryRow } from '../../db/repos/libraries.ts';
 import { listRuns } from '../../db/repos/runs.ts';
-import { createTestDb } from '../../db/test-db.ts';
+import { createTestDb } from '../../db/testing.ts';
 import { nodeFsOps } from '../../platform/fs-ops.ts';
 import type { Logger } from '../../platform/logger.ts';
 import { WorkflowService } from '../../workflows/service.ts';

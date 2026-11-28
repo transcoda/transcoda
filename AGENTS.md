@@ -42,7 +42,7 @@ A code comment that rests on a rule cites the topic doc, or gives the reason its
    - type `core:<kebab-name>` and a `kind`;
    - an `icon` that `apps/web/src/components/NodeIcon.tsx` can draw;
    - a settings schema and its hooks.
-2. Add it to `coreNodes` in `apps/server/src/nodes/core/index.ts` and to the list in `apps/server/src/nodes/core/core.test.ts`.
+2. Add it to `coreNodes` in `apps/server/src/nodes/core/index.ts` and to the list in `apps/server/src/nodes/core/index.test.ts`.
 3. Regenerate the web fixture. `apps/server/src/nodes/web-fixture.test.ts` fails until you do.
    - Run `pnpm --filter @transcoda/server dump-nodes > apps/web/src/testing/fixtures/nodes.json`.
    - Re-add the hand-written `test:unavailable` entry (see `apps/web/src/testing/fixtures/catalog.ts`).
@@ -53,7 +53,7 @@ A code comment that rests on a rule cites the topic doc, or gives the reason its
 - Write `apps/server/src/db/migrations/NNNN_snake_case.ts` with the next number. Use frozen SQL and keep existing data.
 - Give it its own `NNNN_snake_case.test.ts`.
 - Register it, in order, in `apps/server/src/db/migrations/index.ts`.
-- `apps/server/src/db/migration-conventions.test.ts` checks all three. Never edit a shipped migration.
+- `apps/server/src/db/migrate.conventions.test.ts` checks all three. Never edit a shipped migration.
 
 **Add an RPC procedure**
 1. Contract:
@@ -80,14 +80,14 @@ A code comment that rests on a rule cites the topic doc, or gives the reason its
 
 **Add a setting** (stored in the database, edited in Settings)
 - Contract: `SettingsSchema` and `SettingsUpdateInputSchema` in `packages/contract/src/schemas/settings.ts`.
-- Server: `SETTING_KEYS` and `SETTING_DEFAULTS` in `apps/server/src/db/repos/settings.ts`, and `apps/server/src/settings/service.ts` with `service.test.ts`.
+- Server: `SETTING_KEYS` and `SETTING_DEFAULTS` in `apps/server/src/db/repos/settings.ts`, and `apps/server/src/settings.ts` with `settings.test.ts`.
 - Web: the section in `apps/web/src/settings/`, and the fixture in `apps/web/src/settings/testing.ts`.
-- Docs: the "Settings in the database" table in `docs/env.md`, with the default. `apps/server/src/settings/settings-docs.test.ts` checks its keys and defaults against `SETTING_KEYS` and `SETTING_DEFAULTS`.
+- Docs: the "Settings in the database" table in `docs/env.md`, with the default. `apps/server/src/settings.docs.test.ts` checks its keys and defaults against `SETTING_KEYS` and `SETTING_DEFAULTS`.
 
 **Add an environment variable**
 - Parse it only in `loadConfig()` in `apps/server/src/platform/config.ts`, tested in `config.test.ts`.
 - Document it in a table row in `docs/env.md`. `apps/server/src/platform/config.docs.test.ts` fails when a variable `config.ts` reads has no row, or a row names one nothing reads.
-- If Settings shows it read-only, see `apps/server/src/settings/service.ts` and `apps/web/src/settings/source-text.ts`.
+- If Settings shows it read-only, see `apps/server/src/settings.ts` and `apps/web/src/settings/source-text.ts`.
 
 **Add a metric**
 - Define it in `METRICS` in `apps/server/src/metrics/catalog.ts`.
@@ -96,7 +96,7 @@ A code comment that rests on a rule cites the topic doc, or gives the reason its
 
 ## Test helpers
 
-Use these rather than re-declaring them ([more](docs/dev/testing.md#helpers-to-use)): `createTestApp` (`apps/server/src/app/testing/app.ts`); `send`, `login`, `withCsrf`, `createToken` (`apps/server/src/app/testing/http.ts`); `createTestDb` (`apps/server/src/db/test-db.ts`); `node`, `edge`, `mainGraph`, `testRegistry` (`apps/server/src/workflows/test-helpers.ts`); `probeOf`, `fileOf`, `capsOf` (`apps/server/src/engine/testing/builders.ts`); `fixturesAvailable` (`apps/server/src/engine/testing/fixtures.ts`); `renderAt` (`apps/web/src/testing/render.tsx`).
+Use these rather than re-declaring them ([more](docs/dev/testing.md#helpers-to-use)): `createTestApp` (`apps/server/src/app/testing/app.ts`); `send`, `login`, `withCsrf`, `createToken` (`apps/server/src/app/testing/http.ts`); `createTestDb` (`apps/server/src/db/testing.ts`); `node`, `edge`, `mainGraph`, `testRegistry` (`apps/server/src/workflows/test-helpers.ts`); `probeOf`, `fileOf`, `capsOf` (`apps/server/src/engine/testing/builders.ts`); `fixturesAvailable` (`apps/server/src/engine/testing/fixtures.ts`); `renderAt` (`apps/web/src/testing/render.tsx`).
 
 ## UI changes
 

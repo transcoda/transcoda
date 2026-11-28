@@ -5,7 +5,7 @@ import { insertJob, insertJobResult, updateJob } from '../../db/repos/jobs/jobs.
 import { insertLibrary } from '../../db/repos/libraries.ts';
 import { insertRun } from '../../db/repos/runs.ts';
 import { insertWorkflow } from '../../db/repos/workflows.ts';
-import { createTestDb } from '../../db/test-db.ts';
+import { createTestDb } from '../../db/testing.ts';
 import { type AlreadyProcessedSubject, alreadyProcessed } from './already-processed.ts';
 
 const now = new Date('2026-10-28T15:00:00.000Z');

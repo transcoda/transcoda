@@ -3,12 +3,9 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { SETTING_DEFAULTS, SETTING_KEYS } from '../db/repos/settings.ts';
+import { SETTING_DEFAULTS, SETTING_KEYS } from './db/repos/settings.ts';
 
-const DOCS = readFileSync(
-  fileURLToPath(new URL('../../../../docs/env.md', import.meta.url)),
-  'utf8',
-);
+const DOCS = readFileSync(fileURLToPath(new URL('../../../docs/env.md', import.meta.url)), 'utf8');
 
 /** The table's rows as key → default cell. */
 function tableRows(): Map<string, string> {
