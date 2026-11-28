@@ -1,5 +1,6 @@
+import { humanise } from '../../model/value-text.ts';
 import { useDeviceProfileNames } from './device-profiles.ts';
-import { Field, type FieldProps, humanise } from './Field.tsx';
+import { Field, type FieldProps } from './Field.tsx';
 
 /** The engine's device-profile list setting (encode-video, subtitles: `targets`). */
 const DEVICE_PROFILE_KEY = 'targets';
