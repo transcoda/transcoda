@@ -24,7 +24,7 @@
     "apps/server/src/engine/queue/scheduler.ts": 830,
     "apps/server/src/engine/walk/walk.ts": 1049,
     "apps/server/src/workflows/service.ts": 1123,
-    "apps/web/src/jobs/JobPage/steps.ts": 1066,
+    "apps/web/src/jobs/JobPage/steps.ts": 1037,
     "apps/web/src/libraries/LibrariesPage.tsx": 863,
     "apps/web/src/styles/plugins.css": 835
   },

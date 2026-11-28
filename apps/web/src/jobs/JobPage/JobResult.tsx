@@ -9,8 +9,10 @@ import {
   sentence,
   stateWord,
   testEncodeOutcome,
+  trackChangesText,
   type Verdict,
   verdictOf,
+  writesTrackChangesOnly,
 } from '../job-text.ts';
 import { failureCause, RESULT_TONE } from './job-outcome.ts';
 
@@ -91,12 +93,18 @@ function linesOf(job: ResultJob): Lines {
     return { headline: cause.headline, text: cause.text, meta: [] };
   }
   const writes = verdict === 'replaced' || verdict === 'attention' || verdict === 'dry';
+  // A test encode that saved too little, whose size gate would write the track changes alone: the
+  // encode's size is not what a run writes, so the card leads with what would happen.
+  if (verdict === 'dry' && writesTrackChangesOnly(job.reason)) {
+    return { headline: 'Would write track changes', text: trackChangesText(job.reason), meta: [] };
+  }
   if (writes && before !== null && after !== null) {
     // A dry run says what would happen first: its chip's word is not an outcome.
     const would = verdict === 'dry' ? [measured?.word ?? stateWord(job)] : [];
     return {
       headline: sizesHeadline(before, after, estimated),
-      text: null,
+      // A size gate that saved too little and wrote the track changes alone says why.
+      text: trackChangesText(job.reason),
       meta: [...would, ...whereOf(job)],
     };
   }

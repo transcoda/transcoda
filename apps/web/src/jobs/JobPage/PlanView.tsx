@@ -301,6 +301,7 @@ export function PlanView({
   probe,
   result,
   measured = false,
+  trackChangesOnly = false,
   workflow,
   onActivate,
   onTryAnother,
@@ -311,6 +312,11 @@ export function PlanView({
   result: JobResult | null;
   /** A test encode: the result carries the measured output size, not an estimate. */
   measured?: boolean;
+  /**
+   * The test encode saved too little and the size gate would write the track changes alone: the
+   * video stays as it is, so the encode's size is not what a run writes.
+   */
+  trackChangesOnly?: boolean;
   /** `active`: undefined while the workflow has not loaded (the button waits), null: none active. */
   workflow: {
     id: string;
@@ -322,18 +328,28 @@ export function PlanView({
   onTryAnother(): void;
 }) {
   const before = result?.beforeBytes ?? probe?.sizeBytes ?? null;
-  const after = !plan.rewrite
-    ? null
-    : measured
-      ? (result?.afterBytes ?? null)
-      : (result?.estimatedBytes ?? null);
+  const after =
+    !plan.rewrite || trackChangesOnly
+      ? null
+      : measured
+        ? (result?.afterBytes ?? null)
+        : (result?.estimatedBytes ?? null);
   // A finished rewrite without an estimate (the engine has no history to go by yet).
   const noEstimate = !measured && plan.rewrite && result !== null && after === null;
   // A test encode still running, and one that ended without a measured size (failed, cancelled).
   const measuring = measured && plan.rewrite && result === null;
-  const notMeasured = measured && plan.rewrite && result !== null && after === null;
+  const notMeasured =
+    measured && plan.rewrite && !trackChangesOnly && result !== null && after === null;
   const now =
-    before === null ? null : measuring ? '→ …' : noEstimate ? '→ ?' : notMeasured ? '' : null;
+    before === null
+      ? null
+      : measuring
+        ? '→ …'
+        : noEstimate
+          ? '→ ?'
+          : notMeasured || trackChangesOnly
+            ? ''
+            : null;
   const srNote = measuring
     ? '(measuring)'
     : noEstimate
@@ -350,7 +366,9 @@ export function PlanView({
         <div className="plan-tiles">
           <div className="plan-tile">
             <span className="plan-tile-label mono">Would do</span>
-            <span className="plan-tile-value">{wouldDo(plan)}</span>
+            <span className="plan-tile-value">
+              {trackChangesOnly ? 'Write track changes' : wouldDo(plan)}
+            </span>
           </div>
           <div className="plan-tile-sep" aria-hidden="true" />
           <div className="plan-tile">

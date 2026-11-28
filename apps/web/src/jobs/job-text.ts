@@ -160,11 +160,14 @@ export function estimateTag(
   job: Pick<Job, 'state' | 'dryRun' | 'estimatedBytes' | 'result'> & {
     testEncode?: boolean;
     dependsOnSize?: Job['dependsOnSize'];
+    reason?: string | null;
   },
 ): string | null {
   if (!job.dryRun || job.state !== 'dry_run') return null;
   // The size gate decides after encoding: no estimate claims what it will decide.
   if (job.dependsOnSize) return null;
+  // The size gate would write the track changes alone: the encode's size is not what a run writes.
+  if (writesTrackChangesOnly(job.reason)) return null;
   const after = job.testEncode ? (job.result?.afterBytes ?? null) : job.estimatedBytes;
   return estimatePercent(job.result?.beforeBytes ?? null, after);
 }
@@ -174,6 +177,31 @@ export function estimateTag(
  * printed as JavaScript prints a number, so a tiny one comes in exponent form ("1e-7").
  */
 const GATE_REASON = /^saved only (-?[\d.]+)%, below ([\d.]+(?:e[-+]?\d+)?)%$/;
+
+/**
+ * A size gate that saved too little and wrote the track changes instead (engine: `saved only
+ * 4.0%, below 20% → wrote track changes without re-encoding`; a test encode: `would write`).
+ */
+const TRACKS_REASON =
+  /^saved only (-?[\d.]+)%, below ([\d.]+(?:e[-+]?\d+)?)% → (wrote|would write) track changes without re-encoding$/;
+
+/** The size gate saved too little and wrote (or would write) the track changes alone. */
+export function writesTrackChangesOnly(reason: string | null | undefined): boolean {
+  return TRACKS_REASON.test(reason ?? '');
+}
+
+/**
+ * The size gate's track changes in a person's words: "Saved only 4% (gate ≥ 20%), so the video was
+ * kept as it is and only the track changes were written". Null for any other reason.
+ */
+export function trackChangesText(reason: string | null | undefined): string | null {
+  const m = reason ? TRACKS_REASON.exec(reason) : null;
+  if (!m?.[1] || !m[2] || !m[3]) return null;
+  const words = gateWords(`saved only ${m[1]}%, below ${m[2]}%`) ?? '';
+  return m[3] === 'wrote'
+    ? `${sentence(words)}, so the video was kept as it is and only the track changes were written.`
+    : `${sentence(words)}, so a real run would keep the video as it is and write only the track changes.`;
+}
 
 /** "3.0" → "3", "9.6" → "9.6", "-0.0" → "0": a percent as a person reads it. */
 const plainNumber = (s: string) => String(Math.abs(Number(s)) === 0 ? 0 : Number(s));
@@ -201,6 +229,11 @@ export function testEncodeOutcome(
   job: Pick<Job, 'state' | 'dryRun' | 'testEncode' | 'reason' | 'result'>,
 ): { word: string; detail: string } | null {
   if (!job.dryRun || !job.testEncode) return null;
+  const tracks = job.state === 'dry_run' ? TRACKS_REASON.exec(job.reason ?? '') : null;
+  if (tracks?.[1] && tracks[2]) {
+    const detail = gateWords(`saved only ${tracks[1]}%, below ${tracks[2]}%`);
+    if (detail !== null) return { word: 'Would write track changes', detail };
+  }
   if (job.state === 'dry_run') {
     const before = job.result?.beforeBytes ?? null;
     const after = job.result?.afterBytes ?? null;
@@ -470,7 +503,9 @@ export function detailLine(job: Job, opts: { queuePaused?: boolean; now?: Date }
       if (first !== undefined) return `done · needs attention: ${first}`;
       const r = job.result;
       if (!r || r.beforeBytes === null || r.afterBytes === null) return 'Replaced';
-      const sizes = `${fmtBytes(r.beforeBytes)} → ${fmtBytes(r.afterBytes)}, ${fmtSaving(r.beforeBytes, r.afterBytes)}`;
+      // A size gate that saved too little wrote the track changes alone: say so first.
+      const tracks = writesTrackChangesOnly(job.reason) ? 'Track changes only · ' : '';
+      const sizes = `${tracks}${fmtBytes(r.beforeBytes)} → ${fmtBytes(r.afterBytes)}, ${fmtSaving(r.beforeBytes, r.afterBytes)}`;
       // The chip already says "Replaced"; only the recycle folder is worth a word (the original
       // is not gone), never "original replaced". A restore put the original back.
       if (r.restored) return `${sizes} · original restored`;

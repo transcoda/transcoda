@@ -16,6 +16,7 @@ import {
   stateWord,
   testEncodeLine,
   testEncodeOutcome,
+  trackChangesText,
   VERDICT_WORD,
   verdictOf,
   wouldText,
@@ -39,6 +40,29 @@ describe('reason wording is one on every page (polish review)', () => {
     expect(detailLine({ ...fx.skipped, reason: 'still growing' })).toBe(
       'Changed in the last few minutes: it is picked up once it stops changing',
     );
+  });
+});
+
+describe('a size gate that wrote the track changes', () => {
+  const REASON = 'saved only 4.0%, below 20% → wrote track changes without re-encoding';
+  it('the done row says track changes only before the sizes', () => {
+    expect(detailLine({ ...fx.replaced, reason: REASON })).toBe(
+      'Track changes only · 2.41 GB → 1.62 GB, saved 790 MB · original in recycle folder',
+    );
+  });
+  it('trackChangesText words the reason; any other reason is null', () => {
+    expect(trackChangesText(REASON)).toBe(
+      'Saved only 4% (gate ≥ 20%), so the video was kept as it is and only the track changes were written.',
+    );
+    expect(
+      trackChangesText(
+        'saved only -2.5%, below 20% → would write track changes without re-encoding',
+      ),
+    ).toBe(
+      'Grew by 2.5% (gate ≥ 20%), so a real run would keep the video as it is and write only the track changes.',
+    );
+    expect(trackChangesText('saved only 4.0%, below 20%')).toBeNull();
+    expect(trackChangesText(null)).toBeNull();
   });
 });
 
@@ -457,6 +481,11 @@ describe('dry-run estimate', () => {
     expect(estimateTag(dryWith({ ...fx.kept, dryRun: true, estimatedBytes: 600 }))).toBeNull();
   });
 
+  it('estimateTag is null when the size gate would write the track changes alone: the encode is not what a run writes', () => {
+    const reason = 'saved only 4.0%, below 20% → would write track changes without re-encoding';
+    expect(estimateTag(dryWith({ estimatedBytes: 960, reason }))).toBeNull();
+  });
+
   it('detailLine words the plan summary instead of a bare "Plan ready"; an engine reason still shows without one', () => {
     expect(
       detailLine(dryWith({ planSummary: 'convert 1 video track; drop 1 subtitle track' })),
@@ -547,6 +576,17 @@ describe('test-encode outcome', () => {
       detail: 'saved only 3% (gate ≥ 10%)',
     });
     expect(testEncodeOutcome(measured({ testEncode: false }))).toBeNull();
+  });
+
+  it('a test-encode whose gate would write the track changes says so, with the saving and the gate', () => {
+    const tracks = measured({
+      reason: 'saved only 4.0%, below 20% → would write track changes without re-encoding',
+    });
+    expect(testEncodeOutcome(tracks)).toEqual({
+      word: 'Would write track changes',
+      detail: 'saved only 4% (gate ≥ 20%)',
+    });
+    expect(testEncodeLine(tracks)).toBe('Would write track changes · saved only 4% (gate ≥ 20%)');
   });
 
   it('a test-encode that would replace says the measured sizes and percent', () => {

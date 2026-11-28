@@ -76,6 +76,43 @@ describe('JobResult', () => {
     expect(container.querySelector('.job-result-meta')?.textContent).toBe('Original restored');
   });
 
+  it('a size gate that wrote the track changes alone keeps the sizes and says why in a line below', () => {
+    const { container } = render(
+      <JobResult
+        job={{
+          state: 'done',
+          dryRun: false,
+          reason: 'saved only 4.0%, below 20% → wrote track changes without re-encoding',
+          result: { ...DONE, afterBytes: 465_000 },
+        }}
+      />,
+    );
+    expect(head(container)).toBe('472 kB → 465 kB−1%');
+    expect(container.querySelector('.job-result-text')?.textContent).toBe(
+      'Saved only 4% (gate ≥ 20%), so the video was kept as it is and only the track changes were written.',
+    );
+    expect(container.querySelector('.job-result')?.classList.contains('is-ok')).toBe(true);
+  });
+
+  it('a test encode whose size gate would write the track changes alone leads with that, not the encode size', () => {
+    const { container } = render(
+      <JobResult
+        job={{
+          state: 'dry_run',
+          dryRun: true,
+          testEncode: true,
+          reason: 'saved only 4.0%, below 20% → would write track changes without re-encoding',
+          result: { ...DONE, outcome: 'dry_run', afterBytes: 453_000, replacedTo: null },
+        }}
+      />,
+    );
+    expect(head(container)).toBe('Would write track changes');
+    expect(container.querySelector('.job-result-text')?.textContent).toBe(
+      'Saved only 4% (gate ≥ 20%), so a real run would keep the video as it is and write only the track changes.',
+    );
+    expect(container.querySelector('.job-result-pct')).toBeNull();
+  });
+
   it('a kept original leads with its reason and is neutral, never blue or green', () => {
     const { container } = render(
       <JobResult
