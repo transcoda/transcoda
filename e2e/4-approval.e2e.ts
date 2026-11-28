@@ -70,7 +70,7 @@ test('a result waits for approval, shows on the Jobs page and its job page, and 
   const id = String(created.id);
   await call(page, 'POST', `/workflows/${id}/activate`, { version: 1, confirm: true });
   for (const title of ['Quiet Meadow (1934)', 'The Paper Lantern (1928)']) {
-    await call(page, 'POST', '/jobs/queue', { path: movie(title), workflowId: id, fileOnly: true });
+    await call(page, 'POST', '/jobs', { path: movie(title), workflowId: id, fileOnly: true });
   }
 
   // Both wait: the filter of its own lists them.
