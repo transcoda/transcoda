@@ -31,14 +31,10 @@
   ],
   "barrels": [],
   "testSupportImports": [],
-  "testSupportNames": [
-    "apps/server/src/workflows/test-helpers.ts",
-    "apps/web/src/styles/css-source.ts",
-    "apps/web/src/styles/design-exceptions.ts"
-  ],
+  "testSupportNames": ["apps/server/src/workflows/test-helpers.ts"],
   "pageImports": [],
   "folderNames": [],
-  "smallFolders": ["apps/web/src/data"],
+  "smallFolders": [],
   "orphanTests": [
     "apps/server/src/mcp/mcp-docs.test.ts",
     "apps/server/src/mcp/never.test.ts",

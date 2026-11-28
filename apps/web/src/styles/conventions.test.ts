@@ -1,6 +1,6 @@
 // The shared conventions of the UI consistency pass, pinned in the stylesheet.
 import { describe, expect, it } from 'vitest';
-import { stylesCss } from './css-source.ts';
+import { stylesCss } from './testing/css-source.ts';
 
 // Comments dropped, so a rule's selector list is only selectors.
 const css = stylesCss.replace(/\/\*[\s\S]*?\*\//g, '');

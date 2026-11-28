@@ -1,7 +1,7 @@
 // DESIGN.md › Typography: every font-size is a --fs-* token.
 import { describe, expect, it } from 'vitest';
-import { declsOf, stylesCss, where } from './css-source.ts';
-import { FONT_SIZE_OK } from './design-exceptions.ts';
+import { declsOf, stylesCss, where } from './testing/css-source.ts';
+import { FONT_SIZE_OK } from './testing/design-exceptions.ts';
 
 function sizeProblems(source: string): string[] {
   return declsOf(source)
@@ -14,7 +14,7 @@ describe('type scale', () => {
   it('uses --fs-* tokens for every font-size, apart from the documented exceptions', () => {
     expect(
       sizeProblems(stylesCss),
-      'DESIGN.md › Typography: use an --fs-* token (exceptions: styles/design-exceptions.ts FONT_SIZE_OK)',
+      'DESIGN.md › Typography: use an --fs-* token (exceptions: styles/testing/design-exceptions.ts FONT_SIZE_OK)',
     ).toEqual([]);
     expect(sizeProblems('.a { color: red; font-size: 13px }')).toHaveLength(1);
   });

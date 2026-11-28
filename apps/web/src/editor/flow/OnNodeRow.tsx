@@ -1,8 +1,8 @@
 import type { NodeInfo } from '@transcoda/contract';
 import type { JsonValue, NodeInstance } from '@transcoda/shared';
 import { useId, useMemo, useState } from 'react';
-import { languageName } from '../../data/languages.ts';
 import { useLibraries } from '../../hooks/use-libraries.ts';
+import { languageName } from '../../lib/languages.ts';
 import { NEEDS_A_SETTING, type NodeState } from '../model/issues.ts';
 import {
   clientIssue,

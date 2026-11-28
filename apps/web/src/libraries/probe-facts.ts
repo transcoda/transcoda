@@ -1,7 +1,7 @@
 import type { JobProbe } from '@transcoda/contract';
 import { isPicture } from '@transcoda/shared';
-import { codecName } from '../data/codecs.ts';
 import { languageNameOf } from '../jobs/plan-text.ts';
+import { codecName } from '../lib/codecs.ts';
 import { fmtDuration } from '../lib/time.ts';
 
 /** What a file page says about a probe, one plain string per fact. */

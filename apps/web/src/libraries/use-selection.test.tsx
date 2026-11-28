@@ -7,7 +7,7 @@ vi.mock('../jobs/use-queue.ts', () => ({
   useQueue: () => ({ status: { paused: false, lanes: {}, encodeSlots: 1 }, set: vi.fn() }),
 }));
 
-import { stylesCss } from '../styles/css-source.ts';
+import { stylesCss } from '../styles/testing/css-source.ts';
 import { fx } from '../testing/fixtures/jobs.ts';
 import { renderAt } from '../testing/render.tsx';
 import { LibraryFileTable } from './LibraryFileTable.tsx';

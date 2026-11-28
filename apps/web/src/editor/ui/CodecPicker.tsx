@@ -1,6 +1,6 @@
 import { type KeyboardEvent, useId, useMemo, useState } from 'react';
 import { Dialog } from '../../components/Dialog.tsx';
-import { type Codec, type CodecMedia, codecGroups, codecPresets } from '../../data/codecs.ts';
+import { type Codec, type CodecMedia, codecGroups, codecPresets } from '../../lib/codecs.ts';
 
 type Option =
   | { kind: 'codec'; key: string; group: string; codec: Codec }

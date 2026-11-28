@@ -25,7 +25,7 @@ import { Route } from 'wouter';
 import { resetCatalogCache } from '../../hooks/use-catalog.ts';
 import { EventsProvider } from '../../hooks/use-events.ts';
 import { REFETCH_COALESCE_MS } from '../../hooks/use-refetch-on.ts';
-import { stylesCss } from '../../styles/css-source.ts';
+import { stylesCss } from '../../styles/testing/css-source.ts';
 import { fakeEventSource, queueSnapshot } from '../../testing/fake-event-stream.ts';
 import { nodesFixture } from '../../testing/fixtures/catalog.ts';
 import {

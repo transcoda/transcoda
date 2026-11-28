@@ -37,7 +37,7 @@ vi.mock('../api/client.ts', async () => {
 });
 
 import { resetCatalogCache } from '../hooks/use-catalog.ts';
-import { stylesCss } from '../styles/css-source.ts';
+import { stylesCss } from '../styles/testing/css-source.ts';
 import { WorkflowsPage } from './WorkflowsPage.tsx';
 
 const minutesAgo = (m: number) => new Date(Date.now() - m * 60_000).toISOString();

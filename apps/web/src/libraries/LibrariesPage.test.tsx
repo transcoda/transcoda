@@ -23,7 +23,7 @@ vi.mock('../api/client.ts', async () => {
   return { api: mocks, isDefinedError: orpc.isDefinedError, safe: orpc.safe };
 });
 
-import { stylesCss } from '../styles/css-source.ts';
+import { stylesCss } from '../styles/testing/css-source.ts';
 import { LibrariesPage } from './LibrariesPage.tsx';
 
 const at = '2026-10-16T18:00:00.000Z';

@@ -16,7 +16,7 @@ vi.mock('../api/client.ts', () => ({
   },
 }));
 
-import { stylesCss } from '../styles/css-source.ts';
+import { stylesCss } from '../styles/testing/css-source.ts';
 import { renderAt } from '../testing/render.tsx';
 import { QueueSection } from './QueueSection.tsx';
 

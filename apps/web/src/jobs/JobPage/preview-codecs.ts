@@ -1,7 +1,7 @@
 // What the job page's player can tell before it plays a test output: from the plan's output
 // tracks, the video and the first audio track, their names, and whether this browser plays them.
 import type { JobDetail } from '@transcoda/contract';
-import { codecName } from '../../data/codecs.ts';
+import { codecName } from '../../lib/codecs.ts';
 
 type Track = NonNullable<NonNullable<JobDetail['plan']>['output']>[number];
 

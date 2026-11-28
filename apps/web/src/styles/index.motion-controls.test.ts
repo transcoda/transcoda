@@ -2,8 +2,8 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { commaValues, declsOf, spaceValues, stylesCss } from './css-source.ts';
-import { LINEAR_PROGRESS } from './design-exceptions.ts';
+import { commaValues, declsOf, spaceValues, stylesCss } from './testing/css-source.ts';
+import { LINEAR_PROGRESS } from './testing/design-exceptions.ts';
 
 const tokens = readFileSync(join(__dirname, 'tokens.css'), 'utf8');
 const css = stylesCss.replace(/\/\*[\s\S]*?\*\//g, '');
@@ -115,7 +115,7 @@ describe('motion', () => {
   it('every UI transition uses the motion tokens; only progress fills stay linear', () => {
     expect(
       transitionProblems(css),
-      'DESIGN.md › Motion: transitions use --dur-fast/--dur-base and --ease-out; linear only on the progress fills (styles/design-exceptions.ts LINEAR_PROGRESS)',
+      'DESIGN.md › Motion: transitions use --dur-fast/--dur-base and --ease-out; linear only on the progress fills (styles/testing/design-exceptions.ts LINEAR_PROGRESS)',
     ).toEqual([]);
     // The check is not vacuous: it sees transitions, including both progress fills.
     const seen = transitionsOf(css);

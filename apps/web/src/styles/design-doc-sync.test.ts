@@ -5,8 +5,8 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { ICON_STROKE } from '../components/Icon.tsx';
-import { declsOf, stylesCss, tokensCss } from './css-source.ts';
-import { CONTAINER_WIDTHS } from './design-exceptions.ts';
+import { declsOf, stylesCss, tokensCss } from './testing/css-source.ts';
+import { CONTAINER_WIDTHS } from './testing/design-exceptions.ts';
 
 const design = readFileSync(join(__dirname, '../../../../DESIGN.md'), 'utf8');
 

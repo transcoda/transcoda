@@ -59,7 +59,7 @@ export const LAYERS: Record<string, Layer[]> = {
     // The shared layer imports no feature.
     {
       name: 'shared',
-      paths: ['components/', 'hooks/', 'lib/', 'api/', 'data/', 'assets/', 'styles/'],
+      paths: ['components/', 'hooks/', 'lib/', 'api/', 'assets/', 'styles/'],
     },
     // Features may import each other (Biome's noImportCycles keeps that acyclic).
     {
