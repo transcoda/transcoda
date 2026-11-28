@@ -19,7 +19,7 @@ function steadyText() {
     ],
     [/\btook \d+(?:\.\d+)? (?:ms|s|min|h)\b/g, 'took 1 s'],
     [/^(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)$/, 'Day'],
-    [/v\d+\.\d+\.\d+-dev\+\w+/g, 'v0.0.0-dev'],
+    [/v\d+\.\d+\.\d+-dev(?:\+\w+)?/g, 'v0.0.0-dev'],
     [/\bNow \d{1,2}:\d{2}\b/g, 'Now 00:00'],
     // Sizes, bitrates and savings: x265's output differs by a few bytes between CPUs (its SIMD
     // paths), and free disk space between machines.
