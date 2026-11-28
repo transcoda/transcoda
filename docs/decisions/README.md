@@ -207,3 +207,4 @@ Entries from M0 to M3 had no date of their own; they carry the day their milesto
 - 2026-11-27 · Structure · [Web shell, test support and CSS guard tests](2026-11.md)
 - 2026-11-27 · Structure · [Web jobs and recycle pages in their features](2026-11.md)
 - 2026-11-27 · Structure · [Web libraries, plugins, settings and sign-in pages in their features](2026-11.md)
+- 2026-11-27 · Structure · [Web workflows and editor pages in their features; pages/ is gone](2026-11.md)

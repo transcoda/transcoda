@@ -4,9 +4,9 @@ import type { JsonValue } from '@transcoda/shared';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { resetLibrariesCache } from '../../../hooks/use-libraries.ts';
 import { catalogFixture } from '../../../testing/fixtures/catalog.ts';
+import { OnNodeRow } from '../../flow/OnNodeRow.tsx';
 import { nodeStateFor } from '../../model/issues.ts';
 import { NodeForm } from '../NodeForm.tsx';
-import { OnNodeRow } from '../OnNodeRow.tsx';
 
 const mocks = vi.hoisted(() => ({ list: vi.fn() }));
 vi.mock('../../../api/client.ts', () => ({ api: { libraries: { list: mocks.list } } }));

@@ -2,7 +2,7 @@ import { cleanup, fireEvent, render, screen, within } from '@testing-library/rea
 import type { NodeInstance, SharedValue } from '@transcoda/shared';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { catalogFixture } from '../../testing/fixtures/catalog.ts';
-import { NodeForm, type Sharing } from './NodeForm.tsx';
+import { NodeForm, type Sharing } from '../ui/NodeForm.tsx';
 
 afterEach(cleanup);
 

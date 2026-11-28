@@ -1,8 +1,8 @@
 import type { WorkflowSummary } from '@transcoda/contract';
 import type { NodeInstance } from '@transcoda/shared';
-import type { ZoomLevel } from '../flow/use-zoom-level.ts';
 import type { NodeState } from '../model/issues.ts';
-import { readRunSettings } from './RunSubworkflowInspector.tsx';
+import { readRunSettings } from '../ui/RunSubworkflowInspector.tsx';
+import type { ZoomLevel } from './use-zoom-level.ts';
 
 const SEP = ' · ';
 export const MISSING_SUBWORKFLOW = 'missing sub-workflow';

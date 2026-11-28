@@ -2,10 +2,10 @@ import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/re
 import type { WorkflowSummary } from '@transcoda/contract';
 import type { Issue } from '@transcoda/shared';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { ToastProvider } from '../../components/Toast.tsx';
-import { resetCatalogCache } from '../../hooks/use-catalog.ts';
-import { nodesFixture } from '../../testing/fixtures/catalog.ts';
-import { renderAt } from '../../testing/render.tsx';
+import { ToastProvider } from '../components/Toast.tsx';
+import { resetCatalogCache } from '../hooks/use-catalog.ts';
+import { nodesFixture } from '../testing/fixtures/catalog.ts';
+import { renderAt } from '../testing/render.tsx';
 
 const mocks = vi.hoisted(() => ({
   deactivate: vi.fn(),
@@ -16,7 +16,7 @@ const mocks = vi.hoisted(() => ({
   nodesList: vi.fn(),
   librariesList: vi.fn(),
 }));
-vi.mock('../../api/client.ts', async () => {
+vi.mock('../api/client.ts', async () => {
   const orpc = await import('@orpc/client');
   return {
     api: {

@@ -1,13 +1,13 @@
 import type { WorkflowSummary } from '@transcoda/contract';
 import type { Issue } from '@transcoda/shared';
 import { type HTMLAttributes, type ReactNode, type RefObject, useState } from 'react';
-import { api, safe } from '../../api/client.ts';
-import { Icon } from '../../components/Icon.tsx';
-import { useToast } from '../../components/Toast.tsx';
-import { countIssues } from '../model/issues.ts';
-import { activateLabel } from '../model/version-text.ts';
+import { api, safe } from '../api/client.ts';
+import { Icon } from '../components/Icon.tsx';
+import { useToast } from '../components/Toast.tsx';
+import { countIssues } from '../editor/model/issues.ts';
+import { activateLabel } from '../editor/model/version-text.ts';
+import type { OverflowItem } from '../editor/ui/EditorHeader.tsx';
 import { ActivateDialog } from './ActivateDialog.tsx';
-import type { OverflowItem } from './EditorHeader.tsx';
 
 /** Only a workflow has an active version; a sub-workflow runs as part of the workflow that runs it. */
 export function hasActivation(w: Pick<WorkflowSummary, 'kind'>): boolean {

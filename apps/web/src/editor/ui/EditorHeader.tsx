@@ -14,7 +14,7 @@ import { Icon } from '../../components/Icon.tsx';
 import { tryLabel } from '../../jobs/use-try-on-file.ts';
 import { GuardedLink } from '../../lib/navigation.tsx';
 import { fmtAgoLong } from '../../lib/time.ts';
-import { hasActivation } from './ActivationControl.tsx';
+import { hasActivation } from '../../workflows/ActivationControl.tsx';
 
 const NAME_MAX = 120;
 const NOTE_MAX = 120;

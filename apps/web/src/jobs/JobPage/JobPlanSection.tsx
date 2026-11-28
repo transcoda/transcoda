@@ -1,8 +1,8 @@
 import type { JobDetail, WorkflowSummary } from '@transcoda/contract';
 import { useState } from 'react';
 import { describeError } from '../../api/errors.ts';
-import { ActivateDialog } from '../../editor/ui/ActivateDialog.tsx';
 import { useWorkflow } from '../../hooks/use-workflows.ts';
+import { ActivateDialog } from '../../workflows/ActivateDialog.tsx';
 import { useTryOnFile } from '../use-try-on-file.ts';
 import { PlanView } from './PlanView.tsx';
 

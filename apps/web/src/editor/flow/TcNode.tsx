@@ -17,11 +17,11 @@ import { DEFAULT_GROUP_NAME } from '../model/graph-ops.ts';
 import type { NodeState } from '../model/issues.ts';
 import { onNodeControlKeys } from '../model/schema-fields.ts';
 import { useTraceActions } from '../trace/trace-context.ts';
-import { OnNodeRow } from '../ui/OnNodeRow.tsx';
-import { OnNodeSubworkflow, runSummary } from '../ui/OnNodeSubworkflow.tsx';
 import { useEditorActions } from './actions-context.ts';
 import { BADGE_ICON } from './badges.ts';
 import { connectionFit, type Fit, type HandleRef, nodeFaded } from './connection-fit.ts';
+import { OnNodeRow } from './OnNodeRow.tsx';
+import { OnNodeSubworkflow, runSummary } from './OnNodeSubworkflow.tsx';
 import { useSubworkflowList } from './subworkflows-context.ts';
 import {
   branchClass,

@@ -12,12 +12,12 @@ import type { WorkflowDetail, WorkflowSummary } from '@transcoda/contract';
 import type { Issue, WorkflowGraph } from '@transcoda/shared';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Route } from 'wouter';
-import { VALIDATE_DEBOUNCE_MS } from '../editor/ui/use-validation.ts';
 import { resetCatalogCache } from '../hooks/use-catalog.ts';
 import { nodesFixture } from '../testing/fixtures/catalog.ts';
 import { chainMainReplace, otterFinchMain, otterFinchSub } from '../testing/fixtures/graphs.ts';
 import { renderAt } from '../testing/render.tsx';
 import { transformOf } from '../testing/transform.ts';
+import { VALIDATE_DEBOUNCE_MS } from './ui/use-validation.ts';
 
 const mocks = vi.hoisted(() => ({
   get: vi.fn(),

@@ -1,6 +1,6 @@
 import { Handle, type NodeProps, Position } from '@xyflow/react';
 import { Icon } from '../../components/Icon.tsx';
-import { valueText } from '../ui/SettingLink.tsx';
+import { valueText } from './SettingLink.tsx';
 import { VALUES_HANDLE } from './to-flow.ts';
 import type { TcValuesNode } from './types.ts';
 
