@@ -1,0 +1,17 @@
+name: PR review
+
+# Only a trigger: when a review is submitted, edited or dismissed, pr-gate.yml re-evaluates the
+# pull request from main's copy (workflow_run), with the permissions it needs. For a fork this
+# file runs the fork's copy, so it gets no permissions and does nothing but finish.
+on:
+  pull_request_review:
+    types: [submitted, edited, dismissed]
+
+permissions: {}
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - run: echo "A review changed; the PR gate re-evaluates this pull request from main."

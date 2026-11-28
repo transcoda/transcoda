@@ -1,0 +1,61 @@
+name: PR gate
+
+# Posts the `pr-gate` commit status on a pull request's head commit (scripts/pr-gate.ts): a
+# high-risk path needs the `risk-approved` label, added after the last push, and an external pull
+# request needs CodeRabbit's and the owner's approval on its head commit.
+#
+# pull_request_target and workflow_run run main's copy of this file and of the script, never the
+# pull request's: the job checks out main and reads the pull request only through the API. Never
+# check out, install or run the pull request's code here, and pass event fields only through env.
+# A check run of pull_request_target would attach to main's commit, so the result is a commit
+# status on the head commit instead. Rules: docs/dev/ci-release.md, "The pr-gate check".
+on:
+  pull_request_target:
+    types: [opened, reopened, synchronize, edited, labeled, unlabeled, ready_for_review]
+  # A review was submitted, edited or dismissed (pr-review.yml records it with no permissions).
+  workflow_run:
+    workflows: [PR review]
+    types: [completed]
+  # Re-evaluate one pull request by hand, from main only.
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: Pull request number
+        required: true
+        type: string
+
+permissions: {}
+
+concurrency:
+  group: pr-gate-${{ github.event.pull_request.number || github.event.workflow_run.head_sha || inputs.pr }}
+  cancel-in-progress: false
+
+jobs:
+  pr-gate:
+    if: >-
+      (github.event_name != 'workflow_dispatch' || github.ref == 'refs/heads/main') &&
+      (github.event_name != 'workflow_run' || github.event.workflow_run.event == 'pull_request_review')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      # main's copy of the script.
+      contents: read
+      # Remove the label after a push; read the pull request, its files and reviews.
+      pull-requests: write
+      # Read when the label was added.
+      issues: read
+      statuses: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+          package-manager-cache: false
+      - name: Evaluate and post the status
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ inputs.pr }}
+        run: node scripts/pr-gate.ts

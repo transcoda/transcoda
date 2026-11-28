@@ -8,8 +8,25 @@ The rules in force today for `.github/workflows/`, `docker/`, `renovate.json`, `
 - **Real ffmpeg** (`real-ffmpeg.yml`, job `real-ffmpeg`): only on pull requests that touch the engine, its capabilities, the core nodes, the fixture generator or the Dockerfiles that pin ffmpeg (the `paths` list in the file). It runs `pnpm test:docker`: the unit tests in the e2e container with the fixtures, so the real-ffmpeg tests that `check` skips run against jellyfin-ffmpeg. Not a required check, since it doesn't run on every pull request.
 - **PR title** (`pr-title.yml`, job `pr-title`) and **Release note** (`release-note.yml`, job `release-note`) call the shared actions in the org's `.github` repository.
 - **Screenshots** (`screenshots.yml`, job `screenshots`): a pull request that changes `apps/web/src/` (tests and `src/testing/` aside), `apps/web/index.html` or `apps/web/public/` needs an image in its description, or the `no screenshots needed` label when nothing visible changed. It runs again when the description or the labels change.
+- **PR gate** (`pr-gate.yml`, commit status `pr-gate`): high-risk paths need the `risk-approved` label, external pull requests need CodeRabbit's and the owner's approval. See [The pr-gate check](#the-pr-gate-check).
 - The `main` ruleset requires the `check`, `file-size`, `e2e`, `release-note`, `pr-title` and `screenshots` checks, one approving review (code owner review on), and allows squash merges only. A required check has to run on every pull request: a workflow with a `paths` filter (like `real-ffmpeg`) never reports on the pull requests it skips, and its missing check would block their merge. `screenshots` always runs and passes on its own when no web UI file changed.
 - The script is named `check`, not `ci`: `pnpm ci` is a pnpm built-in.
+
+## The pr-gate check
+
+`pr-gate.yml` posts a commit status `pr-gate` on every pull request's head commit (`scripts/pr-gate.ts`, tests beside it). It fails unless:
+
+- **A high-risk change carries `risk-approved`.** A pull request that changes `.github/`, `scripts/`, `docker/`, `e2e/`, any `Dockerfile*`, `.dockerignore`, `package.json`, `.npmrc`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, `.node-version`, `renovate.json`, `.coderabbit.yaml` or `apps/server/src/platform/official-plugins.ts` (`RISKY` in the script) needs the `risk-approved` label. A maintainer adds it by hand after reviewing the head commit, and it counts only when it was added after that commit was pushed. Every push removes it, so a reviewed change can't be changed afterwards; re-review and add it again. Agents never add this label, the owner does.
+- **An external pull request is approved by both CodeRabbit and the owner on its head commit.** External means from a fork, or opened by anyone but the owner account (Renovate's pull requests count as external). Both approvals have to be on the current head commit: a later push makes them stale.
+
+How it stays out of the pull request's reach:
+
+- It runs on `pull_request_target`, so GitHub runs `main`'s copy of the workflow and the script. It checks out `main`, installs nothing, and reads the pull request (files, labels, label events, reviews) only through the API, with `pull-requests: write` (to remove the label), `issues: read` and `statuses: write`.
+- A check run from `pull_request_target` would attach to `main`'s commit, so the result is a commit status on the head commit, posted with the workflow's token (the GitHub Actions app).
+- Reviews: `pr-review.yml` runs on `pull_request_review` with no permissions and does nothing; its completion starts `pr-gate.yml` again through `workflow_run`, from `main`, which finds the open pull request whose head is that commit through the API. Event fields reach the script only through `env` and the event file, and are checked before use.
+- To re-evaluate by hand: `gh workflow run pr-gate.yml --ref main -f pr=<number>`. For example, a review on a first-time contributor's fork may not start `pr-review.yml` until its run is approved.
+
+CodeRabbit approves once its blocking comments are resolved (`reviews.auto_approvals.enabled` in `.coderabbit.yaml`; everything else is at its defaults). It may not review a pull request by itself (it skips or pauses some, and its free plan has limits): when the head commit has no CodeRabbit review, comment `@coderabbitai review` on the pull request, and again after new pushes.
 
 ## On `main` and on tags
 

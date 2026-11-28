@@ -62,6 +62,7 @@ Never put secrets, API keys, real media or personal file paths in code, tests, l
 
 - CI must pass: `pnpm check`, the build, the release-note check and the PR-title check. A pull request that changes the web UI also needs screenshots in its description (the `screenshots` check).
 - A maintainer reviews it. Every pull request from a contributor needs a maintainer's approval before it can be merged.
+- The `pr-gate` check needs two approvals on your latest commit: CodeRabbit's (an automated reviewer; it approves once its comments are resolved, and a maintainer can start it with `@coderabbitai review`) and the maintainer's. Each new push needs both again. A pull request that changes CI, build or dependency files (`.github/`, `scripts/`, `docker/`, `package.json`, the lockfile and similar) also needs a maintainer to add the `risk-approved` label after reviewing it; a push removes the label.
 - A maintainer merges it with **squash merge**: your branch becomes one commit on `main`, and the pull request title becomes the commit message. The title follows the house style `Area: what changed`, for example `Engine: a stopped job keeps its partial output` (a check enforces it; see [PR titles](#pr-titles)).
 - If the pull request is meant for a particular release, a maintainer puts it in that release's milestone.
 

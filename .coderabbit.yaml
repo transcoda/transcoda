@@ -1,0 +1,9 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+# CodeRabbit requests changes for blocking findings and approves once they are resolved; the
+# pr-gate check needs that approval on an external pull request's head commit. Everything else
+# stays at CodeRabbit's defaults. (`reviews.request_changes_workflow` is the older name of this
+# setting.) CodeRabbit does not review this repository on its own: ask with a comment
+# `@coderabbitai review` (docs/dev/ci-release.md, "The pr-gate check").
+reviews:
+  auto_approvals:
+    enabled: true
