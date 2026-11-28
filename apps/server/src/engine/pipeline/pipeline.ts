@@ -24,7 +24,14 @@ import { coverFailure, coverTimeoutMs, encode } from './encode.ts';
 import { moveCopy, recycleSidecarsAfterReplace, replace } from './output.ts';
 import { runPrepare } from './prepare.ts';
 import { afterReplace, finishWritten, notify, pluginStep } from './steps.ts';
-import { recordElseBranch, traceGatePass, traceStopped } from './trace.ts';
+import {
+  recordElseBranch,
+  traceGateAfterTrackChanges,
+  traceGatePass,
+  traceStopped,
+  traceTrackChanges,
+} from './trace.ts';
+import { trackChangesFor, trackChangesReason, writeTrackChanges } from './track-changes.ts';
 import {
   type End,
   type Failure,
@@ -269,7 +276,7 @@ export class Pipeline implements JobExecutor {
     if (unverified !== null) return unverified;
     // Finish actions, in order. Once something was written, nothing is retried any more: a later
     // failure (or a stop) ends the job `done` with that problem as its reason and a warning.
-    const afterBytes = (await fs.stat(p.outputPath)).size;
+    let afterBytes = (await fs.stat(p.outputPath)).size;
     // A test-encode stops here: the gates decide on the measured size, nothing is written.
     if (job.dryRun) return this.endTestEncode(job, ctl, p, afterBytes);
     // Rendered only for its Damaged side: a good file is kept, and Done's steps (none write)
@@ -282,6 +289,7 @@ export class Pipeline implements JobExecutor {
       replacedTo: null,
       dest: null,
       mode: 'replaced',
+      note: null,
       lateCancel: false,
       problems: [],
     };
@@ -310,16 +318,39 @@ export class Pipeline implements JobExecutor {
       let failure: Failure | null = null;
       try {
         if (action.kind === 'size-gate') {
-          const saving = savingPercent(p.fp.sizeBytes, afterBytes);
           const gate = p.gates.find((g) => g.actionIndex === actionIndex);
+          if (p.trackChanges !== null) {
+            // An earlier gate wrote only the track changes: there is no encode left to measure.
+            if (gate)
+              traceGateAfterTrackChanges(this.core, job, ctl, gate, action.minSavingPercent);
+            continue;
+          }
+          const saving = savingPercent(p.fp.sizeBytes, afterBytes);
           if (saving < action.minSavingPercent) {
             const why = `saved only ${saving.toFixed(1)}%, below ${action.minSavingPercent}%`;
             if (!wrote()) {
+              const g = { saving, minSavingPercent: action.minSavingPercent };
+              let kept: { note: string } | null = null;
+              if (action.belowMinimum === 'write-track-changes') {
+                const t = await writeTrackChanges(this.core, job, ctl, p, why);
+                if (t.kind === 'end') return t.end;
+                job = t.job;
+                if (t.kind === 'written') {
+                  afterBytes = t.afterBytes;
+                  state.afterBytes = afterBytes;
+                  state.note = trackChangesReason(why);
+                  if (gate) traceTrackChanges(this.core, job, ctl, gate, g);
+                  continue;
+                }
+                kept = t;
+                // Told on the gate: its track changes were not written.
+                for (const w of t.warnings) this.core.warnNode(job, p, at, w);
+              }
               const extra = await takeElse(this.core, job, ctl, p, gate, {
-                saving,
-                minSavingPercent: action.minSavingPercent,
+                ...g,
                 afterBytes,
                 why,
+                ...(kept ? { note: kept.note } : {}),
               });
               return this.core.keepOriginal(job, ctl, p, why, extra, afterBytes);
             }
@@ -405,15 +436,37 @@ export class Pipeline implements JobExecutor {
     p: Prepared,
     afterBytes: number,
   ): Promise<End> {
+    /** Set once a gate would write the track changes only: what a real run would do. */
+    let tracks: string | null = null;
     for (const [actionIndex, action] of p.actions.entries()) {
       if (action.kind === 'replace' || action.kind === 'move-copy') break;
       if (action.kind !== 'size-gate') continue;
       const saving = savingPercent(p.fp.sizeBytes, afterBytes);
       const min = action.minSavingPercent;
       const gate = p.gates.find((g) => g.actionIndex === actionIndex);
+      if (tracks !== null) {
+        if (gate) traceGateAfterTrackChanges(this.core, job, ctl, gate, min);
+        continue;
+      }
       if (saving < min) {
-        recordElseBranch(this.core, job, ctl, p, gate, { saving, minSavingPercent: min });
         const why = `saved only ${saving.toFixed(1)}%, below ${min}%`;
+        // The test encode does not render the track changes: it says a real run would.
+        const tc =
+          action.belowMinimum === 'write-track-changes'
+            ? trackChangesFor(p.asBuilt, p.probe)
+            : null;
+        if (tc !== null) {
+          tracks = `${why} \u2192 would write track changes without re-encoding`;
+          if (gate) traceTrackChanges(this.core, job, ctl, gate, { saving, minSavingPercent: min });
+          continue;
+        }
+        recordElseBranch(this.core, job, ctl, p, gate, {
+          saving,
+          minSavingPercent: min,
+          ...(action.belowMinimum === 'write-track-changes'
+            ? { note: 'nothing but the video would change' }
+            : {}),
+        });
         return this.concludeTestEncode(job, ctl, p, 'kept_original', why, afterBytes);
       }
       if (gate) traceGatePass(this.core, job, ctl, gate, saving, min);
@@ -421,7 +474,7 @@ export class Pipeline implements JobExecutor {
     if (!p.writes) {
       return this.concludeTestEncode(job, ctl, p, 'kept_original', NEVER_WRITES, afterBytes);
     }
-    return this.concludeTestEncode(job, ctl, p, 'dry_run', null, afterBytes);
+    return this.concludeTestEncode(job, ctl, p, 'dry_run', tracks, afterBytes);
   }
 
   /**

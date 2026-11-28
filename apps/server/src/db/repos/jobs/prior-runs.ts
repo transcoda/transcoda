@@ -50,6 +50,7 @@ export function findPriorRun(
     key,
     workflowId,
     workflowVersion: opts.sameVersion ? workflowVersion : null,
+    askingVersion: workflowVersion,
   });
   if (processed) {
     const { outcome, workflowVersion: v, createdAt, matched } = processed;
@@ -72,6 +73,24 @@ export function findPriorRun(
 /** Outcomes that count as "already processed" for the Already processed node (not `failed`). */
 const PROCESSED_SQL = ['done', 'nothing_to_do', 'kept_original'].map((s) => `'${s}'`).join(',');
 
+/**
+ * The stored graph of version `version` of `workflow` (SQL expressions) has a size gate, not
+ * bypassed, that writes the track changes when the result saves too little (Below the minimum:
+ * Write track changes, `belowMinimum: 'write-track-changes'`, node version 3 on).
+ */
+const writesTrackChanges = (workflow: string, version: string) =>
+  `EXISTS (SELECT 1 FROM workflow_versions wv, json_each(wv.graph, '$.nodes') n
+     WHERE wv.workflow_id = ${workflow} AND wv.version = ${version}
+       AND json_extract(n.value, '$.type') = 'core:size-gate'
+       AND json_extract(n.value, '$.settings.belowMinimum') = 'write-track-changes'
+       AND coalesce(json_extract(n.value, '$.bypassed'), 0) = 0)`;
+
+/**
+ * A result a size gate kept: `kept_original` with the gate's reason (`saved only 4.0%, below
+ * 20%`, written by the pipeline's size gate step).
+ */
+const GATE_KEPT = `r.outcome = 'kept_original' AND j.reason LIKE 'saved only %'`;
+
 /** A real job's result that the Already processed node counts as evidence. */
 export interface ProcessedResult {
   jobId: string;
@@ -90,6 +109,12 @@ export interface ProcessedResult {
  * version when null) that ended `done`, `nothing_to_do` or `kept_original` and whose source or
  * written output has this fingerprint (`by: 'fingerprint'`) or this sampled content hash
  * (`by: 'hash'`). `excludeJobId` leaves out the asking job itself.
+ *
+ * `askingVersion` is the version of `workflowId` that asks. When its size gate writes the track
+ * changes, a file a size gate kept at a version whose gates did not (`kept_original` with the
+ * gate's reason) does not count: that version would write the track changes the older one threw
+ * away, so it takes the file again. A file kept at a version that writes them (nothing but the
+ * video would change, or the remux failed) still counts, so it is never taken again and again.
  */
 export function findProcessedResult(
   db: Database,
@@ -100,9 +125,15 @@ export function findProcessedResult(
     workflowId: string;
     workflowVersion: number | null;
     excludeJobId?: string;
+    askingVersion?: number;
   },
 ): ProcessedResult | null {
   const version = q.workflowVersion === null ? '' : 'AND r.workflow_version = @version';
+  const retake =
+    q.askingVersion === undefined
+      ? ''
+      : `AND NOT (${GATE_KEPT} AND ${writesTrackChanges('@workflowId', '@asking')}
+           AND NOT ${writesTrackChanges('r.workflow_id', 'r.workflow_version')})`;
   const [source, output] =
     q.by === 'fingerprint' ? ['fingerprint', 'output_fingerprint'] : ['source_hash', 'output_hash'];
   const select = (column: string, matched: string) =>
@@ -111,7 +142,8 @@ export function findProcessedResult(
        '${q.by}' AS by, r.rowid AS rid
      FROM job_results r JOIN jobs j ON j.id = r.job_id
      WHERE r.${column} = @fp AND r.workflow_id = @workflowId ${version}
-       AND r.outcome IN (${PROCESSED_SQL}) AND j.dry_run = 0 AND r.job_id <> @exclude`;
+       AND r.outcome IN (${PROCESSED_SQL}) AND j.dry_run = 0 AND r.job_id <> @exclude
+       ${retake}`;
   const r = db
     .prepare(
       `SELECT jobId, workflowId, workflowVersion, outcome, createdAt, matched, by FROM (
@@ -123,6 +155,7 @@ export function findProcessedResult(
       workflowId: q.workflowId,
       exclude: q.excludeJobId ?? '',
       ...(q.workflowVersion === null ? {} : { version: q.workflowVersion }),
+      ...(q.askingVersion === undefined ? {} : { asking: q.askingVersion }),
     }) as ProcessedResult | undefined;
   return r ?? null;
 }

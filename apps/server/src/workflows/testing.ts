@@ -155,7 +155,7 @@ export function testRegistry(...defs: AnyNodeDefinition[]): NodeRegistry {
 }
 
 const VERSIONS: Record<string, number> = {
-  'core:size-gate': 2,
+  'core:size-gate': 3,
   'core:encode-video': 2,
   'core:encode-audio': 3,
 };

@@ -86,6 +86,11 @@ export interface Prepared {
   stat: Stats;
   probe: ProbeResult;
   model: BuildModel;
+  /**
+   * The model as the walk built it (pictures copied), before the default flags were made what the
+   * output will have: a size gate's track changes start from it (same streams, same order).
+   */
+  asBuilt: BuildModel;
   /** Indexes into `model.streams` that Encode video put on an encoder by itself (`auto`). */
   autoStreams: Set<number>;
   /** The encode slots the job fits, as computed at prepare. */
@@ -102,8 +107,11 @@ export interface Prepared {
   /** The walk through `pass` as the build left it; a failing gate swaps the tail for its else. */
   walkPath: WalkStep[];
   plan: JobPlan;
-  /** The plan of another model for the same streams (a retarget or the software fallback). */
-  replan: (model: BuildModel) => JobPlan;
+  /**
+   * The plan of another model for the same streams (a retarget or the software fallback), or for
+   * some of them: `origins` gives each stream's index in the built model (default: the same index).
+   */
+  replan: (model: BuildModel, origins?: readonly number[]) => JobPlan;
   tempDir: string;
   outputPath: string;
   logPath: string;
@@ -131,6 +139,11 @@ export interface Prepared {
   /** What verify read of the output once it passed; null before (kept with the result). */
   outputProbe: ProbeResult | null;
   /**
+   * Set once a size gate replaced the encoded output with the plan's track changes alone (the
+   * video kept as it is): `reason` is what the job's result says. Later gates do not measure again.
+   */
+  trackChanges: { reason: string } | null;
+  /**
    * Set once a finish action wrote (a replace installed, a move-copy done): from then on the job
    * ends `done`, whatever happens later (the catch-all in execute reads it too).
    */
@@ -144,6 +157,8 @@ export interface Written {
   /** Where the result now is: the original's path after a replace, the destination of a move-copy. */
   dest: string | null;
   mode: 'replaced' | 'moved' | 'copied' | 'kept';
+  /** What the job's reason says when nothing went wrong (a size gate's track changes); else null. */
+  note: string | null;
   lateCancel: boolean;
   problems: string[];
 }

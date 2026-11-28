@@ -61,6 +61,7 @@ import {
   slotFitOf,
 } from './plan.ts';
 import { gateFindings, traceFinish, traceGate } from './trace.ts';
+import { trackChangesFor } from './track-changes.ts';
 import {
   fileStatsOf,
   logPathFor,
@@ -242,6 +243,8 @@ export async function runPrepare(
   const { model, actions, gates, damaged } = built;
   // A picture a node set to convert is copied (see copyPictures).
   const pictureNotes = copyPictures(model, probe);
+  // A size gate that writes track changes starts from the plan as built, before the flags below.
+  const asBuilt = structuredClone(model);
   // Default flags as the output will have them (verify compares them strictly); a model that
   // writes nothing is left as it is.
   const defaultNotes = isIdentity(model, probe)
@@ -319,7 +322,8 @@ export async function runPrepare(
     // The plan cannot know what a gate will decide: the walk lists both branches and the gate
     // says so (the web shows both as possible). A gate before the write makes the outcome
     // "depends on size" (#41), recorded in the plan.
-    const decides = sizeGateDecides(actions);
+    const tracksWritable = trackChangesFor(asBuilt, probe) !== null;
+    const decides = sizeGateDecides(actions, tracksWritable);
     const dryBase = decides ? { ...base, plan: { ...plan, dependsOnSize: decides } } : base;
     // A gate's own step, and a Render with a Damaged side, leave by no port: the result
     // decides, both branches are possible.
@@ -355,10 +359,15 @@ export async function runPrepare(
       });
     }
     for (const g of gates) {
-      const min = gateMinimum(actions[g.actionIndex]);
+      const action = actions[g.actionIndex];
+      const min = gateMinimum(action);
+      const tracks = tracksWritable && action?.kind === 'size-gate' && action.belowMinimum;
       traceGate(core, job, ctl, g.nodeId, {
         port: null,
-        reason: `Size gate: decides after encoding: keep if it saves less than ${min}%`,
+        reason:
+          tracks === 'write-track-changes'
+            ? `Size gate: decides after encoding: if it saves less than ${min}%, write the track changes only`
+            : `Size gate: decides after encoding: keep if it saves less than ${min}%`,
         findings: gateFindings(min),
       });
     }
@@ -380,6 +389,7 @@ export async function runPrepare(
     stat,
     probe,
     model,
+    asBuilt,
     autoStreams: auto,
     actions,
     gates,
@@ -390,10 +400,10 @@ export async function runPrepare(
     plan,
     // Retarget and the software fallback keep the streams in order, so each note stays with
     // the stream at its index.
-    replan: (other) => {
+    replan: (other, origins) => {
       const notes = new Map<StreamPlan, string>();
       for (const [i, s] of other.streams.entries()) {
-        const note = defaultNotes.get(model.streams[i] as StreamPlan);
+        const note = defaultNotes.get(model.streams[origins?.[i] ?? i] as StreamPlan);
         if (note !== undefined) notes.set(s, note);
       }
       return planOf(other, probe, originalLanguage, notes);
@@ -411,6 +421,7 @@ export async function runPrepare(
     estimatedBytes,
     warnings,
     outputProbe: null,
+    trackChanges: null,
     written: null,
     fit: 'software',
   };
@@ -465,6 +476,7 @@ function coreTools(
           db: core.deps.db,
           jobId: job.id,
           jobWorkflowId: job.workflowId,
+          jobWorkflowVersion: job.workflowVersion,
           fingerprint: fingerprintKey(fp),
           contentHash: contentHashOnce,
         },

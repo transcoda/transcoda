@@ -14,7 +14,7 @@ describe('core nodes', () => {
   it.each(coreNodes.map((d) => [d.type, d] as const))('%s has consistent metadata', (_, def) => {
     expect(def.type).toMatch(/^core:[a-z-]+$/);
     const versions: Record<string, number> = {
-      'core:size-gate': 2,
+      'core:size-gate': 3,
       'core:encode-video': 2,
       'core:encode-audio': 3,
     };
@@ -208,19 +208,28 @@ describe('core nodes', () => {
     expect(find('core:encode-audio').requires).toEqual({ encoders: ['aac'], filters: ['pan'] });
   });
 
-  it('core:size-gate is version 2 with pass and else file outputs; v1 had one output "file"', () => {
+  it('core:size-gate is version 3 with pass and else file outputs; v1 had one output "file"; v3 added belowMinimum', () => {
     const def = find('core:size-gate');
-    expect(def.version).toBe(2);
+    expect(def.version).toBe(3);
     expect(def.outputs).toEqual([
       { id: 'pass', label: 'Yes', type: 'file' },
       { id: 'else', label: 'No', type: 'file' },
     ]);
-    expect(def.migrations).toMatchObject([{ from: 1, to: 2, risk: 'safe' }]);
+    expect(def.migrations).toMatchObject([
+      { from: 1, to: 2, risk: 'safe' },
+      { from: 2, to: 3, risk: 'safe' },
+    ]);
     expect(def.migrations?.[0]?.renameOutputs).toEqual({ file: 'pass' });
     // settings are unchanged
     expect(def.migrations?.[0]?.migrate({ minSavingPercent: 15 })).toEqual({
       minSavingPercent: 15,
     });
+    // A saved gate keeps the original below its minimum, as it did before.
+    expect(def.migrations?.[1]?.migrate({ minSavingPercent: 15 })).toEqual({
+      minSavingPercent: 15,
+      belowMinimum: 'keep-original',
+    });
+    expect(def.settings.parse({})).toEqual({ minSavingPercent: 10, belowMinimum: 'keep-original' });
   });
 
   it('the core finish nodes carry their phases', () => {

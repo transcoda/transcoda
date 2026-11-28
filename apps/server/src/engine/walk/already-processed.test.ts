@@ -4,8 +4,9 @@ import type { Database } from '../../db/open.ts';
 import { insertJob, insertJobResult, updateJob } from '../../db/repos/jobs/jobs.ts';
 import { insertLibrary } from '../../db/repos/libraries.ts';
 import { insertRun } from '../../db/repos/runs.ts';
-import { insertWorkflow } from '../../db/repos/workflows.ts';
+import { appendVersion, insertWorkflow } from '../../db/repos/workflows.ts';
 import { createTestDb } from '../../db/testing.ts';
+import { mainGraph, node } from '../../workflows/testing.ts';
 import { type AlreadyProcessedSubject, alreadyProcessed } from './already-processed.ts';
 
 const now = new Date('2026-10-28T15:00:00.000Z');
@@ -29,6 +30,7 @@ function result(o: {
   sourceHash?: string | null;
   outputHash?: string | null;
   dryRun?: boolean;
+  reason?: string;
 }): string {
   n += 1;
   const id = `j${n}`;
@@ -50,7 +52,7 @@ function result(o: {
     now,
   );
   const outcome = o.outcome ?? 'done';
-  updateJob(db, id, { state: outcome }, now);
+  updateJob(db, id, { state: outcome, reason: o.reason ?? null }, now);
   insertJobResult(db, {
     jobId: id,
     fingerprint: o.fingerprint ?? 'other',
@@ -76,10 +78,15 @@ function result(o: {
   return id;
 }
 
-const subject = (jobWorkflowId = SAVE, hash: string | null = HASH): AlreadyProcessedSubject => ({
+const subject = (
+  jobWorkflowId = SAVE,
+  hash: string | null = HASH,
+  jobWorkflowVersion = 3,
+): AlreadyProcessedSubject => ({
   db,
   jobId: 'asking',
   jobWorkflowId,
+  jobWorkflowVersion,
   fingerprint: FILE,
   contentHash: async () => {
     hashed += 1;
@@ -233,5 +240,57 @@ describe('already processed', () => {
 
   it('a deleted or unknown workflow is named by its id and answers no', async () => {
     expect((await ask(subject(), 'gone', 1)).reason).toBe('not processed by gone v1');
+  });
+});
+
+describe('already processed: a size gate that now writes the track changes', () => {
+  const KEPT = 'saved only 4.0%, below 20%';
+  /** SAVE v2 keeps the original below its minimum; v3 writes the track changes. */
+  beforeEach(() => {
+    const gated = (belowMinimum: string) =>
+      mainGraph([
+        node('in', 'core:input-manual'),
+        node('sg', 'core:size-gate', { minSavingPercent: 20, belowMinimum }),
+      ]);
+    for (const [base, mode] of [
+      [1, 'keep-original'],
+      [2, 'write-track-changes'],
+    ] as const) {
+      appendVersion(
+        db,
+        { workflowId: SAVE, baseVersion: base, graph: gated(mode), note: null, createdBy: 'u' },
+        now,
+      );
+    }
+  });
+
+  it('a file an older version kept for its size is not processed for a version that writes track changes', async () => {
+    result({ version: 2, outcome: 'kept_original', fingerprint: FILE, reason: KEPT });
+    expect(await ask(subject(SAVE, null, 3))).toMatchObject({ processed: false });
+    // The older version itself, and a question about a set version, still count it.
+    expect(await ask(subject(SAVE, null, 2))).toMatchObject({ processed: true });
+    expect(await ask(subject(SAVE, null, 3), null, 2)).toMatchObject({ processed: true });
+    // Asked about another workflow's history, the job's version does not decide.
+    expect(await ask(subject(CLEAN, null, 3), SAVE)).toMatchObject({ processed: true });
+  });
+
+  it('a file kept by a version that writes track changes, or kept for another reason, stays processed', async () => {
+    result({ version: 3, outcome: 'kept_original', fingerprint: FILE, reason: KEPT });
+    expect(await ask(subject(SAVE, null, 3))).toMatchObject({ processed: true });
+  });
+
+  it('other outcomes and reasons of the older version still count', async () => {
+    result({
+      version: 2,
+      outcome: 'kept_original',
+      fingerprint: FILE,
+      reason: 'path never writes the result',
+    });
+    expect(await ask(subject(SAVE, null, 3))).toMatchObject({ processed: true });
+  });
+
+  it('a done result of the older version still counts', async () => {
+    result({ version: 2, outcome: 'done', fingerprint: FILE });
+    expect(await ask(subject(SAVE, null, 3))).toMatchObject({ processed: true });
   });
 });

@@ -1,6 +1,6 @@
 # Writing a Transcoda plugin
 
-For plugin authors. The SDK is `@transcoda/sdk` (version `1.3.0`; the surface is frozen for 1.x and the full reference is [`packages/sdk/README.md`](../packages/sdk/README.md)). A plugin is one self-contained JavaScript file, built from TypeScript, that Transcoda installs into `/config/plugins` and runs in its own sandboxed process. Official plugins live in the separate `transcoda-plugins` repository; its `plugins/example` is the smallest working one. Install the SDK from npm with `npm install --save-dev @transcoda/sdk zod` (plugins bundle it, so it is a dev dependency).
+For plugin authors. The SDK is `@transcoda/sdk` (version `1.4.0`; the surface is frozen for 1.x and the full reference is [`packages/sdk/README.md`](../packages/sdk/README.md)). A plugin is one self-contained JavaScript file, built from TypeScript, that Transcoda installs into `/config/plugins` and runs in its own sandboxed process. Official plugins live in the separate `transcoda-plugins` repository; its `plugins/example` is the smallest working one. Install the SDK from npm with `npm install --save-dev @transcoda/sdk zod` (plugins bundle it, so it is a dev dependency).
 
 ## What a plugin is
 
@@ -126,7 +126,7 @@ Finish nodes run in phases: `render` (core only: the encode), `gate`, `write` (c
 
 (`renameOutputs` on a node migration, which re-keys edges, is read for core nodes only; a plugin's migrations cannot rename ports and the field is ignored.)
 
-A step wired to the **No** (`else`) output of `core:size-gate` runs when the gate failed and nothing was written: `outcome` is `'kept'`, `newPath` equals `originalPath`, `replacedTo` is `null`, `afterBytes` is the size of the discarded result, `containerChanged` is `false`, and `gate` is `{ savedPercent, minSavingPercent }`. On every other path `gate` is `null` and `outcome` is `'replaced'`, `'moved'` or `'copied'`. Only the `notify`, `media-server` and `library-manager` phases may follow else; the same failure rules apply, except that a required step's failure is recorded as a warning (the job is `kept_original`, not `done`).
+A step wired to the **No** (`else`) output of `core:size-gate` runs when the gate failed and nothing was written: `outcome` is `'kept'`, `newPath` equals `originalPath`, `replacedTo` is `null`, `afterBytes` is the size of the discarded result, `containerChanged` is `false`, and `gate` is `{ savedPercent, minSavingPercent }`. On every other path `gate` is `null` and `outcome` is `'replaced'`, `'moved'` or `'copied'`, also when a gate set to write track changes took Yes with a remux (the video copied, `afterBytes` the remux's size). Only the `notify`, `media-server` and `library-manager` phases may follow else; the same failure rules apply, except that a required step's failure is recorded as a warning (the job is `kept_original`, not `done`).
 
 ### The Damaged side (SDK 1.1)
 

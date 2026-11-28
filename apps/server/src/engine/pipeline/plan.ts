@@ -240,17 +240,22 @@ export function renderOnPath(
 /**
  * Whether a size gate decides the outcome: the strictest minimum saving of the size gates before
  * the first replace or move-copy in the walked actions; null without a write or without such a
- * gate. A gate on a branch not taken or a bypassed gate adds no action, so it never counts.
+ * gate. A gate on a branch not taken or a bypassed gate adds no action, so it never counts. Nor
+ * does a gate that writes the track changes when `tracksWritable` (the plan has changes besides
+ * the video): the file is written either way.
  */
 export function sizeGateDecides(
   actions: readonly AnyFinishAction[],
+  tracksWritable = false,
 ): { minSavingPercent: number } | null {
   let min: number | null = null;
   for (const a of actions) {
     if (a.kind === 'replace' || a.kind === 'move-copy') {
       return min === null ? null : { minSavingPercent: min };
     }
-    if (a.kind === 'size-gate') min = Math.max(min ?? a.minSavingPercent, a.minSavingPercent);
+    if (a.kind !== 'size-gate') continue;
+    if (tracksWritable && a.belowMinimum === 'write-track-changes') continue;
+    min = Math.max(min ?? a.minSavingPercent, a.minSavingPercent);
   }
   return null;
 }

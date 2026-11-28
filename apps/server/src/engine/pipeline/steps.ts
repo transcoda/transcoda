@@ -54,12 +54,14 @@ export async function finishWritten(
   // Temp goes before the final state is written: a retry or the next job may reuse the dir.
   await core.removeTemp(job.id);
   const { outputFingerprint, outputHash } = await outputIdentityOf(core, job, w);
-  const reason =
+  const trouble =
     w.problems.length > 0
       ? `finished with a problem: ${w.problems.join('; ')}`
       : w.lateCancel
         ? 'canceled too late'
         : null;
+  // A size gate's track changes say so first: the result is not the encode.
+  const reason = [w.note, trouble].filter((t) => t !== null).join('; ') || null;
   core.finish(
     findJob(core.deps.db, job.id) ?? job,
     ctl,

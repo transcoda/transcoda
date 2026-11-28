@@ -567,8 +567,8 @@ describe('WorkflowService', () => {
       if (loaded.kind !== 'ok') throw new Error(JSON.stringify(loaded));
       expect(ports(loaded.graph)).toEqual(['in.file', 'render-1.done', 'sg.pass']);
       expect(loaded.graph.nodes.find((n) => n.id === 'sg')).toMatchObject({
-        typeVersion: 2,
-        settings: { minSavingPercent: 20 },
+        typeVersion: 3,
+        settings: { minSavingPercent: 20, belowMinimum: 'keep-original' },
       });
       expect(activeOf(w)).toMatchObject({ version: 2, runnable: true });
     });
@@ -586,7 +586,7 @@ describe('WorkflowService', () => {
       ]);
       expect(svc.versions(w)?.[0]).toMatchObject({
         version: 3,
-        note: 'Updated Size gate 1\u21922',
+        note: 'Updated Size gate 1\u21923',
         createdBy: 'system:upgrade',
       });
       // v2 (the active one) is stored as v1 wrote it, but shown as the engine runs it: no

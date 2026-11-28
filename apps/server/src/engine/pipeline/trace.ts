@@ -56,6 +56,40 @@ export function traceGatePass(
 }
 
 /**
+ * Traces a gate whose result saved too little and that writes the track changes instead (or, in
+ * a test encode, would): it continues on Yes.
+ */
+export function traceTrackChanges(
+  core: PipelineCore,
+  job: JobRow,
+  ctl: JobControl,
+  gate: GateBranch,
+  g: { saving: number; minSavingPercent: number },
+): void {
+  const what = job.dryRun ? 'would write' : 'wrote';
+  traceGate(core, job, ctl, gate.nodeId, {
+    port: 'pass',
+    reason: `Size gate: saved ${g.saving.toFixed(1)}%, below ${g.minSavingPercent}% \u2192 ${what} track changes without re-encoding \u2192 yes`,
+    findings: { ...gateFindings(g.minSavingPercent, g.saving), trackChanges: true },
+  });
+}
+
+/** Traces a gate after an earlier gate's track changes: nothing was encoded to measure. */
+export function traceGateAfterTrackChanges(
+  core: PipelineCore,
+  job: JobRow,
+  ctl: JobControl,
+  gate: GateBranch,
+  minSavingPercent: number,
+): void {
+  traceGate(core, job, ctl, gate.nodeId, {
+    port: 'pass',
+    reason: 'Size gate: only the track changes are written, nothing to measure \u2192 yes',
+    findings: { ...gateFindings(minSavingPercent), trackChanges: true },
+  });
+}
+
+/**
  * Adds a finish-phase entry to the job's trace after the walk: a size gate's branch, or a
  * plugin finish step's own answer (after the walk's planned entry for that node).
  */
@@ -135,12 +169,13 @@ export function recordElseBranch(
   ctl: JobControl,
   p: Prepared,
   gate: GateBranch | undefined,
-  g: { saving: number; minSavingPercent: number },
+  /** `note`: why a gate that writes track changes kept the original after all. */
+  g: { saving: number; minSavingPercent: number; note?: string },
 ): void {
   if (!gate) return;
   traceGate(core, job, ctl, gate.nodeId, {
     port: 'else',
-    reason: `Size gate: saved ${g.saving.toFixed(1)}%, below ${g.minSavingPercent}% \u2192 no`,
+    reason: `Size gate: saved ${g.saving.toFixed(1)}%, below ${g.minSavingPercent}% \u2192 no${g.note ? ` (${g.note})` : ''}`,
     findings: gateFindings(g.minSavingPercent, g.saving),
   });
   const at = p.walkPath.findIndex((s) => s.workflowPath.length === 0 && s.nodeId === gate.nodeId);
@@ -157,9 +192,10 @@ export function recordElseBranch(
 
 /**
  * A size gate's decision entry's findings: the minimum saving and, once measured, the saving
- * (percent, one decimal), so screens need not read them out of the reason.
+ * (percent, one decimal), so screens need not read them out of the reason. `trackChanges`: the
+ * gate went on with the track changes alone (the video kept as it is).
  */
-type GateFindings = { minSavingPercent: number; savedPercent?: number };
+type GateFindings = { minSavingPercent: number; savedPercent?: number; trackChanges?: true };
 
 export function gateFindings(minSavingPercent: number, saving?: number): GateFindings {
   return saving === undefined

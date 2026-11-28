@@ -67,7 +67,7 @@ describe('migrationPath', () => {
   });
 });
 
-describe('size gate v1 → v2', () => {
+describe('size gate v1 → v3', () => {
   const v1Gate = () =>
     mainGraph(
       [
@@ -80,11 +80,12 @@ describe('size gate v1 → v2', () => {
 
   it('is a safe migration that re-keys the v1 output edge to pass and keeps the settings', () => {
     const p = planNodeUpgrades(v1Gate(), testRegistry());
-    expect(p).toMatchObject({ kind: 'upgraded', risk: 'safe', notes: ['Updated Size gate 1→2'] });
+    expect(p).toMatchObject({ kind: 'upgraded', risk: 'safe', notes: ['Updated Size gate 1→3'] });
     const { graph } = p as Extract<UpgradePlan, { kind: 'upgraded' }>;
+    // v3 adds what the gate does below its minimum: keep the original, as before.
     expect(graph.nodes.find((n) => n.id === 'sg')).toMatchObject({
-      typeVersion: 2,
-      settings: { minSavingPercent: 20 },
+      typeVersion: 3,
+      settings: { minSavingPercent: 20, belowMinimum: 'keep-original' },
     });
     expect(graph.edges.map((e) => [e.from.node, e.from.port, e.to.node, e.to.port])).toEqual([
       ['in', 'file', 'render-1', 'file'],

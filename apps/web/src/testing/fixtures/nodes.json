@@ -1213,10 +1213,10 @@
     },
     {
       "type": "core:size-gate",
-      "version": 2,
+      "version": 3,
       "kind": "finish",
       "title": "Size gate",
-      "description": "Did the result save enough space? Yes: the finish steps continue. No: the original is kept and only the steps wired to No run.",
+      "description": "Did the result save enough space? Yes: the finish steps continue. No: the original is kept and only the steps wired to No run, unless the gate is set to write the track changes alone.",
       "icon": "scale",
       "inputs": [
         {
@@ -1247,6 +1247,15 @@
             "type": "number",
             "minimum": 0,
             "maximum": 100
+          },
+          "belowMinimum": {
+            "default": "keep-original",
+            "description": "When it saves less; keep original takes No and writes nothing. Write track changes keeps the video as it is, writes the other changes (tracks removed, default track, order, titles) without re-encoding and takes Yes; with no such changes the original is kept",
+            "type": "string",
+            "enum": [
+              "keep-original",
+              "write-track-changes"
+            ]
           }
         }
       },
