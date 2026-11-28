@@ -61,7 +61,8 @@ jobs:
           name: sdk-tarball
           path: ${{ runner.temp }}/sdk/transcoda-sdk-*.tgz
           if-no-files-found: error
-          retention-days: 1
+          # Longer than the npm environment's longest approval wait (30 days).
+          retention-days: 35
 
   # Publishes the tarball the build job packed. Waits for approval in the npm environment, which
   # npm's trusted publishing names; it installs nothing and restores no cache, so no dependency
