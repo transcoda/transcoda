@@ -490,19 +490,12 @@ describe('validateWorkflow', () => {
       ]);
     });
 
-    it('NO_WRITE_PATH is port-aware: a condition with only else connected warns on pass; a diamond is walked once per (node, flags)', () => {
+    it('NO_WRITE_PATH is not warned on an open output beside a connected one (a deliberate "nothing to do" end); a diamond is walked once per (node, flags)', () => {
       const g = branching(
         [node('sg', 'core:size-gate'), node('ro', 'core:replace-original')],
         [edge('vi', 'sg', { from: 'else' }), edge('sg', 'ro', { from: 'pass' })],
       );
-      expect(validateWorkflow(g, ctx())).toEqual([
-        {
-          severity: 'warning',
-          code: 'NO_WRITE_PATH',
-          message: 'this path never writes the result (output "Yes" is unconnected)',
-          nodeId: 'vi',
-        },
-      ]);
+      expect(validateWorkflow(g, ctx())).toEqual([]);
 
       // in → kl → {a0, a1, a2} → (a Render each) → sg → ro: sg and ro are expanded once, not
       // three times
