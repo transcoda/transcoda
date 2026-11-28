@@ -76,20 +76,21 @@ describe('JobResult', () => {
     expect(container.querySelector('.job-result-meta')?.textContent).toBe('Original restored');
   });
 
-  it('a size gate that wrote the track changes alone keeps the sizes and says why in a line below', () => {
+  it('a size gate that wrote the track changes alone leads with the written file; the discarded re-encode is the reason below', () => {
+    // The re-encode grew by 1.9%; the written file (a language removed) is 13% smaller.
     const { container } = render(
       <JobResult
         job={{
           state: 'done',
           dryRun: false,
-          reason: 'saved only 4.0%, below 20% → wrote track changes without re-encoding',
-          result: { ...DONE, afterBytes: 465_000 },
+          reason: 'saved only -1.9%, below 30% → wrote track changes without re-encoding',
+          result: { ...DONE, afterBytes: 410_000 },
         }}
       />,
     );
-    expect(head(container)).toBe('472 kB → 465 kB−1%');
+    expect(head(container)).toBe('472 kB → 410 kB−13%');
     expect(container.querySelector('.job-result-text')?.textContent).toBe(
-      'Saved only 4% (gate ≥ 20%), so the video was kept as it is and only the track changes were written.',
+      'Track changes only: the file is 13% smaller. The re-encode came out 1.9% bigger (at least 30% smaller needed), so it was discarded and the video kept as it is.',
     );
     expect(container.querySelector('.job-result')?.classList.contains('is-ok')).toBe(true);
   });
@@ -108,7 +109,7 @@ describe('JobResult', () => {
     );
     expect(head(container)).toBe('Would write track changes');
     expect(container.querySelector('.job-result-text')?.textContent).toBe(
-      'Saved only 4% (gate ≥ 20%), so a real run would keep the video as it is and write only the track changes.',
+      'The test encode came out only 4% smaller (at least 20% needed), so a real run would keep the video as it is and write only the track changes.',
     );
     expect(container.querySelector('.job-result-pct')).toBeNull();
   });

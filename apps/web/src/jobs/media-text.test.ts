@@ -76,6 +76,14 @@ describe('resultLines', () => {
       sizes: '1.42 GB → 610 MB',
       change: 'saved 57% · 810 MB',
       tone: 'saved',
+      note: null,
+    });
+  });
+  it('says track changes only when the size gate wrote them instead of the re-encode', () => {
+    const reason = 'saved only -1.9%, below 30% → wrote track changes without re-encoding';
+    expect(resultLines(finished(1000, 870, { reason }))).toMatchObject({
+      change: 'saved 13% · 130 B',
+      note: 'Track changes only',
     });
   });
   it('prints growth', () => {

@@ -1,6 +1,7 @@
 // The Size gate's step sentence on the job page: what it measured and what it did (or would do).
 import type { JsonValue } from '@transcoda/shared';
 import type { Decision } from '../../editor/trace/trace-overlay.ts';
+import { gateMissWords } from '../job-text.ts';
 
 const num = (v: JsonValue | undefined): number | null => (typeof v === 'number' ? v : null);
 
@@ -16,10 +17,7 @@ export function sizeGateSentence(
 ): string {
   const min = num(d.findings.minSavingPercent) ?? num(d.settings.minSavingPercent) ?? 10;
   const saved = num(d.findings.savedPercent);
-  const how = (n: number) =>
-    n < 0
-      ? `${-n}% bigger (at least ${min}% smaller needed)`
-      : `only ${n}% smaller (at least ${min}% needed)`;
+  const how = (n: number) => gateMissWords(n, min);
   // Saved too little, but the gate wrote (or would write) the track changes and went on to Yes.
   if (d.findings.trackChanges === true && d.branch === 'pass') {
     if (saved === null)
@@ -27,8 +25,9 @@ export function sizeGateSentence(
     if (dryRun) {
       return `The test encode came out ${how(saved)}, so a real run would keep the video as it is and write only the track changes`;
     }
+    // "The re-encode", not "the result": the file written is the track changes, not the encode.
     const was = past ? 'was' : 'is';
-    return `The result ${was} ${how(saved)}, so the video ${was} kept as it is and only the track changes ${past ? 'were' : 'are'} written`;
+    return `The re-encode ${was} ${how(saved)}, so the video ${was} kept as it is and only the track changes ${past ? 'were' : 'are'} written`;
   }
   if (dryRun && saved !== null && (d.branch === 'pass' || d.branch === 'else')) {
     // A test encode measured it: what a real run would then do.

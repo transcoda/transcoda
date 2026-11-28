@@ -103,8 +103,9 @@ function linesOf(job: ResultJob): Lines {
     const would = verdict === 'dry' ? [measured?.word ?? stateWord(job)] : [];
     return {
       headline: sizesHeadline(before, after, estimated),
-      // A size gate that saved too little and wrote the track changes alone says why.
-      text: trackChangesText(job.reason),
+      // A size gate that saved too little wrote the track changes alone: the sizes are the file it
+      // wrote, and the line under them says so before the discarded re-encode's percent.
+      text: trackChangesText(job.reason, { before, after }),
       meta: [...would, ...whereOf(job)],
     };
   }

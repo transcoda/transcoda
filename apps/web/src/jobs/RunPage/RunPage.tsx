@@ -24,6 +24,8 @@ import {
   reasonOf,
   sentence,
   testEncodeOutcome,
+  trackChangesLine,
+  writesTrackChangesOnly,
 } from '../job-text.ts';
 import { QUEUE_PAUSED_TEXT } from '../QueueBar.tsx';
 import { useQueue } from '../use-queue.ts';
@@ -35,8 +37,12 @@ type RunFile = RunDetail['files'][number];
 /** The estimate a dry-run file carries (only a file that would be rewritten has one). */
 const estimateOf = (f: RunFile): number | null => (f.state === 'dry_run' ? f.estimatedBytes : null);
 
-/** A test-encode file that would be rewritten: the size its output measured. */
-const measuredOf = (f: RunFile): number | null => (f.state === 'dry_run' ? f.afterBytes : null);
+/**
+ * A test-encode file that would be rewritten: the size its output measured. None when its size
+ * gate would write the track changes alone: the encode is not what a run writes.
+ */
+const measuredOf = (f: RunFile): number | null =>
+  f.state === 'dry_run' && !writesTrackChangesOnly(f.reason) ? f.afterBytes : null;
 
 /** A test-encode file's measured outcome ("Would replace", "315 MB → 190 MB (−40%)"), else null. */
 function measuredOutcome(f: RunFile): { word: string; detail: string } | null {
@@ -66,6 +72,10 @@ function noteText(f: RunFile, testEncode: boolean, queuePaused: boolean): string
   // A queued file says why it waits, as the Jobs list does ("Queue paused").
   const wait = queuedWait(f, queuePaused);
   if (wait) return wait;
+  // A size gate that wrote (or would write) the track changes alone: the size is the written
+  // file's, so the note says so and names the discarded re-encode's percent.
+  const tracks = trackChangesLine(f.reason);
+  if (tracks) return tracks;
   const measured = testEncode ? measuredOutcome(f) : null;
   if (measured) return f.state === 'dry_run' ? null : sentence(measured.detail);
   if (f.state === 'dry_run' && f.planSummary) return sentence(f.planSummary);

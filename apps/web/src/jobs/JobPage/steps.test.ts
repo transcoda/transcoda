@@ -607,7 +607,7 @@ describe('steps: one sentence and a badge per node', () => {
       findings: { minSavingPercent: 20, savedPercent: 4, trackChanges: true },
     };
     expect(one(wrote, DONE).sentence).toBe(
-      'The result was only 4% smaller (at least 20% needed), so the video was kept as it is and only the track changes were written',
+      'The re-encode was only 4% smaller (at least 20% needed), so the video was kept as it is and only the track changes were written',
     );
     expect(one(wrote).sentence).toBe(
       'The test encode came out only 4% smaller (at least 20% needed), so a real run would keep the video as it is and write only the track changes',
