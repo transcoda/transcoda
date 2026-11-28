@@ -91,10 +91,7 @@ export const REGISTRIES = [
 
 /** The one file that imports pages, and folders that are part of a page today. */
 const APP_ROUTES = 'apps/web/src/App.tsx';
-export const PAGE_PARTS: Record<string, string> = {
-  // today: the settings sections belong to SettingsPage until they move to settings/.
-  'apps/web/src/pages/settings/': 'apps/web/src/pages/SettingsPage.tsx',
-};
+export const PAGE_PARTS: Record<string, string> = {};
 
 export const SOFT_MAX_LINES = 800;
 export const ALLOWLIST = 'scripts/structure-allowlist.json';

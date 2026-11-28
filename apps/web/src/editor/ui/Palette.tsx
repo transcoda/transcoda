@@ -5,7 +5,7 @@ import { KIND_WORD } from '../../components/Chips.tsx';
 import { Icon } from '../../components/Icon.tsx';
 import { NodeIcon } from '../../components/NodeIcon.tsx';
 import type { Catalog } from '../../hooks/use-catalog.ts';
-import { envDocsUrl } from '../../pages/settings/source-text.ts';
+import { envDocsUrl } from '../../settings/source-text.ts';
 
 export type PaletteItem =
   | { kind: 'node'; def: NodeInfo }

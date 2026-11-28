@@ -36,16 +36,12 @@
     "apps/server/src/mcp/test-client.ts",
     "apps/server/src/metrics/parse-exposition.ts",
     "apps/server/src/workflows/test-helpers.ts",
-    "apps/web/src/pages/settings/settings-fixture.ts",
     "apps/web/src/styles/css-source.ts",
     "apps/web/src/styles/design-exceptions.ts"
   ],
-  "pageImports": [
-    "apps/web/src/editor/ui/Palette.tsx -> apps/web/src/pages/settings/source-text.ts",
-    "apps/web/src/pages/LibraryFilePage.tsx -> apps/web/src/jobs/JobsPage.tsx"
-  ],
+  "pageImports": ["apps/web/src/libraries/LibraryFilePage.tsx -> apps/web/src/jobs/JobsPage.tsx"],
   "folderNames": [],
-  "smallFolders": ["apps/server/src/settings", "apps/web/src/auth", "apps/web/src/data"],
+  "smallFolders": ["apps/server/src/settings", "apps/web/src/data"],
   "orphanTests": [
     "apps/server/src/db/migration-conventions.test.ts",
     "apps/server/src/mcp/mcp-docs.test.ts",
@@ -87,7 +83,7 @@
     "apps/web/src/jobs/JobPage/steps.ts": 1066,
     "apps/web/src/jobs/JobsPage.tsx": 947,
     "apps/web/src/pages/EditorPage.tsx": 1344,
-    "apps/web/src/pages/LibrariesPage.tsx": 863,
+    "apps/web/src/libraries/LibrariesPage.tsx": 863,
     "apps/web/src/styles/job-page.css": 1415,
     "apps/web/src/styles/jobs.css": 1100,
     "apps/web/src/styles/plugins.css": 835

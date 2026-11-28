@@ -12,7 +12,7 @@ Dependencies point one way: `packages/shared` ← `packages/sdk` ← `packages/c
 
 - **`packages/`**: `shared` (types and pure helpers both sides use), `sdk` (the published plugin and node SDK, `defineNode`), `contract` (every API procedure's route, input, output and errors, oRPC).
 - **`apps/server/src`**: `app/` (the composition root: app, bootstrap, deps wiring), `platform/` (logger, `config.ts` with the environment variables, process guards, disk and child-process helpers); `rpc/` (procedures, guards), `http/` (plain routes), `auth/` (sessions, tokens, host check, proxies); `db/` (SQLite, migrations, repos, backups), `settings/`, `system/` (health, app update, folder browsing); `engine/` (`model/` what to do to a file, `files/` the library on disk, `media/` probing and sidecars, `encode/` the ffmpeg child, `verify/`, `walk/` the workflow walk, `queue/` the queue and scheduler, `pipeline/` a job's run), `capabilities/` (ffmpeg and GPU probes), `nodes/` (core nodes, registry), `workflows/` (validation, versions, activation); `plugins/` and `plugin-host/` (sandboxed plugin processes), `mcp/`, `metrics/`.
-- **`apps/web/src`**: `App.tsx` (routes), `pages/` (the pages not yet in their feature), `jobs/` (the Jobs, job and run pages and their parts), `recycle/`, `editor/` (`model/` pure, `flow/` React Flow, `ui/`, `trace/`), `api/`, `hooks/`, `components/`, `shell/` (nav and app chrome), `workflows/`, `lib/`, `styles/` (tokens, per-area stylesheets, design guard tests), `testing/`.
+- **`apps/web/src`**: `App.tsx` (routes), `pages/` (the pages not yet in their feature), `jobs/` (the Jobs, job and run pages and their parts), `libraries/`, `plugins/`, `recycle/`, `settings/`, `auth/` (sign-in, setup and their pages), `editor/` (`model/` pure, `flow/` React Flow, `ui/`, `trace/`), `api/`, `hooks/`, `components/`, `shell/` (nav and app chrome), `workflows/`, `lib/`, `styles/` (tokens, per-area stylesheets, design guard tests), `testing/`.
 - **Elsewhere**: `e2e/` (Playwright flows, screenshot baselines), `docker/` (the image), `examples/` (shipped workflows, Grafana dashboard), `scripts/` (repo checks, fixtures, release tooling).
 
 ## What done means
@@ -84,13 +84,13 @@ A code comment cites the topic doc, or a log entry by file and heading.
 **Add a setting** (stored in the database, edited in Settings)
 - Contract: `SettingsSchema` and `SettingsUpdateInputSchema` in `packages/contract/src/schemas/settings.ts`.
 - Server: `SETTING_KEYS` and `SETTING_DEFAULTS` in `apps/server/src/db/repos/settings.ts`, and `apps/server/src/settings/service.ts` with `service.test.ts`.
-- Web: the section in `apps/web/src/pages/settings/`, and `settings-fixture.ts`.
+- Web: the section in `apps/web/src/settings/`, and the fixture in `apps/web/src/settings/testing.ts`.
 - Docs: the "Settings in the database" table in `docs/env.md`, with the default. `apps/server/src/settings/settings-docs.test.ts` checks its keys and defaults against `SETTING_KEYS` and `SETTING_DEFAULTS`.
 
 **Add an environment variable**
 - Parse it only in `loadConfig()` in `apps/server/src/platform/config.ts`, tested in `config.test.ts`.
 - Document it in a table row in `docs/env.md`. `apps/server/src/platform/config.docs.test.ts` fails when a variable `config.ts` reads has no row, or a row names one nothing reads.
-- If Settings shows it read-only, see `apps/server/src/settings/service.ts` and `apps/web/src/pages/settings/source-text.ts`.
+- If Settings shows it read-only, see `apps/server/src/settings/service.ts` and `apps/web/src/settings/source-text.ts`.
 
 **Add a metric**
 - Define it in `METRICS` in `apps/server/src/metrics/catalog.ts`.
