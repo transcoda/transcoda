@@ -3,7 +3,7 @@ import type { Edge, NodeInstance } from '@transcoda/shared';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import { filePort } from '../../nodes/core/common.ts';
-import { bareGraph, chain, edge, node, testRegistry } from '../test-helpers.ts';
+import { bareGraph, chain, edge, node, testRegistry } from '../testing.ts';
 import { codes, ctx, find } from './testing.ts';
 import { validateWorkflow } from './validate.ts';
 

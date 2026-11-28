@@ -7,13 +7,12 @@ import { fingerprintKey } from '../../db/repos/files.ts';
 import { findJobResult, hasReplaceJournal } from '../../db/repos/jobs/jobs.ts';
 import { listRecycled } from '../../db/repos/recycled.ts';
 import { nodeFsOps } from '../../platform/fs-ops.ts';
-import { node } from '../../workflows/test-helpers.ts';
+import { node } from '../../workflows/testing.ts';
 import type { RunnerProcess, SpawnOptions } from '../encode/process.ts';
 import { fingerprintOf } from '../files/fingerprint.ts';
 import { contentHash } from '../media/content-hash.ts';
 import { classifyErrorLine, sourceDecoderNames } from '../media/decoder-names.ts';
-import { modelFromProbe } from '../model/model.ts';
-import { renderEncoders } from '../model/render.ts';
+import { modelFromProbe, renderEncoders } from '../model/model.ts';
 import { probeOf, withStream } from '../testing/builders.ts';
 import {
   base,

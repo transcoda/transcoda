@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { bareGraph, edge, node, subGraph } from '../../workflows/test-helpers.ts';
+import { bareGraph, edge, node, subGraph } from '../../workflows/testing.ts';
 import { at, expectCovered, ids, input, mainGraph, setup } from './testing.ts';
 import { walk, walkDecide } from './walk.ts';
 

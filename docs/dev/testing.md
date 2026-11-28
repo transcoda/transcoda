@@ -33,7 +33,7 @@ Use these instead of writing your own:
 
 - **Server app and HTTP:** `createTestApp` (`apps/server/src/app/testing/app.ts`) builds the whole app over a migrated in-memory database, with a fixed secret key and a manual clock. `apps/server/src/app/testing/http.ts` has `send`, `login`, `withCsrf`, `secondUser`, `createToken`, `bearer` and the file-handle leak check (`trackFileHandles`, `expectAllClosed`).
 - **Database:** `createTestDb` (`apps/server/src/db/testing.ts`), a migrated in-memory SQLite.
-- **Workflow graphs and registries:** `apps/server/src/workflows/test-helpers.ts`: `node`, `edge`, `mainGraph`, `subGraph`, `chain`, `testRegistry`, `withSetting` and the test node definitions. Don't re-declare graph builders in a test file.
+- **Workflow graphs and registries:** `apps/server/src/workflows/testing.ts`: `node`, `edge`, `mainGraph`, `subGraph`, `chain`, `testRegistry`, `withSetting` and the test node definitions. Don't re-declare graph builders in a test file.
 - **Engine inputs:** `apps/server/src/engine/testing/builders.ts`: `probeOf`, `fileOf`, `capsOf`, `withStream`, `withSidecar`, `packetRows`.
 - **MCP:** `apps/server/src/mcp/testing.ts`.
 - **Web:** `renderAt` (`apps/web/src/testing/render.tsx`) renders inside a router on an in-memory location, with the toast provider; `renderFlow` (`apps/web/src/testing/flow.tsx`) renders a bare React Flow for canvas tests; `apps/web/src/testing/fake-event-stream.ts` for the live event stream. The node catalogue fixture is `apps/web/src/testing/fixtures/nodes.json` (see "Fixtures that are checked" below).

@@ -6,7 +6,7 @@ import type { Database } from '../../db/open.ts';
 import { createTestDb } from '../../db/testing.ts';
 import type { Logger } from '../../platform/logger.ts';
 import { WorkflowService } from '../../workflows/service.ts';
-import { bumpV1, bumpV2, bumpV3, chain, node, testRegistry } from '../../workflows/test-helpers.ts';
+import { bumpV1, bumpV2, bumpV3, chain, node, testRegistry } from '../../workflows/testing.ts';
 import { loadWorkflowForJob } from './load-workflow.ts';
 
 const caps: Capabilities = {

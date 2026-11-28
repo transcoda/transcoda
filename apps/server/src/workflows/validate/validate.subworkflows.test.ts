@@ -13,7 +13,7 @@ import {
   node,
   subGraph,
   testRegistry,
-} from '../test-helpers.ts';
+} from '../testing.ts';
 import { caps, codes, ctx, find, mainWith, runNode } from './testing.ts';
 import {
   createValidationCache,

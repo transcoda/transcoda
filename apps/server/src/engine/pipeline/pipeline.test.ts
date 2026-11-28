@@ -12,7 +12,7 @@ import {
   listTrace,
 } from '../../db/repos/jobs/jobs.ts';
 import { nodeFsOps } from '../../platform/fs-ops.ts';
-import { edge, mainGraph, node } from '../../workflows/test-helpers.ts';
+import { edge, mainGraph, node } from '../../workflows/testing.ts';
 import type { RunnerProcess, SpawnOptions } from '../encode/process.ts';
 import { fingerprintOf } from '../files/fingerprint.ts';
 import { contentHash } from '../media/content-hash.ts';

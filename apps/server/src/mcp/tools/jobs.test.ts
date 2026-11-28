@@ -14,7 +14,7 @@ import { logPathFor } from '../../engine/pipeline/pipeline.ts';
 import { packetRows } from '../../engine/testing/builders.ts';
 import { tempDir } from '../../engine/testing/fixtures.ts';
 import { type FsOps, nodeFsOps } from '../../platform/fs-ops.ts';
-import { chain, node } from '../../workflows/test-helpers.ts';
+import { chain, node } from '../../workflows/testing.ts';
 import { mcpClient } from '../testing.ts';
 import { jobTools } from './jobs.ts';
 import { libraryTools } from './library.ts';

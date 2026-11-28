@@ -24,6 +24,7 @@ import { checkPath, skipReasonFor } from '../files/paths.ts';
 import { fingerprintFromStats } from '../files/replace.ts';
 import { probeFile, probeLog, probeReason } from '../media/probe.ts';
 import {
+  autoStreams,
   copyPictures,
   coverFile,
   encoderUsable,
@@ -31,15 +32,23 @@ import {
   isMkvCover,
   kept,
   normalizeDefaults,
+  outputExtension,
+  RenderError,
+  renderArgs,
+  renderCommandLine,
+  retarget,
 } from '../model/model.ts';
-import { outputExtension, RenderError, renderArgs, renderCommandLine } from '../model/render.ts';
-import { autoStreams, retarget } from '../model/retarget.ts';
 import type { ExecuteOutcome, JobControl, SlotFit } from '../queue/scheduler.ts';
 import { confirmSourceDamage } from '../verify/verify.ts';
-import { alreadyProcessed } from '../walk/already-processed.ts';
-import { checkSource } from '../walk/check-source.ts';
-import { loadWorkflowForJob } from '../walk/load-workflow.ts';
-import { type WalkDeps, type WalkInput, walkBuild, walkDecide } from '../walk/walk.ts';
+import {
+  alreadyProcessed,
+  checkSource,
+  loadWorkflowForJob,
+  type WalkDeps,
+  type WalkInput,
+  walkBuild,
+  walkDecide,
+} from '../walk/walk.ts';
 import { sourceDamagedAtCheck } from './branches.ts';
 import type { PipelineCore } from './core.ts';
 import {

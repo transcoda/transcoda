@@ -21,8 +21,8 @@ import {
   isMkvCover,
   kept,
   outputOrder,
+  yuv420Depth,
 } from '../model/model.ts';
-import { yuv420Depth } from '../model/render.ts';
 import type { SlotFit } from '../queue/scheduler.ts';
 import type { DecidedPath } from '../walk/walk.ts';
 

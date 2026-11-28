@@ -1,5 +1,5 @@
 import type { Edge, Group, NodeInstance, WorkflowGraph } from '@transcoda/shared';
-import { chain, edge, mainGraph, node } from '../test-helpers.ts';
+import { chain, edge, mainGraph, node } from '../testing.ts';
 
 /** Shared sub-workflow: keep English and German, English default audio, English then German first. */
 export function languageCleanupSub(): WorkflowGraph {
