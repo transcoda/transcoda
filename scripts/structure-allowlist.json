@@ -39,7 +39,7 @@
     "apps/web/src/styles/css-source.ts",
     "apps/web/src/styles/design-exceptions.ts"
   ],
-  "pageImports": ["apps/web/src/libraries/LibraryFilePage.tsx -> apps/web/src/jobs/JobsPage.tsx"],
+  "pageImports": [],
   "folderNames": [],
   "smallFolders": ["apps/server/src/settings", "apps/web/src/data"],
   "orphanTests": [
@@ -81,7 +81,6 @@
     "apps/server/src/engine/walk/walk.ts": 1083,
     "apps/server/src/workflows/service.ts": 1123,
     "apps/web/src/jobs/JobPage/steps.ts": 1066,
-    "apps/web/src/jobs/JobsPage.tsx": 947,
     "apps/web/src/libraries/LibrariesPage.tsx": 863,
     "apps/web/src/styles/job-page.css": 1415,
     "apps/web/src/styles/jobs.css": 1100,

@@ -12,7 +12,7 @@ import { Loading } from '../components/Loading.tsx';
 import { NotFound } from '../components/NotFound.tsx';
 import { useAsync } from '../hooks/use-async.ts';
 import { TitleSub } from '../jobs/JobCells.tsx';
-import { JobHistoryTable } from '../jobs/JobsPage.tsx';
+import { JobHistoryTable } from '../jobs/JobTable.tsx';
 import { jobTitle } from '../jobs/media-text.ts';
 import { Poster } from '../jobs/Poster.tsx';
 import { fmtBytes } from '../lib/bytes.ts';
