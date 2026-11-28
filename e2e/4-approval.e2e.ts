@@ -78,9 +78,11 @@ test('a result waits for approval, shows on the Jobs page and its job page, and 
   await page.getByRole('button', { name: /^Waiting for approval 2/ }).click({ timeout: 90_000 });
   const table = page.getByRole('table');
   for (const title of ['Quiet Meadow', 'The Paper Lantern']) {
-    await expect(table.getByRole('row', { name: new RegExp(title) })).toContainText(
-      'Waiting for approval',
-    );
+    // Right after the click the old, unfiltered list (with each title's earlier jobs) can still be
+    // on screen; wait for the filtered one, where each title has a single row.
+    const row = table.getByRole('row', { name: new RegExp(title) });
+    await expect(row).toHaveCount(1);
+    await expect(row).toContainText('Waiting for approval');
   }
 
   await table.getByRole('link', { name: /Quiet Meadow/ }).click();
