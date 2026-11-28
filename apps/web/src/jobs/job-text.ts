@@ -191,16 +191,61 @@ export function writesTrackChangesOnly(reason: string | null | undefined): boole
 }
 
 /**
- * The size gate's track changes in a person's words: "Saved only 4% (gate ≥ 20%), so the video was
- * kept as it is and only the track changes were written". Null for any other reason.
+ * How far the encode missed the size gate: "18.3% bigger (at least 30% smaller needed)", "only 4%
+ * smaller (at least 20% needed)". The size gate step and the result card word it alike.
  */
-export function trackChangesText(reason: string | null | undefined): string | null {
+export function gateMissWords(saved: number, min: number | string): string {
+  return saved < 0
+    ? `${-saved}% bigger (at least ${min}% smaller needed)`
+    : `only ${saved}% smaller (at least ${min}% needed)`;
+}
+
+/**
+ * The size gate's track changes in a person's words, with the file that was written first and the
+ * discarded re-encode as the reason: "Track changes only: the file is 3% smaller. The re-encode
+ * came out 1.9% bigger (at least 30% smaller needed), so it was discarded and the video kept as it
+ * is." A test encode wrote nothing, so it says what a real run would do. The written file's sizes
+ * (`before`, `after`) are optional; without them the first sentence is "Track changes only."
+ * Null for any other reason.
+ */
+export function trackChangesText(
+  reason: string | null | undefined,
+  sizes: { before: number | null; after: number | null } = { before: null, after: null },
+): string | null {
   const m = reason ? TRACKS_REASON.exec(reason) : null;
   if (!m?.[1] || !m[2] || !m[3]) return null;
-  const words = gateWords(`saved only ${m[1]}%, below ${m[2]}%`) ?? '';
-  return m[3] === 'wrote'
-    ? `${sentence(words)}, so the video was kept as it is and only the track changes were written.`
-    : `${sentence(words)}, so a real run would keep the video as it is and write only the track changes.`;
+  const miss = gateMissWords(Number(plainNumber(m[1])), plainNumber(m[2]));
+  if (m[3] !== 'wrote') {
+    return `The test encode came out ${miss}, so a real run would keep the video as it is and write only the track changes.`;
+  }
+  return `${writtenWords(sizes.before, sizes.after)} The re-encode came out ${miss}, so it was discarded and the video kept as it is.`;
+}
+
+/** "Track changes only: the file is 3% smaller." for the file a size gate wrote instead. */
+function writtenWords(before: number | null, after: number | null): string {
+  if (before === null || after === null || !(before > 0)) return 'Track changes only.';
+  const pct = Math.round(((after - before) / before) * 100);
+  const how = pct === 0 ? 'about the same size' : pct < 0 ? `${-pct}% smaller` : `${pct}% bigger`;
+  return `Track changes only: the file is ${how}.`;
+}
+
+/**
+ * A size gate's track changes in one line, for lists: "Track changes only · re-encode grew by 1.9%
+ * (gate ≥ 30%)", or for a test encode "Would write track changes · re-encode grew by …". The
+ * percent is the discarded re-encode's, so the line names it. Null for any other reason.
+ */
+export function trackChangesLine(reason: string | null | undefined): string | null {
+  const m = reason ? TRACKS_REASON.exec(reason) : null;
+  if (!m?.[1] || !m[2] || !m[3]) return null;
+  const gate = reEncodeWords(m[1], m[2]);
+  if (gate === null) return null;
+  return `${m[3] === 'wrote' ? 'Track changes only' : 'Would write track changes'} · ${gate}`;
+}
+
+/** "re-encode grew by 1.9% (gate ≥ 30%)": the gate's words, said of the discarded re-encode. */
+function reEncodeWords(saved: string, min: string): string | null {
+  const words = gateWords(`saved only ${saved}%, below ${min}%`);
+  return words === null ? null : `re-encode ${words}`;
 }
 
 /** "3.0" → "3", "9.6" → "9.6", "-0.0" → "0": a percent as a person reads it. */
@@ -229,9 +274,10 @@ export function testEncodeOutcome(
   job: Pick<Job, 'state' | 'dryRun' | 'testEncode' | 'reason' | 'result'>,
 ): { word: string; detail: string } | null {
   if (!job.dryRun || !job.testEncode) return null;
+  // The percent is the discarded re-encode's, not the file a real run would write: say so.
   const tracks = job.state === 'dry_run' ? TRACKS_REASON.exec(job.reason ?? '') : null;
   if (tracks?.[1] && tracks[2]) {
-    const detail = gateWords(`saved only ${tracks[1]}%, below ${tracks[2]}%`);
+    const detail = reEncodeWords(tracks[1], tracks[2]);
     if (detail !== null) return { word: 'Would write track changes', detail };
   }
   if (job.state === 'dry_run') {
@@ -595,6 +641,10 @@ export function phoneLine(job: Job): string {
         r && r.beforeBytes !== null && r.afterBytes !== null
           ? fmtSaving(r.beforeBytes, r.afterBytes)
           : null;
+      // A size gate that saved too little wrote the track changes alone: the saving is theirs.
+      if (writesTrackChangesOnly(job.reason)) {
+        short = short ? `track changes only, ${short}` : 'track changes only';
+      }
       break;
     }
     case 'failed':

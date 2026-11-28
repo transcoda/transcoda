@@ -85,6 +85,7 @@ export function ResultCell({ job, queuePaused }: { job: Job; queuePaused: boolea
       <>
         <span className="job-outcome-sizes">{lines.sizes}</span>
         <span className={`job-outcome-change is-${lines.tone}`}>{lines.change}</span>
+        {lines.note ? <span className="job-outcome-sub">{lines.note}</span> : null}
       </>
     );
   } else {

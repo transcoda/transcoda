@@ -3,6 +3,7 @@
 
 import type { Job, JobMedia } from '@transcoda/contract';
 import { fmtBytes } from '../lib/bytes.ts';
+import { writesTrackChangesOnly } from './job-text.ts';
 
 const pad2 = (n: number) => String(n).padStart(2, '0');
 
@@ -41,9 +42,13 @@ function fmtPct(pct: number): string {
 }
 
 /** The two-line size result; null when the row should show `detailLine` instead. */
-export function resultLines(
-  job: Job,
-): { sizes: string; change: string; tone: 'saved' | 'grew' } | null {
+export function resultLines(job: Job): {
+  sizes: string;
+  change: string;
+  tone: 'saved' | 'grew';
+  /** "Track changes only": a size gate wrote them instead of the re-encode. */
+  note: string | null;
+} | null {
   if (job.dryRun) return null;
   if (job.state !== 'done' && job.state !== 'kept_original') return null;
   const r = job.result;
@@ -57,5 +62,6 @@ export function resultLines(
     sizes: `${fmtBytes(before)} → ${fmtBytes(after)}`,
     change: `${grew ? 'grew' : 'saved'} ${fmtPct(pct)}% · ${fmtBytes(Math.abs(diff))}`,
     tone: grew ? 'grew' : 'saved',
+    note: job.state === 'done' && writesTrackChangesOnly(job.reason) ? 'Track changes only' : null,
   };
 }

@@ -16,6 +16,7 @@ import {
   stateWord,
   testEncodeLine,
   testEncodeOutcome,
+  trackChangesLine,
   trackChangesText,
   VERDICT_WORD,
   verdictOf,
@@ -50,19 +51,53 @@ describe('a size gate that wrote the track changes', () => {
       'Track changes only · 2.41 GB → 1.62 GB, saved 790 MB · original in recycle folder',
     );
   });
-  it('trackChangesText words the reason; any other reason is null', () => {
-    expect(trackChangesText(REASON)).toBe(
-      'Saved only 4% (gate ≥ 20%), so the video was kept as it is and only the track changes were written.',
+  it('trackChangesText leads with the written file and gives the discarded re-encode as the reason', () => {
+    // The re-encode grew the file, the track changes (a language removed) shrank it: the two
+    // percents must never read as one file's.
+    const grew = 'saved only -1.9%, below 30% → wrote track changes without re-encoding';
+    expect(trackChangesText(grew, { before: 1000, after: 870 })).toBe(
+      'Track changes only: the file is 13% smaller. The re-encode came out 1.9% bigger (at least 30% smaller needed), so it was discarded and the video kept as it is.',
     );
+    // A converted audio track kept: the written file grew a little.
+    expect(trackChangesText(REASON, { before: 1000, after: 1010 })).toBe(
+      'Track changes only: the file is 1% bigger. The re-encode came out only 4% smaller (at least 20% needed), so it was discarded and the video kept as it is.',
+    );
+    expect(trackChangesText(REASON, { before: 1000, after: 998 })).toBe(
+      'Track changes only: the file is about the same size. The re-encode came out only 4% smaller (at least 20% needed), so it was discarded and the video kept as it is.',
+    );
+    expect(trackChangesText(REASON)).toBe(
+      'Track changes only. The re-encode came out only 4% smaller (at least 20% needed), so it was discarded and the video kept as it is.',
+    );
+  });
+  it('trackChangesText for a test encode says what a real run would do; any other reason is null', () => {
     expect(
       trackChangesText(
         'saved only -2.5%, below 20% → would write track changes without re-encoding',
+        { before: 1000, after: 1025 },
       ),
     ).toBe(
-      'Grew by 2.5% (gate ≥ 20%), so a real run would keep the video as it is and write only the track changes.',
+      'The test encode came out 2.5% bigger (at least 20% smaller needed), so a real run would keep the video as it is and write only the track changes.',
     );
     expect(trackChangesText('saved only 4.0%, below 20%')).toBeNull();
     expect(trackChangesText(null)).toBeNull();
+  });
+  it('trackChangesLine names the re-encode its percent belongs to', () => {
+    expect(trackChangesLine(REASON)).toBe(
+      'Track changes only · re-encode saved only 4% (gate ≥ 20%)',
+    );
+    expect(
+      trackChangesLine(
+        'saved only -1.9%, below 30% → would write track changes without re-encoding',
+      ),
+    ).toBe('Would write track changes · re-encode grew by 1.9% (gate ≥ 30%)');
+    expect(trackChangesLine('saved only 4.0%, below 20%')).toBeNull();
+    expect(trackChangesLine(null)).toBeNull();
+  });
+  it('the phone row says track changes only before the saving', () => {
+    expect(phoneLine({ ...fx.replaced, reason: REASON })).toBe(
+      'Replaced · track changes only, saved 790 MB',
+    );
+    expect(phoneLine(fx.replaced)).toBe('Replaced · saved 790 MB');
   });
 });
 
@@ -584,9 +619,11 @@ describe('test-encode outcome', () => {
     });
     expect(testEncodeOutcome(tracks)).toEqual({
       word: 'Would write track changes',
-      detail: 'saved only 4% (gate ≥ 20%)',
+      detail: 're-encode saved only 4% (gate ≥ 20%)',
     });
-    expect(testEncodeLine(tracks)).toBe('Would write track changes · saved only 4% (gate ≥ 20%)');
+    expect(testEncodeLine(tracks)).toBe(
+      'Would write track changes · re-encode saved only 4% (gate ≥ 20%)',
+    );
   });
 
   it('a test-encode that would replace says the measured sizes and percent', () => {

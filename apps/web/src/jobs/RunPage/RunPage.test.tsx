@@ -752,6 +752,56 @@ describe('RunPage dry run', () => {
     ]);
   });
 
+  it('a size gate that wrote the track changes: the size is the written file, the note names the re-encode', async () => {
+    const base = settledRun();
+    const cellsOf = async () => {
+      const table = await screen.findByRole('table', { name: 'Files' });
+      const row = within(table).getAllByRole('row')[1] as HTMLElement;
+      return within(row)
+        .getAllByRole('cell')
+        .map((c) => c.textContent);
+    };
+    // A test encode: the encode grew the file, so its size and percent are not what a run writes.
+    mocks.get.mockResolvedValue({
+      ...base,
+      run: { ...base.run, dryRun: true, testEncode: true },
+      counts: { ...zero, dry_run: 1, total: 1 },
+      files: [
+        file('j1', 'a.mkv', 'dry_run', {
+          reason: 'saved only -18.3%, below 30% → would write track changes without re-encoding',
+          beforeBytes: 472_000,
+          afterBytes: 558_000,
+        }),
+      ],
+    });
+    const first = renderAt('/runs/r1', <Route path="/runs/:id" component={RunPage} />);
+    expect(await cellsOf()).toEqual([
+      'a.mkvWould write track changes · re-encode grew by 18.3% (gate ≥ 30%)',
+      'Would replace',
+      '472 kB',
+    ]);
+    first.unmount();
+
+    // A real run: the sizes are the written file's.
+    mocks.get.mockResolvedValue({
+      ...base,
+      counts: { ...zero, done: 1, total: 1 },
+      files: [
+        file('j1', 'a.mkv', 'done', {
+          reason: 'saved only -1.9%, below 30% → wrote track changes without re-encoding',
+          beforeBytes: 472_000,
+          afterBytes: 410_000,
+        }),
+      ],
+    });
+    renderAt('/runs/r1', <Route path="/runs/:id" component={RunPage} />);
+    expect(await cellsOf()).toEqual([
+      'a.mkvTrack changes only · re-encode grew by 1.9% (gate ≥ 30%)',
+      'Replaced',
+      '472 kB → 410 kB',
+    ]);
+  });
+
   it('the plan-only summary counts every file, skipped and failed too (#53)', async () => {
     const base = settledRun();
     mocks.get.mockResolvedValue({
