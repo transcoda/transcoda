@@ -6,6 +6,7 @@ import { SetupPage } from './auth/SetupPage.tsx';
 import { useAuth } from './auth/use-auth.ts';
 import { Loading } from './components/Loading.tsx';
 import { NotFound } from './components/NotFound.tsx';
+import { EditorPage } from './editor/EditorPage.tsx';
 import { EventsProvider } from './hooks/use-events.ts';
 import { JobPage } from './jobs/JobPage/JobPage.tsx';
 import { JobsPage } from './jobs/JobsPage.tsx';
@@ -13,13 +14,12 @@ import { RunPage } from './jobs/RunPage/RunPage.tsx';
 import { LibrariesPage } from './libraries/LibrariesPage.tsx';
 import { LibraryFilePage } from './libraries/LibraryFilePage.tsx';
 import { LibraryPage } from './libraries/LibraryPage.tsx';
-import { EditorPage } from './pages/EditorPage.tsx';
-import { NewWorkflowPage } from './pages/NewWorkflowPage.tsx';
-import { WorkflowsPage } from './pages/WorkflowsPage.tsx';
 import { PluginsPage } from './plugins/PluginsPage/PluginsPage.tsx';
 import { RecyclePage } from './recycle/RecyclePage.tsx';
 import { SettingsPage } from './settings/SettingsPage.tsx';
 import { Shell } from './shell/Shell.tsx';
+import { NewWorkflowPage } from './workflows/NewWorkflowPage.tsx';
+import { WorkflowsPage } from './workflows/WorkflowsPage.tsx';
 
 /** The session check, before any screen can render: the shared Loading, filling the screen. */
 function AppLoading() {

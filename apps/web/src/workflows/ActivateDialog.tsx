@@ -7,15 +7,15 @@ import {
   type WorkflowGraph,
 } from '@transcoda/shared';
 import { type RefObject, useContext, useEffect, useMemo, useState } from 'react';
-import { api, isDefinedError, safe } from '../../api/client.ts';
-import { AuthContext } from '../../auth/AuthProvider.tsx';
-import { Dialog } from '../../components/Dialog.tsx';
-import { Icon } from '../../components/Icon.tsx';
-import { useToast } from '../../components/Toast.tsx';
-import { useCatalog } from '../../hooks/use-catalog.ts';
-import { fmtAgo } from '../../lib/time.ts';
-import { changeLines, diffVersions } from '../model/version-diff.ts';
-import { activatedByText, activateLabel, versionLine } from '../model/version-text.ts';
+import { api, isDefinedError, safe } from '../api/client.ts';
+import { AuthContext } from '../auth/AuthProvider.tsx';
+import { Dialog } from '../components/Dialog.tsx';
+import { Icon } from '../components/Icon.tsx';
+import { useToast } from '../components/Toast.tsx';
+import { changeLines, diffVersions } from '../editor/model/version-diff.ts';
+import { activatedByText, activateLabel, versionLine } from '../editor/model/version-text.ts';
+import { useCatalog } from '../hooks/use-catalog.ts';
+import { fmtAgo } from '../lib/time.ts';
 
 export const ACTIVATE_FAILED = 'Could not activate, try again';
 

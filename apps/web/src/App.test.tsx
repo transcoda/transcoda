@@ -28,9 +28,11 @@ vi.mock('./api/client.ts', () => ({
   },
 }));
 
-vi.mock('./pages/WorkflowsPage.tsx', () => ({ WorkflowsPage: () => <p>workflows page</p> }));
-vi.mock('./pages/NewWorkflowPage.tsx', () => ({ NewWorkflowPage: () => <p>new workflow page</p> }));
-vi.mock('./pages/EditorPage.tsx', () => ({ EditorPage: () => <p>editor page</p> }));
+vi.mock('./workflows/WorkflowsPage.tsx', () => ({ WorkflowsPage: () => <p>workflows page</p> }));
+vi.mock('./workflows/NewWorkflowPage.tsx', () => ({
+  NewWorkflowPage: () => <p>new workflow page</p>,
+}));
+vi.mock('./editor/EditorPage.tsx', () => ({ EditorPage: () => <p>editor page</p> }));
 vi.mock('./libraries/LibraryFilePage.tsx', async () => {
   const { useState } = await import('react');
   return {

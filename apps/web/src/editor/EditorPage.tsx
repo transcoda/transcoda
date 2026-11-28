@@ -22,18 +22,22 @@ import { Icon } from '../components/Icon.tsx';
 import { Loading } from '../components/Loading.tsx';
 import { NotFound } from '../components/NotFound.tsx';
 import { useToast } from '../components/Toast.tsx';
-import { type EditorActions, EditorActionsContext } from '../editor/flow/actions-context.ts';
-import { fitPaddingPx } from '../editor/flow/open-viewport.ts';
-import { SubworkflowsContext } from '../editor/flow/subworkflows-context.ts';
-import { TRY_BLOCKED } from '../editor/flow/TcToolbar.tsx';
-import { withViewCollapse } from '../editor/flow/to-flow.ts';
-import { freeOutputs, nextNodeRule } from '../editor/model/connection.ts';
-import {
-  type EditorAction,
-  editorReducer,
-  initialEditorState,
-} from '../editor/model/editor-state.ts';
-import { graphEquals } from '../editor/model/equality.ts';
+import { type Catalog, type PortSpec, useCatalog } from '../hooks/use-catalog.ts';
+import { useLibraries } from '../hooks/use-libraries.ts';
+import { useWorkflows } from '../hooks/use-workflows.ts';
+import { runBlocked, useRunOnFile } from '../jobs/use-run-on-file.tsx';
+import { useTryOnFile } from '../jobs/use-try-on-file.ts';
+import { usePageTitle } from '../lib/page-title.ts';
+import { ActivateDialog } from '../workflows/ActivateDialog.tsx';
+import { activateBlocked, hasActivation, useActivation } from '../workflows/ActivationControl.tsx';
+import { type EditorActions, EditorActionsContext } from './flow/actions-context.ts';
+import { fitPaddingPx } from './flow/open-viewport.ts';
+import { SubworkflowsContext } from './flow/subworkflows-context.ts';
+import { TRY_BLOCKED } from './flow/TcToolbar.tsx';
+import { withViewCollapse } from './flow/to-flow.ts';
+import { freeOutputs, nextNodeRule } from './model/connection.ts';
+import { type EditorAction, editorReducer, initialEditorState } from './model/editor-state.ts';
+import { graphEquals } from './model/equality.ts';
 import {
   addNode,
   connect,
@@ -48,34 +52,26 @@ import {
   setGroupCollapsed,
   setSettings,
   toggleBypass,
-} from '../editor/model/graph-ops.ts';
-import { dropHiddenPortEdges, removedNotice } from '../editor/model/hidden-ports.ts';
-import { libraryShift } from '../editor/model/library-shift.ts';
-import { addNote, addValuesCard } from '../editor/model/notes-values.ts';
-import { freeSpot, type ViewRect } from '../editor/model/placement.ts';
-import { saveNoteFor } from '../editor/model/save-note.ts';
-import { ActivateDialog } from '../editor/ui/ActivateDialog.tsx';
-import { activateBlocked, hasActivation, useActivation } from '../editor/ui/ActivationControl.tsx';
-import { type ApplyOptions, Canvas, FIT_VIEW, type GraphOp } from '../editor/ui/Canvas.tsx';
-import { Banner, CanvasBanner, PastVersionBanner } from '../editor/ui/CanvasBanner.tsx';
-import { ConflictDialog } from '../editor/ui/ConflictDialog.tsx';
-import { EditorHeader } from '../editor/ui/EditorHeader.tsx';
-import { Inspector } from '../editor/ui/Inspector.tsx';
-import { IssuesPanel, type IssueTarget, subjectOf } from '../editor/ui/IssuesPanel.tsx';
-import { LeaveDialog } from '../editor/ui/LeaveDialog.tsx';
-import { NodeSearch } from '../editor/ui/NodeSearch.tsx';
-import { Palette, type PaletteItem } from '../editor/ui/Palette.tsx';
-import { useEditorKeys } from '../editor/ui/use-editor-keys.ts';
-import { useLeaveGuard } from '../editor/ui/use-leave-guard.ts';
-import { useValidation } from '../editor/ui/use-validation.ts';
-import { useViewportMemory } from '../editor/ui/use-viewport-memory.ts';
-import { useVersionList, VersionsPanel } from '../editor/ui/VersionsPanel.tsx';
-import { type Catalog, type PortSpec, useCatalog } from '../hooks/use-catalog.ts';
-import { useLibraries } from '../hooks/use-libraries.ts';
-import { useWorkflows } from '../hooks/use-workflows.ts';
-import { runBlocked, useRunOnFile } from '../jobs/use-run-on-file.tsx';
-import { useTryOnFile } from '../jobs/use-try-on-file.ts';
-import { usePageTitle } from '../lib/page-title.ts';
+} from './model/graph-ops.ts';
+import { dropHiddenPortEdges, removedNotice } from './model/hidden-ports.ts';
+import { libraryShift } from './model/library-shift.ts';
+import { addNote, addValuesCard } from './model/notes-values.ts';
+import { freeSpot, type ViewRect } from './model/placement.ts';
+import { saveNoteFor } from './model/save-note.ts';
+import { type ApplyOptions, Canvas, FIT_VIEW, type GraphOp } from './ui/Canvas.tsx';
+import { Banner, CanvasBanner, PastVersionBanner } from './ui/CanvasBanner.tsx';
+import { ConflictDialog } from './ui/ConflictDialog.tsx';
+import { EditorHeader } from './ui/EditorHeader.tsx';
+import { Inspector } from './ui/Inspector.tsx';
+import { IssuesPanel, type IssueTarget, subjectOf } from './ui/IssuesPanel.tsx';
+import { LeaveDialog } from './ui/LeaveDialog.tsx';
+import { NodeSearch } from './ui/NodeSearch.tsx';
+import { Palette, type PaletteItem } from './ui/Palette.tsx';
+import { useEditorKeys } from './ui/use-editor-keys.ts';
+import { useLeaveGuard } from './ui/use-leave-guard.ts';
+import { useValidation } from './ui/use-validation.ts';
+import { useViewportMemory } from './ui/use-viewport-memory.ts';
+import { useVersionList, VersionsPanel } from './ui/VersionsPanel.tsx';
 
 /** Horizontal step between a node and the one added after it. */
 const NEXT_STEP_X = NODE_SIZE.width + 70;

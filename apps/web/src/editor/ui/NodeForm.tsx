@@ -3,6 +3,7 @@ import type { Issue, JsonValue, NodeInstance, SharedValue } from '@transcoda/sha
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Disclosure } from '../../components/Disclosure.tsx';
 import { Icon } from '../../components/Icon.tsx';
+import { SettingLink, shareable } from '../flow/SettingLink.tsx';
 import {
   clientIssue,
   differsFromDefault,
@@ -16,7 +17,6 @@ import { FieldExtrasContext } from './fields/Field.tsx';
 import { LibraryField } from './fields/LibraryField.tsx';
 import { RawJsonField } from './fields/RawJsonField.tsx';
 import { SettingField } from './fields/SettingField.tsx';
-import { SettingLink, shareable } from './SettingLink.tsx';
 
 type JsonObject = { [key: string]: JsonValue };
 

@@ -74,8 +74,6 @@ export const LAYERS: Record<string, Layer[]> = {
         'plugins/',
         'recycle/',
         'settings/',
-        // today: pages/ moves into the features.
-        'pages/',
       ],
     },
     { name: 'app', paths: ['App.tsx', 'main.tsx'] },
@@ -89,9 +87,8 @@ export const REGISTRIES = [
   'apps/server/src/mcp/tools/index.ts',
 ];
 
-/** The one file that imports pages, and folders that are part of a page today. */
+/** The one file that imports pages. */
 const APP_ROUTES = 'apps/web/src/App.tsx';
-export const PAGE_PARTS: Record<string, string> = {};
 
 export const SOFT_MAX_LINES = 800;
 export const ALLOWLIST = 'scripts/structure-allowlist.json';
@@ -238,7 +235,7 @@ function layerOf(path: string): { app: string; index: number; name: string } | n
   return null;
 }
 
-/** The page a web file belongs to: a `*Page/` module folder, a `*Page.tsx` file, or PAGE_PARTS. */
+/** The page a web file belongs to: a `*Page/` module folder or a `*Page.tsx` file. */
 function pageOf(path: string): string | null {
   if (!path.startsWith('apps/web/src/')) return null;
   const parts = path.split('/');
@@ -246,7 +243,6 @@ function pageOf(path: string): string | null {
     const name = parts[i] ?? '';
     if (PASCAL.test(name) && name.endsWith('Page')) return parts.slice(0, i + 1).join('/');
   }
-  for (const [prefix, page] of Object.entries(PAGE_PARTS)) if (path.startsWith(prefix)) return page;
   if (/^[A-Z][A-Za-z0-9]*Page\.tsx$/.test(base(path))) return path;
   return null;
 }

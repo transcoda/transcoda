@@ -5,11 +5,11 @@ The rules in force today for `apps/web/**`. History is in the decision files lin
 ## Layout of `apps/web/src`
 
 - `App.tsx`: every route. `main.tsx`: fonts, stylesheets, theme before first paint, providers.
-- `pages/`: one component per route for the routes not yet moved into their feature (`WorkflowsPage`, `EditorPage`, `NewWorkflowPage`).
-- `editor/`: the workflow editor. `model/` is pure (no React, no React Flow), `flow/` adapts it to React Flow, `ui/` is the panels, dialogs and hooks around the canvas, `trace/` is the read-only canvas on the job page.
+- Each page lives in its feature folder: a file (`recycle/RecyclePage.tsx`), or a module folder named after it when it has parts of its own (`jobs/JobPage/JobPage.tsx`). Only `App.tsx` imports a page ([structure.md](structure.md#the-page-pattern)).
+- `editor/`: the workflow editor. `EditorPage.tsx` is the route, `model/` is pure (no React, no React Flow), `flow/` adapts it to React Flow (with the rows drawn on a node: `OnNodeRow`, `OnNodeSubworkflow`, `SettingLink`), `ui/` is the panels, dialogs and hooks around the canvas, `trace/` is the read-only canvas on the job page.
 - `jobs/`: the Jobs page (`JobsPage.tsx`, `JobsHistory.tsx`), the job page (`JobPage/`: steps, plan view, result, test output, ffmpeg notes and the `steps.ts` wording) and the run page (`RunPage/`); at the root what several pages use (cells, state chip, poster, queue bar, process again) and the shared wording modules (`job-text.ts`, `plan-text.ts`, `media-text.ts`).
 - `shell/`: the app chrome that knows features: `Shell` (nav and layout), `ActivityButton`, `AuthLayout` (the sign-in pages' frame).
-- `workflows/`: the empty Workflows state and the bundled examples (`bundled.ts`, `create-example.ts`).
+- `workflows/`: `WorkflowsPage`, `NewWorkflowPage`, the empty Workflows state, the bundled examples (`bundled.ts`, `create-example.ts`) and activation (`ActivateDialog`, `ActivationControl`), which the editor, the Workflows and Libraries pages and the job page use.
 - `recycle/`: `RecyclePage`, `RestoreButton` (the job page uses it too) and the grouping.
 - `libraries/`: `LibrariesPage`, `LibraryPage`, `LibraryFilePage` and the parts they share (file table, title grid, selection, crumbs, run dialog).
 - `plugins/`: `PluginsPage/` (the page with its rows, tiles, catalog, dialogs and wording) and, at the root, what the shell also uses (`use-plugins`, `use-plugins-nav`, `TmdbAttribution`).
@@ -57,7 +57,7 @@ The rules in force today for `apps/web/**`. History is in the decision files lin
 
 ## UI words
 
-- Activation: "Activate", "Activate vN", "Roll back to vN" (below the active version, from `editor/model/version-text.ts`), "Deactivate", and the pill "Not active" / "Active v3" / "Active v3 · can't run" (`ActivationPill` in `editor/ui/ActivationControl.tsx`). Never "enable", "enabled" or "dry-run mode" for a workflow.
+- Activation: "Activate", "Activate vN", "Roll back to vN" (below the active version, from `editor/model/version-text.ts`), "Deactivate", and the pill "Not active" / "Active v3" / "Active v3 · can't run" (`ActivationPill` in `workflows/ActivationControl.tsx`). Never "enable", "enabled" or "dry-run mode" for a workflow.
 - Sizes are SI (1 kB = 1000 B) and always printed by `fmtBytes` (from `@transcoda/shared`, re-exported by `lib/bytes.ts`); bitrates by `fmtKbps` (`lib/rate.ts`). No GiB or MiB anywhere a person reads.
 - Times and dates: the helpers in `lib/time.ts` (`fmtAgo`, `fmtAgoShort`, `fmtAgoLong`, `fmtWhen`, `fmtDate`, `fmtDuration`, ...). They use the browser's locale. Web tests run in a fixed non-UTC zone (set in `apps/web/vite.config.ts`).
 - Labels and headings are typed in sentence case; capitals come from CSS on mono labels only (a test checks the source). Node kind words come from `KIND_WORD` in `components/Chips.tsx`.

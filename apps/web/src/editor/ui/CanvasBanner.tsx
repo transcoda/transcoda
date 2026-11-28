@@ -4,10 +4,10 @@ import { type ReactNode, useId } from 'react';
 import { Icon } from '../../components/Icon.tsx';
 import type { Catalog } from '../../hooks/use-catalog.ts';
 import { GuardedLink } from '../../lib/navigation.tsx';
+import { hasActivation } from '../../workflows/ActivationControl.tsx';
 import { firstError } from '../model/issues.ts';
 import type { libraryShift as LibraryShiftFn } from '../model/library-shift.ts';
 import { activateLabel } from '../model/version-text.ts';
-import { hasActivation } from './ActivationControl.tsx';
 import { subjectOf } from './IssuesPanel.tsx';
 
 /** One banner at the top of the canvas (screen 05): icon + text, `role="status"`. */

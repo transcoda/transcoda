@@ -82,7 +82,7 @@
     "apps/server/src/workflows/service.ts": 1123,
     "apps/web/src/jobs/JobPage/steps.ts": 1066,
     "apps/web/src/jobs/JobsPage.tsx": 947,
-    "apps/web/src/pages/EditorPage.tsx": 1344,
+    "apps/web/src/editor/EditorPage.tsx": 1340,
     "apps/web/src/libraries/LibrariesPage.tsx": 863,
     "apps/web/src/styles/job-page.css": 1415,
     "apps/web/src/styles/jobs.css": 1100,

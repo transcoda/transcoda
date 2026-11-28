@@ -12,10 +12,10 @@ import { Icon } from '../components/Icon.tsx';
 import { Loading } from '../components/Loading.tsx';
 import { RowMenu } from '../components/RowMenu.tsx';
 import { useToast } from '../components/Toast.tsx';
-import { ActivateDialog } from '../editor/ui/ActivateDialog.tsx';
-import { ActivationPill } from '../editor/ui/ActivationControl.tsx';
 import { useAsync } from '../hooks/use-async.ts';
 import { usePageTitle } from '../lib/page-title.ts';
+import { ActivateDialog } from '../workflows/ActivateDialog.tsx';
+import { ActivationPill } from '../workflows/ActivationControl.tsx';
 import { DEFAULT_RUN_HOURS, RunHoursCard, type ServerClock } from './RunHoursCard.tsx';
 import { useScanNow } from './use-scan-now.tsx';
 

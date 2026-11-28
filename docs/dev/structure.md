@@ -111,8 +111,8 @@ main.ts          the process entry
 main.tsx, App.tsx   providers and routes
 shell/              app chrome: Shell, ActivityButton, AuthLayout
 auth/               the auth provider, use-auth, LoginPage, SetupPage, HostNotAllowedPage
-workflows/          WorkflowsPage, NewWorkflowPage, EmptyWorkflows, the bundled examples
-  activation/       ActivateDialog, ActivationControl
+workflows/          WorkflowsPage, NewWorkflowPage, EmptyWorkflows, the bundled examples,
+                    activation (ActivateDialog, ActivationControl)
 editor/             EditorPage/, model/ (pure), flow/ (React Flow, on-node rows), ui/, trace/
 jobs/               JobsPage/, JobPage/, RunPage/, and what those pages share at the root
 libraries/          LibrariesPage/, LibraryPage/, LibraryFilePage/, and their shared parts
@@ -176,7 +176,7 @@ The hard budget is 1200 lines for any file ([conventions.md](conventions.md#file
 
 Two pieces of data drive it:
 
-- **The tables** at the top of `scripts/check-structure.ts`: `LAYERS` (each app's layers, bottom first, as path prefixes), `REGISTRIES` (the three `index.ts` files) and `PAGE_PARTS` (folders that belong to a page today). Entries marked "today" are old paths mapped onto their target layer. A target folder that does not exist yet is just a prefix that matches nothing.
+- **The tables** at the top of `scripts/check-structure.ts`: `LAYERS` (each app's layers, bottom first, as path prefixes), and `REGISTRIES` (the three `index.ts` files). Entries marked "today" are old paths mapped onto their target layer. A target folder that does not exist yet is just a prefix that matches nothing.
 - **The allowlists** in `scripts/structure-allowlist.json`: what broke each rule before the check existed. Each list only shrinks. An entry the code no longer needs fails the check until it is removed, so fixing the code and removing its entry go in the same pull request. Never add an entry to get past a failure.
 
 | List | Key | Rule |
@@ -213,7 +213,7 @@ A move pull request updates the paths in the allowlists and the "today" entries 
 
 ## Migration status
 
-Steps 1 (the check and this doc), 2, 3, 4, 5, 6, 7, 8 and 9 are done. Each later pull request ticks its line.
+Steps 1 (the check and this doc), 2, 3, 4, 5, 6, 7, 8, 9 and 10 are done. Each later pull request ticks its line.
 
 - [x] 2. Server: `platform/`, `app/` and `system/`; `host-check.ts` and `request-info.ts` into `auth/`.
 - [x] 3. Server: fix the upward imports (`fingerprintKey` into the repository layer, the official plugin constants out of `plugins/`, `CoreTools` into `nodes/`).
@@ -223,9 +223,9 @@ Steps 1 (the check and this doc), 2, 3, 4, 5, 6, 7, 8 and 9 are done. Each later
 - [x] 7. Server splits, one pull request each: `db/repos/jobs.ts`, `plugins/service.ts`, `workflows/validate.ts`, `engine/verify/verify.ts`.
 - [x] 8. Server: test names in the dot form; split the over-budget tests.
 - [x] 9. Web: `shell/`, `test/` to `testing/`, the CSS guard tests into `styles/`.
-- [ ] 10. Web: pages into their features, in three pull requests; then delete `pages/`.
+- [x] 10. Web: pages into their features, in three pull requests; then delete `pages/`.
 - [ ] 11. Web splits: the editor page's hooks, the jobs page, the over-budget page tests, the two largest stylesheets.
 - [ ] 12. Packages: `shared/src/workflow` to `workflows`; split `contract.test.ts` per router.
-- [ ] 13. Tighten: empty `upwardImports`, remove the "today" entries from `LAYERS` and `PAGE_PARTS`, and check this doc's paths too (`DOC_PATHS_SKIP`).
+- [ ] 13. Tighten: empty `upwardImports`, remove the "today" entries from `LAYERS`, and check this doc's paths too (`DOC_PATHS_SKIP`).
 
 History: [2026-11](../decisions/2026-11.md) ("Source layout and its check").
