@@ -1,7 +1,6 @@
 import type { AnyNodeDefinition } from '@transcoda/sdk';
 import {
-  branchPortLabel,
-  branchWord,
+  ALREADY_PROCESSED_TYPE,
   CHECK_SOURCE_DAMAGED_PORT,
   CHECK_SOURCE_TYPE,
   type Edge,
@@ -20,6 +19,9 @@ import { WRITE_TYPES } from './outputs.ts';
 import type { NodeState, ValidationContext } from './types.ts';
 
 // The path rules: what may follow what along each path a file can take from the trigger.
+
+/** Already processed's Yes (`pass`): the file has been through the workflow before. */
+const PROCESSED_PORT = 'pass';
 
 const ELSE_ONLY_NOTIFY_TEXT =
   'After the size gate\u2019s \u201cNo\u201d, only notifications and other non-writing finish steps can follow.';
@@ -77,8 +79,10 @@ function triggerOf(graph: WorkflowGraph, states: Map<string, NodeState>): NodeIn
  * - RENDER_MISSING (on the finish node), RENDER_TWICE, RENDER_BYPASSED: exactly one running Render
  *   before the finish steps of every path;
  * - DAMAGED_ONLY: a `damagedOnly` finish node on a path that is not below a Damaged output;
- * - NO_WRITE_PATH (warning): a path that ends without a write, except below `else` or Damaged
- *   (an unconnected `else` or Damaged is fine too).
+ * - NO_WRITE_PATH (warning): a path that ends without a write, on the node where it ends (no file
+ *   output connected), except below `else`, Damaged or Already processed's Yes. A node with one
+ *   output connected and another open is not warned: the open one is a deliberate "nothing to
+ *   do" end.
  * Returns the number of expansions.
  */
 export function checkPaths(
@@ -119,6 +123,8 @@ export function checkPaths(
     afterDamaged: boolean;
     /** Below Check source's Damaged: as below Render's, and no Render is needed (or allowed). */
     afterSourceDamaged: boolean;
+    /** Below Already processed's Yes: a branch for files done before, which needs no write. */
+    afterProcessed: boolean;
   };
   const flag = (b: boolean) => (b ? 1 : 0);
   const stack: Visit[] = [
@@ -132,12 +138,13 @@ export function checkPaths(
       afterElse: false,
       afterDamaged: false,
       afterSourceDamaged: false,
+      afterProcessed: false,
     },
   ];
   let visits = 0;
   for (let top = stack.pop(); top !== undefined; top = stack.pop()) {
     const { id } = top;
-    const key = `${id}:${flag(top.wrote)}${flag(top.finished)}${flag(top.rendered)}${flag(top.afterElse)}${flag(top.afterDamaged)}${flag(top.afterSourceDamaged)}:${top.rank}`;
+    const key = `${id}:${flag(top.wrote)}${flag(top.finished)}${flag(top.rendered)}${flag(top.afterElse)}${flag(top.afterDamaged)}${flag(top.afterSourceDamaged)}${flag(top.afterProcessed)}:${top.rank}`;
     const n = byId.get(id);
     if (!n || expanded.has(key)) continue;
     expanded.add(key);
@@ -145,7 +152,7 @@ export function checkPaths(
     const def = defOf(states.get(id));
     const name = title(n, def);
     let { wrote, finished, rank, by, rendered } = top;
-    const { afterElse, afterDamaged, afterSourceDamaged } = top;
+    const { afterElse, afterDamaged, afterSourceDamaged, afterProcessed } = top;
     const isRender = def?.type === RENDER_TYPE;
     if (isRender && n.bypassed === true) {
       report(
@@ -234,39 +241,18 @@ export function checkPaths(
       : (fromPorts.get(id) ?? []);
     const ports = n.bypassed === true ? fileOutputs.slice(0, 1) : fileOutputs;
     const connected = ports.filter((p) => (next.get(`${id}:${p}`)?.length ?? 0) > 0);
-    // The gate's unconnected `else` and Render's unconnected Damaged are fine: the original is
-    // kept and nothing is written there.
     const isGate = def?.type === SIZE_GATE_TYPE && n.bypassed !== true;
     const runsRender = isRender && n.bypassed !== true;
     const checksSource = def?.type === CHECK_SOURCE_TYPE && n.bypassed !== true;
-    // Check source's unconnected Damaged likewise: the job keeps the original as damaged.
-    const warnPorts = ports.filter(
-      (p) =>
-        !(isGate && p === SIZE_GATE_ELSE_PORT) &&
-        !(runsRender && p === RENDER_DAMAGED_PORT) &&
-        !(checksSource && p === CHECK_SOURCE_DAMAGED_PORT),
-    );
-    if (!wrote && !afterElse && !afterDamaged) {
-      if (connected.length === 0) {
-        report(
-          `write:${id}`,
-          warning('NO_WRITE_PATH', 'this path never writes the result', { nodeId: id }),
-        );
-      }
-      for (const port of connected.length === 0 ? [] : warnPorts) {
-        if (connected.includes(port)) continue;
-        // The words people read on the node (Yes/No), not the stored id.
-        const shown = def?.outputs.find((p) => p.id === port);
-        const word = shown ? branchPortLabel(shown) : (branchWord(port) ?? port);
-        report(
-          `write:${id}:${port}`,
-          warning(
-            'NO_WRITE_PATH',
-            `this path never writes the result (output "${word}" is unconnected)`,
-            { nodeId: id },
-          ),
-        );
-      }
+    const checksProcessed = def?.type === ALREADY_PROCESSED_TYPE && n.bypassed !== true;
+    // Only a node with no file output connected ends the path here. An open output beside a
+    // connected one ends "nothing to do" on purpose (Check source's OK after Already processed's
+    // Yes: the file is fine, nothing to write); an open `else` or Damaged keeps the original.
+    if (connected.length === 0 && !wrote && !afterElse && !afterDamaged && !afterProcessed) {
+      report(
+        `write:${id}`,
+        warning('NO_WRITE_PATH', 'this path never writes the result', { nodeId: id }),
+      );
     }
     for (const port of [...connected].reverse()) {
       const targets = next.get(`${id}:${port}`) ?? [];
@@ -275,6 +261,7 @@ export function checkPaths(
         afterSourceDamaged || (checksSource && port === CHECK_SOURCE_DAMAGED_PORT);
       const branchDamaged =
         afterDamaged || branchSource || (runsRender && port === RENDER_DAMAGED_PORT);
+      const branchProcessed = afterProcessed || (checksProcessed && port === PROCESSED_PORT);
       // Finish nodes sharing an output run as one set (the write before the rest), so a write
       // anywhere in the set counts for every path through it.
       const setWrites = targets.length > 1 && sharedSetWrites(targets, byId, states, next);
@@ -289,6 +276,7 @@ export function checkPaths(
           afterElse: branchElse,
           afterDamaged: branchDamaged,
           afterSourceDamaged: branchSource,
+          afterProcessed: branchProcessed,
         });
       }
     }

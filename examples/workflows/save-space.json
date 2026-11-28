@@ -182,7 +182,7 @@
         "width": 210,
         "height": 200
       },
-      "note": "Files that are already HEVC take **Yes** and are left alone. That output is open on purpose, so the editor shows a warning on it."
+      "note": "Files that are already HEVC take **Yes** and are left alone: that output is open on purpose."
     }
   ]
 }

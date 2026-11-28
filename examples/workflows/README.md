@@ -34,8 +34,8 @@ the version.
   deliberately left unconnected: an HEVC file ends its walk there with no finish action. For mkv
   and mp4 inputs that is `nothing_to_do`; for other containers (ts, avi, …) the engine would have
   to remux, which this path never writes, so those end `kept_original: path never writes the
-  result`. Validation reports the expected warning `NO_WRITE_PATH` on that node ("output "Yes" is
-  unconnected"), and a note on the canvas says why.
+  result`. Validation does not warn about it: an open output beside a connected one is a deliberate
+  end, and a note on the canvas says why.
 - **Second runs.** A replaced file is a new file (new inode, size and mtime), so it is walked again
   and must come out `nothing_to_do`; a file the first run left untouched keeps its fingerprint and
   is `already_processed`.
