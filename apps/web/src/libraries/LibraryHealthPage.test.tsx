@@ -222,11 +222,9 @@ describe('LibraryHealthPage', () => {
     expect(buttons).toHaveLength(2);
     fireEvent.click(buttons[0] as HTMLElement);
     const dialog = await screen.findByRole('dialog', { name: 'Replace Lanternfish?' });
-    expect(
-      within(dialog).getByText(
-        new RegExp(`Movie check runs on this file again.*${REPLACE_STEP.replace(/[()]/g, '\\$&')}`),
-      ),
-    ).toBeTruthy();
+    expect(dialog.textContent).toContain(
+      `Movie check runs on this file again. If it is still damaged, ${REPLACE_STEP} asks Radarr`,
+    );
     fireEvent.click(within(dialog).getByRole('button', { name: 'Replace' }));
     await waitFor(() =>
       expect(mocks.jobs.queue).toHaveBeenCalledWith({
