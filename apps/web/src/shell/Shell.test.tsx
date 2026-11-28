@@ -334,6 +334,32 @@ describe('Shell', () => {
     expect(jobsList).toHaveBeenCalledWith({ limit: 1 });
   });
 
+  it('Shell leaves a job waiting for approval out of the Jobs running count', async () => {
+    jobsList.mockResolvedValue({
+      jobs: [],
+      counts: counts({ encoding: 1, verifying: 2 }),
+      awaitingApprovalCount: 1,
+    });
+    render(<Shell>x</Shell>);
+    const nav = screen.getByRole('navigation', { name: 'Main' });
+    const jobs = await within(nav).findByRole('link', { name: 'Jobs, 2 running' });
+    expect(jobs.querySelector('.nav-count')?.textContent).toBe('2');
+  });
+
+  it('Shell shows no Jobs count when the only active job waits for approval', async () => {
+    jobsList.mockResolvedValue({
+      jobs: [],
+      counts: counts({ verifying: 1 }),
+      awaitingApprovalCount: 1,
+    });
+    render(<Shell>x</Shell>);
+    const nav = screen.getByRole('navigation', { name: 'Main' });
+    await waitFor(() => expect(jobsList).toHaveBeenCalled());
+    await act(async () => {});
+    const jobs = within(nav).getByRole('link', { name: 'Jobs' });
+    expect(jobs.querySelector('.nav-count')).toBeNull();
+  });
+
   describe('activity widget (#9)', () => {
     const busy = () =>
       jobsList.mockResolvedValue({

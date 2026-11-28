@@ -125,7 +125,10 @@ export function Shell({
   // A newer Transcoda release: a 1 on Settings, and the link lands on About where the notes are.
   const appUpdate = useAppUpdate()?.update ?? null;
   const jobCounts = useJobsCounts();
-  const running = jobCounts ? RUNNING_JOB_STATES.reduce((n, s) => n + jobCounts[s], 0) : 0;
+  // A job waiting at an Approval step stays `verifying` but isn't running, so it isn't counted.
+  const running = jobCounts
+    ? RUNNING_JOB_STATES.reduce((n, s) => n + jobCounts.counts[s], 0) - jobCounts.awaitingApproval
+    : 0;
   const phone = usePhone();
   // The icon rail is the editor's desktop frame; on a phone the editor gets the phone header too.
   const rail = wantsRail && !phone;

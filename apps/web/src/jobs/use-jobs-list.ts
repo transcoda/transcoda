@@ -249,8 +249,15 @@ export function useProblemCount(): number | null {
 }
 
 /** Jobs per state for the nav pill (`jobs.list` with the smallest page; only `counts` is read). */
-export function useJobsCounts(): Record<JobState, number> | null {
-  const { data, reload } = useAsync(async () => (await api.jobs.list({ limit: 1 })).counts, []);
+export function useJobsCounts(): {
+  counts: Record<JobState, number>;
+  /** Jobs parked at an Approval step: `verifying`, but not running. */
+  awaitingApproval: number;
+} | null {
+  const { data, reload } = useAsync(async () => {
+    const list = await api.jobs.list({ limit: 1 });
+    return { counts: list.counts, awaitingApproval: list.awaitingApprovalCount ?? 0 };
+  }, []);
   const changed = useRef(stateChangeTracker());
   useRefetchOn(
     (e) => e.type === 'run.changed' || (e.type === 'job.changed' && changed.current(e)),
