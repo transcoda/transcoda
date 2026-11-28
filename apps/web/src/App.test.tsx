@@ -31,7 +31,7 @@ vi.mock('./api/client.ts', () => ({
 vi.mock('./pages/WorkflowsPage.tsx', () => ({ WorkflowsPage: () => <p>workflows page</p> }));
 vi.mock('./pages/NewWorkflowPage.tsx', () => ({ NewWorkflowPage: () => <p>new workflow page</p> }));
 vi.mock('./pages/EditorPage.tsx', () => ({ EditorPage: () => <p>editor page</p> }));
-vi.mock('./pages/LibraryFilePage.tsx', async () => {
+vi.mock('./libraries/LibraryFilePage.tsx', async () => {
   const { useState } = await import('react');
   return {
     // Each mount takes the next number, so a page that was kept across files shows the old one.
@@ -41,25 +41,25 @@ vi.mock('./pages/LibraryFilePage.tsx', async () => {
     },
   };
 });
-vi.mock('./pages/LibrariesPage.tsx', () => ({ LibrariesPage: () => <p>libraries page</p> }));
-vi.mock('./pages/settings/TokensSection.tsx', () => ({
+vi.mock('./libraries/LibrariesPage.tsx', () => ({ LibrariesPage: () => <p>libraries page</p> }));
+vi.mock('./settings/TokensSection.tsx', () => ({
   TokensSection: () => <p>tokens section</p>,
 }));
-vi.mock('./pages/settings/AboutSection.tsx', () => ({ AboutSection: () => <p>about section</p> }));
-vi.mock('./pages/settings/LicencesSection.tsx', () => ({
+vi.mock('./settings/AboutSection.tsx', () => ({ AboutSection: () => <p>about section</p> }));
+vi.mock('./settings/LicencesSection.tsx', () => ({
   LicencesSection: () => <p>licences section</p>,
 }));
-vi.mock('./pages/settings/GeneralSection.tsx', () => ({
+vi.mock('./settings/GeneralSection.tsx', () => ({
   GeneralSection: () => <p>general section</p>,
 }));
-vi.mock('./pages/settings/QueueSection.tsx', () => ({ QueueSection: () => <p>queue section</p> }));
-vi.mock('./pages/settings/RecycleSection.tsx', () => ({
+vi.mock('./settings/QueueSection.tsx', () => ({ QueueSection: () => <p>queue section</p> }));
+vi.mock('./settings/RecycleSection.tsx', () => ({
   RecycleSection: () => <p>recycle section</p>,
 }));
-vi.mock('./pages/settings/PluginsSection.tsx', () => ({
+vi.mock('./settings/PluginsSection.tsx', () => ({
   PluginsSection: () => <p>plugins section</p>,
 }));
-vi.mock('./pages/settings/AccountSection.tsx', () => ({
+vi.mock('./settings/AccountSection.tsx', () => ({
   AccountSection: () => <p>account section</p>,
 }));
 

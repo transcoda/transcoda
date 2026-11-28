@@ -5,13 +5,16 @@ The rules in force today for `apps/web/**`. History is in the decision files lin
 ## Layout of `apps/web/src`
 
 - `App.tsx`: every route. `main.tsx`: fonts, stylesheets, theme before first paint, providers.
-- `pages/`: one component per route for the routes not yet moved into their feature (`WorkflowsPage`, `EditorPage`, `LibrariesPage`, `LibraryPage`, `LibraryFilePage`, `PluginsPage`, `NewWorkflowPage`, `LoginPage`, `SetupPage`). `pages/settings/` holds Settings and its sections.
+- `pages/`: one component per route for the routes not yet moved into their feature (`WorkflowsPage`, `EditorPage`, `NewWorkflowPage`).
 - `editor/`: the workflow editor. `model/` is pure (no React, no React Flow), `flow/` adapts it to React Flow, `ui/` is the panels, dialogs and hooks around the canvas, `trace/` is the read-only canvas on the job page.
 - `jobs/`: the Jobs page (`JobsPage.tsx`, `JobsHistory.tsx`), the job page (`JobPage/`: steps, plan view, result, test output, ffmpeg notes and the `steps.ts` wording) and the run page (`RunPage/`); at the root what several pages use (cells, state chip, poster, queue bar, process again) and the shared wording modules (`job-text.ts`, `plan-text.ts`, `media-text.ts`).
 - `shell/`: the app chrome that knows features: `Shell` (nav and layout), `ActivityButton`, `AuthLayout` (the sign-in pages' frame).
 - `workflows/`: the empty Workflows state and the bundled examples (`bundled.ts`, `create-example.ts`).
 - `recycle/`: `RecyclePage`, `RestoreButton` (the job page uses it too) and the grouping.
-- `libraries/`, `plugins/`: the parts of those pages that are big enough to stand alone.
+- `libraries/`: `LibrariesPage`, `LibraryPage`, `LibraryFilePage` and the parts they share (file table, title grid, selection, crumbs, run dialog).
+- `plugins/`: `PluginsPage/` (the page with its rows, tiles, catalog, dialogs and wording) and, at the root, what the shell also uses (`use-plugins`, `use-plugins-nav`, `TmdbAttribution`).
+- `settings/`: `SettingsPage`, its sections (listed in `sections.ts`) and their form parts.
+- `auth/`: the auth provider, `use-auth`, and the `LoginPage`, `SetupPage` and `HostNotAllowedPage` pages.
 - `components/`: shared primitives that know no feature (`Dialog`, `Toast`, `Chips`, `Icon`, `Loading`, `NotFound`, `Headings`, `RowMenu`, `ListboxSelect`, `Disclosure`, `FilePath`, ...).
 - `api/` (client, CSRF, error mapping), `hooks/` (data and event hooks), `lib/` (formatting, page title, guarded navigation, breakpoints, theme), `data/` (codec and language tables).
 - `styles/`: `tokens.css` (vendored from the design handoff, excluded from Biome, never hand-edited except the additions DESIGN.md lists), the design guard tests (each named after the stylesheet it reads, `shell.activity.test.ts`) and their one exceptions file.
@@ -26,7 +29,7 @@ The rules in force today for `apps/web/**`. History is in the decision files lin
 
 ## Adding a page
 
-- Register the route in `App.tsx` inside `<RequireAuth><Shell>...</Shell></RequireAuth>` (the editor uses `<Shell rail>`). A Settings section goes in `pages/settings/sections.ts`, not in `App.tsx`. Keep old URLs working with a `<Redirect>`.
+- Register the route in `App.tsx` inside `<RequireAuth><Shell>...</Shell></RequireAuth>` (the editor uses `<Shell rail>`). A Settings section goes in `settings/sections.ts`, not in `App.tsx`. Keep old URLs working with a `<Redirect>`.
 - Nav items live in `shell/Shell.tsx` (`NavLink`).
 - Name the tab with `usePageTitle(...)` from `lib/page-title.ts`; never set `document.title` yourself. The title reads "Page · server name · Transcoda".
 - Loading: the shared `Loading` component (a test fails if a page types its own "Loading…"). Missing item: `NotFound` (it sets its own title with `useOverrideTitle`). Load errors: a `role="alert"` line with the `describeError` message and "Try again".

@@ -13,7 +13,7 @@ The rules in force today for how core runs, sandboxes, installs, verifies and ca
 
 ## The security promise (binding)
 
-The promise text lives in two places that a test pins equal: `SECURITY_PROMISE` in `apps/web/src/plugins/plugin-text.ts` and "What the sandbox does and does not do" in [`plugin-sdk.md`](../plugin-sdk.md) (`plugin-text.test.ts`). Change both or neither. What it binds core to:
+The promise text lives in two places that a test pins equal: `SECURITY_PROMISE` in `apps/web/src/plugins/PluginsPage/plugin-text.ts` and "What the sandbox does and does not do" in [`plugin-sdk.md`](../plugin-sdk.md) (`plugin-text.test.ts`). Change both or neither. What it binds core to:
 
 - **Accident protection, not a wall.** Plugins are trusted code. Never claim more than the promise says, and never weaken what it does claim.
 - A plugin reads only its own bundle, writes no files, starts no programs, loads no native code, has no worker threads and sees no environment beyond `PATH` and `NODE_ENV`. It never touches media or the database: core does all file work and gives plugins data only. A plugin build hook may not add, remove or re-point an extra input file (the walk's guard fails closed), so a plugin can never make ffmpeg read a path of its choosing.
