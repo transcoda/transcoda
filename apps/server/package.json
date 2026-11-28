@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@hono/node-server": "2.1.9",
+    "@jridgewell/trace-mapping": "0.3.31",
     "@modelcontextprotocol/sdk": "1.32.2",
     "@orpc/contract": "1.16.4",
     "@orpc/json-schema": "1.16.4",

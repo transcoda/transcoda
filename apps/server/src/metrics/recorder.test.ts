@@ -150,3 +150,25 @@ describe('MetricsRecorder encoder busy time', () => {
     expect(rec.encoderBusy()).toEqual([{ encoder: 'encode', busy: true, seconds: 7 }]);
   });
 });
+
+describe('MetricsRecorder client errors', () => {
+  it('lists every kind from the start, at 0', () => {
+    const { rec } = setup();
+    expect(rec.clientErrorCounts()).toEqual([
+      { kind: 'error', value: 0 },
+      { kind: 'rejection', value: 0 },
+      { kind: 'render', value: 0 },
+      { kind: 'api', value: 0 },
+      { kind: 'csp', value: 0 },
+    ]);
+  });
+
+  it('adds up the reported counts by kind', () => {
+    const { rec } = setup();
+    rec.countClientErrors('api', 3);
+    rec.countClientErrors('api', 2);
+    rec.countClientErrors('error', 1);
+    const counts = Object.fromEntries(rec.clientErrorCounts().map((c) => [c.kind, c.value]));
+    expect(counts).toMatchObject({ api: 5, error: 1, csp: 0 });
+  });
+});

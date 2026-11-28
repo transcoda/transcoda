@@ -336,6 +336,14 @@ describe('MetricsService cache and scratch space', () => {
     expect(value(text, 'transcoda_job_duration_seconds_sum', labels)).toBe(3600);
   });
 
+  it('counts the errors the web UI reported, every kind listed', async () => {
+    const { svc } = service();
+    svc.countClientErrors('render', 2);
+    const text = await svc.exposition();
+    expect(value(text, 'transcoda_client_errors_total', { kind: 'render' })).toBe(2);
+    expect(value(text, 'transcoda_client_errors_total', { kind: 'csp' })).toBe(0);
+  });
+
   it('gives up on a scratch-space read that does not settle', async () => {
     const { svc } = service({
       scratchFreeBytes: () => new Promise<number>(() => {}),

@@ -208,6 +208,9 @@ importers:
       '@hono/node-server':
         specifier: 2.1.9
         version: 2.1.9(hono@4.13.19)
+      '@jridgewell/trace-mapping':
+        specifier: 0.3.31
+        version: 0.3.31
       '@modelcontextprotocol/sdk':
         specifier: 1.32.2
         version: 1.32.2(zod@4.6.7)

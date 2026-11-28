@@ -1,7 +1,13 @@
-// What the database does not keep: how long finished jobs took and how long each encode slot was
-// busy, counted in memory from engine events since the server started (Prometheus treats the
-// restart as a counter reset).
-import { isFinalState, type JobState, type Lane } from '@transcoda/shared';
+// What the database does not keep: how long finished jobs took, how long each encode slot was
+// busy and how many errors the web UI reported, counted in memory since the server started
+// (Prometheus treats the restart as a counter reset).
+import {
+  CLIENT_ERROR_KINDS,
+  type ClientErrorKind,
+  isFinalState,
+  type JobState,
+  type Lane,
+} from '@transcoda/shared';
 import type { EngineEvent } from '../engine/events.ts';
 import type { EncodeSlotStatus } from '../engine/queue/scheduler.ts';
 import type { HistogramFamily } from './exposition.ts';
@@ -33,6 +39,10 @@ export class MetricsRecorder {
   private readonly media = new Map<string, MediaSample>();
   /** Per slot id: seconds busy before `since`, and since when it is busy (null: idle). */
   private readonly slots = new Map<string, { seconds: number; since: number | null }>();
+  /** Every kind from the start, so a first error is a step from 0 that `increase()` sees. */
+  private readonly clientErrors = new Map<ClientErrorKind, number>(
+    CLIENT_ERROR_KINDS.map((k) => [k, 0]),
+  );
 
   constructor(private readonly deps: RecorderDeps) {
     this.updateSlots(deps.slots());
@@ -119,5 +129,14 @@ export class MetricsRecorder {
       busy: s.since !== null,
       seconds: s.seconds + (s.since === null ? 0 : (now - s.since) / 1000),
     }));
+  }
+
+  /** Counts `count` errors of `kind` the web UI reported. */
+  countClientErrors(kind: ClientErrorKind, count: number): void {
+    this.clientErrors.set(kind, (this.clientErrors.get(kind) ?? 0) + count);
+  }
+
+  clientErrorCounts(): { kind: ClientErrorKind; value: number }[] {
+    return [...this.clientErrors.entries()].map(([kind, value]) => ({ kind, value }));
   }
 }

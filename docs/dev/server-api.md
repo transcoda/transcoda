@@ -16,7 +16,7 @@ Today's rules for the server outside the encode engine. The engine is in [engine
 4. **MCP, only if an agent should have it.** Add a tool with `defineTool` (`mcp/tool.ts`) in `apps/server/src/mcp/tools/<group>.ts`, add it to `ALL_TOOLS` in `mcp/tools/index.ts`, and to `EXPECTED_TOOLS` in `mcp/never.test.ts`. Describe it in `docs/mcp.md` (tool count and table; `mcp/mcp-docs.test.ts` checks both and the scopes).
 5. **Web.** Call it through `api` from `apps/web/src/api/client.ts` (a typed oRPC client over `/rpc`), usually from a hook in `apps/web/src/hooks/` or a page's own hook.
 
-- Routes that stream a file or plain text are plain Hono routes beside the contract, in `apps/server/src/http/` and mounted in `app/app.ts`: backup download, test output, job log, job poster, `/metrics`, and the plugin trigger webhooks (`/api/triggers/:plugin/:trigger`, [plugins-host.md](plugins-host.md#triggers)). They are not in the OpenAPI document or the RPC client.
+- Routes that stream a file or plain text are plain Hono routes beside the contract, in `apps/server/src/http/` and mounted in `app/app.ts`: backup download, test output, job log, job poster, `/metrics`, the plugin trigger webhooks (`/api/triggers/:plugin/:trigger`, [plugins-host.md](plugins-host.md#triggers)) and the web UI's error reports (`/api/client-errors`, [below](#web-ui-error-reports)). They are not in the OpenAPI document or the RPC client.
 - A GET is a read. Any other method (or none) is a mutation and gets the CSRF check.
 - Public operations in the OpenAPI document set `spec: publicSpec` (`packages/contract/src/openapi.ts`). The document's default security is `bearerAuth`.
 
@@ -85,7 +85,17 @@ Today's rules for the server outside the encode engine. The engine is in [engine
 - `metrics/catalog.sync.test.ts` checks that `docs/metrics.md` lists every metric with its type and labels in catalog order, and that `examples/grafana/transcoda-dashboard.json` queries only served metrics.
 - `TRANSCODA_METRICS=false` turns `/metrics` and `system.status` off.
 
+## Web UI error reports
+
+- `POST /api/client-errors` (`http/client-errors/client-errors.ts`): the web UI's error reports ([web-ui.md](web-ui.md#error-reports)). Not in the contract: sendBeacon posts a `text/plain` body and cannot set a header.
+- Auth: a browser session only; no session is 401, an API token 403 whatever its scopes. The cookie-mutation rules apply, with the CSRF token in the body (`csrf`) instead of `X-CSRF-Token`: a cross-site Origin or `Sec-Fetch-Site: cross-site` is 403 `CSRF_FAILED`, and so is a wrong token. The host check applies (`/api/*`).
+- Limits: the body is at most 64 kB (`CLIENT_ERRORS_MAX_BYTES`, 413), JSON (400 otherwise) and valid against `ClientErrorBatchSchema` (`@transcoda/shared`, 400): 1 to 20 events, each `{ kind, route, version, name, message, stack, count }` with no other field, `kind` one of `CLIENT_ERROR_KINDS`, `count` 1 to 1000, every string bounded.
+- Parsing scrubs every event again with the browser's rules (`scrubMessage`, `scrubFrame`, `scrubRoute`, `scrubVersion`), so a hand-made request logs nothing the browser would not have sent: a route that is not one of the web UI's `ROUTE_PATTERNS` is `<unknown>`, a frame is kept only as a script path on this server.
+- Each event adds its `count` to `transcoda_client_errors_total{kind}` and is logged at warn as `{ msg: 'client_error', kind, route, version, name, message, count, stack }`. Frames on the build's own bundles (`/assets/*.js`) are resolved with the source maps beside them (`http/client-errors/source-maps.ts`), so `stack` names `src/…` files and lines; a tab running an older build keeps its bundle positions. At most 60 lines a minute across all tabs (`CLIENT_ERROR_LOG_LIMIT`); the first one over says `client_error throttled` and the metric still counts the rest. Nothing is stored, and nothing is sent anywhere.
+- Source maps: the web build writes them with `sourcemap: 'hidden'` (no `sourceMappingURL` comment) and `http/static.ts` answers any `*.map` path with 404, so they ship in the image but are never served.
+
 ## Logging
 
 - Log through the `Logger` from `apps/server/src/platform/logger.ts` (JSON lines in production, plain text otherwise). It is the only server file allowed to use `console`.
 - Pass `{ msg, ...fields }`. Never log a secret, token, webhook URL, request body or procedure input.
+- The web UI's error reports are one `client_error` line each, already scrubbed (see [above](#web-ui-error-reports)).

@@ -2,7 +2,7 @@
 // Grafana dashboard (examples/grafana) are checked against this list by tests.
 //
 // Labels come only from small, fixed sets: library names, job states and outcomes, failure codes,
-// lanes, encode slots and GPUs. Never a path, a job id, a file or a failure message.
+// lanes, encode slots, GPUs and the web UI's error kinds. Never a path, a job id, a file or a failure message.
 
 export interface MetricDef {
   name: string;
@@ -137,6 +137,12 @@ export const METRICS = [
     type: 'gauge',
     help: 'Free space on the transcode folder; absent when it cannot be read.',
     labels: [],
+  },
+  {
+    name: 'transcoda_client_errors_total',
+    type: 'counter',
+    help: 'Errors the web UI reported since the server started, by kind.',
+    labels: ['kind'],
   },
 ] as const satisfies readonly MetricDef[];
 
