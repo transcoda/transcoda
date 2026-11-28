@@ -81,7 +81,7 @@ A patch release is the same, from `main`. If `main` already has features meant f
    git push origin sdk-v1.1.0
    ```
 
-3. **Approve the run.** `sdk-publish.yml` waits for approval in the `npm` environment, then checks that the tag matches the package version and is on `main`, runs the type check and the SDK tests, builds the package (`@transcoda/shared` is inlined, `zod` stays a dependency) and publishes it with provenance. It needs no npm token: npm trusts this workflow through trusted publishing (configured on npmjs.com for the `@transcoda/sdk` package: repository `transcoda/transcoda`, workflow `sdk-publish.yml`, environment `npm`).
+3. **Approve the run.** `sdk-publish.yml` first checks that the tag matches the package version and is on `main`, runs the type check and the SDK tests, and builds and packs the package (`@transcoda/shared` is inlined, `zod` stays a dependency). Then its `publish` job waits for approval in the `npm` environment and publishes that tarball with provenance; it installs nothing itself. It needs no npm token: npm trusts this workflow through trusted publishing (configured on npmjs.com for the `@transcoda/sdk` package: repository `transcoda/transcoda`, workflow `sdk-publish.yml`, environment `npm`).
 
 To check the package before a release: `pnpm --filter @transcoda/sdk build && pnpm --filter @transcoda/sdk pack`.
 
