@@ -13,8 +13,7 @@ import { hookJobOf } from '../../plugins/runtime/hooks.ts';
 import { fingerprintFromStats } from '../files/replace.ts';
 import { contentHash } from '../media/content-hash.ts';
 import type { JobControl } from '../queue/scheduler.ts';
-import { finishRunContext, jobUrl } from '../walk/plugin-context.ts';
-import { actionNode } from '../walk/walk.ts';
+import { actionNode, finishRunContext, jobUrl } from '../walk/walk.ts';
 import type { PipelineCore } from './core.ts';
 import { traceFinish } from './trace.ts';
 import {

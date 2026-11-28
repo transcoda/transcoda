@@ -22,7 +22,7 @@ import { insertWorkflow } from '../../db/repos/workflows.ts';
 import { createTestDb } from '../../db/testing.ts';
 import { type FsOps, failingAt, nodeFsOps } from '../../platform/fs-ops.ts';
 import type { Logger } from '../../platform/logger.ts';
-import { edge, mainGraph, node } from '../../workflows/test-helpers.ts';
+import { edge, mainGraph, node } from '../../workflows/testing.ts';
 import { tempDir, toolPaths } from '../testing/fixtures.ts';
 import { fingerprintOf } from './fingerprint.ts';
 import { recyclePathFor, tmpPathFor } from './replace.ts';

@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import { filePort } from '../../nodes/core/common.ts';
 import { createCoreRegistry, type NodeRegistry } from '../../nodes/registry.ts';
-import { node, PLUGIN_LINKS, registryWithPlugin, remoteA } from '../test-helpers.ts';
+import { node, PLUGIN_LINKS, registryWithPlugin, remoteA } from '../testing.ts';
 import { codes, ctx, mainWith } from './testing.ts';
 import { migratePinned, validateWorkflow } from './validate.ts';
 

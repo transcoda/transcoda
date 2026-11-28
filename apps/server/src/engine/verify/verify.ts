@@ -4,7 +4,7 @@ import type { BuildModel, ProbeResult } from '@transcoda/sdk';
 import { DEVICE_PROFILES, isPicture, type ProbeStream } from '@transcoda/shared';
 import type { Exec } from '../../capabilities/ffmpeg.ts';
 import { probeFile } from '../media/probe.ts';
-import { containerPlaysOn, streamPlaysOn, type TargetIssue } from '../model/targets.ts';
+import { containerPlaysOn, streamPlaysOn, type TargetIssue } from '../model/model.ts';
 import {
   DECODE_END_SECONDS,
   decodableStart,

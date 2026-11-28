@@ -16,9 +16,16 @@ import {
   watchForStall,
 } from '../encode/stall-guard.ts';
 import { classifyErrorLine, READ_FAILURE, sourceDecoderNames } from '../media/decoder-names.ts';
-import { ffmpegFailure, looksLikeGpuFailure, softwareFallback } from '../model/fallback.ts';
-import { isMkvCover, kept, outputOrder } from '../model/model.ts';
-import { renderCommandLine, renderEncoders } from '../model/render.ts';
+import {
+  ffmpegFailure,
+  isMkvCover,
+  kept,
+  looksLikeGpuFailure,
+  outputOrder,
+  renderCommandLine,
+  renderEncoders,
+  softwareFallback,
+} from '../model/model.ts';
 import type { JobControl } from '../queue/scheduler.ts';
 import { confirmSourceDamage } from '../verify/verify.ts';
 import { sourceDamaged } from './branches.ts';

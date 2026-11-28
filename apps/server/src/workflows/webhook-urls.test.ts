@@ -1,6 +1,6 @@
 import { RUN_SUBWORKFLOW_TYPE } from '@transcoda/shared';
 import { describe, expect, it } from 'vitest';
-import { mainGraph, node } from './test-helpers.ts';
+import { mainGraph, node } from './testing.ts';
 import { dropWebhookUrls, NOTIFY_NODE } from './webhook-urls.ts';
 
 describe('dropWebhookUrls', () => {

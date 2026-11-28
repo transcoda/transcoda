@@ -13,7 +13,7 @@ import { createTestApp, type TestApp } from '../../app/testing/app.ts';
 import { makeExec } from '../../capabilities/ffmpeg.ts';
 import { findJob, findJobResult, type JobRow } from '../../db/repos/jobs/jobs.ts';
 import { type FsOps, nodeFsOps } from '../../platform/fs-ops.ts';
-import { chain, node } from '../../workflows/test-helpers.ts';
+import { chain, node } from '../../workflows/testing.ts';
 import { nodeSpawner } from '../encode/process.ts';
 import { OutputStallGuard, watchForStall } from '../encode/stall-guard.ts';
 import { probeFile } from '../media/probe.ts';

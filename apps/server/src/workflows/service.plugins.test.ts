@@ -6,18 +6,11 @@ import { filePort } from '../nodes/core/common.ts';
 import type { NodeRegistry, RegisteredNode } from '../nodes/registry.ts';
 import { WorkflowService } from './service.ts';
 import {
+  activate,
   bumpV1,
   bumpV2,
-  chain,
-  node,
-  PLUGIN_LINKS,
-  registryWithPlugin,
-  remoteA,
-  testRegistry,
-} from './test-helpers.ts';
-import {
-  activate,
   caps,
+  chain,
   current,
   db,
   log,
@@ -25,10 +18,15 @@ import {
   make,
   makeSvc,
   NOW,
+  node,
+  PLUGIN_LINKS,
+  registryWithPlugin,
+  remoteA,
   run,
   save,
   setSvc,
   svc,
+  testRegistry,
   USER,
   useServiceDb,
 } from './testing.ts';

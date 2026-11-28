@@ -14,7 +14,7 @@ import { tempDir } from '../engine/testing/fixtures.ts';
 import { type FsOps, nodeFsOps } from '../platform/fs-ops.ts';
 import type { Logger } from '../platform/logger.ts';
 import { CorruptGraphError } from '../workflows/service.ts';
-import { chain, childGraph, node } from '../workflows/test-helpers.ts';
+import { chain, childGraph, node } from '../workflows/testing.ts';
 import { mcpClient } from './testing.ts';
 import { ALL_TOOLS } from './tools/index.ts';
 

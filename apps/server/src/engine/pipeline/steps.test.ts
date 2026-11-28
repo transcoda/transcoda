@@ -21,7 +21,7 @@ import type { RegisteredNode } from '../../nodes/registry.ts';
 import { RemoteHookError, remoteNodeDefinition } from '../../nodes/remote.ts';
 import { type HookName, PluginHooksRunner } from '../../plugins/runtime/hooks.ts';
 import { fixturePluginPath } from '../../plugins/testing/build.ts';
-import { edge, mainGraph, node } from '../../workflows/test-helpers.ts';
+import { edge, mainGraph, node } from '../../workflows/testing.ts';
 import { PLUGIN_RETRY_MS } from './steps.ts';
 import {
   base,

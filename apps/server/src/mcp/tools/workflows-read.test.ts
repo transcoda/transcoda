@@ -11,7 +11,7 @@ import {
   mainGraph,
   node,
   testRegistry,
-} from '../../workflows/test-helpers.ts';
+} from '../../workflows/testing.ts';
 import { mcpClient } from '../testing.ts';
 import { workflowReadTools } from './workflows-read.ts';
 

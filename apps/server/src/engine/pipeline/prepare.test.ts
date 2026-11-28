@@ -9,7 +9,7 @@ import { listRecycled } from '../../db/repos/recycled.ts';
 import { findWorkflow } from '../../db/repos/workflows.ts';
 import { setOrder } from '../../nodes/core/stream-rules.ts';
 import { nodeFsOps } from '../../platform/fs-ops.ts';
-import { edge, mainGraph, node } from '../../workflows/test-helpers.ts';
+import { edge, mainGraph, node } from '../../workflows/testing.ts';
 import { fingerprintOf } from '../files/fingerprint.ts';
 import { fitToContainer, modelFromProbe, normalizeDefaults } from '../model/model.ts';
 import { probeOf, withSidecar } from '../testing/builders.ts';

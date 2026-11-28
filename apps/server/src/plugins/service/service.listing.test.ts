@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { chain, node } from '../../workflows/test-helpers.ts';
+import { chain, node } from '../../workflows/testing.ts';
 
 import { base, install, serve, setup, useTestCatalog } from './testing.ts';
 

@@ -2,7 +2,7 @@
 // screens word each step from it instead of reading the hook's reason.
 import type { BuildModel, StreamPlan } from '@transcoda/sdk';
 import type { TraceChanges } from '@transcoda/shared';
-import { extraInputOf, kept } from './model.ts';
+import { extraInputOf, kept } from './streams.ts';
 
 type Changed = TraceChanges['dropped'][number];
 type Converted = TraceChanges['converted'][number];

@@ -17,21 +17,19 @@ import {
 } from '@transcoda/shared';
 import { z } from 'zod';
 import {
-  fitToContainer,
-  kept,
-  qualityName,
-  resolveEncoder,
-  streamsOf,
-  TEXT_SUBTITLES,
-} from '../../engine/model/model.ts';
-import {
   containerPlaysOn,
   defaultTracks,
+  fitToContainer,
+  kept,
   planIssues,
+  qualityName,
+  resolveEncoder,
   streamLabel,
+  streamsOf,
   type TargetIssue,
+  TEXT_SUBTITLES,
   targetWarnings,
-} from '../../engine/model/targets.ts';
+} from '../../engine/model/model.ts';
 import { retitle } from './audio-title.ts';
 import { filePort, LanguageCodeSchema, languageInput } from './common.ts';
 import {

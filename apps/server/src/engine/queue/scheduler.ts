@@ -25,7 +25,7 @@ import {
 import type { Logger } from '../../platform/logger.ts';
 import type { RunnerProcess } from '../encode/process.ts';
 import { type CurrentNode, type EngineEvents, jobChangedEvent } from '../events.ts';
-import { deviceVendor } from '../model/render.ts';
+import { deviceVendor } from '../model/model.ts';
 import { closedLibraries, serverTimeZone } from './run-hours.ts';
 
 /**

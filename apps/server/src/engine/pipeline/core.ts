@@ -19,10 +19,10 @@ import { type HookName, hookJobOf } from '../../plugins/runtime/hooks.ts';
 import type { EngineEvents } from '../events.ts';
 import { SETTLE_MINUTES } from '../files/paths.ts';
 import { contentHash } from '../media/content-hash.ts';
-import { type RenderDevice, RenderError, renderArgs } from '../model/render.ts';
+import { type RenderDevice, RenderError, renderArgs } from '../model/model.ts';
 import type { JobControl } from '../queue/scheduler.ts';
-import { jobUrl } from '../walk/plugin-context.ts';
 import type { ActionNode } from '../walk/walk.ts';
+import { jobUrl } from '../walk/walk.ts';
 import {
   type End,
   type FinishResult,

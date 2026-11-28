@@ -6,7 +6,7 @@ import { findJob, updateJob } from '../../db/repos/jobs/jobs.ts';
 import { insertLibrary } from '../../db/repos/libraries.ts';
 import { type FsOps, nodeFsOps } from '../../platform/fs-ops.ts';
 import { WorkflowService } from '../../workflows/service.ts';
-import { bumpV1, bumpV3, chain, node, testRegistry } from '../../workflows/test-helpers.ts';
+import { bumpV1, bumpV3, chain, node, testRegistry } from '../../workflows/testing.ts';
 import { fingerprintOf } from '../files/fingerprint.ts';
 import { QueueService } from './queue-service.ts';
 import {

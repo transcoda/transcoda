@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import { filePort } from '../../nodes/core/common.ts';
 import { type RemoteHooks, remoteNodeDefinition } from '../../nodes/remote.ts';
-import { edge, node } from '../../workflows/test-helpers.ts';
+import { edge, node } from '../../workflows/testing.ts';
 import { withSidecar } from '../testing/builders.ts';
 import { input, mainGraph, setup } from './testing.ts';
 import { walk } from './walk.ts';

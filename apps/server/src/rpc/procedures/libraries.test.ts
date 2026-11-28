@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { asSession, bearer, createToken, send } from '../../app/testing/http.ts';
 import { setSetting } from '../../db/repos/settings.ts';
-import { chain, node } from '../../workflows/test-helpers.ts';
+import { chain, node } from '../../workflows/testing.ts';
 import {
   base,
   createLibrary,

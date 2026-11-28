@@ -1,7 +1,7 @@
 import type { TraceEntry } from '@transcoda/shared';
 import { describe, expect, it } from 'vitest';
 import { runSubworkflow } from '../../nodes/core/subworkflow.ts';
-import { edge, node, subGraph } from '../../workflows/test-helpers.ts';
+import { edge, node, subGraph } from '../../workflows/testing.ts';
 import { capsOf } from '../testing/builders.ts';
 import { AT, at, brief, expectCovered, ids, input, mainGraph, NOW, setup } from './testing.ts';
 import { walk, walkBuild, walkDecide } from './walk.ts';
