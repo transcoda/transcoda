@@ -599,7 +599,7 @@ describe('steps: one sentence and a badge per node', () => {
       reason: 'wait for a person to approve the result (up to 3 days)',
     });
     expect(one(gate).sentence).toBe('Would wait for a person to approve the result, up to 3 days');
-    expect(one(gate).badge).toBe('check');
+    expect(one(gate).badge).toBe('finish');
     const running: StepContext = { ...DONE, state: 'verifying', replacedTo: null };
     expect(one(gate, running).sentence).toBe(
       'Waits for a person to approve the result, up to 3 days',

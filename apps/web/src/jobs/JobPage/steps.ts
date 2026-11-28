@@ -863,7 +863,7 @@ function step(d: Decision, ctx: StepContext, around: Around): Step {
     }
     if (d.type === 'core:approval') {
       const sentence = approvalSentence(d, reasonSentence(d), ctx.dryRun);
-      return { ...base, badge: 'check', quiet: false, sentence };
+      return { ...base, badge: 'finish', quiet: false, sentence };
     }
     if (d.type === 'core:size-gate') {
       // A real run's measurement is over once it settled, whether it wrote or kept the original.

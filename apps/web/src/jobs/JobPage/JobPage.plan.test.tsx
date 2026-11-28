@@ -289,6 +289,9 @@ describe('JobPage dry-run plan (Task 24)', () => {
     expect(document.querySelector('.job-head-chips .job-chip')?.textContent).toBe(
       'Waiting for approval',
     );
+    // Nothing is at work: no progress bar and no node named as current.
+    expect(screen.queryByRole('progressbar')).toBeNull();
+    expect(document.querySelector('.job-head-at')).toBeNull();
   });
 
   it('toolbar "Try this node" navigates with ?node=<id> and JobPage preselects it', async () => {
