@@ -8,13 +8,13 @@ import {
   valueNamed,
   type WorkflowGraph,
 } from '@transcoda/shared';
-import { resolveEncoder } from '../../engine/model/model.ts';
 import {
   checkEncodeAudioSettings,
   checkEncodeVideoSettings,
   checkRemuxSettings,
+  resolveEncoder,
   type TargetIssue,
-} from '../../engine/model/targets.ts';
+} from '../../engine/model/model.ts';
 import { MOVE_COPY_TYPE, nodeAvailability } from '../../nodes/availability.ts';
 import type { RegisteredNode } from '../../nodes/registry.ts';
 import { adjacency, checkKindRules, findCycle } from './graph.ts';

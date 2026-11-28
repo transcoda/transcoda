@@ -12,8 +12,7 @@ import type { RunnerProcess, SpawnOptions } from '../encode/process.ts';
 import { fingerprintOf } from '../files/fingerprint.ts';
 import { contentHash } from '../media/content-hash.ts';
 import { classifyErrorLine, sourceDecoderNames } from '../media/decoder-names.ts';
-import { modelFromProbe } from '../model/model.ts';
-import { renderEncoders } from '../model/render.ts';
+import { modelFromProbe, renderEncoders } from '../model/model.ts';
 import { probeOf, withStream } from '../testing/builders.ts';
 import {
   base,

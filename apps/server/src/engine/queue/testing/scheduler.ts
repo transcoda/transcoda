@@ -12,7 +12,7 @@ import { createTestDb } from '../../../db/testing.ts';
 import type { Logger } from '../../../platform/logger.ts';
 import type { ProcessResult, RunnerProcess } from '../../encode/process.ts';
 import { EngineEvents } from '../../events.ts';
-import type { RenderDevice } from '../../model/render.ts';
+import type { RenderDevice } from '../../model/model.ts';
 import {
   type ExecuteOutcome,
   type JobControl,
