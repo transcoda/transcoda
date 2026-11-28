@@ -244,7 +244,16 @@ describe('specFor', () => {
       { anyOf: [{ type: 'string' }, { type: 'number' }] },
       { oneOf: [{ type: 'string' }] },
       { $ref: '#/$defs/x' },
-      { type: ['string', 'null'] },
+      // Nullable scalars and literal unions have controls (schema-fields.shapes.test.ts).
+      { type: ['string', 'number'] },
+      { type: ['string', 'number', 'null'] },
+      { anyOf: [{ type: 'object' }, { type: 'null' }] },
+      {
+        anyOf: [
+          { type: 'string', const: 'a' },
+          { type: 'number', const: 1 },
+        ],
+      },
       { type: 'array', items: { type: 'number' } },
       { type: 'array' },
       { type: 'string', enum: ['a', 1] },
