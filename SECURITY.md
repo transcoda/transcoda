@@ -27,7 +27,7 @@ gh attestation verify oci://ghcr.io/transcoda/transcoda:<version> --repo transco
   --bundle transcoda-v<version>.sigstore.json
 ```
 
-From the first release after 0.7.0, a release also carries `transcoda-v<version>.intoto.jsonl`: the same signed provenance as in-toto JSON Lines, the signed envelope without the certificate. It is the bundle's `dsseEnvelope`, so `jq -c .dsseEnvelope transcoda-v<version>.sigstore.json` prints the same line, and `jq -r .payload transcoda-v<version>.intoto.jsonl | base64 -d` shows the SLSA provenance statement with the image's digest.
+From 0.3.0 on, a release also carries `transcoda-v<version>.intoto.jsonl` (0.3.0 to 0.7.0 got it after release, made from their own `.sigstore.json`): the same signed provenance as in-toto JSON Lines, the signed envelope without the certificate. It is the bundle's `dsseEnvelope`, so `jq -c .dsseEnvelope transcoda-v<version>.sigstore.json` prints the same line, and `jq -r .payload transcoda-v<version>.intoto.jsonl | base64 -d` shows the SLSA provenance statement with the image's digest.
 
 ## Known vulnerabilities in the image
 
