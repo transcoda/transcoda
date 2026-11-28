@@ -448,22 +448,11 @@ describe('EditorPage', () => {
     expect(document.activeElement).not.toBe(search);
   });
 
-  it('the legend lists the five line meanings and the five keys', async () => {
+  it('the key explains the two line styles, and lists the five keys on an editable canvas', async () => {
     await loadedEditor();
     const key = screen.getByText('Key').closest('details') as HTMLElement;
-    for (const text of [
-      'file flow',
-      'path this file took (moving)',
-      'data, value on the line',
-      'not taken',
-      'leads to a broken node',
-      'next node',
-      'node actions',
-      'connect',
-      'remove',
-      'add',
-    ]) {
-      expect(within(key).getByText(text)).toBeTruthy();
+    for (const text of ['data', 'leads to a broken node', 'next node', 'node actions', 'connect']) {
+      expect(within(key).getAllByText(text).length).toBeGreaterThan(0);
     }
     expect([...key.querySelectorAll('kbd')].map((k) => k.textContent)).toEqual([
       'Tab',
@@ -472,6 +461,15 @@ describe('EditorPage', () => {
       'Del',
       '/',
     ]);
+  });
+
+  it('below 1024 px the key leaves out the keyboard shortcuts (nothing there can be edited)', async () => {
+    stubNarrow(true);
+    await loadedEditor();
+    const key = screen.getByText('Key').closest('details') as HTMLElement;
+    expect(within(key).getByText('leads to a broken node')).toBeTruthy();
+    expect(key.querySelectorAll('kbd')).toHaveLength(0);
+    expect(within(key).queryByText('Keys')).toBeNull();
   });
 
   it('keyboard: Tab selects the next node, Delete removes it, Mod+Z brings it back, "/" opens the search', async () => {
