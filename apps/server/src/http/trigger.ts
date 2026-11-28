@@ -98,6 +98,7 @@ async function queueFile(
     dryRun: false,
     force: false,
     fileOnly: true,
+    realOnly: true,
     priority: 0,
     createdBy,
   });

@@ -52,6 +52,7 @@ import {
   isWithin,
   listMediaFiles,
   type PathCheck,
+  realpathOrNull,
   SETTLE_MINUTES,
   type SkipReason,
   skipReasonFor,
@@ -76,6 +77,8 @@ export interface QueueInput {
   force: boolean;
   /** One file only ("Run on a file"): a folder is rejected as `not a file`. */
   fileOnly?: boolean;
+  /** Never a dry run (a trigger): no active version, even one lost mid-request, is no-feeding-workflow. */
+  realOnly?: boolean;
   priority: number;
   createdBy: string;
 }
@@ -232,14 +235,6 @@ export const HELD_BY_ANOTHER_RUN = 'already queued in another run';
 const DENIED = new Set(['EACCES', 'EPERM']);
 const MISSING = new Set(['ENOENT', 'ENOTDIR']);
 
-async function realpathOrNull(fs: FsOps, p: string): Promise<string | null> {
-  try {
-    return await fs.realpath(p);
-  } catch {
-    return null;
-  }
-}
-
 type Statement = ReturnType<Database['prepare']>;
 
 /** The source a run is stored with (see `writeRun`'s `source`). */
@@ -312,6 +307,7 @@ export class QueueService {
     // may activate or deactivate while the folder is being listed.
     const early = this.resolveWorkflow(workflowId, input.dryRun, input.workflowVersion);
     if (early.kind !== 'ok') return early;
+    if (input.realOnly && early.dryRun) return { kind: 'no-feeding-workflow' };
 
     let st: Stats;
     try {
@@ -566,6 +562,7 @@ export class QueueService {
       const observedAt = this.deps.now();
       const workflow = this.resolveWorkflow(workflowId, input.dryRun, input.workflowVersion);
       if (workflow.kind !== 'ok') return workflow;
+      if (input.realOnly && workflow.dryRun) return { kind: 'no-feeding-workflow' as const };
       if (newOnly) {
         if (workflow.dryRun) return { kind: 'no-feeding-workflow' as const };
         // Another feeder took the library while it was listed: leave its files to the next scan.
