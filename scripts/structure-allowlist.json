@@ -19,21 +19,9 @@
     "apps/server/src/workflows/e2e.test.ts",
     "apps/server/src/workflows/examples-plugins.test.ts",
     "apps/web/src/design-source.test.tsx",
-    "apps/web/src/editor/ui/fields/fields.test.tsx",
     "apps/web/src/file-names.test.ts",
-    "apps/web/src/jobs/time-left.property.test.ts",
-    "apps/web/src/lib/job-times.test.ts",
-    "apps/web/src/libraries/selection.test.tsx",
     "apps/web/src/source-copy.test.ts",
-    "apps/web/src/styles.forms.test.ts",
-    "apps/web/src/styles/conventions-css.test.ts",
-    "apps/web/src/styles/design-doc-sync.test.ts",
-    "apps/web/src/styles/design-rules-css.test.ts",
-    "apps/web/src/styles/motion-controls-css.test.ts",
-    "apps/web/src/styles/shell-css.test.ts",
-    "apps/web/src/styles/spacing-radius-css.test.ts",
-    "apps/web/src/styles/theme.test.ts",
-    "apps/web/src/styles/type-scale-css.test.ts"
+    "apps/web/src/styles/design-doc-sync.test.ts"
   ],
   "softSizeLimit": {
     "apps/server/src/engine/queue/queue-service.ts": 1131,
