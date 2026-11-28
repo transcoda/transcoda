@@ -52,10 +52,15 @@
 @import "./editor-inspector.css";
 @import "./editor-subworkflows.css";
 @import "./jobs.css";
+@import "./jobs-overview.css";
+@import "./jobs-phone.css";
 @import "./libraries.css";
 @import "./run-summary.css";
 @import "./dry-run.css";
 @import "./job-page.css";
+@import "./job-page-steps.css";
+@import "./job-page-result.css";
+@import "./job-page-log.css";
 @import "./plugins.css";
 @import "./tmdb.css";
 @import "./folder-picker.css";
