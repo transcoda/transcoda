@@ -4,7 +4,7 @@
 
 /* Type scale. tokens.css owns --fs-display, --fs-h1, --fs-h2, --fs-body, --fs-small and --fs-mono;
    these four fill the gaps so the stylesheets carry no raw px font-size.
-   Documented exceptions (checked by styles/type-scale-css.test.ts): the auth hero tagline
+   Documented exceptions (checked by styles/index.type-scale.test.ts): the auth hero tagline
    (64px, 40px on phone) is a display glyph size of its own, and .markdown code is 0.92em of its
    surrounding text. */
 /* biome-ignore-start lint/style/noHexColors: the named colours and their light values are the one
