@@ -9,7 +9,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest
 import { createTestApp, type TestApp } from '../../app/testing/app.ts';
 import { findJob, findJobResult, type JobRow } from '../../db/repos/jobs/jobs.ts';
 import { type FsOps, nodeFsOps } from '../../platform/fs-ops.ts';
-import { chain, node } from '../../workflows/test-helpers.ts';
+import { chain, node } from '../../workflows/testing.ts';
 import { defaultRecycleFolder } from '../files/recycle.ts';
 import { fixturesAvailable, realCapabilities, tempDir, toolPaths } from '../testing/fixtures.ts';
 

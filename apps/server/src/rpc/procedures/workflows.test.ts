@@ -14,14 +14,7 @@ import {
 import { SESSION_COOKIE } from '../../auth/cookies.ts';
 import { insertLibrary } from '../../db/repos/libraries.ts';
 import type { Logger } from '../../platform/logger.ts';
-import {
-  bumpV1,
-  bumpV2,
-  chain,
-  childGraph,
-  node,
-  testRegistry,
-} from '../../workflows/test-helpers.ts';
+import { bumpV1, bumpV2, chain, childGraph, node, testRegistry } from '../../workflows/testing.ts';
 
 const nodes = testRegistry(bumpV1()).list();
 

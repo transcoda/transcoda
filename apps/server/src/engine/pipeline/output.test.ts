@@ -7,7 +7,7 @@ import { fingerprintKey } from '../../db/repos/files.ts';
 import { findJobResult, hasReplaceJournal } from '../../db/repos/jobs/jobs.ts';
 import { listRecycled } from '../../db/repos/recycled.ts';
 import { nodeFsOps } from '../../platform/fs-ops.ts';
-import { node } from '../../workflows/test-helpers.ts';
+import { node } from '../../workflows/testing.ts';
 import type { RunnerProcess, SpawnOptions } from '../encode/process.ts';
 import { fingerprintOf } from '../files/fingerprint.ts';
 import { contentHash } from '../media/content-hash.ts';

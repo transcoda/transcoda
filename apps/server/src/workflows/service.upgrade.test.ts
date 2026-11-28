@@ -6,16 +6,13 @@ import { getSetting } from '../db/repos/settings.ts';
 import { filePort } from '../nodes/core/common.ts';
 import { CorruptGraphError } from './service.ts';
 import {
+  activate,
   bumpNoPath,
   bumpThrowing,
   bumpV2,
   bumpV3,
   chain,
   childGraph,
-  node,
-} from './test-helpers.ts';
-import {
-  activate,
   codes,
   corrupt,
   current,
@@ -24,6 +21,7 @@ import {
   mainWith,
   make,
   NOW,
+  node,
   otherDef,
   run,
   summary,

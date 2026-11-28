@@ -1,7 +1,7 @@
 import type { Capabilities } from '@transcoda/contract';
 import type { Issue, WorkflowGraph } from '@transcoda/shared';
 import type { NodeRegistry } from '../../nodes/registry.ts';
-import { bumpV1, chain, node, testRegistry } from '../test-helpers.ts';
+import { bumpV1, chain, node, testRegistry } from '../testing.ts';
 import type { SubworkflowRef, ValidationContext } from './types.ts';
 
 // Shared setup for the validate*.test.ts files: capabilities, a validation context, issue helpers.

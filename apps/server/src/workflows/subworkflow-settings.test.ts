@@ -18,7 +18,7 @@ import {
   node,
   testRegistry,
   withSetting,
-} from './test-helpers.ts';
+} from './testing.ts';
 
 const reg = testRegistry();
 

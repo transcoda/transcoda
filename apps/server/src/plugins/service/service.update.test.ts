@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import type { TestApp } from '../../app/testing/app.ts';
 import { findPlugin } from '../../db/repos/plugins.ts';
 import { tempDir } from '../../engine/testing/fixtures.ts';
-import { edge, mainGraph, node } from '../../workflows/test-helpers.ts';
+import { edge, mainGraph, node } from '../../workflows/testing.ts';
 import { fixturePluginPath } from '../testing/build.ts';
 
 import {

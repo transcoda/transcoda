@@ -12,7 +12,7 @@ import { createTestDb } from '../../db/testing.ts';
 import { nodeFsOps } from '../../platform/fs-ops.ts';
 import type { Logger } from '../../platform/logger.ts';
 import { WorkflowService } from '../../workflows/service.ts';
-import { chain, node, testRegistry } from '../../workflows/test-helpers.ts';
+import { chain, node, testRegistry } from '../../workflows/testing.ts';
 import { EngineEvents } from '../events.ts';
 import { fingerprintOf } from '../files/fingerprint.ts';
 import type { MediaResolver } from '../media/media-info.ts';

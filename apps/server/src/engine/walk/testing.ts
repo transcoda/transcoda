@@ -6,7 +6,7 @@ import { expect, vi } from 'vitest';
 import { z } from 'zod';
 import { filePort, languageInput, passElse } from '../../nodes/core/common.ts';
 import { NodeHookError } from '../../nodes/core/stream-rules.ts';
-import { bareGraph, testRegistry } from '../../workflows/test-helpers.ts';
+import { bareGraph, testRegistry } from '../../workflows/testing.ts';
 import { capsOf, fileOf, probeOf } from '../testing/builders.ts';
 import type { PathStep, WalkDeps } from './walk.ts';
 

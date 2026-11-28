@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 import { findJobResult, type JobRow, listTrace } from '../../db/repos/jobs/jobs.ts';
 import { filePort } from '../../nodes/core/common.ts';
-import { bareGraph, edge, node } from '../../workflows/test-helpers.ts';
+import { bareGraph, edge, node } from '../../workflows/testing.ts';
 import { probeOf } from '../testing/builders.ts';
 import {
   execCalls,

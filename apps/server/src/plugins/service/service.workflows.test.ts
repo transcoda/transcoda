@@ -2,7 +2,7 @@ import { mkdir, rm, utimes, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { tempDir } from '../../engine/testing/fixtures.ts';
-import { chain, node } from '../../workflows/test-helpers.ts';
+import { chain, node } from '../../workflows/testing.ts';
 
 import { files, install, serve, setup, useTestCatalog } from './testing.ts';
 

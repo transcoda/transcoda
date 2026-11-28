@@ -32,7 +32,6 @@
   "barrels": [],
   "testSupportImports": [],
   "testSupportNames": [
-    "apps/server/src/workflows/test-helpers.ts",
     "apps/web/src/styles/css-source.ts",
     "apps/web/src/styles/design-exceptions.ts"
   ],
