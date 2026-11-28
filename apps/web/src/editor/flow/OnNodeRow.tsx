@@ -14,9 +14,8 @@ import {
   numberStep,
   onNodeControlKeys,
 } from '../model/schema-fields.ts';
-import { humanise } from '../ui/fields/Field.tsx';
+import { humanise, numberText } from '../model/value-text.ts';
 import { LibrarySelect, libraryName, MISSING_LIBRARY } from '../ui/fields/LibrarySelect.tsx';
-import { numberText } from '../ui/fields/NumberField.tsx';
 import type { ZoomLevel } from './use-zoom-level.ts';
 
 type JsonObject = { [key: string]: JsonValue };

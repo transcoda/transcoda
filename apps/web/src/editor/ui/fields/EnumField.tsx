@@ -1,5 +1,6 @@
 import type { KeyboardEvent } from 'react';
-import { Field, type FieldProps, humanise } from './Field.tsx';
+import { humanise } from '../../model/value-text.ts';
+import { Field, type FieldProps } from './Field.tsx';
 
 const NEXT: Record<string, number> = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 };
 
