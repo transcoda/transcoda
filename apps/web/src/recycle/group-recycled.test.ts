@@ -26,12 +26,27 @@ describe('groupRecycled', () => {
     ]);
   });
 
+  it('lists rows in name order, numbers as numbers, whatever order they were recycled in', () => {
+    const ep19 = e('Show/S01E19.mkv', 'original', 'j1');
+    const ep18 = e('Show/S01E18.mkv', 'original', 'j2');
+    const ep9 = e('Show/S01E9.mkv', 'original', 'j3');
+    const ep18Srt = e('Show/S01E18.en.srt', 'sidecar', 'j2');
+    const ep18Srt2 = e('Show/S01E18.de.srt', 'sidecar', 'j2');
+    const film = e('film.mkv', 'original', 'j4');
+    expect(groupRecycled([ep19, ep18, ep18Srt, ep9, ep18Srt2, film])).toEqual([
+      { entry: film, sidecars: [] },
+      { entry: ep9, sidecars: [] },
+      { entry: ep18, sidecars: [ep18Srt2, ep18Srt] },
+      { entry: ep19, sidecars: [] },
+    ]);
+  });
+
   it('a sidecar of a job whose original is a restored output stays on its own', () => {
     const out = e('c.mkv.1', 'restored-output', 'j3');
     const srt = e('c.de.srt', 'sidecar', 'j3');
     expect(groupRecycled([out, srt])).toEqual([
-      { entry: out, sidecars: [] },
       { entry: srt, sidecars: [] },
+      { entry: out, sidecars: [] },
     ]);
   });
 });

@@ -72,6 +72,7 @@ beforeEach(() => {
   mocks.recycle.list.mockReset().mockResolvedValue(listing(ENTRIES));
 });
 afterEach(() => {
+  vi.useRealTimers();
   window.matchMedia = realMatchMedia;
   cleanup();
 });
@@ -85,6 +86,9 @@ async function open(path = '/recycle') {
 
 describe('RecyclePage', () => {
   it("lists the chosen library's folder, size, free space, cleanup note and rows", async () => {
+    // Before the entries' removal date, so it reads "Deletes on" (#242).
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-11-02T10:00:00.000Z'));
     await open();
     expect(await screen.findByText(BIN)).toBeTruthy();
     expect(mocks.recycle.list).toHaveBeenCalledWith({});
@@ -105,7 +109,8 @@ describe('RecyclePage', () => {
     expect(within(a).getByText('1.00 kB')).toBeTruthy();
     expect(within(a).getByRole('link', { name: 'Job' }).getAttribute('href')).toBe('/jobs/j1');
     expect(within(a).getByText(fmtDate('2026-11-01T10:00:00.000Z'))).toBeTruthy();
-    expect(within(a).getByText(`Deleted on ${fmtDate('2026-11-08T10:00:00.000Z')}`)).toBeTruthy();
+    expect(within(a).getByText(`Deletes on ${fmtDate('2026-11-08T10:00:00.000Z')}`)).toBeTruthy();
+    expect(within(table).getByRole('columnheader', { name: 'Deletes' })).toBeTruthy();
     expect(srt.className).toContain('recycle-sidecar');
     expect(within(srt).getByText('Show/a.de.srt')).toBeTruthy();
     expect(within(srt).getByText('Subtitle file, comes back with its video')).toBeTruthy();
@@ -184,6 +189,9 @@ describe('RecyclePage', () => {
     const cards = container.querySelectorAll('.phone-card');
     expect(cards).toHaveLength(2);
     expect(cards[0]?.textContent).toContain('Show/a.de.srt');
+    // The removal date (Nov 8, 2026) has passed and the file is still listed.
+    expect(cards[0]?.textContent).toContain('Deletes soon');
+    expect(cards[0]?.textContent).not.toContain('Deleted');
   });
 });
 
