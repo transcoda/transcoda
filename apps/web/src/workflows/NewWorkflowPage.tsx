@@ -90,9 +90,10 @@ export function NewWorkflowPage() {
           ))}
         </fieldset>
         {/* Right-aligned, Cancel first and the primary last: the order every dialog footer uses.
-            An empty name needs no helper line: the required Name field above says it. */}
+            An empty name needs no helper line: the required Name field above says it.
+            Cancel goes to `/`: the workflows list lives there (`App.tsx`), not at `/workflows`. */}
         <div className="form-actions">
-          <Link href="/workflows" className="btn btn-secondary">
+          <Link href="/" className="btn btn-secondary">
             Cancel
           </Link>
           <button
