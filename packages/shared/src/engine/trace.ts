@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { IdSchema, JsonValueSchema } from '../workflow/graph.ts';
+import { IdSchema, JsonValueSchema } from '../workflows/graph.ts';
 import { STREAM_TYPES } from './probe.ts';
 
 /** `pass`: a node on the path without a hook (trigger, Run sub-workflow, sub-workflow Start/End). */

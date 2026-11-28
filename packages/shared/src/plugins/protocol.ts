@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { JsonValueSchema } from '../workflow/graph.ts';
+import { JsonValueSchema } from '../workflows/graph.ts';
 import { HookEventNameSchema, PluginManifestSchema } from './types.ts';
 
 export const PROTOCOL_VERSION = 1;
