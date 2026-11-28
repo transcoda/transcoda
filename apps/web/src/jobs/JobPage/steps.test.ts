@@ -587,6 +587,37 @@ describe('steps: one sentence and a badge per node', () => {
     );
   });
 
+  it('a gate that wrote the track changes says the video was kept; a plan says it would', () => {
+    const gate = d({
+      key: '7',
+      nodeId: 'sg',
+      title: 'Size gate',
+      kind: 'finish',
+      type: 'core:size-gate',
+      phase: 'finish',
+      settings: { minSavingPercent: 20, belowMinimum: 'write-track-changes' },
+      reason: 'size gate: at least 20% smaller; else write the track changes only',
+    });
+    expect(one(gate).sentence).toBe(
+      'Keeps the result only if it is at least 20% smaller; otherwise writes only the track changes',
+    );
+    const wrote = {
+      ...gate,
+      branch: 'pass' as const,
+      findings: { minSavingPercent: 20, savedPercent: 4, trackChanges: true },
+    };
+    expect(one(wrote, DONE).sentence).toBe(
+      'The result was only 4% smaller (at least 20% needed), so the video was kept as it is and only the track changes were written',
+    );
+    expect(one(wrote).sentence).toBe(
+      'The test encode came out only 4% smaller (at least 20% needed), so a real run would keep the video as it is and write only the track changes',
+    );
+    const later = { ...wrote, findings: { minSavingPercent: 30, trackChanges: true } };
+    expect(one(later, DONE).sentence).toBe(
+      'Only the track changes were written, so there was nothing to measure',
+    );
+  });
+
   it('a test encode words its measurement as what a real run would do', () => {
     const gate = d({
       key: '7',

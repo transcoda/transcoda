@@ -245,6 +245,25 @@ describe('PlanView', () => {
     expect(screen.getByText('−31%')).toBeTruthy();
   });
 
+  it('a test encode whose size gate would write the track changes alone says so, with the size now and no percent', () => {
+    render(
+      <PlanView
+        plan={mapleLanePlan()}
+        probe={mapleLaneProbe()}
+        result={mapleLaneResult({ estimatedBytes: null, afterBytes: 2_200_000_000 })}
+        measured
+        trackChangesOnly
+        workflow={workflow}
+        onActivate={() => {}}
+        onTryAnother={() => {}}
+      />,
+    );
+    expect(screen.getByText('Write track changes')).toBeTruthy();
+    const size = screen.getByText('Size').parentElement as HTMLElement;
+    expect(size.textContent).toBe('SizeNow 2.41 GB');
+    expect(document.querySelector('.plan-percent')).toBeNull();
+  });
+
   it('a test encode still running says "Now 2.41 GB → …", not a size under the measured label', () => {
     render(
       <PlanView

@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { describeError } from '../../api/errors.ts';
 import { useWorkflow } from '../../hooks/use-workflows.ts';
 import { ActivateDialog } from '../../workflows/ActivateDialog.tsx';
+import { writesTrackChangesOnly } from '../job-text.ts';
 import { useTryOnFile } from '../use-try-on-file.ts';
 import { PlanView } from './PlanView.tsx';
 
@@ -48,6 +49,7 @@ function DryRunPlan({ job, plan }: { job: JobDetail; plan: NonNullable<JobDetail
         probe={job.probe}
         result={job.result}
         measured={job.testEncode === true}
+        trackChangesOnly={writesTrackChangesOnly(job.reason)}
         // Unknown (undefined) until the workflow loads: "Activate …" waits for it.
         workflow={{
           id: job.workflowId,

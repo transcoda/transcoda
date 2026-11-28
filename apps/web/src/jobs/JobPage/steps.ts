@@ -25,6 +25,7 @@ import {
 import type { Decision } from '../../editor/trace/trace-overlay.ts';
 import { fmtKbps } from '../../lib/rate.ts';
 import { languageNameOf } from '../plan-text.ts';
+import { sizeGateSentence } from './size-gate-step.ts';
 
 export type Badge =
   | 'start'
@@ -725,36 +726,6 @@ function notRun(d: Decision, ctx: StepContext, around: Around): string | null {
   return null;
 }
 
-function sizeGate(d: Decision, ctx: StepContext, past: boolean, around: Around): string {
-  const min = num(d.findings.minSavingPercent) ?? num(d.settings.minSavingPercent) ?? 10;
-  const saved = num(d.findings.savedPercent);
-  if (ctx.dryRun && saved !== null && (d.branch === 'pass' || d.branch === 'else')) {
-    // A test encode measured it: what a real run would then do.
-    const would =
-      d.branch === 'else'
-        ? 'keep the original'
-        : around.replaces
-          ? 'replace the original'
-          : 'go on to the finish steps';
-    const how =
-      saved < 0
-        ? `${-saved}% bigger (at least ${min}% smaller needed)`
-        : `${saved}% smaller (at least ${min}% needed)`;
-    return `The test encode came out ${how}, so a real run would ${would}`;
-  }
-  const is = past ? 'was' : 'is';
-  if (d.branch === 'pass' && saved !== null) {
-    return `The result ${is} ${saved}% smaller (at least ${min}% needed), so the finish steps ${past ? 'went' : 'go'} ahead`;
-  }
-  if (d.branch === 'else' && saved !== null && saved < 0) {
-    return `The result ${is} ${-saved}% bigger (at least ${min}% smaller needed), so the original ${is} kept`;
-  }
-  if (d.branch === 'else' && saved !== null) {
-    return `The result ${is} only ${saved}% smaller (at least ${min}% needed), so the original ${is} kept`;
-  }
-  return `Keeps the result only if it is at least ${min}% smaller`;
-}
-
 function finishStep(
   d: Decision,
   ctx: StepContext,
@@ -919,7 +890,7 @@ function step(d: Decision, ctx: StepContext, around: Around): Step {
         ...base,
         badge: 'check',
         quiet: false,
-        sentence: sizeGate(d, ctx, measured, around),
+        sentence: sizeGateSentence(d, ctx.dryRun, measured, around.replaces),
       };
     }
     return {
