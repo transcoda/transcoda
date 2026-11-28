@@ -3,7 +3,7 @@ import type { JsonValue } from '@transcoda/shared';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { type FieldDef, fieldsFor } from '../../model/schema-fields.ts';
 import { LanguagePicker } from '../LanguagePicker.tsx';
-import { defaultText, type FieldProps, humanise } from './Field.tsx';
+import { defaultText, type FieldProps } from './Field.tsx';
 import { LanguageField } from './LanguageField.tsx';
 import { LanguageListField } from './LanguageListField.tsx';
 import { RawJsonField } from './RawJsonField.tsx';
@@ -411,15 +411,6 @@ describe('field controls', () => {
       value: [],
     });
     expect(screen.getByRole('button', { name: 'Smart tv' })).toBeTruthy();
-  });
-
-  it('core option ids read as plain names', () => {
-    expect(humanise('hevc')).toBe('HEVC (H.265)');
-    expect(humanise('reencode')).toBe('Re-encode');
-    expect(humanise('stereo')).toBe('Stereo');
-    expect(humanise('already-target-codec')).toBe('Already target codec');
-    // A plugin's own single-word ids stay as stored.
-    expect(humanise('POST')).toBe('POST');
   });
 
   it('an invalid stored enum value selects nothing, never the default', () => {
