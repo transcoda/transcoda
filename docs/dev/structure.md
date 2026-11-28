@@ -78,8 +78,9 @@ plugins/         settings, crypto, installer, errors
   network/       fetch proxy, address policy, catalog-token hosts
   testing/       build, sign, spawn, global setup, fake child; fixtures/ (the fixture plugins)
 engine/
-  model/         what to do to a file: model.ts (entry), changes.ts, render.ts, targets.ts,
-                 retarget.ts, fallback.ts. Imports nothing but platform.
+  model/         what to do to a file: model.ts (entry, re-exports what code outside uses),
+                 changes.ts, render.ts, targets.ts, retarget.ts, fallback.ts, streams.ts (the
+                 stream helpers they share). Imports nothing but platform.
   events.ts      the event bus types
   files/         touching the library: fingerprint, paths, replace, recycle, restore, sweep,
                  test outputs and their browser preview
@@ -87,7 +88,8 @@ engine/
   encode/        the ffmpeg child: process, progress, stall guard, log condensing
   verify/        verify.ts (entry), media (ffprobe runs, stream durations), durations, stream
                  checks, decode checks, types; testing.ts
-  walk/          walk.ts (entry), check-source, already-processed, load-workflow, plugin context
+  walk/          walk.ts (entry), check-source, already-processed, load-workflow, plugin context,
+                 model diff (what a plugin build hook changed)
   queue/         queue service, scheduler, catch-up, media pass, run hours
   pipeline/      pipeline.ts (entry), core, prepare, plan, encode, output, steps, branches, trace,
                  types; testing.ts (the harness)

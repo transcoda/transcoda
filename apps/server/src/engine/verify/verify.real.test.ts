@@ -5,8 +5,7 @@ import { promisify } from 'node:util';
 import type { BuildModel, ProbeResult } from '@transcoda/sdk';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { probeFile } from '../media/probe.ts';
-import { fitToContainer, modelFromProbe } from '../model/model.ts';
-import { coverExtractArgs, renderArgs } from '../model/render.ts';
+import { coverExtractArgs, fitToContainer, modelFromProbe, renderArgs } from '../model/model.ts';
 import { withStream } from '../testing/builders.ts';
 import {
   type FixtureName,

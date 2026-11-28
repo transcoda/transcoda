@@ -30,7 +30,7 @@ import type { ReplaceDeps } from '../files/replace.ts';
 import type { SpaceWaits } from '../files/space-waits.ts';
 import type { TestOutputStore } from '../files/test-outputs.ts';
 import { jobProbeOf } from '../media/probe.ts';
-import type { RenderInput } from '../model/render.ts';
+import type { RenderInput } from '../model/model.ts';
 import type { JobControl, SlotFit } from '../queue/scheduler.ts';
 import type { ActionNode, DamagedBranch, GateBranch } from '../walk/walk.ts';
 
