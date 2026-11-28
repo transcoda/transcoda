@@ -70,6 +70,18 @@ describe('loadConfig', () => {
     }
   });
 
+  it('reads the storage limit for results waiting for approval: 100 GB by default', () => {
+    expect(loadConfig({}).approvalMaxBytes).toBe(100_000_000_000);
+    expect(loadConfig({ TRANSCODA_APPROVAL_MAX_GB: '2.5' }).approvalMaxBytes).toBe(2_500_000_000);
+    for (const value of ['0', 'abc', '-5']) {
+      expect(() => loadConfig({ TRANSCODA_APPROVAL_MAX_GB: value })).toThrow(
+        new ConfigError(
+          `TRANSCODA_APPROVAL_MAX_GB must be a positive number of GB, got "${value}"`,
+        ),
+      );
+    }
+  });
+
   it('reads the decode memory guard: null (the default) when unset, 0 turns it off', () => {
     expect(loadConfig({}).decodeMemoryBytes).toBeNull();
     expect(loadConfig({ TRANSCODA_DECODE_MEMORY_GB: '' }).decodeMemoryBytes).toBeNull();

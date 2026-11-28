@@ -59,7 +59,8 @@ export function findingText(v: JsonValue): string {
   return typeof v === 'string' ? v : JSON.stringify(v);
 }
 
-const SIZE_GATE_TYPE = 'core:size-gate';
+/** The gates (the size gate, Approval): a branch is taken only once one decides. */
+const GATE_TYPES: ReadonlySet<string> = new Set(['core:size-gate', 'core:approval']);
 
 const isRecord = (v: JsonValue | undefined): v is Record<string, JsonValue> =>
   typeof v === 'object' && v !== null && !Array.isArray(v);
@@ -188,7 +189,7 @@ function takenAt(
   return { edges, leave, onPath };
 }
 
-/** The nodes behind the else of a size gate on the walk that has no decision entry, off the walk. */
+/** The nodes behind the else of a gate on the walk that has no decision entry, off the walk. */
 function undecidedElse(
   graph: WorkflowGraph,
   trace: readonly TraceEntry[],
@@ -198,7 +199,7 @@ function undecidedElse(
   const decided = gateDecisions(trace);
   const out = new Set<string>();
   for (const gate of graph.nodes) {
-    if (gate.type !== SIZE_GATE_TYPE || !onPath.has(gate.id)) continue;
+    if (!GATE_TYPES.has(gate.type) || !onPath.has(gate.id)) continue;
     const attempt = entries.get(gate.id)?.entry.attempt ?? 1;
     if (decided.has(`#${gate.id}#${attempt}`)) continue;
     const queue = graph.edges

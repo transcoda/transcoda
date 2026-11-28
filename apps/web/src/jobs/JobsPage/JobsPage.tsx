@@ -106,6 +106,7 @@ export function JobsPage() {
     states,
     problems: filter?.problems === true,
     dependsOnSize: filter?.dependsOnSize === true,
+    awaitingApproval: filter?.awaitingApproval === true,
     dryRun,
   });
   const stats = useTodayStats();
@@ -139,6 +140,7 @@ export function JobsPage() {
     if (f.paused) return list.pausedCount;
     if (f.problems) return list.problemCount;
     if (f.dependsOnSize) return list.dependsOnSizeCount;
+    if (f.awaitingApproval) return list.awaitingApprovalCount;
     const c = list.counts;
     if (!c) return null;
     const keys = (f.states.length > 0 ? f.states : Object.keys(c)) as JobState[];

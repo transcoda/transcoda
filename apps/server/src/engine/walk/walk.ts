@@ -1,5 +1,4 @@
 import {
-  type AnyFinishAction,
   type AnyNodeDefinition,
   type BuildModel,
   corePluginContext,
@@ -25,13 +24,15 @@ import {
   type WorkflowGraph,
 } from '@transcoda/shared';
 import {
+  APPROVAL_TYPE,
   CHECK_SOURCE_DAMAGED_PORT,
   CHECK_SOURCE_TYPE,
+  isGateType,
   RENDER_DAMAGED_PORT,
   RENDER_TYPE,
   SIZE_GATE_ELSE_PORT,
-  SIZE_GATE_TYPE,
 } from '../../nodes/availability.ts';
+import { approvalActionOf, type EngineFinishAction } from '../../nodes/core/approval.ts';
 import type { CoreTools } from '../../nodes/core-tools.ts';
 import type { NodeRegistry } from '../../nodes/registry.ts';
 import { isRemoteDefinition, RemoteHookError } from '../../nodes/remote.ts';
@@ -40,6 +41,7 @@ import { behaviourHoldText, SIZE_GATE_SHARED_TEXT } from '../../workflows/valida
 import { type AutoPick, modelChanges, modelFromProbe } from '../model/model.ts';
 import { inputFilesOf, picksOf, repointsSourceStream } from './model-diff.ts';
 
+export { type ActionNode, actionNode } from './action-node.ts';
 export { alreadyProcessed } from './already-processed.ts';
 export { checkSource } from './check-source.ts';
 export { loadWorkflowForJob } from './load-workflow.ts';
@@ -146,7 +148,7 @@ export interface GateBranch {
   /** The gate's size-gate action in `actions`. */
   actionIndex: number;
   /** Notifications and other non-writing steps, in order; never replace or move-copy. */
-  elseActions: AnyFinishAction[];
+  elseActions: EngineFinishAction[];
   elsePath: PathStep[];
 }
 
@@ -156,29 +158,15 @@ export interface DamagedBranch {
   /** The Render's render action in `actions`. */
   actionIndex: number;
   /** Notifications and other non-writing steps, in order; never render, gate or write. */
-  actions: AnyFinishAction[];
+  actions: EngineFinishAction[];
   path: PathStep[];
-}
-
-/** The node a finish action came from (core actions are tagged by the walk, plugin ones carry it). */
-export interface ActionNode {
-  nodeId: string;
-  workflowPath: string[];
-}
-
-/** Where `action` came from; null for an action built before the walk tagged them. */
-export function actionNode(action: AnyFinishAction): ActionNode | null {
-  const a = action as Partial<ActionNode>;
-  return typeof a.nodeId === 'string' && Array.isArray(a.workflowPath)
-    ? { nodeId: a.nodeId, workflowPath: [...a.workflowPath] }
-    : null;
 }
 
 export type WalkResult =
   | {
       kind: 'built';
       model: BuildModel;
-      actions: AnyFinishAction[];
+      actions: EngineFinishAction[];
       gates: GateBranch[];
       /**
        * The Damaged side of the Render on the path; null when its Quality check is off, its
@@ -233,6 +221,7 @@ function checksQuality(def: AnyNodeDefinition, n: NodeInstance): boolean {
 /** Which subtree a no-write build walks, in the words of its failure text. */
 const NO_WRITE_WHERE = {
   else: 'the size gate\u2019s No branch',
+  rejected: 'Approval\u2019s Rejected branch',
   damaged: 'Render\u2019s Damaged',
   source: 'Check source\u2019s Damaged',
 } as const;
@@ -281,7 +270,7 @@ class Walker {
    * into (a notify behind both Yes and No) is built once: the other branches reuse its actions,
    * so its hook runs, and is traced, once.
    */
-  private readonly finished = new Map<string, AnyFinishAction[]>();
+  private readonly finished = new Map<string, EngineFinishAction[]>();
 
   constructor(
     private readonly deps: WalkDeps,
@@ -623,7 +612,7 @@ class Walker {
           this.steps.push(ref);
           // A gate decides for the steps after it; its siblings would run whatever it decides.
           const n = graph.nodes.find((x) => x.id === ref.nodeId);
-          if (n?.type === SIZE_GATE_TYPE && n.bypassed !== true) {
+          if (n !== undefined && isGateType(n.type) && n.bypassed !== true) {
             this.fail(ref.nodeId, path, 'pass', SIZE_GATE_SHARED_TEXT);
           }
           await this.decideFinish(ref);
@@ -664,8 +653,12 @@ class Walker {
     n: NodeInstance,
     def: AnyNodeDefinition,
   ): Promise<void> {
-    if (n.type === SIZE_GATE_TYPE) {
-      this.elseSteps.set(n.id, await this.decideBranch(graph, path, n.id, SIZE_GATE_ELSE_PORT));
+    if (isGateType(n.type)) {
+      const where = n.type === APPROVAL_TYPE ? 'rejected' : 'else';
+      this.elseSteps.set(
+        n.id,
+        await this.decideBranch(graph, path, n.id, SIZE_GATE_ELSE_PORT, where),
+      );
     } else if (path.length === 0 && checksQuality(def, n)) {
       // Render is not allowed in sub-workflows (validation); only a top-level one has a branch.
       this.damagedSteps.set(
@@ -781,11 +774,11 @@ class Walker {
     nodes: NodeRef[],
     run: {
       model: BuildModel;
-      actions: AnyFinishAction[];
+      actions: EngineFinishAction[];
       prefix?: NodeRef[];
       noWrite?: NoWrite;
     } = { model: modelFromProbe(this.input.probe), actions: [] },
-  ): Promise<{ model: BuildModel; actions: AnyFinishAction[]; autoPicks: AutoPick[] }> {
+  ): Promise<{ model: BuildModel; actions: EngineFinishAction[]; autoPicks: AutoPick[] }> {
     let { model } = run;
     const { actions } = run;
     const autoPicks: AutoPick[] = [];
@@ -829,7 +822,7 @@ class Walker {
       const data = await this.dataFor(n, def, graph, path);
       const ctx = { ...this.base(n, data), model };
       const firstAction = actions.length;
-      if (n.type === SIZE_GATE_TYPE) this.gateIndex.set(nodeId, actions.length);
+      if (isGateType(n.type)) this.gateIndex.set(nodeId, actions.length);
       if (n.type === RENDER_TYPE) this.renderIndex.set(nodeId, actions.length);
       if (def.kind === 'action' && def.build) {
         const buildHook = def.build;
@@ -908,8 +901,10 @@ class Walker {
         } else {
           // Tagged with their node, so a step that goes wrong later is told on that node.
           for (const action of result.actions) {
-            actions.push({ ...action, nodeId, workflowPath: [...path] } as AnyFinishAction);
+            actions.push({ ...action, nodeId, workflowPath: [...path] } as EngineFinishAction);
           }
+          // Core-only, so not an SDK action: the walk adds it (nodes/core/approval.ts).
+          if (n.type === APPROVAL_TYPE) actions.push(approvalActionOf(nodeId, path, settings));
         }
         this.finished.set(dataKey(path, nodeId), actions.slice(firstAction));
       } else {
@@ -1002,11 +997,12 @@ export async function walkBuild(
     for (const [nodeId, refs] of decided.elseNodes) {
       const actionIndex = walker.gateIndex.get(nodeId);
       if (actionIndex === undefined) continue; // a bypassed gate runs no hook, so it never fails
+      const gate = input.graph.nodes.find((n) => n.id === nodeId);
       const built = await walker.build(refs, {
         model,
         actions: [],
         prefix: decided.nodes,
-        noWrite: 'else',
+        noWrite: gate?.type === APPROVAL_TYPE ? 'rejected' : 'else',
       });
       gates.push({
         nodeId,

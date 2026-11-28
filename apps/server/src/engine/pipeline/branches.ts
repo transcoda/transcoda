@@ -1,8 +1,8 @@
-// The side branches where nothing may write: a size gate's else, and the steps behind a
-// Render's or a Check source's Damaged when the source turns out damaged.
-import type { AnyFinishAction } from '@transcoda/sdk';
+// The side branches where nothing may write: a size gate's else, Approval's Rejected, and the
+// steps behind a Render's or a Check source's Damaged when the source turns out damaged.
 import { finishPhaseRank } from '@transcoda/shared';
 import type { JobRow } from '../../db/repos/jobs/jobs.ts';
+import type { ApprovalAction, EngineFinishAction } from '../../nodes/core/approval.ts';
 import type { JobControl } from '../queue/scheduler.ts';
 import type { VerifyFailure } from '../verify/verify.ts';
 import {
@@ -13,7 +13,7 @@ import {
 } from '../walk/walk.ts';
 import type { PipelineCore } from './core.ts';
 import { notify, pluginStep } from './steps.ts';
-import { recordDamagedBranch, recordElseBranch } from './trace.ts';
+import { recordDamagedBranch, recordElseBranch, recordRejectedBranch } from './trace.ts';
 import {
   type End,
   type Prepared,
@@ -44,6 +44,29 @@ export async function takeElse(
   return runNoWriteSteps(core, job, ctl, p, gate.elseActions, g.afterBytes, g.why, {
     gate: { savedPercent: Math.round(g.saving * 10) / 10, minSavingPercent: g.minSavingPercent },
     where: 'the size gate\u2019s No branch',
+    owner: p,
+  });
+}
+
+/**
+ * An Approval was rejected (or expired) before anything was written: records Rejected, moves the
+ * job's walk onto it and runs the non-writing steps there, as a size gate's `else` does (the
+ * parked result is discarded). Returns the warnings for the job.
+ */
+export async function takeRejected(
+  core: PipelineCore,
+  job: JobRow,
+  ctl: JobControl,
+  p: Prepared,
+  gate: GateBranch | undefined,
+  action: ApprovalAction,
+  why: string,
+  afterBytes: number,
+): Promise<string[]> {
+  recordRejectedBranch(core, job, ctl, p, gate, action, why);
+  if (!gate) return [];
+  return runNoWriteSteps(core, job, ctl, p, gate.elseActions, afterBytes, why, {
+    where: 'Approval\u2019s Rejected',
     owner: p,
   });
 }
@@ -83,7 +106,7 @@ async function runNoWriteSteps(
   job: JobRow,
   ctl: JobControl,
   p: StepFile,
-  actions: AnyFinishAction[],
+  actions: EngineFinishAction[],
   afterBytes: number,
   why: string,
   { owner, ...side }: StepExtra & { where: string; owner?: Prepared },
@@ -146,7 +169,7 @@ export async function sourceDamagedAtCheck(
   job: JobRow,
   ctl: JobControl,
   file: Omit<StepFile, 'warnings'>,
-  built: { actions: AnyFinishAction[]; sourceDamagedAt: SourceDamagedAt | null },
+  built: { actions: EngineFinishAction[]; sourceDamagedAt: SourceDamagedAt | null },
 ): Promise<{ final: true }> {
   const damage = built.sourceDamagedAt?.damage ?? { reason: 'damaged' };
   const reason = `source is damaged: ${damage.reason}`;

@@ -364,10 +364,16 @@ describe('jobText', () => {
       'Failed',
       'Would replace',
       'Depends on size',
+      'Waiting for approval',
       'Canceled',
       'Needs attention',
       'Paused',
     ]);
+    expect(FILTERS.find((f) => f.label === 'Waiting for approval')).toEqual({
+      label: 'Waiting for approval',
+      states: [],
+      awaitingApproval: true,
+    });
     expect(FILTERS.find((f) => f.label === 'Depends on size')).toEqual({
       label: 'Depends on size',
       states: ['dry_run'],
@@ -750,5 +756,33 @@ describe('fmtTimeLeft', () => {
   it('reads just under a minute as 1 min, not 60 s (found by fast-check)', () => {
     expect(fmtTimeLeft(59.5)).toBe('1 min');
     expect(fmtTimeLeft(59.4)).toBe('59 s');
+  });
+});
+
+describe('a result waiting for approval', () => {
+  const waiting = job({
+    state: 'verifying',
+    reason: 'waiting for approval',
+    approval: {
+      parkedAt: '2026-10-16T18:20:00.000Z',
+      expiresAt: '2026-10-23T18:20:00.000Z',
+      beforeBytes: 2_000_000_000,
+      afterBytes: 1_200_000_000,
+    },
+  });
+
+  it('reads as waiting for approval, not verifying, with its sizes and until when it waits', () => {
+    expect(stateWord(waiting)).toBe('Waiting for approval');
+    expect(activityLine(waiting)).toBe('Waiting for approval');
+    expect(detailLine(waiting)).toBe(
+      `2.00 GB → 1.20 GB, saved 800 MB · rejected on ${fmtDate('2026-10-23T18:20:00.000Z')} without an answer`,
+    );
+    expect(phoneRunningLine(waiting)).toBe(detailLine(waiting));
+    // Paused while it waits: the pause says so first.
+    expect(activityLine({ ...waiting, paused: true })).toBe('Paused');
+  });
+
+  it('a verifying job without a parked result reads as before', () => {
+    expect(stateWord(job({ state: 'verifying' }))).toBe('Verifying');
   });
 });

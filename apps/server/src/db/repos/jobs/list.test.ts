@@ -1,8 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { Database } from '../../open.ts';
 import { insertRestore, markRestoreUndone } from '../restores.ts';
+import { insertApproval } from './approvals.ts';
 import { updateJob } from './jobs.ts';
 import {
+  countAwaitingApproval,
   countDependsOnSize,
   countJobsByState,
   countProblems,
@@ -149,6 +151,31 @@ describe('listJobs', () => {
     expect(countJobsByState(db, { dryRun: false })).toMatchObject({ queued: 1, done: 1 });
     expect(countProblems(db, { dryRun: true })).toBe(0);
     expect(countDependsOnSize(db, { dryRun: false })).toBe(0);
+  });
+
+  it('listJobs: a job waiting for approval carries its parked result, filters and counts', () => {
+    job('wait', { state: 'verifying' });
+    job('other', { state: 'verifying' }, at(1));
+    insertApproval(db, {
+      jobId: 'wait',
+      nodeId: 'ap',
+      parkedAt: at(2).toISOString(),
+      expiresAt: at(9).toISOString(),
+      beforeBytes: 1000,
+      afterBytes: 600,
+      plan: null,
+      outputProbe: null,
+    });
+    expect(findJobListRow(db, 'wait')?.approval).toEqual({
+      parkedAt: at(2).toISOString(),
+      expiresAt: at(9).toISOString(),
+      beforeBytes: 1000,
+      afterBytes: 600,
+    });
+    expect(findJobListRow(db, 'other')?.approval).toBeNull();
+    expect(listJobs(db, { awaitingApproval: true }).map((r) => r.id)).toEqual(['wait']);
+    expect(countAwaitingApproval(db, {})).toBe(1);
+    expect(countAwaitingApproval(db, { dryRun: true })).toBe(0);
   });
 
   it('listJobs: a job whose original is restored says so until the restore is undone', () => {

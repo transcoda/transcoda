@@ -79,6 +79,11 @@ export interface Config {
    */
   decodeMemoryBytes: number | null;
   /**
+   * TRANSCODA_APPROVAL_MAX_GB in bytes (default 100 GB): what the results waiting for approval may
+   * take in the transcode dir together; a result that would go past it is not parked.
+   */
+  approvalMaxBytes: number;
+  /**
    * TRANSCODA_HEALTH_MIN_FREE_GB in bytes (default 5 GB): the deep health scratch-space check
    * needs at least max(5 GB, this). The older TRANSCODA_HEALTH_MIN_FREE_GIB (binary GiB) is still
    * read when the GB variable is unset; `healthMinFreeVariable` names the one in effect.
@@ -470,6 +475,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
       60,
     ),
     decodeMemoryBytes: decodeMemory(env),
+    approvalMaxBytes: Math.round(
+      parsePositive('TRANSCODA_APPROVAL_MAX_GB', 'GB', env.TRANSCODA_APPROVAL_MAX_GB, 100) * GB,
+    ),
     ...minFree(env),
   };
 }

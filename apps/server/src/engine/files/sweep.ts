@@ -6,11 +6,14 @@ import { type JobState, RENDER_TYPE, RUNNING_JOB_STATES } from '@transcoda/share
 import type { Database } from '../../db/open.ts';
 import {
   appendTrace,
+  deleteApproval,
+  findJob,
   hasReplaceJournal,
   type JobRow,
   jobsInStates,
   jobsWithReplaceJournal,
   jobsWithRestoreJournal,
+  listApprovals,
   listTrace,
   nextTraceSeq,
   type ReplaceJournal,
@@ -229,7 +232,8 @@ export async function killStaleFfmpeg(pidFile: string, log: Logger): Promise<voi
  * Startup recovery, before anything runs:
  * 1. SIGKILL ffmpeg groups left in the transcode dir (`<job>/ffmpeg.pid`).
  * 2. Every job with a replace journal is settled from what is on disk (original O, tmp T, copy C).
- * 3. Running jobs without a journal are requeued once (`interrupted`).
+ * 3. Jobs whose result waited for approval fail (`interrupted`); other running jobs without a
+ *    journal are requeued once (`interrupted`).
  * 4. Everything under the transcode dir is removed, and `.transcoda-<job>.tmp` files in the library
  *    roots whose job had no journal. Nothing else is ever touched.
  */
@@ -278,6 +282,10 @@ export async function startupSweep(db: Database, deps: SweepDeps): Promise<Sweep
     (outcome === 'rolled-back' ? result.restoresRolledBack : result.conflicts).push(job.id);
   }
 
+  // 2c. Results that waited for approval: the wait lived in memory, and the result goes with the
+  // temp dir below. The original was never touched; the job fails (Retry renders it again).
+  failParkedApprovals(db, now, result);
+
   // 3. Interrupted running jobs.
   for (const job of jobsInStates(db, [...RUNNING_JOB_STATES])) {
     if (job.replaceJournal !== null) continue;
@@ -322,6 +330,50 @@ export async function startupSweep(db: Database, deps: SweepDeps): Promise<Sweep
     });
   }
   return result;
+}
+
+/** The reason of a job whose result waited for approval when the server stopped. */
+export const APPROVAL_RESTART_REASON =
+  'the server restarted while the result waited for approval; the result was discarded and the original is untouched';
+
+/**
+ * Every parked approval row goes. Its job, still running, fails as interrupted (never requeued:
+ * an encode again would park the same question again unasked), with the Approval node's trace
+ * saying why. A row whose job ended meanwhile is only dropped.
+ */
+function failParkedApprovals(db: Database, now: Date, result: SweepResult): void {
+  for (const parked of listApprovals(db)) {
+    deleteApproval(db, parked.jobId);
+    const job = findJob(db, parked.jobId);
+    if (!job || !RUNNING_JOB_STATES.includes(job.state) || job.replaceJournal !== null) continue;
+    updateJob(
+      db,
+      job.id,
+      {
+        state: 'failed',
+        reason: APPROVAL_RESTART_REASON,
+        failureCode: 'interrupted',
+        lane: null,
+        progress: null,
+      },
+      now,
+    );
+    const at = now.toISOString();
+    appendTrace(db, job.id, {
+      seq: nextTraceSeq(db, job.id),
+      attempt: job.attempt,
+      nodeId: parked.nodeId,
+      workflowPath: [],
+      phase: 'finish',
+      source: 'core',
+      port: null,
+      reason: 'failed: the server restarted while waiting for approval',
+      findings: {},
+      startedAt: at,
+      endedAt: at,
+    });
+    result.interrupted.push(job.id);
+  }
 }
 
 type Bucket = 'completed' | 'rolledBack' | 'interrupted' | 'cleared' | 'conflicts';

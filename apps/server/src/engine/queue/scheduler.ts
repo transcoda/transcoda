@@ -25,34 +25,10 @@ import {
 import type { Logger } from '../../platform/logger.ts';
 import type { RunnerProcess } from '../encode/process.ts';
 import { type CurrentNode, type EngineEvents, jobChangedEvent } from '../events.ts';
-import { deviceVendor } from '../model/model.ts';
 import { closedLibraries, serverTimeZone } from './run-hours.ts';
+import { pickSlot, type SlotFit } from './slots.ts';
 
-/**
- * The encode slots a job fits: any GPU (its encoders were auto-picked), one vendor's (a node named
- * that vendor's encoder), or any slot, preferring the last (software only).
- */
-export type SlotFit = 'gpu' | 'nvidia' | 'intel' | 'software';
-
-/**
- * The slot a job with `fit` takes from `free` (`all`: every slot, in GPU order), skipping the GPUs
- * in `failed`; undefined when none fits. A slot with no device fits everything. A vendor job takes
- * the first free slot of its vendor, or the first free slot when there is no slot of its vendor
- * at all (none when its vendor's slots all failed: it never moves to the other vendor).
- */
-export function pickSlot(
-  free: EncodeSlot[],
-  all: EncodeSlot[],
-  fit: SlotFit,
-  failed: readonly string[] = [],
-): EncodeSlot | undefined {
-  const usable = (s: EncodeSlot) => s.gpuId === null || !failed.includes(s.gpuId);
-  const open = free.filter(usable);
-  if (fit === 'gpu') return open[0];
-  if (fit === 'software') return open.at(-1);
-  const fits = (s: EncodeSlot) => s.device === null || deviceVendor(s.device) === fit;
-  return all.some(fits) ? open.find(fits) : open[0];
-}
+export { pickSlot, type SlotFit } from './slots.ts';
 
 export interface JobExecutor {
   /**
@@ -108,6 +84,11 @@ export interface JobControl {
    * queued again and waits for a slot. No effect for a quick job.
    */
   releaseEncoder?(): void;
+  /**
+   * The job waits without work for its lane (an Approval step holds its result for a person): it
+   * gives up its lane, the quick lane too, for good, and finishes without one. Once per job.
+   */
+  releaseLane?(): void;
   /**
    * Something was written outside the temp dir (the original replaced, or a move or copy made):
    * a cancel from here on cannot undo it, so a bulk cancel leaves the job to finish.
@@ -178,8 +159,8 @@ class ActiveJob implements JobControl {
   readySeq = 0;
   /** From a `library` run: it waits for its library's run hours before it gets a lane. */
   automatic = false;
-  /** Gave its encode slot up after encoding (it never takes one back). */
-  encoderReleased = false;
+  /** Gave its lane up for good: an encode slot after encoding, or any lane while it waits for a person. */
+  laneReleased = false;
   /** Wrote outside the temp dir ({@link JobControl.markWritten}). */
   written = false;
 
@@ -206,7 +187,10 @@ class ActiveJob implements JobControl {
     this.scheduler.publishJob(job.id, job);
   }
   releaseEncoder(): void {
-    this.scheduler.onEncoderReleased(this);
+    if (this.lane === 'encode') this.scheduler.onLaneReleased(this);
+  }
+  releaseLane(): void {
+    this.scheduler.onLaneReleased(this);
   }
   markWritten(): void {
     this.written = true;
@@ -448,12 +432,13 @@ export class Scheduler {
   }
 
   /**
-   * @internal Called through {@link JobControl.releaseEncoder}: an encode job whose ffmpeg ended frees
-   * its slot, and the next encode starts while it finishes.
+   * @internal Called through {@link JobControl.releaseLane}, and {@link JobControl.releaseEncoder}
+   * for an encode job whose ffmpeg ended: the job frees its lane for good, and the next job of that
+   * lane starts while it finishes or waits.
    */
-  onEncoderReleased(a: ActiveJob): void {
-    if (this.stopping || a.lane !== 'encode' || a.phase !== 'running' || a.encoderReleased) return;
-    a.encoderReleased = true;
+  onLaneReleased(a: ActiveJob): void {
+    if (this.stopping || a.phase !== 'running' || a.laneReleased) return;
+    a.laneReleased = true;
     if (a.holdsLane) {
       a.holdsLane = false;
       this.release(a);
@@ -660,7 +645,9 @@ export class Scheduler {
    */
   private grantLanes(): void {
     if (this.quick === null) {
-      const resumed = this.waiting('quick').find((a) => a.phase === 'running' && !a.holdsLane);
+      const resumed = this.waiting('quick').find(
+        (a) => a.phase === 'running' && !a.holdsLane && !a.laneReleased,
+      );
       if (resumed) this.regain(resumed, null);
       else {
         const next = this.readyJobs('quick')[0];
@@ -670,7 +657,7 @@ export class Scheduler {
     const slots = this.encodeSlots();
     const free = () => slots.filter((s) => !this.slotHolders.has(s.id));
     const resuming = this.waiting('encode').filter(
-      (j) => j.phase === 'running' && !j.holdsLane && !j.encoderReleased,
+      (j) => j.phase === 'running' && !j.holdsLane && !j.laneReleased,
     );
     for (const a of resuming) {
       const own = a.slot !== null && slots.some((s) => s.id === a.slot?.id);

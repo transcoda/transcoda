@@ -25,7 +25,7 @@ Today's rules for the server outside the encode engine. The engine is in [engine
 - Every procedure uses one guard from `rpc/middleware.ts`:
   - `requireScope(scope)` / `requireAnyScope(...)`: a session, or a token holding the scope.
   - `requireSession`: a browser session only (token management).
-  - `requireHumanSessionWith(refusal)`: a session only. Every API token gets `FORBIDDEN` with the refusal text, whatever its scopes. Used for activation, settings changes, backups, plugin management, folder browsing, restore, process again, test outputs and password change.
+  - `requireHumanSessionWith(refusal)`: a session only. Every API token gets `FORBIDDEN` with the refusal text, whatever its scopes. Used for activation, settings changes, backups, plugin management, folder browsing, restore, process again, test outputs, approving or rejecting a waiting result ("Approval is a UI action") and password change.
   - `requireSameOrigin`: setup and login, which have no session yet.
   - `publicProcedure`: marks a procedure as public on purpose (`auth.me`).
 - `resolveAuth` (`http/auth-context.ts`) resolves the caller once per request. A `Bearer` header is authoritative: an invalid bearer is unauthenticated and the cookie is not used.

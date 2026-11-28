@@ -328,8 +328,9 @@ export const line = (...nodes: ReturnType<typeof node>[]): WorkflowGraph =>
     nodes,
     nodes.slice(1).map((n, i) => {
       const from = nodes[i] as ReturnType<typeof node>;
-      // The size gate's file leaves by `pass`.
-      return edge(from.id, n.id, from.type === 'core:size-gate' ? { from: 'pass' } : {});
+      // A size gate's or an approval's file leaves by `pass`.
+      const gate = from.type === 'core:size-gate' || from.type === 'core:approval';
+      return edge(from.id, n.id, gate ? { from: 'pass' } : {});
     }),
   );
 
@@ -416,6 +417,7 @@ export async function setup(
     plugins?: { devPlugins?: string[] };
     capabilities?: Capabilities;
     encodeStallMinutes?: number;
+    approvalMaxBytes?: number;
   } = {},
 ) {
   spawner = new TestSpawner();
@@ -434,6 +436,7 @@ export async function setup(
       ...(opts.encodeStallMinutes !== undefined
         ? { encodeStallMinutes: opts.encodeStallMinutes }
         : {}),
+      ...(opts.approvalMaxBytes !== undefined ? { approvalMaxBytes: opts.approvalMaxBytes } : {}),
     },
     capabilities: opts.capabilities ?? caps,
     spawner,

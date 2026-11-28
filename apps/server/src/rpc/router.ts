@@ -86,6 +86,8 @@ export function createRouter() {
       cancelAll: jobs.cancelAll,
       retryFailed: jobs.retryFailed,
       deleteTestOutput: jobs.deleteTestOutput,
+      approve: jobs.approve,
+      reject: jobs.reject,
       queueFiles: jobs.queueFiles,
       queueFilesPreview: jobs.queueFilesPreview,
     },

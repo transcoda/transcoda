@@ -158,6 +158,42 @@ describe('Scheduler', () => {
     expect(scheduler.status().lanes).toEqual({ encode: null, quick: 'q' });
   });
 
+  it('a job waiting for approval gives up its lane for good, the quick lane too', async () => {
+    job('q', { queuedAt: 1 });
+    job('r', { queuedAt: 2 });
+    job('e', { queuedAt: 3 });
+    scheduler.start();
+    await flush();
+    executor.ready('q', 'quick');
+    executor.ready('r', 'quick');
+    await flush();
+    executor.ready('e', 'encode');
+    await flush();
+    expect(executor.executeOrder).toEqual(['q', 'e']);
+
+    // q parked its result: the next quick job runs while q waits for a person.
+    executor.exec('q').ctl.releaseLane?.();
+    await flush();
+    expect(executor.executeOrder).toEqual(['q', 'e', 'r']);
+    expect(scheduler.status().lanes).toEqual({ encode: 'e', quick: 'r' });
+
+    // Pausing and resuming q never takes the lane back from r; a second release is a no-op.
+    scheduler.pauseJob('q');
+    scheduler.resumeJob('q');
+    executor.exec('q').ctl.releaseLane?.();
+    await flush();
+    expect(scheduler.status().lanes.quick).toBe('r');
+
+    // An encode job releases its slot the same way.
+    executor.exec('e').ctl.releaseLane?.();
+    await flush();
+    expect(scheduler.status().lanes.encode).toBeNull();
+
+    executor.finish('q');
+    await flush();
+    expect(scheduler.status().lanes.quick).toBe('r');
+  });
+
   it('two GPUs: two encodes at once, each on its own GPU; a third waits for a free one', async () => {
     await scheduler.stop();
     setScheduler(newScheduler(executor, () => gpuSlots(2)));

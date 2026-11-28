@@ -12,7 +12,12 @@ import {
   RENDER_TYPE,
   type WorkflowGraph,
 } from '@transcoda/shared';
-import { SIZE_GATE_ELSE_PORT, SIZE_GATE_TYPE } from '../../nodes/availability.ts';
+import {
+  APPROVAL_TYPE,
+  isGateType,
+  SIZE_GATE_ELSE_PORT,
+  SIZE_GATE_TYPE,
+} from '../../nodes/availability.ts';
 import { defOf, error, title, warning } from './issues.ts';
 import { checkEdges, checkNodes } from './nodes.ts';
 import { WRITE_TYPES } from './outputs.ts';
@@ -25,6 +30,9 @@ const PROCESSED_PORT = 'pass';
 
 const ELSE_ONLY_NOTIFY_TEXT =
   'After the size gate\u2019s \u201cNo\u201d, only notifications and other non-writing finish steps can follow.';
+
+const REJECTED_ONLY_NOTIFY_TEXT =
+  'After Approval\u2019s \u201cRejected\u201d, only notifications and other non-writing finish steps can follow.';
 
 const DAMAGED_ONLY_NOTIFY_TEXT =
   'After Render\u2019s Damaged, only notifications and other non-writing finish steps can follow.';
@@ -117,8 +125,10 @@ export function checkPaths(
     by: string;
     /** A Render was passed (a bypassed one too: it is reported on its own). */
     rendered: boolean;
-    /** Below a size gate's `else`: nothing may write there, and nothing needs to. */
+    /** Below a size gate's `else` or Approval's Rejected: nothing may write there, and nothing needs to. */
     afterElse: boolean;
+    /** Below Approval's Rejected (also `afterElse`): its errors name Approval. */
+    afterRejected: boolean;
     /** Below Render's Damaged: as below `else`; `damagedOnly` nodes belong here only. */
     afterDamaged: boolean;
     /** Below Check source's Damaged: as below Render's, and no Render is needed (or allowed). */
@@ -136,6 +146,7 @@ export function checkPaths(
       by: '',
       rendered: false,
       afterElse: false,
+      afterRejected: false,
       afterDamaged: false,
       afterSourceDamaged: false,
       afterProcessed: false,
@@ -144,7 +155,7 @@ export function checkPaths(
   let visits = 0;
   for (let top = stack.pop(); top !== undefined; top = stack.pop()) {
     const { id } = top;
-    const key = `${id}:${flag(top.wrote)}${flag(top.finished)}${flag(top.rendered)}${flag(top.afterElse)}${flag(top.afterDamaged)}${flag(top.afterSourceDamaged)}${flag(top.afterProcessed)}:${top.rank}`;
+    const key = `${id}:${flag(top.wrote)}${flag(top.finished)}${flag(top.rendered)}${flag(top.afterElse)}${flag(top.afterRejected)}${flag(top.afterDamaged)}${flag(top.afterSourceDamaged)}${flag(top.afterProcessed)}:${top.rank}`;
     const n = byId.get(id);
     if (!n || expanded.has(key)) continue;
     expanded.add(key);
@@ -152,7 +163,7 @@ export function checkPaths(
     const def = defOf(states.get(id));
     const name = title(n, def);
     let { wrote, finished, rank, by, rendered } = top;
-    const { afterElse, afterDamaged, afterSourceDamaged, afterProcessed } = top;
+    const { afterElse, afterRejected, afterDamaged, afterSourceDamaged, afterProcessed } = top;
     const isRender = def?.type === RENDER_TYPE;
     if (isRender && n.bypassed === true) {
       report(
@@ -177,7 +188,11 @@ export function checkPaths(
       } else if (afterElse && writesOrGates(def)) {
         report(
           `else-only-notify:${id}`,
-          error('ELSE_ONLY_NOTIFY', ELSE_ONLY_NOTIFY_TEXT, { nodeId: id }),
+          error(
+            'ELSE_ONLY_NOTIFY',
+            afterRejected ? REJECTED_ONLY_NOTIFY_TEXT : ELSE_ONLY_NOTIFY_TEXT,
+            { nodeId: id },
+          ),
         );
       } else if (isRender && rendered) {
         report(
@@ -241,7 +256,7 @@ export function checkPaths(
       : (fromPorts.get(id) ?? []);
     const ports = n.bypassed === true ? fileOutputs.slice(0, 1) : fileOutputs;
     const connected = ports.filter((p) => (next.get(`${id}:${p}`)?.length ?? 0) > 0);
-    const isGate = def?.type === SIZE_GATE_TYPE && n.bypassed !== true;
+    const isGate = def !== undefined && isGateType(def.type) && n.bypassed !== true;
     const runsRender = isRender && n.bypassed !== true;
     const checksSource = def?.type === CHECK_SOURCE_TYPE && n.bypassed !== true;
     const checksProcessed = def?.type === ALREADY_PROCESSED_TYPE && n.bypassed !== true;
@@ -257,6 +272,8 @@ export function checkPaths(
     for (const port of [...connected].reverse()) {
       const targets = next.get(`${id}:${port}`) ?? [];
       const branchElse = afterElse || (isGate && port === SIZE_GATE_ELSE_PORT);
+      const branchRejected =
+        afterRejected || (isGate && def?.type === APPROVAL_TYPE && port === SIZE_GATE_ELSE_PORT);
       const branchSource =
         afterSourceDamaged || (checksSource && port === CHECK_SOURCE_DAMAGED_PORT);
       const branchDamaged =
@@ -274,6 +291,7 @@ export function checkPaths(
           by,
           rendered,
           afterElse: branchElse,
+          afterRejected: branchRejected,
           afterDamaged: branchDamaged,
           afterSourceDamaged: branchSource,
           afterProcessed: branchProcessed,

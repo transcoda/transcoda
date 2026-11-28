@@ -47,6 +47,15 @@ export interface JobListRow extends Omit<JobRow, 'media'> {
   dependsOnSize: { minSavingPercent: number } | null;
   /** From a `library` run: its library's run hours apply. */
   automatic: boolean;
+  /** A rendered result parked by an Approval step, waiting for a person; null otherwise. */
+  approval: JobListApproval | null;
+}
+
+export interface JobListApproval {
+  parkedAt: string;
+  expiresAt: string;
+  beforeBytes: number;
+  afterBytes: number;
 }
 
 interface DbJobList extends DbJob {
@@ -62,6 +71,10 @@ interface DbJobList extends DbJob {
   r_estimated_bytes: number | null;
   r_plan: string | null;
   run_source: 'manual' | 'library' | null;
+  a_parked_at: string | null;
+  a_expires_at: string | null;
+  a_before_bytes: number | null;
+  a_after_bytes: number | null;
 }
 
 export interface JobListFilter {
@@ -79,6 +92,8 @@ export interface JobListFilter {
   problems?: true;
   /** Only plan-only dry runs whose outcome depends on the size gate. */
   dependsOnSize?: true;
+  /** Only jobs whose result waits for approval. */
+  awaitingApproval?: true;
   /** true: only dry runs (plan-only and test encodes); false: only real runs. */
   dryRun?: boolean;
 }
@@ -122,11 +137,14 @@ const LIST_SELECT = `SELECT j.*, l.name AS library_name, w.name AS workflow_name
     r.problems_json AS r_problems_json,
     r.estimated_bytes AS r_estimated_bytes, r.plan AS r_plan,
     EXISTS (SELECT 1 FROM restores x WHERE x.job_id = j.id AND x.undone_at IS NULL) AS r_restored,
-    (SELECT source FROM runs WHERE runs.id = j.run_id) AS run_source
+    (SELECT source FROM runs WHERE runs.id = j.run_id) AS run_source,
+    a.parked_at AS a_parked_at, a.expires_at AS a_expires_at,
+    a.before_bytes AS a_before_bytes, a.after_bytes AS a_after_bytes
   FROM jobs j
   LEFT JOIN libraries l ON l.id = j.library_id
   LEFT JOIN workflows w ON w.id = j.workflow_id
-  LEFT JOIN job_results r ON r.job_id = j.id`;
+  LEFT JOIN job_results r ON r.job_id = j.id
+  LEFT JOIN job_approvals a ON a.job_id = j.id`;
 
 const toListRow = (r: DbJobList): JobListRow => {
   // Dry runs only: the stored plan, parsed once for the summary and the size-gate outcome.
@@ -154,6 +172,15 @@ const toListRow = (r: DbJobList): JobListRow => {
     planSummary: plan ? planSummary(plan) : null,
     dependsOnSize: r.state === 'dry_run' ? (plan?.dependsOnSize ?? null) : null,
     automatic: r.run_source === 'library',
+    approval:
+      r.a_parked_at === null
+        ? null
+        : {
+            parkedAt: r.a_parked_at,
+            expiresAt: r.a_expires_at ?? r.a_parked_at,
+            beforeBytes: r.a_before_bytes ?? 0,
+            afterBytes: r.a_after_bytes ?? 0,
+          },
   };
 };
 
@@ -210,6 +237,7 @@ export function listJobs(db: Database, filter: JobListFilter): JobListRow[] {
   }
   if (filter.problems === true) where.push(`${problemCountSql('r.problems_json')} > 0`);
   if (filter.dependsOnSize === true) where.push(DEPENDS_ON_SIZE_SQL);
+  if (filter.awaitingApproval === true) where.push('a.job_id IS NOT NULL');
   let cursor: Cursor | null = null;
   if (filter.before !== undefined) {
     cursor =
@@ -293,5 +321,18 @@ export function countDependsOnSize(db: Database, filter: JobListScope): number {
       `SELECT COUNT(*) AS n FROM jobs j JOIN job_results r ON r.job_id = j.id WHERE ${where.join(' AND ')}`,
     )
     .get(...values) as { n: number };
+  return row.n;
+}
+
+/** Jobs whose result waits for approval, within the list's scope; no state filter. */
+export function countAwaitingApproval(db: Database, filter: JobListScope): number {
+  const scope = scopeWhere(filter, 'j');
+  const row = db
+    .prepare(
+      `SELECT COUNT(*) AS n FROM jobs j JOIN job_approvals a ON a.job_id = j.id${
+        scope.where.length > 0 ? ` WHERE ${scope.where.join(' AND ')}` : ''
+      }`,
+    )
+    .get(...scope.values) as { n: number };
   return row.n;
 }

@@ -79,6 +79,8 @@ describe('contract', () => {
       'cancel',
       'cancelAll',
       'deleteTestOutput',
+      'approve',
+      'reject',
       'queueFiles',
       'queueFilesPreview',
     ]);
@@ -98,6 +100,14 @@ describe('contract', () => {
       method: 'DELETE',
       path: '/jobs/{id}/test-output',
       description: "A person's session only.",
+    });
+    expect(contract.jobs.approve['~orpc'].route).toMatchObject({
+      method: 'POST',
+      path: '/jobs/{id}/approve',
+    });
+    expect(contract.jobs.reject['~orpc'].route).toMatchObject({
+      method: 'POST',
+      path: '/jobs/{id}/reject',
     });
     expect(Object.keys(contract.queue)).toEqual(['status', 'pause', 'resume']);
     expect(Object.keys(contract.runs)).toEqual(['list', 'get', 'processAgain']);

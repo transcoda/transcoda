@@ -2,8 +2,15 @@ import { existsSync } from 'node:fs';
 import { mkdir, symlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
-import { abortableGet, asSession, bearer, createToken, send } from '../../app/testing/http.ts';
-import { updateJob } from '../../db/repos/jobs/jobs.ts';
+import {
+  abortableGet,
+  asSession,
+  bearer,
+  CREDS,
+  createToken,
+  send,
+} from '../../app/testing/http.ts';
+import { insertApproval, updateJob } from '../../db/repos/jobs/jobs.ts';
 import { setSetting } from '../../db/repos/settings.ts';
 import { chain, node } from '../../workflows/testing.ts';
 import {
@@ -401,6 +408,77 @@ describe('jobs', () => {
     expect(final.status).toBe(409);
     expect(await json(final)).toMatchObject({ code: 'JOB_NOT_ACTIVE' });
     expect((await send(t, 'POST', '/jobs/nope/cancel', { headers: as })).status).toBe(404);
+  });
+
+  it('approve/reject: a session answers a waiting result (as its user); a token, no CSRF, nothing waiting and unknown are refused; the list filters and counts waiting jobs', async () => {
+    await fedLibrary();
+    await send(t, 'POST', '/queue/pause', { headers: asSession(s, true) });
+    const { jobIds } = await queued({ path: join(root, 'a.mkv') });
+    const id = jobIds[0] as string;
+    const session = asSession(s, true);
+
+    // Nothing waits yet.
+    const early = await send(t, 'POST', `/jobs/${id}/approve`, { headers: session });
+    expect(early.status).toBe(409);
+    expect(await json(early)).toMatchObject({
+      code: 'JOB_NOT_ACTIVE',
+      message: 'The job is not waiting for approval',
+    });
+    expect((await send(t, 'POST', '/jobs/nope/reject', { headers: session })).status).toBe(404);
+
+    insertApproval(t.db, {
+      jobId: id,
+      nodeId: 'ap',
+      parkedAt: '2026-01-01T00:00:00.000Z',
+      expiresAt: '2026-01-08T00:00:00.000Z',
+      beforeBytes: 1000,
+      afterBytes: 600,
+      plan: null,
+      outputProbe: null,
+    });
+    const listed = (await json(await get('/jobs?awaitingApproval=true'))) as {
+      jobs: { id: string; approval: unknown }[];
+      awaitingApprovalCount: number;
+    };
+    expect(listed.jobs.map((j) => j.id)).toEqual([id]);
+    expect(listed.awaitingApprovalCount).toBe(1);
+    expect(listed.jobs[0]?.approval).toEqual({
+      parkedAt: '2026-01-01T00:00:00.000Z',
+      expiresAt: '2026-01-08T00:00:00.000Z',
+      beforeBytes: 1000,
+      afterBytes: 600,
+    });
+
+    const answers: unknown[] = [];
+    const wait = () =>
+      t.deps.engine.approvals.wait(id, new AbortController().signal).then((a) => answers.push(a));
+    let waiting = wait();
+    const all = await createToken(t, s, {
+      name: 'all',
+      scopes: ['read', 'plan', 'jobs:create', 'jobs:manage', 'workflows:write'],
+    });
+    for (const action of ['approve', 'reject']) {
+      const res = await send(t, 'POST', `/jobs/${id}/${action}`, { headers: bearer(all.token) });
+      expect(res.status).toBe(403);
+      expect(await res.text()).toContain('Approval is a UI action');
+      const noCsrf = await send(t, 'POST', `/jobs/${id}/${action}`, {
+        headers: asSession(s, false),
+      });
+      expect(noCsrf.status).toBe(403);
+    }
+    expect(answers).toEqual([]);
+
+    expect((await send(t, 'POST', `/jobs/${id}/approve`, { headers: session })).status).toBe(200);
+    await waiting;
+    waiting = wait();
+    expect((await send(t, 'POST', `/jobs/${id}/reject`, { headers: session })).status).toBe(200);
+    await waiting;
+    expect(answers).toEqual([
+      { kind: 'approved', by: CREDS.username },
+      { kind: 'rejected', by: CREDS.username },
+    ]);
+    // Answered once: a second answer finds nothing waiting.
+    expect((await send(t, 'POST', `/jobs/${id}/approve`, { headers: session })).status).toBe(409);
   });
 
   it("cancelAll needs jobs:manage and cancels a library's queued, ready, running and user-paused jobs (SIGKILL, temp removed); done, failed, cancelled and other libraries stay; no body means every library", async () => {

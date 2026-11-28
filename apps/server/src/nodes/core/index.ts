@@ -9,6 +9,7 @@ import {
   setDefaultTrack,
 } from './actions.ts';
 import { alreadyProcessed } from './already-processed.ts';
+import { approval } from './approval.ts';
 import { checkSource } from './check-source.ts';
 import { fileMatches, hasStream, videoIs } from './conditions.ts';
 import { embedSidecarSubtitles } from './embed-subtitles.ts';
@@ -40,6 +41,7 @@ export const coreNodes: AnyNodeDefinition[] = [
   embedSidecarSubtitles,
   render,
   sizeGate,
+  approval,
   replaceOriginal,
   moveCopy,
   notifyWebhook,

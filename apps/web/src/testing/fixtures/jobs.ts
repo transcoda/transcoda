@@ -27,6 +27,7 @@ export function job(overrides: Partial<Job> = {}): Job {
     failedGpus: [],
     priority: 0,
     heldByRunHours: null,
+    approval: null,
     dryRun: false,
     testEncode: false,
     media: episode('Starfall', 2, 7),

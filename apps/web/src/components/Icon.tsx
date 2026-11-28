@@ -225,6 +225,13 @@ const PATHS = {
       <circle cx="12" cy="7" r="4" />
     </>
   ),
+  /** The Approval step (lucide's user-check). */
+  'user-check': (
+    <>
+      <path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2M16 11l2 2 4-4" />
+      <circle cx="9" cy="7" r="4" />
+    </>
+  ),
   bell: <path d="M6 8a6 6 0 0112 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.94 1.94 0 003.4 0" />,
   'file-type': (
     <path d="M15 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V7zM14 2v4a2 2 0 002 2h4M9 13v-1h6v1M12 12v6M11 18h2" />

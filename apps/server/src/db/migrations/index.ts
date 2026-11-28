@@ -21,6 +21,7 @@ import { jobMedia } from './0019_job_media.ts';
 import { libraryBrowser } from './0020_library_browser.ts';
 import { latestJob } from './0021_latest_job.ts';
 import { nodeProblems } from './0022_node_problems.ts';
+import { jobApprovals } from './0023_job_approvals.ts';
 
 export const migrations: Migration[] = [
   initial,
@@ -45,4 +46,5 @@ export const migrations: Migration[] = [
   libraryBrowser,
   latestJob,
   nodeProblems,
+  jobApprovals,
 ];

@@ -49,6 +49,7 @@ export function toJob(r: JobListRow & { heldByRunHours: RunHoursHold | null }): 
     planSummary: r.planSummary,
     dependsOnSize: r.dependsOnSize,
     heldByRunHours: r.heldByRunHours,
+    approval: r.approval,
   };
 }
 
@@ -221,17 +222,19 @@ export const queueFilesPreview = os.jobs.queueFilesPreview
   });
 
 export const list = os.jobs.list.use(requireScope('read')).handler(({ context, input }) => {
-  const { jobs, counts, problemCount, dependsOnSizeCount } = context.deps.engine.listJobs({
-    limit: input.limit,
-    ...(input.runId !== undefined ? { runId: input.runId } : {}),
-    ...(input.libraryId !== undefined ? { libraryId: input.libraryId } : {}),
-    ...(input.state !== undefined ? { states: [input.state].flat() } : {}),
-    ...(input.before !== undefined ? { before: input.before } : {}),
-    ...(input.problems === true ? { problems: true as const } : {}),
-    ...(input.dependsOnSize === true ? { dependsOnSize: true as const } : {}),
-    ...(input.dryRun !== undefined ? { dryRun: input.dryRun } : {}),
-  });
-  return { jobs: jobs.map(toJob), counts, problemCount, dependsOnSizeCount };
+  const { jobs, counts, problemCount, dependsOnSizeCount, awaitingApprovalCount } =
+    context.deps.engine.listJobs({
+      limit: input.limit,
+      ...(input.runId !== undefined ? { runId: input.runId } : {}),
+      ...(input.libraryId !== undefined ? { libraryId: input.libraryId } : {}),
+      ...(input.state !== undefined ? { states: [input.state].flat() } : {}),
+      ...(input.before !== undefined ? { before: input.before } : {}),
+      ...(input.problems === true ? { problems: true as const } : {}),
+      ...(input.dependsOnSize === true ? { dependsOnSize: true as const } : {}),
+      ...(input.awaitingApproval === true ? { awaitingApproval: true as const } : {}),
+      ...(input.dryRun !== undefined ? { dryRun: input.dryRun } : {}),
+    });
+  return { jobs: jobs.map(toJob), counts, problemCount, dependsOnSizeCount, awaitingApprovalCount };
 });
 
 export const stats = os.jobs.stats
@@ -368,6 +371,28 @@ export const deleteTestOutput = os.jobs.deleteTestOutput
   .handler(async ({ context, input, errors }) => {
     if (!(await context.deps.engine.testOutputs.remove(input.id, 'deleted'))) {
       throw errors.NOT_FOUND();
+    }
+    return { ok: true as const };
+  });
+
+// Session-only, like deleteTestOutput: a person decides, so any API token is refused and no MCP
+// tool wraps them. JOB_NOT_ACTIVE when nothing waits (answered already, or never parked).
+export const approve = os.jobs.approve
+  .use(requireHumanSessionWith('Approval is a UI action'))
+  .handler(({ context, input, errors }) => {
+    if (!findJob(context.deps.db, input.id)) throw errors.NOT_FOUND();
+    if (context.deps.engine.approve(input.id, context.auth.user.username) !== 'ok') {
+      throw errors.JOB_NOT_ACTIVE({ message: 'The job is not waiting for approval' });
+    }
+    return { ok: true as const };
+  });
+
+export const reject = os.jobs.reject
+  .use(requireHumanSessionWith('Approval is a UI action'))
+  .handler(({ context, input, errors }) => {
+    if (!findJob(context.deps.db, input.id)) throw errors.NOT_FOUND();
+    if (context.deps.engine.reject(input.id, context.auth.user.username) !== 'ok') {
+      throw errors.JOB_NOT_ACTIVE({ message: 'The job is not waiting for approval' });
     }
     return { ok: true as const };
   });

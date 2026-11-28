@@ -119,7 +119,8 @@ export class HealthService {
   /**
    * No job's replace may be waiting for free space (C4: the run cannot move on by itself; the
    * log line names the wait), and no running, unpaused job may have gone without a progress write
-   * (`updated_at`) for the stall window.
+   * (`updated_at`) for the stall window. A job whose result waits for a person's approval is not
+   * stalled: it waits on purpose, and its expiry ends the wait.
    */
   private queue(): boolean {
     const { db, config } = this.deps;
@@ -138,7 +139,8 @@ export class HealthService {
     const marks = RUNNING_JOB_STATES.map(() => '?').join(',');
     const row = db
       .prepare(
-        `SELECT COUNT(*) AS n FROM jobs WHERE state IN (${marks}) AND paused = 0 AND updated_at < ?`,
+        `SELECT COUNT(*) AS n FROM jobs WHERE state IN (${marks}) AND paused = 0 AND updated_at < ?
+           AND id NOT IN (SELECT job_id FROM job_approvals)`,
       )
       .get(...RUNNING_JOB_STATES, cutoff.toISOString()) as { n: number };
     return row.n === 0;

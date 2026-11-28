@@ -12,9 +12,16 @@ import {
   toJson,
 } from './rows.ts';
 
-// The jobs table: insert, find, update and the queue's reads. The list, results, trace, journals
-// and prior runs are in the other files of this folder; code outside imports them from here.
+// The jobs table: insert, find, update and the queue's reads. The list, results, trace, journals,
+// parked approvals and prior runs are in the other files of this folder; code outside imports them from here.
 
+export {
+  deleteApproval,
+  findApproval,
+  insertApproval,
+  listApprovals,
+  parkedBytes,
+} from './approvals.ts';
 export {
   claimRestoreJournal,
   hasFileJournal,
@@ -24,6 +31,7 @@ export {
 } from './journals.ts';
 export type { JobListFilter, JobListRow } from './list.ts';
 export {
+  countAwaitingApproval,
   countDependsOnSize,
   countJobsByState,
   countProblems,

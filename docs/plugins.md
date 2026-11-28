@@ -222,6 +222,19 @@ Files the gate kept before you switched to Write track changes are taken again: 
 
 Example: wire **Notify (ntfy)** to the gate's No output with the title `Kept original`, and a second one to Replace original as before. A file the gate refuses then sends a push saying how little it saved. A plugin step on No gets `outcome: 'kept'` and `gate: { savedPercent, minSavingPercent }` in its context; `afterBytes` is the size of the result that was thrown away. Workflows saved before this change keep working: their gate's single output became **Yes** (`pass`).
 
+## Approving a result before it replaces the original
+
+The **Approval** finish step holds the result until a person looks at it. Put it after Render (and after a Size gate's Yes, if you use one) and before Replace original or Move or copy. When a file reaches it, the result has been encoded and verified but nothing on disk has changed. The job waits under **Waiting for approval** on the Jobs page (a filter of its own), and does not hold up the queue: other files go on encoding meanwhile.
+
+On the job page, **Waiting for your approval** shows the size before and after and what the plan does; **Before and after** lists every track as the file has it now and as the result has it. Then:
+
+- **Approve**: the finish steps wired to **Approved** run as usual (Replace original, then notifications).
+- **Reject**: the result is discarded and the original kept. The job ends **kept original** with "rejected by" and your user name, and only the steps wired to **Rejected** run. As after the size gate's No, only steps that write nothing may follow Rejected (notifications, Sonarr, Radarr, Jellyfin and other plugin finish steps).
+
+**Wait at most (days)** (1 to 30, default 7): with no answer by then, the result is rejected the same way ("not approved within 7 days"). Only a person signed in to Transcoda can approve or reject; API tokens and the MCP server cannot.
+
+Results that wait take room in the transcode folder until they are answered. Together they may take at most 100 GB (`TRANSCODA_APPROVAL_MAX_GB` in [env.md](env.md)); a result that would go past that is discarded, and the job fails with a reason that says so and keeps the original. Waiting results do not survive a server restart: after a restart those jobs show as failed ("the server restarted while the result waited for approval"), with the original untouched. Run the file again to get a new result to approve.
+
 ## If a step fails
 
 A finish step runs after the file is replaced, so a failure never undoes the replacement and never loses the file. What the job shows depends on whether the step is required:

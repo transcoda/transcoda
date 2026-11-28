@@ -56,6 +56,7 @@ import { Poster } from '../Poster.tsx';
 import { ProcessAgain } from '../ProcessAgain.tsx';
 import { encodeStopped, useQueue } from '../use-queue.ts';
 import { useNodeParam } from '../use-try-on-file.ts';
+import { ApprovalPanel } from './ApprovalPanel.tsx';
 import { BeforeAfter } from './BeforeAfter.tsx';
 import { FfmpegNotes, RawOutput, useJobLog } from './FfmpegNotes.tsx';
 import { JobPlanSection } from './JobPlanSection.tsx';
@@ -533,8 +534,9 @@ function JobView({ id }: { id: string }) {
       {showResult && (
         <JobResult job={job} testEncodeAction={<TestEncodeFile job={job} />} raw={raw} />
       )}
+      {active && <ApprovalPanel job={job} onChanged={reload} />}
       <JobPlanSection job={job} />
-      {!active && <BeforeAfter job={job} />}
+      {(!active || job.approval) && <BeforeAfter job={job} />}
       {job.testEncode && !active && <TestOutputPanel job={job} onChanged={reload} />}
       {stepContext && (
         <JobSteps

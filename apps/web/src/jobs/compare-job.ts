@@ -16,6 +16,8 @@ export type BeforeAfterJob = Pick<
     NonNullable<JobDetail['result']>,
     'beforeBytes' | 'afterBytes' | 'estimatedBytes'
   > | null;
+  /** A result an Approval step holds: compared before anything is written. */
+  approval?: JobDetail['approval'];
 };
 
 /** Something the output loses against the original: a word to show and why, for screen readers. */
@@ -33,9 +35,10 @@ export type CompareRow = { key: string; label: string; before: Side; after: Side
  * Where After comes from: `measured`, the verified output's probe; `not-kept`, the same for a real
  * run whose output was then thrown away (its size gate kept the original); `planned`, the plan and
  * the estimate of a plan-only dry run (nothing was encoded); `from-plan`, the plan with the measured
- * size of a job whose output probe was not kept (results from before it was stored).
+ * size of a job whose output probe was not kept (results from before it was stored); `waiting`, the
+ * verified output an Approval step holds until a person answers.
  */
-export type AfterSource = 'measured' | 'not-kept' | 'planned' | 'from-plan';
+export type AfterSource = 'measured' | 'not-kept' | 'planned' | 'from-plan' | 'waiting';
 
 export type Comparison = { after: AfterSource; rows: CompareRow[] };
 
@@ -430,7 +433,7 @@ export function compareJob(job: BeforeAfterJob): Comparison | null {
   const { probe, outputProbe: out, plan } = job;
   if (!probe) return null;
   // A failed or cancelled job's output (if it got one) was thrown away: nothing to compare.
-  if (!COMPARED_STATES.has(job.state)) return null;
+  if (!COMPARED_STATES.has(job.state) && !job.approval) return null;
   if (!out && !plan?.rewrite) return null;
   const after = afterSourceOf(job);
 
@@ -540,6 +543,7 @@ export function compareJob(job: BeforeAfterJob): Comparison | null {
 }
 
 function afterSourceOf(job: BeforeAfterJob): AfterSource {
+  if (job.approval && job.outputProbe) return 'waiting';
   if (job.outputProbe) {
     return !job.dryRun && job.state === 'kept_original' ? 'not-kept' : 'measured';
   }
@@ -599,7 +603,10 @@ function fileRow(
   }
   // Planned: a done job (stored before its output was) measured its size; a dry run estimates it,
   // except when a size gate decides after encoding (no estimate claims what it will decide).
-  const measured = !job.dryRun || job.testEncode ? (job.result?.afterBytes ?? null) : null;
+  const measured =
+    !job.dryRun || job.testEncode
+      ? (job.result?.afterBytes ?? job.approval?.afterBytes ?? null)
+      : null;
   const estimate =
     job.dryRun && !job.testEncode && !job.dependsOnSize
       ? (job.result?.estimatedBytes ?? null)

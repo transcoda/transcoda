@@ -12,6 +12,16 @@ export const MOVE_COPY_TYPE = 'core:move-copy';
 /** The size gate: `pass` continues, `else` keeps the original and runs the non-writing steps. */
 export const SIZE_GATE_TYPE = 'core:size-gate';
 export const SIZE_GATE_ELSE_PORT = 'else';
+/**
+ * The Approval step: `pass` (Approved) continues once a person approves the parked result; `else`
+ * (Rejected) keeps the original and runs the non-writing steps, as a size gate's `else` does.
+ */
+export const APPROVAL_TYPE = 'core:approval';
+
+/** The finish steps with a Yes/No branch whose `else` keeps the original (size gate, approval). */
+export function isGateType(type: string): boolean {
+  return type === SIZE_GATE_TYPE || type === APPROVAL_TYPE;
+}
 export {
   CHECK_SOURCE_DAMAGED_PORT,
   CHECK_SOURCE_TYPE,

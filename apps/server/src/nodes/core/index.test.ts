@@ -71,6 +71,7 @@ describe('core nodes', () => {
   it('registers the full catalogue', () => {
     expect(coreNodes.map((d) => d.type).sort()).toEqual([
       'core:already-processed',
+      'core:approval',
       'core:check-source',
       'core:cover-attachments',
       'core:embed-sidecar-subtitles',
@@ -239,6 +240,7 @@ describe('core nodes', () => {
     expect(phases).toEqual({
       'core:render': 'render',
       'core:size-gate': 'gate',
+      'core:approval': 'gate',
       'core:replace-original': 'write',
       'core:move-copy': 'write',
       'core:notify-webhook': 'notify',

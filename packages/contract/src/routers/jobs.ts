@@ -124,6 +124,30 @@ export const jobs = {
     .errors({ ...mutationErrors, ...pickErrors('NOT_FOUND') })
     .input(JobIdInputSchema)
     .output(OkOutputSchema),
+  approve: oc
+    .route({
+      method: 'POST',
+      path: '/jobs/{id}/approve',
+      tags,
+      summary: 'Approve a result waiting for approval: the remaining finish steps run',
+      description:
+        "A person's session only. JOB_NOT_ACTIVE when the job is not waiting for approval.",
+    })
+    .errors({ ...mutationErrors, ...pickErrors('NOT_FOUND', 'JOB_NOT_ACTIVE') })
+    .input(JobIdInputSchema)
+    .output(OkOutputSchema),
+  reject: oc
+    .route({
+      method: 'POST',
+      path: '/jobs/{id}/reject',
+      tags,
+      summary: 'Reject a result waiting for approval: the original is kept, the result discarded',
+      description:
+        "A person's session only. JOB_NOT_ACTIVE when the job is not waiting for approval.",
+    })
+    .errors({ ...mutationErrors, ...pickErrors('NOT_FOUND', 'JOB_NOT_ACTIVE') })
+    .input(JobIdInputSchema)
+    .output(OkOutputSchema),
   queueFiles: oc
     .route({
       method: 'POST',

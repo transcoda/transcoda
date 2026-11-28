@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   JobSchema,
+  JobsListInputSchema,
+  JobsListOutputSchema,
   JobsQueueFilesInputSchema,
   JobsQueueFilesPreviewInputSchema,
   JobsQueueInputSchema,
@@ -64,6 +66,20 @@ describe('jobs router', () => {
     expect(JobSchema.shape.testEncode.safeParse(undefined).success).toBe(false);
     expect(RunSchema.shape.testEncode.safeParse(undefined).success).toBe(false);
     expect(JobsQueueOutputSchema.shape.testEncode.safeParse(true).success).toBe(true);
+  });
+
+  it('a job carries its parked result while it waits for approval; the list filters and counts them', () => {
+    const approval = {
+      parkedAt: '2026-01-01T00:00:00.000Z',
+      expiresAt: '2026-01-08T00:00:00.000Z',
+      beforeBytes: 1000,
+      afterBytes: 600,
+    };
+    expect(JobSchema.shape.approval.parse(approval)).toEqual(approval);
+    expect(JobSchema.shape.approval.parse(null)).toBeNull();
+    expect(JobSchema.shape.approval.safeParse(undefined).success).toBe(false);
+    expect(JobsListInputSchema.parse({ awaitingApproval: true }).awaitingApproval).toBe(true);
+    expect(JobsListOutputSchema.shape.awaitingApprovalCount.safeParse(2).success).toBe(true);
   });
 });
 

@@ -82,6 +82,16 @@ test('main pages', async ({ page }) => {
   await expect(page.getByRole('heading', { name: /Harbor Lights/, level: 1 })).toBeVisible();
   await shot(page, 'job');
 
+  // 4-approval.e2e.ts left this result waiting for a person.
+  await page.goto('/jobs');
+  await page.getByRole('button', { name: /^Waiting for approval/ }).click();
+  await page
+    .getByRole('link', { name: /The Paper Lantern/ })
+    .first()
+    .click();
+  await expect(page.getByRole('region', { name: 'Waiting for your approval' })).toBeVisible();
+  await shot(page, 'job-approval');
+
   await page.goto('/libraries');
   await expect(page.getByRole('link', { name: 'Movies' })).toBeVisible();
   await shot(page, 'libraries');

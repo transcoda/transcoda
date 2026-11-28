@@ -82,6 +82,7 @@ function job(over: Partial<JobDetail> = {}): JobDetail {
     failedGpus: [],
     priority: 0,
     heldByRunHours: null,
+    approval: null,
     dryRun: true,
     testEncode: false,
     testOutput: null,
@@ -257,6 +258,36 @@ describe('JobPage dry-run plan (Task 24)', () => {
     const flow = screen.getByRole('region', { name: 'Workflow trace' });
     await waitFor(() =>
       expect(flow.textContent).toContain('replaced the original (recycle folder: library default)'),
+    );
+  });
+
+  it('a result waiting for approval shows the approval panel and Before and after, before anything is written', async () => {
+    mocks.jobGet.mockResolvedValue(
+      job({
+        dryRun: false,
+        state: 'verifying',
+        finishedAt: null,
+        reason: 'waiting for approval',
+        result: null,
+        outputProbe: example.output(),
+        probe: example.source(),
+        plan: example.plan(),
+        approval: {
+          parkedAt: AT,
+          expiresAt: '2026-10-23T18:00:00.000Z',
+          beforeBytes: 11_580_000_000,
+          afterBytes: 2_120_000_000,
+        },
+      }),
+    );
+    renderJob();
+    const panel = await screen.findByRole('region', { name: 'Waiting for your approval' });
+    expect(within(panel).getByRole('button', { name: 'Approve' })).toBeTruthy();
+    expect(within(panel).getByRole('button', { name: 'Reject' })).toBeTruthy();
+    const ba = screen.getByRole('region', { name: 'Before and after' });
+    expect(ba.textContent).toContain('After (waiting for approval)');
+    expect(document.querySelector('.job-head-chips .job-chip')?.textContent).toBe(
+      'Waiting for approval',
     );
   });
 

@@ -52,18 +52,22 @@ export function PausedChip() {
  * The state chip of screen 07: icon + word, coloured from the `--st-*` tokens (`.job-chip.is-*`).
  * A dry run is a tag, not an outcome: the chip says what would have happened ("Would replace") and
  * the dashed "Dry run" badge sits beside it. A paused job gets a second "Paused" chip; its state
- * stays. A planned job waiting for its lane gets the hourglass; a job that is working (and not
+ * stays. A planned job waiting for its lane gets the hourglass, one waiting for approval a still
+ * person-with-check; a job that is working (and not
  * paused, nor `frozen`: an encode that stands still, see `encodeStopped`) turns its icon (`.is-working`; it
  * stays still when reduced motion is asked for).
  */
 export function JobStateChip({ job, frozen = false }: { job: Job; frozen?: boolean }) {
   const verdict = verdictOf(job);
   const planned = isWaitingForLane(job);
-  const working = verdict === 'running' && !planned && !job.paused && !frozen;
+  // A result an Approval step holds: nothing works on it until a person answers.
+  const waiting = job.approval != null;
+  const working = verdict === 'running' && !planned && !waiting && !job.paused && !frozen;
+  const icon: IconName = planned ? 'state-planned' : waiting ? 'user-check' : VERDICT_ICON[verdict];
   return (
     <span className="job-chips">
       <span className={`job-chip is-${verdict}${working ? ' is-working' : ''}`}>
-        <Icon name={planned ? 'state-planned' : VERDICT_ICON[verdict]} size={13} />
+        <Icon name={icon} size={13} />
         {[stateWord(job), estimateTag(job)].filter(Boolean).join(' · ')}
       </span>
       {job.dryRun ? <DryRunBadge testEncode={job.testEncode === true} /> : null}

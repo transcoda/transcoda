@@ -142,6 +142,7 @@ export function jobDetail(over: Partial<JobDetail> = {}): JobDetail {
     failedGpus: [],
     priority: 0,
     heldByRunHours: null,
+    approval: null,
     dryRun: false,
     testEncode: false,
     testOutput: null,

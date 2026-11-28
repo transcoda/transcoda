@@ -8,8 +8,10 @@ import type { Database } from '../../db/open.ts';
 import {
   appendTrace,
   findJob,
+  insertApproval,
   insertJob,
   type JobRow,
+  listApprovals,
   listTrace,
   type ReplaceJournal,
   type RestoreJournal,
@@ -209,6 +211,41 @@ describe('startupSweep without journals', () => {
       reason: 'interrupted',
       requeues: 1,
     });
+  });
+
+  it('a job whose result waited for approval is failed, not requeued; its parked result goes with the temp dir', async () => {
+    job('ap', 'verifying');
+    // A stale row of a job that ended meanwhile is dropped, and the job is left as it was.
+    job('old', 'done');
+    for (const id of ['ap', 'old']) {
+      insertApproval(db, {
+        jobId: id,
+        nodeId: 'gate',
+        parkedAt: now.toISOString(),
+        expiresAt: now.toISOString(),
+        beforeBytes: 10,
+        afterBytes: 5,
+        plan: null,
+        outputProbe: null,
+      });
+    }
+    await mkdir(join(tc, 'ap'));
+    await writeFile(join(tc, 'ap', 'out.mkv'), 'verified');
+    const result = await startupSweep(db, sweepDeps());
+    expect(result).toMatchObject({ interrupted: ['ap'], tempRemoved: 1 });
+    expect(findJob(db, 'ap')).toMatchObject({
+      state: 'failed',
+      failureCode: 'interrupted',
+      requeues: 0,
+      reason:
+        'the server restarted while the result waited for approval; the result was discarded and the original is untouched',
+    });
+    expect(findJob(db, 'old')?.state).toBe('done');
+    expect(listApprovals(db)).toEqual([]);
+    expect(listTrace(db, 'ap').map((e) => [e.nodeId, e.port, e.reason])).toEqual([
+      ['gate', null, 'failed: the server restarted while waiting for approval'],
+    ]);
+    expect(await readdir(tc)).toEqual([]);
   });
 
   it('a job failed as interrupted while it encoded or verified: its Render reads failed on the trace; a requeued one, or one still deciding, gets nothing', async () => {

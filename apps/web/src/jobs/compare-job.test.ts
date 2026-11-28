@@ -250,6 +250,23 @@ describe('compareJob', () => {
     expect(mode({ ...noProbe, testEncode: false })).toBe('planned');
   });
 
+  it('a result waiting for approval compares its verified output, marked as waiting; a plain verifying job has nothing yet', () => {
+    const approval = {
+      parkedAt: '2026-10-16T18:20:00.000Z',
+      expiresAt: '2026-10-23T18:20:00.000Z',
+      beforeBytes: 11_580_000_000,
+      afterBytes: 2_120_000_000,
+    };
+    const parked = { state: 'verifying' as const, dryRun: false, testEncode: false, result: null };
+    expect(compareJob(testEncode({ ...parked, approval }))?.after).toBe('waiting');
+    expect(rows(testEncode({ ...parked, approval }))).toEqual(rows(testEncode()));
+    // Without its output probe: the plan, with the parked size.
+    expect(rows(testEncode({ ...parked, approval, outputProbe: null }))[0]?.[2]).toBe(
+      '2.12 GB, 2.5 Mb/s, MKV',
+    );
+    expect(compareJob(testEncode({ ...parked, approval: null }))).toBeNull();
+  });
+
   it('a failed or cancelled job has nothing to compare, even with an output probe', () => {
     for (const state of ['failed', 'cancelled'] as const) {
       expect(compareJob(testEncode({ state, dryRun: false, testEncode: false }))).toBeNull();

@@ -52,7 +52,7 @@ vi.mock('../../api/client.ts', () => ({
 import { EventsProvider } from '../../hooks/use-events.ts';
 import { REFETCH_COALESCE_MS } from '../../hooks/use-refetch-on.ts';
 import { jobChanged } from '../../testing/fake-event-stream.ts';
-import { counts, fx } from '../../testing/fixtures/jobs.ts';
+import { counts, fx, job } from '../../testing/fixtures/jobs.ts';
 import { renderAt } from '../../testing/render.tsx';
 import { jobTitle } from '../media-text.ts';
 import { JobsPage } from './JobsPage.tsx';
@@ -487,6 +487,52 @@ describe('JobsPage', () => {
     ).toBe('true');
   });
 
+  it('the Waiting for approval chip lists the results an Approval step holds and counts them; none hides it', async () => {
+    const waiting = job({
+      id: 'j-wait',
+      state: 'verifying',
+      reason: 'waiting for approval',
+      approval: {
+        parkedAt: '2026-10-16T18:20:00.000Z',
+        expiresAt: '2026-10-23T18:20:00.000Z',
+        beforeBytes: 2_000_000_000,
+        afterBytes: 1_200_000_000,
+      },
+    });
+    mocks.list.mockResolvedValue({
+      jobs: ALL_JOBS,
+      counts: COUNTS,
+      problemCount: 0,
+      dependsOnSizeCount: 0,
+      awaitingApprovalCount: 1,
+    });
+    await renderPage();
+    mocks.list.mockResolvedValue({
+      jobs: [waiting],
+      counts: COUNTS,
+      problemCount: 0,
+      dependsOnSizeCount: 0,
+      awaitingApprovalCount: 1,
+    });
+    fireEvent.click(await screen.findByRole('button', { name: 'Waiting for approval 1' }));
+    await waitFor(() =>
+      expect(mocks.list).toHaveBeenCalledWith({ limit: 200, awaitingApproval: true }),
+    );
+    expect((await screen.findAllByText('Waiting for approval')).length).toBeGreaterThan(0);
+
+    mocks.list.mockResolvedValue({
+      jobs: ALL_JOBS,
+      counts: COUNTS,
+      problemCount: 0,
+      dependsOnSizeCount: 0,
+      awaitingApprovalCount: 0,
+    });
+    fireEvent.click(screen.getByRole('button', { name: /^All/ }));
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: /Waiting for approval/ })).toBeNull(),
+    );
+  });
+
   it('desktop shows the stat tiles; a tile applies the same filter as its chip', async () => {
     await renderPage();
     const tiles = await screen.findByRole('list', { name: 'Today' });
@@ -605,6 +651,18 @@ describe('JobsPage', () => {
     vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ['setTimeout', 'clearTimeout', 'Date'] });
     await renderPage();
     await push({ ...jobChanged('j-maple-lane4'), state: 'done', lane: null } as EngineEvent);
+    await act(() => vi.advanceTimersByTimeAsync(REFETCH_COALESCE_MS));
+    await waitFor(() => expect(mocks.list).toHaveBeenCalledTimes(3));
+  });
+
+  it('a result parked for approval reloads the list, though the job stays in the same state', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+    await renderPage();
+    await push({
+      ...jobChanged('j-maple-lane4'),
+      state: 'verifying',
+      reason: 'waiting for approval',
+    } as EngineEvent);
     await act(() => vi.advanceTimersByTimeAsync(REFETCH_COALESCE_MS));
     await waitFor(() => expect(mocks.list).toHaveBeenCalledTimes(3));
   });

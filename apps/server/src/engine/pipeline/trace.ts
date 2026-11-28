@@ -2,6 +2,7 @@
 // branch, a Render's Damaged, a plugin step's own answer, and the node a stop or failure cut.
 import { RENDER_DAMAGED_PORT, type TraceEntry } from '@transcoda/shared';
 import { appendTrace, type JobRow, nextTraceSeq } from '../../db/repos/jobs/jobs.ts';
+import type { ApprovalAction } from '../../nodes/core/approval.ts';
 import type { JobControl } from '../queue/scheduler.ts';
 import type { DamagedBranch, GateBranch } from '../walk/walk.ts';
 import type { PipelineCore } from './core.ts';
@@ -178,6 +179,40 @@ export function recordElseBranch(
     reason: `Size gate: saved ${g.saving.toFixed(1)}%, below ${g.minSavingPercent}% \u2192 no${g.note ? ` (${g.note})` : ''}`,
     findings: gateFindings(g.minSavingPercent, g.saving),
   });
+  moveWalkToElse(core, job, ctl, p, gate);
+}
+
+/**
+ * An Approval was rejected or expired: records Rejected (`else`) on the trace with `why`, and
+ * moves the job's walk onto the steps behind it. Runs nothing.
+ */
+export function recordRejectedBranch(
+  core: PipelineCore,
+  job: JobRow,
+  ctl: JobControl,
+  p: Prepared,
+  gate: GateBranch | undefined,
+  action: ApprovalAction,
+  why: string,
+): void {
+  traceFinish(core, job, ctl, {
+    nodeId: action.nodeId,
+    workflowPath: action.workflowPath,
+    source: 'core',
+    port: 'else',
+    reason: `Approval: ${why}`,
+  });
+  if (gate) moveWalkToElse(core, job, ctl, p, gate);
+}
+
+/** The job's walk from `gate` on takes its `else` (the pass steps after it were never taken). */
+function moveWalkToElse(
+  core: PipelineCore,
+  job: JobRow,
+  ctl: JobControl,
+  p: Prepared,
+  gate: GateBranch,
+): void {
   const at = p.walkPath.findIndex((s) => s.workflowPath.length === 0 && s.nodeId === gate.nodeId);
   if (at >= 0) {
     core.update(job, ctl, {
