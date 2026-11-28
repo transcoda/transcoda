@@ -9,7 +9,7 @@ import { Icon } from '../components/Icon.tsx';
 import { Loading } from '../components/Loading.tsx';
 import { RowMenu, type RowMenuItem } from '../components/RowMenu.tsx';
 import { useToast } from '../components/Toast.tsx';
-import { MISSING_LIBRARY } from '../editor/ui/fields/LibrarySelect.tsx';
+import { MISSING_LIBRARY } from '../editor/LibrarySelect.tsx';
 import { useWorkflows } from '../hooks/use-workflows.ts';
 import { runBlocked, useRunOnFile } from '../jobs/use-run-on-file.tsx';
 import { useTryOnFile } from '../jobs/use-try-on-file.ts';

@@ -3,6 +3,7 @@ import type { JsonValue, NodeInstance } from '@transcoda/shared';
 import { useId, useMemo, useState } from 'react';
 import { useLibraries } from '../../hooks/use-libraries.ts';
 import { languageName } from '../../lib/languages.ts';
+import { LibrarySelect, libraryName, MISSING_LIBRARY } from '../LibrarySelect.tsx';
 import { NEEDS_A_SETTING, type NodeState } from '../model/issues.ts';
 import {
   clientIssue,
@@ -15,7 +16,6 @@ import {
   onNodeControlKeys,
 } from '../model/schema-fields.ts';
 import { humanise, numberText } from '../model/value-text.ts';
-import { LibrarySelect, libraryName, MISSING_LIBRARY } from '../ui/fields/LibrarySelect.tsx';
 import type { ZoomLevel } from './use-zoom-level.ts';
 
 type JsonObject = { [key: string]: JsonValue };

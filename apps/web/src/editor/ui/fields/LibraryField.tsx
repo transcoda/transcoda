@@ -1,6 +1,6 @@
 import { useLibraries } from '../../../hooks/use-libraries.ts';
+import { LibrarySelect, libraryName } from '../../LibrarySelect.tsx';
 import { Field, type FieldProps } from './Field.tsx';
-import { LibrarySelect, libraryName } from './LibrarySelect.tsx';
 import { TextField } from './TextField.tsx';
 
 /**
