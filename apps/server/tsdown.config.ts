@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
+import { buildVersion } from '@transcoda/shared';
 import { defineConfig, type UserConfig } from 'tsdown';
-import { buildVersion } from './src/platform/build-version.ts';
 
 const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')) as {
   version: string;

@@ -334,6 +334,21 @@ describe('app', () => {
     expect((await app.request('/v1.2/settings')).status).toBe(200);
   });
 
+  it('never serves the source maps the web build writes next to its bundles', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'tcd-web-'));
+    writeFileSync(join(dir, 'index.html'), '<html>transcoda-ui</html>');
+    mkdirSync(join(dir, 'assets'));
+    writeFileSync(join(dir, 'assets', 'index-abc123.js'), 'x');
+    writeFileSync(join(dir, 'assets', 'index-abc123.js.map'), '{"version":3}');
+    const app = makeApp({ webDistDir: dir });
+    expect((await app.request('/assets/index-abc123.js')).status).toBe(200);
+    for (const path of ['/assets/index-abc123.js.map', '/assets/INDEX-abc123.js.MAP']) {
+      const res = await app.request(path);
+      expect(res.status, path).toBe(404);
+      expect(await res.text()).not.toContain('version');
+    }
+  });
+
   describe('host check', () => {
     const get = (app: ReturnType<typeof makeApp>, host: string, path = '/api/v1/system/health') =>
       app.request(path, { headers: { host } });

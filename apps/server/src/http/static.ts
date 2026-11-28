@@ -20,8 +20,11 @@ export function mountStatic(app: Hono, webDistDir: string): void {
     c.res.headers.set('cache-control', c.req.path.startsWith('/assets/') ? IMMUTABLE : 'no-cache');
   });
 
+  // Source maps stay on the server: they resolve the web UI's error reports
+  // (`http/client-errors/source-maps.ts`) and are never served.
+  const isSourceMap = (path: string) => /\.map$/i.test(path);
   app.get('*', async (c, next) => {
-    if (isApi(c.req.path)) return next();
+    if (isApi(c.req.path) || isSourceMap(c.req.path)) return next();
     return files(c, next);
   });
   // A missing asset (last path segment has an extension) is a 404, not the SPA page.

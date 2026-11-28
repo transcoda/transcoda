@@ -46,7 +46,7 @@ Use these instead of writing your own:
 
 ## Browser tests and screenshots
 
-- **One server per run.** The specs share its state and run in order, one worker, no retries: `setup.e2e.ts` creates the admin and saves the session, `1-workflow` builds and activates a workflow, `2-library-jobs` scans the library it feeds, `3-visual` takes the screenshots. The server starts from an empty config folder (`E2E_WORK`, default `/tmp/transcoda-e2e`, a fixed path so pages that show a folder look the same everywhere). Nothing reaches the network.
+- **One server per run.** The specs share its state and run in order, one worker, no retries: `setup.e2e.ts` creates the admin and saves the session, `1-workflow` builds and activates a workflow, `2-library-jobs` scans the library it feeds, `4-client-errors` checks that an error in the page reaches the server, `3-visual` takes the screenshots (after the flows). The server starts from an empty config folder (`E2E_WORK`, default `/tmp/transcoda-e2e`, a fixed path so pages that show a folder look the same everywhere). Nothing reaches the network.
 - **Fixture media are invented movies,** copied from `pnpm fixtures` and backdated so the library's settle window takes them at once. Never use a real title.
 - **Locators by role and accessible name.** A wait checks a row's own status, not text anywhere on the page.
 - **Screenshots** are taken in three projects: light, dark (both 1280×720) and phone (Pixel 7, light). Baselines are in `e2e/__screenshots__/<project>/`. A pull request that changes the UI on purpose updates them with `pnpm e2e:update`, and every changed image is looked at before it is committed. A diff fails CI.

@@ -52,7 +52,7 @@ Import [`examples/grafana/transcoda-dashboard.json`](../examples/grafana/transco
 
 ## Metrics
 
-All sizes are bytes (Grafana's `decbytes` unit shows them in SI units, 1 GB = 1,000,000,000 bytes). Totals that come from the database are gauges, not counters: they can go down (Restore original takes a file's saving back out; a deleted library drops out), so chart them with `delta()`, not `rate()` or `increase()`. The three metrics that are counted in memory since the server started (`transcoda_job_duration_seconds`, `transcoda_job_media_seconds_total` and `transcoda_encoder_busy_seconds_total`) start again from zero at a restart, which `rate()` and `increase()` handle.
+All sizes are bytes (Grafana's `decbytes` unit shows them in SI units, 1 GB = 1,000,000,000 bytes). Totals that come from the database are gauges, not counters: they can go down (Restore original takes a file's saving back out; a deleted library drops out), so chart them with `delta()`, not `rate()` or `increase()`. The metrics that are counted in memory since the server started (`transcoda_job_duration_seconds`, `transcoda_job_media_seconds_total`, `transcoda_encoder_busy_seconds_total` and `transcoda_client_errors_total`) start again from zero at a restart, which `rate()` and `increase()` handle.
 
 | Metric | Type | Labels | Meaning |
 |---|---|---|---|
@@ -77,6 +77,7 @@ All sizes are bytes (Grafana's `decbytes` unit shows them in SI units, 1 GB = 1,
 | `transcoda_library_files` | gauge | `library` | Files Transcoda has seen in the library. |
 | `transcoda_runs` | gauge | `library`, `source` | Runs (scans) started, all time. `source`: `manual` or `library` (a watched folder or run hours). |
 | `transcoda_scratch_free_bytes` | gauge |  | Free space on the transcode folder; absent when it cannot be read. |
+| `transcoda_client_errors_total` | counter | `kind` | Errors the web UI reported since the server started. `kind`: `error` (uncaught), `rejection` (an unhandled promise rejection), `render` (React could not draw the page), `api` (an API call failed unexpectedly), `csp` (a Content Security Policy violation). Every kind is listed, 0 included. Each report is also a `client_error` line in the server log ([details](dev/server-api.md#web-ui-error-reports)). |
 
 `library` is the library's name. Two libraries with the same name get the first 8 characters of their id added (`Movies (3f2a91c0)`). Renaming a library starts new series under the new name. Deleted libraries are left out.
 
@@ -120,6 +121,12 @@ sum by (reason) (transcoda_jobs_failed)
 # Alert: the queue has been paused for an hour
 min_over_time(transcoda_queue_paused[1h]) == 1
 ```
+
+## Errors in the web UI
+
+When the web UI hits an error (a script error, a page that fails to draw, an API call that fails unexpectedly), the page sends it to the Transcoda server it came from, and only there: nothing goes to any other host, and there is no analytics. The server writes each report to its log as a `client_error` line and counts it in `transcoda_client_errors_total`, so a Prometheus alert on `increase(transcoda_client_errors_total[1h]) > 0` tells you the UI is failing for someone.
+
+A report holds the page's route pattern (`/jobs/:id`, never the address you opened), the Transcoda version, the kind of error, its message and stack with file paths, quoted text, addresses, hosts and ids taken out, and how often it happened. It never holds a file path, a library, show or movie title, or who was signed in. Reports come only from a signed-in session; at most 60 lines a minute are logged, and the count includes the rest.
 
 ## Status summary (Home Assistant)
 
