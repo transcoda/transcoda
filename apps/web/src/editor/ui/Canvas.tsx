@@ -514,7 +514,7 @@ export function Canvas({
         </Controls>
         {showMap && <TcMiniMap />}
       </ReactFlow>
-      <CanvasLegend />
+      <CanvasLegend keys={!readOnly} />
     </div>
   );
 }
