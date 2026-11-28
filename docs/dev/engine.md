@@ -15,7 +15,7 @@ The rules in force today for `apps/server/src/engine/`, `apps/server/src/capabil
 - **Nothing rewrites media without a passing verify.** The only writers are Replace original and Move or copy, and only after verify. The pipeline copies the output beside the original as `.transcoda-<job>.tmp`; it never moves it.
 - **Every replace recycles.** The original moves to the recycle folder (`<root>/.transcoda-recycle` by default; a configured folder must be strictly inside the library root and on the same filesystem; there is no copy-and-unlink fallback). `replaceOriginal` writes an intent journal (`checking` → `writing_tmp` → `moving_original` → `installing_tmp` → `cleaning`) before each step, committed with `durableReplaceWrites` (`synchronous = FULL`).
 - **Never rename over an existing path.** Every rename in replace, sweep and restore goes through `renameNoClobber`. A taken recycle path gets `.1`, `.2`, ….
-- **The disk decides recovery.** The sweep reads O/T/C (original, tmp, copy) and settles a job as completed, rolled back or a conflict; it decides nothing while the library root or the file's folder is unreachable. A replace that fails past `checking` is settled at once with the same rules (`settleReplaceNow`).
+- **The disk decides recovery.** The sweep reads O/T/C (original, tmp, copy) and settles a job as completed, rolled back or a conflict; it decides nothing while the library root or the file's folder is unreachable. A replace that fails past `checking` is settled at once with the same rules (`settleReplaceNow`). Every case is in [Settling an interrupted replace](#settling-an-interrupted-replace).
 - **An older `.orig` journal is left for the user.** Before 2026-11-27 the journal carried `recycling`, and `false` meant a replace that kept the original as `<file>.transcoda-<job>.orig` and deleted it at the end. That path is gone. The sweep never settles such a journal: it touches no file, fails the job with the three paths in its reason, and keeps the journal (so the tmp is not taken for a stray) until neither the `.orig` nor the tmp is left. New journals have no `recycling` field. Job results with `replacedTo: 'deleted'` stay valid history and the Jobs page still shows them.
 - **Free space.** A replace waits, cancellable, until the original's filesystem has the output size plus `FREE_SPACE_MARGIN_BYTES` (5 GB) free; the job's reason says so. The encode slot is already free by then; a quick-lane job keeps its lane while it waits.
 - **Done after any write.** Once a replace installed the result or a move-copy finished, the job ends `done` whatever happens next (`finished with a problem: …`). Never retry after a write.
@@ -25,6 +25,42 @@ The rules in force today for `apps/server/src/engine/`, `apps/server/src/capabil
 - **Restore** (`files/restore.ts`, `restoreRecycled`) has its own journal, moves with `renameNoClobber` and is a person's session only. Recycle rows are removed only through `removeRecycledRow`, which never touches a row whose job has a replace or restore journal. `insertRecycled` replaces a stale row for the same path.
 - **Sidecar media info** (`media/nfo.ts`, `media/media-info.ts`, `media/poster-store.ts`) is read at queue time, never through a symlink, never outside the library, and nothing is ever written into a library for it.
 - **Child processes.** ffmpeg runs from an argv array, no shell, in its own process group; every ffprobe/ffmpeg call outside the encode takes the job's abort signal (`makeExec` SIGKILLs on abort). `platform/child-caps.ts` drops the server's ambient capabilities for every ffmpeg and ffprobe child.
+
+## Settling an interrupted replace
+
+`settleJournal` in `apps/server/src/engine/files/sweep.ts` settles every job that still has a replace journal: at start-up through `startupSweep`, and at once through `settleReplaceNow` when `replaceOriginal` fails past `checking`. The journal names the paths; the files on disk decide what happened. The journal's step is read in one place only (the rows with "step `installing_tmp` or later" below).
+
+Three paths are looked at: **O**, the original's path (`originalPath`); **T**, the tmp beside it (`tmpPath`, `.transcoda-<job>.tmp`); **C**, where the original goes in the recycle folder (`copyPath`). A path exists when `lstat` finds it (`FsOps.exists`; a symlink is never followed). A file **is the original** when its size, mtime, inode and device match the fingerprint the job probed (`sameFingerprint`). O **holds the replacement** when there is no T, O is not the original and its size is the journal's `outputBytes`.
+
+Before the table, in order; the first that applies decides:
+
+1. **An older `.orig` journal** (`recycling: false`) is left for the user, as described above. No file is touched.
+2. **The library cannot be seen.** The library root or O's folder is missing, or O is missing and so is C's folder: the job fails with `library root unavailable: <path>`, the journal stays and the next start looks again. An unmounted share reads as empty, and settling from it would end in a false "original missing".
+3. **One file under two names.** When O and C, or O and T, are the same inode on the same device (a crash inside `renameNoClobber` between its link and its unlink, or a rename replayed after a power loss), the second name is unlinked, its folder synced, and the table goes on as if it had never been there.
+
+| O | T | C | Also true | What the sweep does | The job | Outcome |
+| --- | --- | --- | --- | --- | --- | --- |
+| yes | any | yes | C is the original, O holds the replacement | Nothing to move: the install happened, only the `cleaning` intent was lost. | completed (below) | `completed` |
+| yes | any | yes | anything else | Both files stay where they are; T too. Journal cleared. | `failed`, `replace left two copies: <O>, <C>` | `conflicts` |
+| yes | any | no | step `installing_tmp` or later, O holds the replacement | Nothing to move: the copy was pruned or deleted after the install. | completed (below) | `completed` |
+| yes | any | no | step `installing_tmp` or later, O is the original | An earlier sweep moved the original back and stopped before it recorded that. T removed, O's folder synced, recycle row dropped, journal cleared. | `failed`, `interrupted; original restored`, not requeued | `rolledBack` |
+| yes | any | no | anything else (the original never left) | T removed, the recycle row for C dropped, journal cleared. | requeued when it was running (`requeueOnce`: failed instead on a second interruption); a job the pipeline had already ended keeps its state; never requeued through `settleReplaceNow` | `interrupted` or `cleared` |
+| no | yes | yes | T's size is `outputBytes` | T renamed to O (no clobber), O's folder synced. | completed (below) | `completed` |
+| no | yes | yes | T has another size | C renamed back to O (no clobber), both folders synced, recycle row dropped, journal cleared, then T removed. A tmp that is not the whole replacement is never installed. | `failed`, `interrupted; original restored`, not requeued | `rolledBack` |
+| no | no | yes | O is still free | C renamed back to O (no clobber), both folders synced, recycle row dropped, journal cleared. | `failed`, `interrupted; original restored`, not requeued | `rolledBack` |
+| no | no | yes | something took O meanwhile | Nothing moves (`ClobberRefused`). Journal cleared. | `failed`, `could not restore the original: …; the original is at <C>` | `conflicts` |
+| no | yes | no | | T stays. Recycle row dropped, journal cleared. | `failed`, `original missing` | `conflicts` |
+| no | no | no | | Recycle row dropped, journal cleared. | `failed`, `original missing` | `conflicts` |
+
+Every `failed` here has failure code `replace`, except `interrupted; original restored`, which has `interrupted`.
+
+- **Completed** sets the job back to `replacing` with the journal at `cleaning`, and records the recycle row for C when C exists and the index has no row of this job at that path (a row an earlier job left at that path is replaced). At start-up `EngineService` then finishes it after `pruneRecycle`: the job ends `done` and its result is rewritten as a replace into the recycle folder. Through `settleReplaceNow` the pipeline clears the journal and ends the job `done` with the problem `…; recovered: the replacement is installed`.
+- **Any other error while settling** (an I/O error, a rename refused in the restore after a short tmp) fails the job with `replace recovery failed: <error>; the original is at <O> or <C>` and keeps the journal, so the next start settles it again. It counts as a conflict.
+- **A tmp left behind.** While a job had a journal when the sweep began, its tmp is never taken for a stray. A tmp that a row above leaves (two copies, original missing) is removed by the stray-tmp walk on the next start, once the journal is gone.
+- **Through `settleReplaceNow`** the pipeline writes the job's end itself: `rolledBack` fails it with `replace: <step>: <error>; original restored`, `cleared` with `…; nothing was replaced`, and a conflict keeps the reason the sweep wrote.
+- **An interrupted restore** (the restore journal) does not use this table: `rollBackRestore` in `apps/server/src/engine/files/restore.ts` undoes its moves from the last to the first, and the job stays `done`.
+
+`apps/server/src/engine/files/sweep.test.ts` has a test for each row, and one that fails every disk call of the sweep once and checks that the original is never lost.
 
 ## Size gate: write track changes
 
