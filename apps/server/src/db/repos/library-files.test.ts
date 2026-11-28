@@ -1,7 +1,7 @@
 import { emptyGraph, type JobState, parseFileName, type StoredJobMedia } from '@transcoda/shared';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Database } from '../open.ts';
-import { createTestDb } from '../test-db.ts';
+import { createTestDb } from '../testing.ts';
 import { upsertFile } from './files.ts';
 import { insertJob, insertJobResult, type JobResultRow, listJobListRows } from './jobs/jobs.ts';
 import { insertLibrary } from './libraries.ts';

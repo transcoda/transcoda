@@ -6,7 +6,7 @@ import type { JsonValue, NodeInstance, WorkflowGraph } from '@transcoda/shared';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Database } from '../db/open.ts';
 import { findFeeder, findWorkflow, VersionConflictError } from '../db/repos/workflows.ts';
-import { createTestDb } from '../db/test-db.ts';
+import { createTestDb } from '../db/testing.ts';
 import { EngineEvents } from '../engine/events.ts';
 import { type QueueResult, QueueService } from '../engine/queue/queue-service.ts';
 import { tempDir } from '../engine/testing/fixtures.ts';

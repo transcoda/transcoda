@@ -19,7 +19,7 @@ import { insertLibrary } from '../../db/repos/libraries.ts';
 import { deleteRecycled, insertRecycled, listRecycled } from '../../db/repos/recycled.ts';
 import { insertRun } from '../../db/repos/runs.ts';
 import { insertWorkflow } from '../../db/repos/workflows.ts';
-import { createTestDb } from '../../db/test-db.ts';
+import { createTestDb } from '../../db/testing.ts';
 import { type FsOps, failingAt, nodeFsOps } from '../../platform/fs-ops.ts';
 import type { Logger } from '../../platform/logger.ts';
 import { edge, mainGraph, node } from '../../workflows/test-helpers.ts';

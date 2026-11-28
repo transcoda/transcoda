@@ -8,7 +8,7 @@ import { listBackups } from './backup.ts';
 import { backupOnBuildChange, hashBuildFile, LAST_BUILD_ID_KEY } from './build-backup.ts';
 import { closeDatabase, type Database } from './open.ts';
 import { getSetting, setSetting } from './repos/settings.ts';
-import { createTestDb } from './test-db.ts';
+import { createTestDb } from './testing.ts';
 
 const at = new Date(2026, 9, 21, 18, 0, 1);
 

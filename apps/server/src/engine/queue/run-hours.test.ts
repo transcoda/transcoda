@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { insertLibrary, updateLibrary } from '../../db/repos/libraries.ts';
-import { createTestDb } from '../../db/test-db.ts';
+import { createTestDb } from '../../db/testing.ts';
 import { closedLibraries, runHoursHold } from './run-hours.ts';
 
 const T = new Date('2026-10-22T12:00:00Z'); // Thursday 12:00 UTC
