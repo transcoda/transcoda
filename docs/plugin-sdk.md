@@ -60,6 +60,12 @@ The plugin host migrates settings at call time: a call carries the pinned `nodeV
 
 `risk: 'behaviour'` makes Transcoda write a new workflow version that a person must activate. Dropping a version from `migrations` is a plugin major bump: active versions that pin it cannot run until a person activates a newer workflow version (the Plugins page lists them before the update).
 
+## Settings forms and supported shapes
+
+Transcoda draws the settings form of every node and integration from its `settings` schema: one field per top-level setting, labelled from `.describe()` (`'Bitrate (kbps); unset keeps the source'` reads "Bitrate", unit "kbps", with the rest as a hint). How defaults, Advanced, secrets, migrations and server messages behave in the form is in [settings-forms.md](settings-forms.md).
+
+These shapes get a real control: `z.boolean()`, `z.number()` (a slider too when both bounds are at most 100 apart), `z.string()`, `z.url()` and `url()`, `secret()`, `z.enum([...])` and a union of string literals, `z.array(z.string())`, `z.array(z.enum([...]))`, `pathMappings()` and `allowInsecureTls()`, each also with `.optional()`, `.default()` or `.nullable()`. Give a nullable setting `.default(null)` or `.optional()`: the form clears a value by removing it, never by storing `null`. Everything else (nested objects, arrays of objects or numbers, unions of different types, discriminated unions) is edited as raw JSON, which works but reads poorly, so keep settings flat. A setting can show only while another one has a value with `.meta({ 'x-transcoda-show-when': { notify: true } })` (a string, number or boolean); the hidden value is kept and still validated, so ignore it in your hooks when it does not apply.
+
 ## Limits
 
 Each plugin has its own process. Transcoda applies these limits (defaults; stored overrides exist as `plugins.limits.<key>` rows in the `settings` table). The call timeout for `decide`, `build`, `finish` and `data` is changed under Settings → Plugins and applies to the next call; the others have no UI:

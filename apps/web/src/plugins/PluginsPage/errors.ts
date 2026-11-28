@@ -19,14 +19,19 @@ export function pluginFailure(err: unknown): string {
   return describeError(err).message;
 }
 
-/** The per-field messages of `PLUGIN_SETTINGS_INVALID` by setting path, or null for another failure. */
+/**
+ * The messages of `PLUGIN_SETTINGS_INVALID` by top-level setting key (the form's fields), the
+ * first one for each; `''` for one without a path. Null for another failure. A nested path
+ * (`tags.1`, `server.port`) belongs to the field of its first segment.
+ */
 export function settingsIssuesOf(err: unknown): Record<string, string> | null {
   if (!(err instanceof ORPCError) || err.code !== 'PLUGIN_SETTINGS_INVALID') return null;
   if (!isRecord(err.data) || !Array.isArray(err.data.issues)) return null;
   const out: Record<string, string> = {};
   for (const issue of err.data.issues) {
     if (isRecord(issue) && typeof issue.path === 'string' && typeof issue.message === 'string') {
-      out[issue.path] = issue.message;
+      const key = issue.path.split('.')[0] ?? '';
+      out[key] ??= issue.message;
     }
   }
   return out;
