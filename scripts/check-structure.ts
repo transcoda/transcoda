@@ -6,7 +6,8 @@
 // - Web: only App.tsx imports a page.
 // - Folder names, small folders, test names, the soft size limit for source files.
 // - Every back-ticked path in AGENTS.md and docs/dev/*.md exists.
-// What breaks a rule today is listed in scripts/structure-allowlist.json; those lists only shrink.
+// What broke a rule before the check existed is listed in scripts/structure-allowlist.json; those
+// lists only shrink.
 // Exports checkStructure(root) for tests; the CLI runs only when executed directly.
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join, posix } from 'node:path';
@@ -21,9 +22,7 @@ export interface Layer {
 
 /**
  * The layers of each app, bottom first. A file is in the layer whose entry is the longest prefix of
- * its path. Entries marked "today" are where files sit before the move that takes them to the
- * entry above them; the move removes the "today" entry. An entry for a folder that does not exist
- * yet is fine: it matches nothing.
+ * its path. A new folder needs an entry here (the check fails on a file in no layer).
  */
 export const LAYERS: Record<string, Layer[]> = {
   'apps/server/src': [
@@ -93,11 +92,6 @@ const APP_ROUTES = 'apps/web/src/App.tsx';
 export const SOFT_MAX_LINES = 800;
 export const ALLOWLIST = 'scripts/structure-allowlist.json';
 const DOCS = 'docs/dev/structure.md';
-/**
- * Docs whose paths are not checked. structure.md describes the target layout, so it names folders
- * that do not exist yet; it joins the check once the migration is done.
- */
-const DOC_PATHS_SKIP = [DOCS];
 
 /** The lists in the allowlist file. Each holds what breaks one rule today. */
 export interface Allowlist {
@@ -497,10 +491,7 @@ export function findProblems(root: string, allowlist: Allowlist): Findings {
       repoPaths.add(`${d}/`);
     }
   }
-  const docs = [
-    'AGENTS.md',
-    ...repoFiles.filter((f) => /^docs\/dev\/[^/]+\.md$/.test(f) && !DOC_PATHS_SKIP.includes(f)),
-  ];
+  const docs = ['AGENTS.md', ...repoFiles.filter((f) => /^docs\/dev\/[^/]+\.md$/.test(f))];
   for (const doc of docs) {
     if (!existsSync(join(root, doc))) continue;
     const text = readFileSync(join(root, doc), 'utf8');

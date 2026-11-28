@@ -2,13 +2,13 @@
 
 Where code goes in `apps/server/src`, `apps/web/src` and `packages/`, and how `pnpm check-structure` holds it there. Read this first when you add a file or a folder. Code style is in [conventions.md](conventions.md), test tiers in [testing.md](testing.md).
 
-The layout below is the target. The repository is moving to it one pull request at a time (see "Migration status"), so some files still sit at their old paths. The check knows both: an old path is mapped onto its target layer, and whatever breaks a rule today is listed in `scripts/structure-allowlist.json`, a list that only shrinks.
+The tree below is the layout as it is. The few things that broke a rule before the check existed, and are not fixed yet, are listed in `scripts/structure-allowlist.json`, a list that only shrinks.
 
 ## Three rules
 
 **Rule A: layers.** Each folder directly under `src/` is an area, and so is each folder directly under the server's `engine/`. Areas are layered in a fixed order. A production file imports from its own layer and from layers below it, never from a layer above. Tests and test support may import anything.
 
-**Rule B: a file that grows becomes a folder.** When `x.ts` nears 600 lines, or you are about to add `x-something.ts` next to it, make a module folder instead:
+**Rule B: a file that grows becomes a folder.** When `x.ts` nears 600 lines, or you are about to add a second file named after it (`x-…`) next to it, make a module folder instead:
 
 ```
 verify/
@@ -22,7 +22,7 @@ verify/
 
 - A folder holding a file with its own name is a module folder. Code outside it imports only the entry; files inside it, tests included, import anything in it. Tests outside may also import its `testing.ts` or `testing/`.
 - The entry holds real code (the public functions, the orchestration), not only re-exports. When code outside needs an internal type, the entry re-exports that one type.
-- No `index.ts` barrels. An import names the entry file (`./verify/verify.ts`). `index.ts` means a registry, an ordered list of things, and only these three: `apps/server/src/nodes/core/index.ts`, `apps/server/src/db/migrations/index.ts`, `apps/server/src/mcp/tools/index.ts`. A package's entry point (`packages/shared/src/index.ts`, named in its `package.json` `exports`) is not a barrel.
+- No `index.ts` barrels. An import names the entry file (`verify/verify.ts`). `index.ts` means a registry, an ordered list of things, and only these three: `apps/server/src/nodes/core/index.ts`, `apps/server/src/db/migrations/index.ts`, `apps/server/src/mcp/tools/index.ts`. A package's entry point (`packages/shared/src/index.ts`, named in its `package.json` `exports`) is not a barrel.
 - The other way round: a folder with fewer than three source files and no sub-folder goes back to being files in its parent.
 - Areas themselves (`engine/`, `db/`, `jobs/`) are not module folders, even when one holds a file of its own name (`engine/engine.ts`).
 
@@ -48,7 +48,7 @@ Only `App.tsx` imports a page. What two pages share moves to the feature folder'
 
 Packages keep their own direction, `shared <- sdk <- contract <- server/web`, checked by `pnpm check-deps`.
 
-## Target tree
+## The tree
 
 ### `apps/server/src`
 
@@ -115,7 +115,7 @@ workflows/          WorkflowsPage, NewWorkflowPage, EmptyWorkflows, the bundled 
                     activation (ActivateDialog, ActivationControl)
 editor/             EditorPage/, model/ (pure), flow/ (React Flow, on-node rows), ui/, trace/
 jobs/               JobsPage/, JobPage/, RunPage/, and what those pages share at the root
-libraries/          LibrariesPage/, LibraryPage/, LibraryFilePage/, and their shared parts
+libraries/          LibrariesPage, LibraryPage, LibraryFilePage, and their shared parts
 plugins/            PluginsPage/ and its parts
 recycle/            RecyclePage, RestoreButton
 settings/           SettingsPage and its sections
@@ -125,7 +125,7 @@ styles/             every stylesheet, imported in order from styles/index.css
 testing/            test setup, render helpers, fixtures
 ```
 
-There is no `pages/` folder: each page lives in its feature. Stylesheets stay in `styles/` because they are one global cascade in a fixed order ([web-ui.md](web-ui.md)); name a new one after the feature it serves (`jobs-*.css`).
+There is no pages folder: each page lives in its feature. Stylesheets stay in `styles/` because they are one global cascade in a fixed order ([web-ui.md](web-ui.md)); name a new one after the feature it serves (`jobs-*.css`).
 
 ## The page pattern
 
@@ -150,7 +150,7 @@ jobs/JobPage/
 ## Test names
 
 - A test sits beside its subject: `<subject>.test.ts` for `<subject>.ts`, and `<subject>.<topic>.test.ts` for a further file on the same subject (`jobs.history.test.ts`, `pipeline.gates.test.ts`, `paths.property.test.ts`, `pipeline.real.test.ts`). No `__tests__` folders.
-- A test with no subject file (a docs sync test, a CSS guard, an end-to-end flow) is listed in `orphanTests` in `scripts/structure-allowlist.json`. Don't add to that list: give a new test a subject, or put a CSS guard beside its stylesheet in `styles/`.
+- A test with no subject file (a docs sync test, a check over the whole source tree, an end-to-end flow) is listed in `orphanTests` in `scripts/structure-allowlist.json`. Don't add to that list: give a new test a subject. A CSS guard sits in `styles/`, named after the stylesheet it reads, or after `index.css` when it reads them all (`index.type-scale.test.ts`).
 - A test split by topic shares its setup through the folder's `testing.ts`.
 
 ## One name per router
@@ -168,15 +168,15 @@ The contract's routers set the vocabulary: `auth`, `tokens`, `settings`, `system
 
 ## File size
 
-The hard budget is 1200 lines for any file ([conventions.md](conventions.md#file-size)). On top of it, a source file (tests and fixtures aside, CSS included) has a soft limit of 800 lines, so a file becomes a module folder long before the budget. The files above 800 today are in `softSizeLimit` with their line count, which works like the file-size allowlist: it may only go down.
+The hard budget is 1200 lines for any file ([conventions.md](conventions.md#file-size)). On top of it, a source file (tests and fixtures aside, CSS included) has a soft limit of 800 lines, so a file becomes a module folder long before the budget. The files above 800 when the limit came in are in `softSizeLimit` with their line count, which works like the file-size allowlist: it may only go down.
 
 ## The check
 
-`pnpm check-structure` (`scripts/check-structure.ts`, part of `pnpm check`, well under a second) reads every file under `apps/*/src` and `packages/*/src`, resolves each relative import and each `@transcoda/*` import to a file, and checks the rules above. It also reads `AGENTS.md` and `docs/dev/*.md` (all but this doc, which names the target layout). It has no dependencies; its tests are in `scripts/check-structure.test.ts`.
+`pnpm check-structure` (`scripts/check-structure.ts`, part of `pnpm check`, well under a second) reads every file under `apps/*/src` and `packages/*/src`, resolves each relative import and each `@transcoda/*` import to a file, and checks the rules above. It also reads `AGENTS.md` and every `docs/dev/*.md`, this doc included, and fails on a back-ticked path that does not exist. It has no dependencies; its tests are in `scripts/check-structure.test.ts`.
 
 Two pieces of data drive it:
 
-- **The tables** at the top of `scripts/check-structure.ts`: `LAYERS` (each app's layers, bottom first, as path prefixes), and `REGISTRIES` (the three `index.ts` files). Entries marked "today" are old paths mapped onto their target layer. A target folder that does not exist yet is just a prefix that matches nothing.
+- **The tables** at the top of `scripts/check-structure.ts`: `LAYERS` (each app's layers, bottom first, as path prefixes), and `REGISTRIES` (the three `index.ts` files). A new area or a new web shared folder gets an entry here; a file in no layer fails the check.
 - **The allowlists** in `scripts/structure-allowlist.json`: what broke each rule before the check existed. Each list only shrinks. An entry the code no longer needs fails the check until it is removed, so fixing the code and removing its entry go in the same pull request. Never add an entry to get past a failure.
 
 | List | Key | Rule |
@@ -209,21 +209,22 @@ Two pieces of data drive it:
 - **"… names `…`, which does not exist"**: you moved or deleted a file a doc names. Update the doc in the same pull request.
 - **"… no longer breaks the rule: remove the entry"**: you fixed something. Delete the entry from `scripts/structure-allowlist.json`.
 
-A move pull request updates the paths in the allowlists and the "today" entries in `LAYERS` along with the files; the check names every entry that no longer matches.
+A move pull request updates the paths in the allowlists and in `LAYERS` along with the files, and the paths this doc names; the check names every entry that no longer matches.
 
-## Migration status
+## How the layout came about
 
-Steps 1 (the check and this doc), 2, 3, 4, 5, 6, 7, 8, 9, 10 and 11 are done. Each later pull request ticks its line.
+The layout was reached in thirteen steps, one or more pull requests each, all done:
 
-- [x] 2. Server: `platform/`, `app/` and `system/`; `host-check.ts` and `request-info.ts` into `auth/`.
+- [x] 1. The check and this doc.
+- [x] 2. Server: `platform/`, `app/` and `system/`; host check and request info into `auth/`.
 - [x] 3. Server: fix the upward imports (`fingerprintKey` into the repository layer, the official plugin constants out of `plugins/`, `CoreTools` into `nodes/`).
 - [x] 4. Server: `engine/` sub-areas, part 1: `model/`, `files/`, `media/`, `encode/`.
 - [x] 5. Server: `engine/` sub-areas, part 2: `verify/`, `walk/`, `queue/`, `pipeline/`, `testing/`.
 - [x] 6. Server: `plugins/` sub-folders (`trust/`, `runtime/`, `network/`) and its test support into `testing/`.
-- [x] 7. Server splits, one pull request each: `db/repos/jobs.ts`, `plugins/service.ts`, `workflows/validate.ts`, `engine/verify/verify.ts`.
+- [x] 7. Server splits, one pull request each: the jobs repository, the plugin service, workflow validation and verify became module folders.
 - [x] 8. Server: test names in the dot form; split the over-budget tests.
-- [x] 9. Web: `shell/`, `test/` to `testing/`, the CSS guard tests into `styles/`.
-- [x] 10. Web: pages into their features, in three pull requests; then delete `pages/`.
+- [x] 9. Web: `shell/`, the test folder to `testing/`, the CSS guard tests into `styles/`.
+- [x] 10. Web: pages into their features, in three pull requests; then delete the pages folder.
 - [x] 11. Web splits: the editor page's hooks, the jobs page, the over-budget page tests, the two largest stylesheets.
-- [x] 12. Packages: `shared/src/workflow` to `workflows`; split `contract.test.ts` per router, into a test beside each router file.
-- [ ] 13. Tighten: empty `upwardImports`, remove the "today" entries from `LAYERS`, and check this doc's paths too (`DOC_PATHS_SKIP`).
+- [x] 12. Packages: the shared workflow folder to `workflows/`; the contract test split into a test beside each router file.
+- [x] 13. Tighten: module folders entered only through their entry, test support named `testing`, tests named after their subject, `settings.ts` and the web `lib/` tables out of one-file folders, and this doc's paths checked too.
