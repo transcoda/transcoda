@@ -1,13 +1,8 @@
 import type { JsonValue } from '@transcoda/shared';
 import { useState } from 'react';
-import { coerce, type FieldSpec, numberStep, snapNumber } from '../../model/schema-fields.ts';
+import { coerce, numberStep } from '../../model/schema-fields.ts';
+import { numberText } from '../../model/value-text.ts';
 import { Field, type FieldProps, placeholderFor } from './Field.tsx';
-
-/** A stored number as shown: on the field's step (a percent saved as 11.58 reads 12). */
-export function numberText(spec: FieldSpec, v: JsonValue | undefined): string {
-  if (typeof v !== 'number') return '';
-  return String(spec.kind === 'number' && !spec.integer ? snapNumber(spec, v) : v);
-}
 
 /**
  * A number input with the schema's range (`min`/`max`, the spec's step: 1 for integers and percents) and the unit as a
