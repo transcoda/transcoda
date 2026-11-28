@@ -71,6 +71,14 @@ export const LibrariesListOutputSchema = z.object({
 export const LibraryGetOutputSchema = LibrarySchema.extend({
   clock: ServerClockSchema,
   fileCount: z.number().int().nonnegative(),
+  /** How many files its health page lists: present files whose latest job found the source damaged. */
+  damagedCount: z.number().int().nonnegative(),
+  /**
+   * The titles of the Replace damaged file steps (plugin finish nodes for a Damaged output) in the
+   * active version of the workflow that feeds the library, not bypassed, whose plugin is running.
+   * Running the feeder on a damaged file again then hands it to them. Empty: none.
+   */
+  replaceDamaged: z.array(z.string()),
 });
 /** The issue message for a `defaultWorkflowId` sent to create or update (a 400). */
 export const REMOVED_DEFAULT_WORKFLOW =

@@ -16,6 +16,7 @@ import {
   listMigrationNotices,
 } from '../../db/repos/libraries.ts';
 import {
+  countDamagedFiles,
   countListedFiles,
   findFileProbe,
   findLibraryFile,
@@ -28,7 +29,12 @@ import {
   type PosterRef as RepoPosterRef,
   resolveShowSelection,
 } from '../../db/repos/library-files.ts';
-import { findFeeder, type LibraryNamer, listInactiveNamers } from '../../db/repos/workflows.ts';
+import {
+  findFeeder,
+  findVersion,
+  type LibraryNamer,
+  listInactiveNamers,
+} from '../../db/repos/workflows.ts';
 import { jobProbeOf } from '../../engine/media/probe.ts';
 import { closedLibraries, runHoursHold } from '../../engine/queue/run-hours.ts';
 import type { AppDeps } from '../context.ts';
@@ -81,15 +87,40 @@ export const dismissNotices = os.libraries.dismissNotices
     return { ok: true as const };
   });
 
+/**
+ * The titles of the Replace damaged file steps (`damagedOnly` nodes, which the editor and the
+ * save only allow on a Damaged side) in the feeder's active version, not bypassed, available now.
+ */
+function replaceDamagedSteps(deps: AppDeps, feeds: Library['feeds']): string[] {
+  if (feeds === null) return [];
+  const stored = findVersion(deps.db, feeds.workflowId, feeds.version);
+  if (!stored?.ok) return [];
+  const ready = new Map(
+    deps.workflows
+      .listNodes()
+      .filter((n) => n.damagedOnly === true && n.availability.available)
+      .map((n) => [n.type, n.title]),
+  );
+  const titles = stored.row.graph.nodes.flatMap((n) => {
+    const title = n.bypassed === true ? undefined : ready.get(n.type);
+    return title === undefined ? [] : [title];
+  });
+  return [...new Set(titles)];
+}
+
 export const get = os.libraries.get
   .use(requireScope('read'))
   .handler(({ context, input, errors }) => {
-    const library = findLibrary(context.deps.db, input.id);
+    const { db } = context.deps;
+    const library = findLibrary(db, input.id);
     if (!library || library.deletedAt !== null) throw errors.NOT_FOUND();
+    const out = toLibrary(db, library);
     return {
-      ...toLibrary(context.deps.db, library),
+      ...out,
       clock: serverClock(context.deps),
-      fileCount: countListedFiles(context.deps.db, library.id),
+      fileCount: countListedFiles(db, library.id),
+      damagedCount: countDamagedFiles(db, library.id),
+      replaceDamaged: replaceDamagedSteps(context.deps, out.feeds),
     };
   });
 
@@ -252,6 +283,7 @@ export const files = os.libraries.files
       ...(sel !== null && { show: sel.show }),
       ...(sel?.season !== undefined && { season: sel.season }),
       ...(input.search !== undefined && { search: input.search }),
+      ...(input.damaged !== undefined && { damaged: input.damaged }),
       sort: input.sort,
       desc: input.desc,
       offset: input.offset,

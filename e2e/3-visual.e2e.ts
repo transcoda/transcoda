@@ -89,10 +89,18 @@ test('main pages', async ({ page }) => {
   await page.getByRole('link', { name: 'Movies' }).click();
   await expect(page.getByRole('link', { name: /Harbor Lights/ })).toBeVisible();
   await shot(page, 'library');
+  const library = page.url();
 
   await page.getByRole('link', { name: /Harbor Lights/ }).click();
   await expect(page.getByRole('heading', { name: /Harbor Lights/, level: 1 })).toBeVisible();
   await shot(page, 'file');
+
+  // The fixtures are all sound, so the damaged files page shows its empty state.
+  await page.goto(library);
+  await page.getByRole('link', { name: 'No damaged files' }).click();
+  await expect(page.getByRole('heading', { name: 'Damaged files', level: 1 })).toBeVisible();
+  await expect(page.getByText(/No damaged files in Movies/)).toBeVisible();
+  await shot(page, 'damaged-files');
 
   for (const path of ['recycle', 'plugins', 'settings']) {
     await page.goto(`/${path}`);

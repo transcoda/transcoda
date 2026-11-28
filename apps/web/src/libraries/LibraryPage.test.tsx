@@ -42,6 +42,7 @@ const LIBRARY: Library = {
 /** The key the server gives a show: base64url of [title, year]. */
 const SHOW_KEY = 'WyJUaGUgQmV2ZXJseSBIaWxsYmlsbGllcyIsMTk2Ml0';
 const CLOCK = { now: '2026-10-16T03:00:00.000Z', timeZone: 'America/New_York' };
+const HEALTH = { damagedCount: 0, replaceDamaged: [] };
 const TITLES = { items: [], total: 0 };
 const files = (total: number): LibraryFilesOutput => ({ files: [], total });
 /** The page of a `total`-file listing that a files request asks for, each file titled by its index. */
@@ -73,7 +74,9 @@ beforeEach(() => {
   localStorage.clear();
   fake = fakeEventSource();
   mocks.events.subscribe.mockReset().mockImplementation(fake.subscribe);
-  mocks.libraries.get.mockReset().mockResolvedValue({ ...LIBRARY, clock: CLOCK, fileCount: 4214 });
+  mocks.libraries.get
+    .mockReset()
+    .mockResolvedValue({ ...LIBRARY, ...HEALTH, clock: CLOCK, fileCount: 4214 });
   mocks.libraries.titles.mockReset().mockResolvedValue(TITLES);
   mocks.libraries.seasons
     .mockReset()
@@ -289,7 +292,7 @@ describe('LibraryPage', () => {
     expect(await screen.findByText('4,214 files')).toBeTruthy();
     await push(queueSnapshot);
     await act(() => vi.advanceTimersByTimeAsync(REFETCH_COALESCE_MS * 2));
-    mocks.libraries.get.mockResolvedValue({ ...LIBRARY, clock: CLOCK, fileCount: 4215 });
+    mocks.libraries.get.mockResolvedValue({ ...LIBRARY, ...HEALTH, clock: CLOCK, fileCount: 4215 });
     await push({ ...jobChanged('j9'), state: 'queued' } as EngineEvent);
     await act(() => vi.advanceTimersByTimeAsync(REFETCH_COALESCE_MS * 2));
     expect(await screen.findByText('4,215 files')).toBeTruthy();
@@ -303,6 +306,7 @@ describe('LibraryPage', () => {
     mocks.libraries.get.mockResolvedValue({
       ...LIBRARY,
       runHours: { enabled: true, perDay: false, every: night, days: Array(7).fill(night) },
+      ...HEALTH,
       clock: CLOCK,
       fileCount: 4214,
     });
@@ -313,8 +317,33 @@ describe('LibraryPage', () => {
     expect(within(dialog).queryByText(/Its run hours are closed now/)).toBeNull();
   });
 
+  it('links to the damaged files from the header, with their count', async () => {
+    await renderPage();
+    expect(screen.getByRole('link', { name: 'No damaged files' }).getAttribute('href')).toBe(
+      '/libraries/l1/health',
+    );
+    cleanup();
+    mocks.libraries.get.mockResolvedValue({
+      ...LIBRARY,
+      ...HEALTH,
+      damagedCount: 3,
+      clock: CLOCK,
+      fileCount: 4214,
+    });
+    await renderPage();
+    const link = screen.getByRole('link', { name: '3 damaged files' });
+    expect(link.getAttribute('href')).toBe('/libraries/l1/health');
+    expect(link.className).toContain('has-damage');
+  });
+
+  it('a show page has no damaged files link (it counts the whole library)', async () => {
+    renderAt(`/libraries/l1/shows/${SHOW_KEY}`, page());
+    await screen.findByRole('heading', { level: 1, name: 'Classic TV' });
+    expect(screen.queryByRole('link', { name: /damaged files/i })).toBeNull();
+  });
+
   it('says to scan when the library has no files', async () => {
-    mocks.libraries.get.mockResolvedValue({ ...LIBRARY, clock: CLOCK, fileCount: 0 });
+    mocks.libraries.get.mockResolvedValue({ ...LIBRARY, ...HEALTH, clock: CLOCK, fileCount: 0 });
     await renderPage();
     expect(await screen.findByText('Scan now to list its files.')).toBeTruthy();
     expect(screen.getByText('0 files')).toBeTruthy();

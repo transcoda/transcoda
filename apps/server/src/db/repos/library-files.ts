@@ -205,6 +205,7 @@ const LISTED_SQL = `base AS (
   SELECT f.id, f.library_id, f.path, f.size_bytes, f.mtime_ms, f.gone_at,
     lt.latest_id, lt.media_id, lt.media, lj.state AS latest_state,
     COALESCE(lj.finished_at, lj.queued_at) AS last_run, r.before_bytes, r.after_bytes,
+    r.source_damaged,
     -- A corrupt media cell reads as none rather than failing the whole list.
     CASE WHEN json_valid(lt.media) THEN lt.media END AS media_json,
     -- The job's output is still what is there: the file was last seen as the job's input (the
@@ -255,6 +256,8 @@ interface Filters {
   show?: ShowRef;
   season?: SeasonRef;
   search?: string;
+  /** Only files whose latest job found the source damaged. */
+  damaged?: boolean;
 }
 
 function filterSql(f: Filters): { where: string; params: Record<string, string | number | null> } {
@@ -273,6 +276,7 @@ function filterSql(f: Filters): { where: string; params: Record<string, string |
       params.season = f.season;
     }
   }
+  if (f.damaged === true) where.push('source_damaged = 1');
   if (f.search !== undefined && f.search !== '') {
     where.push(
       `(title LIKE @search ESCAPE '\\' OR episode_title LIKE @search ESCAPE '\\'
@@ -340,6 +344,7 @@ export function listLibraryFiles(
     show?: ShowRef;
     season?: SeasonRef;
     search?: string;
+    damaged?: boolean;
     sort: FileSort;
     desc: boolean;
     offset: number;
@@ -352,6 +357,7 @@ export function listLibraryFiles(
     ...(q.show !== undefined && { show: q.show }),
     ...(q.season !== undefined && { season: q.season }),
     ...(q.search !== undefined && { search: q.search }),
+    ...(q.damaged !== undefined && { damaged: q.damaged }),
   });
   const params = { ...latest.params, ...filter.params };
   const limit = Math.max(0, Math.min(q.limit, LIBRARY_FILES_MAX));
@@ -386,6 +392,20 @@ export function countListedFiles(db: Database, libraryId: string): number {
       `SELECT COUNT(*) FROM files f
        WHERE f.library_id = ? AND f.gone_at IS NULL
          AND EXISTS (SELECT 1 FROM jobs j WHERE j.file_id = f.id)`,
+    )
+    .pluck()
+    .get(libraryId) as number;
+}
+
+/**
+ * How many files {@link listLibraryFiles} lists for the library with `damaged: true` (present
+ * files whose latest job found the source damaged), by index.
+ */
+export function countDamagedFiles(db: Database, libraryId: string): number {
+  return db
+    .prepare(
+      `SELECT COUNT(*) FROM files f JOIN job_results r ON r.job_id = f.latest_job_id
+       WHERE f.library_id = ? AND f.gone_at IS NULL AND r.source_damaged = 1`,
     )
     .pluck()
     .get(libraryId) as number;
