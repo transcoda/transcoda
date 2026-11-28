@@ -15,7 +15,19 @@ Issues labeled [`good first issue`](https://github.com/transcoda/transcoda/label
 
 This is the one place the development setup is described; the README links here.
 
-You need Node 26 (`>=26.13.1`, see `.node-version`), pnpm through corepack (Node 26 no longer bundles it) and ffmpeg for the capability probe and the test videos (`brew install ffmpeg` on a Mac; the Docker image uses jellyfin-ffmpeg instead).
+You need Node 26 (`>=26.13.1`, see `.node-version`), pnpm through corepack (Node 26 no longer bundles it) and ffmpeg for the capability probe and the test videos. The Docker image uses jellyfin-ffmpeg instead of a host install.
+
+### macOS
+
+Install Node 26 (see `.node-version`) with Homebrew (`brew install node`) or a version manager such as fnm, then run the corepack commands below. Install ffmpeg with `brew install ffmpeg`.
+
+### Linux
+
+Install Node 26 with your distribution packages, a version manager such as fnm, or the nodejs.org installer, then run the corepack commands below. A distro ffmpeg is usually fine (`sudo apt install ffmpeg` or `sudo dnf install ffmpeg`); when the distro version is old, a static build from johnvansickle.com is an option.
+
+### Windows
+
+Use WSL2 and follow the Linux steps inside it. Native Windows is untested: parts of the workflow are POSIX shell scripts (`pnpm e2e:docker` runs `sh scripts/e2e-docker.sh`, and `pnpm test:docker` likewise).
 
 ```sh
 git clone https://github.com/<you>/transcoda.git
