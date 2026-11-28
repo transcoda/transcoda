@@ -1,5 +1,5 @@
 import { defineNode } from '@transcoda/sdk';
-import type { Edge, NodeInstance } from '@transcoda/shared';
+import type { Edge, NodeInstance, WorkflowGraph } from '@transcoda/shared';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import { filePort } from '../../nodes/core/common.ts';
@@ -332,6 +332,84 @@ describe('validateWorkflow', () => {
         expect(
           find(validateWorkflow(afterFinish, ctx()), 'FINISH_ORDER').map((i) => i.nodeId),
         ).toEqual(['kl2']);
+      });
+
+      describe('NO_WRITE_PATH on a check-only branch', () => {
+        /**
+         * in → `gate`; its No (`else`) → kl → r → sg → ro; its Yes (`pass`) → cs; cs Damaged →
+         * rd unless `damaged` is false, cs OK → `ok` when given.
+         */
+        const checkOnly = (
+          gate: NodeInstance,
+          opts: { damaged?: boolean; ok?: NodeInstance } = {},
+        ) =>
+          bareGraph(
+            [
+              node('in', 'core:input-manual'),
+              gate,
+              node('kl', 'core:keep-languages'),
+              node('r', 'core:render'),
+              node('sg', 'core:size-gate'),
+              node('ro', 'core:replace-original'),
+              node('cs', 'core:check-source', { decodeVideo: true }),
+              node('rd', 'test:replace-damaged'),
+              ...(opts.ok ? [opts.ok] : []),
+            ],
+            [
+              edge('in', gate.id),
+              edge(gate.id, 'kl', { from: 'else' }),
+              edge('kl', 'r'),
+              edge('r', 'sg', { from: 'done' }),
+              edge('sg', 'ro', { from: 'pass' }),
+              edge(gate.id, 'cs', { from: 'pass' }),
+              ...(opts.damaged === false ? [] : [edge('cs', 'rd', { from: 'damaged' })]),
+              ...(opts.ok ? [edge('cs', opts.ok.id, { from: 'ok' })] : []),
+            ],
+          );
+        const processed = (bypassed = false) =>
+          node('ap', 'core:already-processed', {}, bypassed ? { bypassed } : {});
+        const noWrite = (g: WorkflowGraph) =>
+          find(validateWorkflow(g, damagedCtx()), 'NO_WRITE_PATH').map((i) => i.nodeId);
+
+        it('Already processed’s Yes → Check source, Damaged wired and OK open, is clean', () => {
+          expect(validateWorkflow(checkOnly(processed()), damagedCtx())).toEqual([]);
+        });
+
+        it('below Already processed’s Yes nothing needs a write: Check source with both outputs open, or an action after OK, is clean too', () => {
+          expect(noWrite(checkOnly(processed(), { damaged: false }))).toEqual([]);
+          const ok = node('k2', 'core:keep-languages');
+          expect(noWrite(checkOnly(processed(), { damaged: false, ok }))).toEqual([]);
+        });
+
+        it('an open OK beside a wired Damaged is clean below any condition', () => {
+          expect(noWrite(checkOnly(node('vi', 'core:video-is')))).toEqual([]);
+        });
+
+        it('still warned: every output open below another condition’s Yes, a lone action below Already processed’s No, a bypassed Already processed', () => {
+          // video-is Yes → Check source with nothing wired: the path ends on cs without a write
+          expect(noWrite(checkOnly(node('vi', 'core:video-is'), { damaged: false }))).toEqual([
+            'cs',
+          ]);
+          // Already processed's No → kl with nothing after it
+          const onNo = bareGraph(
+            [
+              node('in', 'core:input-manual'),
+              processed(),
+              node('kl', 'core:keep-languages'),
+              node('r', 'core:render'),
+              node('ro', 'core:replace-original'),
+            ],
+            [
+              edge('in', 'ap'),
+              edge('ap', 'r', { from: 'pass' }),
+              edge('r', 'ro', { from: 'done' }),
+              edge('ap', 'kl', { from: 'else' }),
+            ],
+          );
+          expect(noWrite(onNo)).toEqual(['kl']);
+          // A bypassed Already processed checks nothing: every file goes on by its Yes
+          expect(noWrite(checkOnly(processed(true), { damaged: false }))).toEqual(['cs']);
+        });
       });
 
       it('Check source in a sub-workflow → NODE_NOT_ALLOWED_HERE', () => {

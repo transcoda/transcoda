@@ -189,10 +189,8 @@ describe('validateWorkflow', () => {
         ...base.edges.filter((e) => [e.from.node, e.to.node].includes('render-1')),
       ],
     };
-    // vi's else output stays unconnected: only the port-aware write-path warning
-    expect(validateWorkflow(fixed, ctx()).map((i) => `${i.code}:${i.nodeId}`)).toEqual([
-      'NO_WRITE_PATH:vi',
-    ]);
+    // vi's else output stays unconnected beside a connected Yes: nothing to report
+    expect(validateWorkflow(fixed, ctx())).toEqual([]);
 
     const withEdges = (...extra: WorkflowGraph['edges']) =>
       validateWorkflow({ ...fixed, edges: [...fixed.edges, ...extra] }, ctx());

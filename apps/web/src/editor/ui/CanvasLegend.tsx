@@ -3,16 +3,10 @@ import { Icon } from '../../components/Icon.tsx';
 import { ARROWED } from '../flow/edge-style.ts';
 
 /** A key line in the canvas edge style `edge-<kind>`, with its arrowhead when the canvas draws one. */
-function Line({
-  kind,
-  children,
-}: {
-  kind: 'file' | 'path' | 'data' | 'untaken' | 'broken';
-  children: string;
-}) {
+function Line({ kind, children }: { kind: 'data' | 'broken'; children: string }) {
   const arrow = ARROWED.has(`edge-${kind}`);
   return (
-    <span className="legend-item">
+    <li className="legend-item">
       <svg
         width="26"
         height="8"
@@ -24,16 +18,31 @@ function Line({
         {arrow && <path className="legend-arrow" d="M18 0 L25 4 L18 8 Z" />}
       </svg>
       <span>{children}</span>
-    </span>
+    </li>
   );
 }
 
-function Item({ swatch, children }: { swatch: string; children: ReactNode }) {
+/** A port shape: its input (hollow) and output (filled) handle side by side, as the cards draw them. */
+function Port({ type, children }: { type: 'file' | 'data'; children: string }) {
   return (
-    <span className="legend-item">
-      <span className={`legend-swatch ${swatch}`} aria-hidden="true" />
+    <li className="legend-item">
+      <span className="legend-mark" aria-hidden="true">
+        <span className={`legend-swatch is-${type}-in`} />
+        <span className={`legend-swatch is-${type}-out`} />
+      </span>
       <span>{children}</span>
-    </span>
+    </li>
+  );
+}
+
+function Badge({ tone, children, word }: { tone: string; children: ReactNode; word: string }) {
+  return (
+    <li className="legend-item">
+      <span className="legend-mark" aria-hidden="true">
+        <span className={`legend-badge is-${tone}`}>{children}</span>
+      </span>
+      <span>{word}</span>
+    </li>
   );
 }
 
@@ -41,22 +50,29 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="legend-row">
       <span className="legend-label">{label}</span>
-      <div className="legend-items">{children}</div>
+      <ul className="legend-items">{children}</ul>
     </div>
   );
 }
 
 function Key({ k, children }: { k: string; children: string }) {
   return (
-    <span className="legend-item">
-      <kbd>{k}</kbd>
+    <li className="legend-item">
+      <span className="legend-mark">
+        <kbd>{k}</kbd>
+      </span>
       <span>{children}</span>
-    </span>
+    </li>
   );
 }
 
-/** Screen 05's colour key and shortcuts, a "Key" disclosure at the bottom left of the canvas (closed by its Close button or Escape). */
-export function CanvasLegend() {
+/**
+ * The canvas key, a "Key" disclosure at the bottom left of the canvas (closed by its Close button
+ * or Escape). It explains only what a card or a line does not say in words: the line styles, the
+ * port shapes and the state badges (glyph-only on the zoomed-out icon tiles). `keys` adds the
+ * keyboard shortcuts, which only an editable canvas has.
+ */
+export function CanvasLegend({ keys }: { keys: boolean }) {
   const details = useRef<HTMLDetailsElement>(null);
   const toggle = useRef<HTMLElement>(null);
   function close() {
@@ -65,7 +81,11 @@ export function CanvasLegend() {
   }
   return (
     <details ref={details} className="canvas-legend nopan nowheel">
-      <summary ref={toggle} className="canvas-legend-toggle" title="Color key and shortcuts">
+      <summary
+        ref={toggle}
+        className="canvas-legend-toggle"
+        title={keys ? 'Line styles, ports, badges and shortcuts' : 'Line styles, ports and badges'}
+      >
         <Icon name="info" size={16} />
         Key
       </summary>
@@ -83,66 +103,36 @@ export function CanvasLegend() {
           <Icon name="cross" size={16} />
         </button>
         <Row label="Lines">
-          <Line kind="file">file flow</Line>
-          <Line kind="path">path this file took (moving)</Line>
-          <Line kind="data">data, value on the line</Line>
-          <Line kind="untaken">not taken</Line>
+          <Line kind="data">data</Line>
           <Line kind="broken">leads to a broken node</Line>
         </Row>
-        <Row label="Handles">
-          <Item swatch="is-file-in">file in</Item>
-          <Item swatch="is-file-out">file out</Item>
-          <Item swatch="is-data-in">data in</Item>
-          <Item swatch="is-data-out">data out</Item>
-          <span className="legend-item">
-            <span className="legend-port is-pass">Yes</span>/
-            <span className="legend-port is-else">No</span>
-            <span>branch outputs are labeled</span>
-          </span>
+        <Row label="Ports">
+          <Port type="file">file</Port>
+          <Port type="data">data</Port>
         </Row>
-        <Row label="States">
-          <Item swatch="is-selected">selected (toolbar above)</Item>
-          <Item swatch="is-running">running (moving border)</Item>
-          <span className="legend-item">
-            <span className="legend-badge is-missing" aria-hidden="true">
-              <Icon name="plug-off" size={10} />
-            </span>
-            <span>plugin missing</span>
-          </span>
-          <span className="legend-item">
-            <span className="legend-badge is-setting" aria-hidden="true">
-              !
-            </span>
-            <span>needs a setting</span>
-          </span>
-          <span className="legend-item">
-            <span className="legend-badge is-unavailable" aria-hidden="true">
-              <Icon name="lock" size={9} />
-            </span>
-            <span>not on this server</span>
-          </span>
-          <span className="legend-item">
-            <span className="legend-badge is-unreachable" aria-hidden="true">
-              !
-            </span>
-            <span>not reachable — no path from the trigger</span>
-          </span>
-          <Item swatch="is-group">group</Item>
+        <Row label="Badges">
+          <Badge tone="missing" word="plugin missing">
+            <Icon name="plug-off" size={10} />
+          </Badge>
+          <Badge tone="setting" word="needs a setting">
+            !
+          </Badge>
+          <Badge tone="unavailable" word="not on this server">
+            <Icon name="lock" size={9} />
+          </Badge>
+          <Badge tone="unreachable" word="not reachable: no path from the trigger">
+            !
+          </Badge>
         </Row>
-        <Row label="Node colors">
-          <Item swatch="is-kind is-trigger">trigger</Item>
-          <Item swatch="is-kind is-condition">condition</Item>
-          <Item swatch="is-kind is-action">action</Item>
-          <Item swatch="is-kind is-finish">finish</Item>
-          <Item swatch="is-kind is-data">data</Item>
-        </Row>
-        <Row label="Keys">
-          <Key k="Tab">next node</Key>
-          <Key k="Enter">node actions</Key>
-          <Key k="C">connect</Key>
-          <Key k="Del">remove</Key>
-          <Key k="/">add</Key>
-        </Row>
+        {keys && (
+          <Row label="Keys">
+            <Key k="Tab">next node</Key>
+            <Key k="Enter">node actions</Key>
+            <Key k="C">connect</Key>
+            <Key k="Del">remove</Key>
+            <Key k="/">add a node</Key>
+          </Row>
+        )}
       </div>
     </details>
   );

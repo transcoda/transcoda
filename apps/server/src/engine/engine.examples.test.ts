@@ -82,21 +82,8 @@ describe('examples/workflows', () => {
       for (const n of graph.nodes.filter((n) => n.type === 'core:encode-video')) {
         expect((n.settings as { encoder: string }).encoder, name).toBe('auto');
       }
-      // Only Save space leaves a port open (video-is Yes, port id `pass`: already HEVC).
-      const expected =
-        name === 'save-space'
-          ? [
-              {
-                code: 'NO_WRITE_PATH',
-                nodeId: 'is-hevc',
-                message: expect.stringContaining('"Yes"'),
-              },
-            ]
-          : [];
-      expect(
-        issues.map((i) => ({ code: i.code, nodeId: i.nodeId, message: i.message })),
-        name,
-      ).toEqual(expected);
+      // Save space leaves Already HEVC?'s Yes open on purpose, beside a connected No: no warning.
+      expect(issues, name).toEqual([]);
       // Each starts with a note, and every shared value it links to exists.
       expect(
         graph.groups.some((g) => g.note?.startsWith('## ')),
