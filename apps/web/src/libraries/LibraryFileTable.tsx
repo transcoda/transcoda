@@ -73,7 +73,7 @@ function SortHeader({
   );
 }
 
-function Pager({
+export function Pager({
   total,
   count,
   offset,

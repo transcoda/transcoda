@@ -13,6 +13,7 @@ import { JobsPage } from './jobs/JobsPage/JobsPage.tsx';
 import { RunPage } from './jobs/RunPage/RunPage.tsx';
 import { LibrariesPage } from './libraries/LibrariesPage.tsx';
 import { LibraryFilePage } from './libraries/LibraryFilePage.tsx';
+import { LibraryHealthPage } from './libraries/LibraryHealthPage.tsx';
 import { LibraryPage } from './libraries/LibraryPage.tsx';
 import { PluginsPage } from './plugins/PluginsPage/PluginsPage.tsx';
 import { RecyclePage } from './recycle/RecyclePage.tsx';
@@ -98,6 +99,15 @@ export function App() {
               <Shell>
                 {/* Another file remounts the page, so the last file's data never shows under the new URL. */}
                 <LibraryFilePage key={`${params.id}\n${params.fileId}`} />
+              </Shell>
+            </RequireAuth>
+          )}
+        </Route>
+        <Route path="/libraries/:id/health">
+          {(params) => (
+            <RequireAuth>
+              <Shell>
+                <LibraryHealthPage key={params.id} />
               </Shell>
             </RequireAuth>
           )}

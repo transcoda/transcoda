@@ -84,6 +84,8 @@ export const LibraryFilesInputSchema = z
     show: z.string().optional(),
     season: SeasonParamSchema.optional(),
     search: z.string().max(200).optional(),
+    /** Only the files whose latest job found the source damaged (the library's health page). */
+    damaged: z.boolean().optional(),
     sort: FileSortSchema.default('title'),
     desc: z.boolean().default(false),
     offset: z.number().int().min(0).default(0),

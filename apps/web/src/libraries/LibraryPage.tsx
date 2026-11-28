@@ -1,6 +1,6 @@
 import type { FileSort, Library } from '@transcoda/contract';
 import { useEffect, useId, useState } from 'react';
-import { useParams } from 'wouter';
+import { Link, useParams } from 'wouter';
 import { api } from '../api/client.ts';
 import { describeError } from '../api/errors.ts';
 import { Icon } from '../components/Icon.tsx';
@@ -37,6 +37,10 @@ const VIEW_OPTIONS: ReadonlyArray<{ id: LibraryView; label: string }> = [
 ];
 
 const fileCount = (n: number) => `${n.toLocaleString('en-US')} ${n === 1 ? 'file' : 'files'}`;
+const damagedCount = (n: number) =>
+  n === 0
+    ? 'No damaged files'
+    : `${n.toLocaleString('en-US')} damaged ${n === 1 ? 'file' : 'files'}`;
 
 /** `value`, once it has stopped changing for `ms`. */
 function useDebounced<T>(value: T, ms: number): T {
@@ -327,6 +331,14 @@ export function LibraryPage() {
             <p>
               <span className="mono">{lib.path}</span>
               <span className="library-count">{fileCount(count)}</span>
+              {show === undefined ? (
+                <Link
+                  href={`/libraries/${encodeURIComponent(lib.id)}/health`}
+                  className={`library-damaged text-target${lib.damagedCount > 0 ? ' has-damage' : ''}`}
+                >
+                  {damagedCount(lib.damagedCount)}
+                </Link>
+              ) : null}
             </p>
           </div>
           <div className="page-actions">

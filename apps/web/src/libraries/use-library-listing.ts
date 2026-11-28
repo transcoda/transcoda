@@ -202,7 +202,17 @@ export function useLibraryFiles(
   id: string,
   q: Omit<LibraryFilesInput, 'id'>,
 ): AsyncState<LibraryFilesOutput> {
-  const key = JSON.stringify([id, q.show, q.season, q.search, q.sort, q.desc, q.offset, q.limit]);
+  const key = JSON.stringify([
+    id,
+    q.show,
+    q.season,
+    q.search,
+    q.damaged,
+    q.sort,
+    q.desc,
+    q.offset,
+    q.limit,
+  ]);
   const state = useAsync(
     async () => ({ key, out: await api.libraries.files({ id, ...q }) }),
     [key],
