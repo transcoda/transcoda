@@ -5,15 +5,15 @@ import type { WorkflowDetail } from '@transcoda/contract';
 import type { Issue, WorkflowGraph } from '@transcoda/shared';
 import { type Dispatch, type RefObject, useCallback, useRef, useState } from 'react';
 import { useLocation } from 'wouter';
-import { api, isDefinedError, safe } from '../api/client.ts';
-import { describeError } from '../api/errors.ts';
-import { useToast } from '../components/Toast.tsx';
-import type { Catalog } from '../hooks/use-catalog.ts';
-import type { EditorAction, EditorState } from './model/editor-state.ts';
-import { graphEquals } from './model/equality.ts';
-import { dropHiddenPortEdges, removedNotice } from './model/hidden-ports.ts';
-import { saveNoteFor } from './model/save-note.ts';
-import { subjectOf } from './ui/IssuesPanel.tsx';
+import { api, isDefinedError, safe } from '../../api/client.ts';
+import { describeError } from '../../api/errors.ts';
+import { useToast } from '../../components/Toast.tsx';
+import type { Catalog } from '../../hooks/use-catalog.ts';
+import type { EditorAction, EditorState } from '../model/editor-state.ts';
+import { graphEquals } from '../model/equality.ts';
+import { dropHiddenPortEdges, removedNotice } from '../model/hidden-ports.ts';
+import { saveNoteFor } from '../model/save-note.ts';
+import { subjectOf } from '../ui/IssuesPanel.tsx';
 
 type SaveOutcome =
   | { kind: 'saved'; graph: WorkflowGraph }

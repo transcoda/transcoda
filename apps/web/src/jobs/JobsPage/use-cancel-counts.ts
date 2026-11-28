@@ -1,9 +1,9 @@
 import type { JobState } from '@transcoda/shared';
 import { useState } from 'react';
-import { api } from '../api/client.ts';
-import { useAsync } from '../hooks/use-async.ts';
-import { useRefetchOn } from '../hooks/use-refetch-on.ts';
-import { countsScopeOf, stateChangeTracker } from './use-jobs-list.ts';
+import { api } from '../../api/client.ts';
+import { useAsync } from '../../hooks/use-async.ts';
+import { useRefetchOn } from '../../hooks/use-refetch-on.ts';
+import { countsScopeOf, stateChangeTracker } from '../use-jobs-list.ts';
 
 /**
  * Jobs per state for "Cancel all", which covers real and dry runs alike: the list's own counts,

@@ -3,8 +3,8 @@ import type { WorkflowDetail, WorkflowSummary } from '@transcoda/contract';
 import type { WorkflowGraph } from '@transcoda/shared';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Route } from 'wouter';
-import { chainMainReplace, otterFinchMain, otterFinchSub } from '../testing/fixtures/graphs.ts';
-import { renderAt } from '../testing/render.tsx';
+import { chainMainReplace, otterFinchMain, otterFinchSub } from '../../testing/fixtures/graphs.ts';
+import { renderAt } from '../../testing/render.tsx';
 
 const mocks = vi.hoisted(() => ({
   get: vi.fn(),
@@ -21,7 +21,7 @@ const mocks = vi.hoisted(() => ({
   librariesList: vi.fn(),
   browse: vi.fn(),
 }));
-vi.mock('../api/client.ts', async () => {
+vi.mock('../../api/client.ts', async () => {
   const orpc = await import('@orpc/client');
   return {
     api: {

@@ -1,6 +1,6 @@
 import { Link } from 'wouter';
-import { describeError } from '../api/errors.ts';
-import { NotFound } from '../components/NotFound.tsx';
+import { describeError } from '../../api/errors.ts';
+import { NotFound } from '../../components/NotFound.tsx';
 
 /** The editor page when the workflow, or the version asked for, could not be loaded. */
 export function LoadFailed({

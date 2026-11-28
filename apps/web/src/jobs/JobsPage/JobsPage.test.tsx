@@ -19,7 +19,7 @@ const mocks = vi.hoisted(() => ({
   libraries: vi.fn(),
   subscribe: vi.fn(),
 }));
-vi.mock('../api/client.ts', () => ({
+vi.mock('../../api/client.ts', () => ({
   api: {
     jobs: {
       // The "Needs attention" tile's own request is told apart from the list's.
@@ -49,13 +49,13 @@ vi.mock('../api/client.ts', () => ({
   },
 }));
 
-import { EventsProvider } from '../hooks/use-events.ts';
-import { REFETCH_COALESCE_MS } from '../hooks/use-refetch-on.ts';
-import { jobChanged } from '../testing/fake-event-stream.ts';
-import { counts, fx } from '../testing/fixtures/jobs.ts';
-import { renderAt } from '../testing/render.tsx';
+import { EventsProvider } from '../../hooks/use-events.ts';
+import { REFETCH_COALESCE_MS } from '../../hooks/use-refetch-on.ts';
+import { jobChanged } from '../../testing/fake-event-stream.ts';
+import { counts, fx } from '../../testing/fixtures/jobs.ts';
+import { renderAt } from '../../testing/render.tsx';
+import { jobTitle } from '../media-text.ts';
 import { JobsPage } from './JobsPage.tsx';
-import { jobTitle } from './media-text.ts';
 import {
   ALL_JOBS,
   COUNTS,

@@ -3,10 +3,10 @@ import { act, cleanup, fireEvent, screen, waitFor, within } from '@testing-libra
 import type { WorkflowDetail } from '@transcoda/contract';
 import type { Issue, WorkflowGraph } from '@transcoda/shared';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { nodesFixture } from '../testing/fixtures/catalog.ts';
-import { chainMainReplace, otterFinchMain, otterFinchSub } from '../testing/fixtures/graphs.ts';
-import { transformOf } from '../testing/transform.ts';
-import { VALIDATE_DEBOUNCE_MS } from './ui/use-validation.ts';
+import { nodesFixture } from '../../testing/fixtures/catalog.ts';
+import { chainMainReplace, otterFinchMain, otterFinchSub } from '../../testing/fixtures/graphs.ts';
+import { transformOf } from '../../testing/transform.ts';
+import { VALIDATE_DEBOUNCE_MS } from '../ui/use-validation.ts';
 
 const mocks = vi.hoisted(() => ({
   get: vi.fn(),
@@ -23,7 +23,7 @@ const mocks = vi.hoisted(() => ({
   librariesList: vi.fn(),
   browse: vi.fn(),
 }));
-vi.mock('../api/client.ts', async () => {
+vi.mock('../../api/client.ts', async () => {
   const orpc = await import('@orpc/client');
   return {
     api: {

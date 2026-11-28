@@ -2,10 +2,10 @@
 import { act, screen, waitFor } from '@testing-library/react';
 import type { EngineEvent, Job } from '@transcoda/contract';
 import { afterEach, beforeEach, expect, type Mock, vi } from 'vitest';
-import { EventsProvider } from '../hooks/use-events.ts';
-import { fakeEventSource } from '../testing/fake-event-stream.ts';
-import { counts, fx } from '../testing/fixtures/jobs.ts';
-import { renderAt } from '../testing/render.tsx';
+import { EventsProvider } from '../../hooks/use-events.ts';
+import { fakeEventSource } from '../../testing/fake-event-stream.ts';
+import { counts, fx } from '../../testing/fixtures/jobs.ts';
+import { renderAt } from '../../testing/render.tsx';
 import { JobsPage } from './JobsPage.tsx';
 
 /** The mocked client calls each Jobs page test file declares with vi.hoisted. */
