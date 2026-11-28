@@ -63,7 +63,8 @@ export function isMediaFile(path: string): boolean {
 const MISSING = new Set(['ENOENT', 'ENOTDIR']);
 const DENIED = new Set(['EACCES', 'EPERM']);
 
-async function realpathOrNull(fs: FsOps, p: string): Promise<string | null> {
+/** `realpath`, or null when it fails. */
+export async function realpathOrNull(fs: FsOps, p: string): Promise<string | null> {
   try {
     return await fs.realpath(p);
   } catch {

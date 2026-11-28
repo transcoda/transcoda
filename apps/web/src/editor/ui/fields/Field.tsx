@@ -1,7 +1,7 @@
 import type { JsonValue } from '@transcoda/shared';
 import { createContext, type ReactNode, useContext, useId } from 'react';
 import { Icon } from '../../../components/Icon.tsx';
-import type { FieldDef } from '../../model/schema-fields.ts';
+import { type FieldDef, jsonEquals } from '../../model/schema-fields.ts';
 import { humanise } from '../../model/value-text.ts';
 
 export interface FieldProps<T = JsonValue> {
@@ -64,11 +64,7 @@ export function defaultText(def: FieldDef): string | null {
 
 /** The value is the setting's default (stored or not, the node behaves the same). */
 function isDefault(def: FieldDef, value: JsonValue | undefined): boolean {
-  return (
-    value !== undefined &&
-    def.default !== undefined &&
-    JSON.stringify(value) === JSON.stringify(def.default)
-  );
+  return value !== undefined && def.default !== undefined && jsonEquals(value, def.default);
 }
 
 /**

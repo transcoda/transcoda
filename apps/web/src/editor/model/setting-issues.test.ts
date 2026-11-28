@@ -2,8 +2,8 @@ import type { Issue } from '@transcoda/shared';
 import { describe, expect, it } from 'vitest';
 import { catalogFixture } from '../../testing/fixtures/catalog.ts';
 import { nodeStateFor } from './issues.ts';
-import { fieldsFor } from './schema-fields.ts';
-import { effectiveNodeIssues, jsonEquals } from './setting-issues.ts';
+import { fieldsFor, jsonEquals } from './schema-fields.ts';
+import { effectiveNodeIssues } from './setting-issues.ts';
 
 const webhook = catalogFixture.byType.get('core:notify-webhook');
 if (!webhook) throw new Error('fixture');

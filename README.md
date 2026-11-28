@@ -123,7 +123,7 @@ The most common ones are `PUID`, `PGID` and `UMASK` (container user; the server 
 ## Documentation
 
 - [Environment variables](docs/env.md) and reverse proxies
-- [Plugins: install and set up](docs/plugins.md) · [write your own](docs/plugin-sdk.md)
+- [Plugins: install and set up](docs/plugins.md) · [write your own](docs/plugin-sdk.md) · [settings forms](docs/settings-forms.md)
 - [MCP server for AI assistants](docs/mcp.md)
 - [Metrics for Prometheus, Grafana and Home Assistant](docs/metrics.md)
 - [Releases and versioning](docs/releasing.md) · [Changelog](CHANGELOG.md)

@@ -16,7 +16,7 @@ Today's rules for the server outside the encode engine. The engine is in [engine
 4. **MCP, only if an agent should have it.** Add a tool with `defineTool` (`mcp/tool.ts`) in `apps/server/src/mcp/tools/<group>.ts`, add it to `ALL_TOOLS` in `mcp/tools/index.ts`, and to `EXPECTED_TOOLS` in `mcp/never.test.ts`. Describe it in `docs/mcp.md` (tool count and table; `mcp/mcp-docs.test.ts` checks both and the scopes).
 5. **Web.** Call it through `api` from `apps/web/src/api/client.ts` (a typed oRPC client over `/rpc`), usually from a hook in `apps/web/src/hooks/` or a page's own hook.
 
-- Routes that stream a file or plain text are plain Hono routes beside the contract, in `apps/server/src/http/` and mounted in `app/app.ts`: backup download, test output, job log, job poster, `/metrics`. They are not in the OpenAPI document or the RPC client.
+- Routes that stream a file or plain text are plain Hono routes beside the contract, in `apps/server/src/http/` and mounted in `app/app.ts`: backup download, test output, job log, job poster, `/metrics`, and the plugin trigger webhooks (`/api/triggers/:plugin/:trigger`, [plugins-host.md](plugins-host.md#triggers)). They are not in the OpenAPI document or the RPC client.
 - A GET is a read. Any other method (or none) is a mutation and gets the CSRF check.
 - Public operations in the OpenAPI document set `spec: publicSpec` (`packages/contract/src/openapi.ts`). The document's default security is `bearerAuth`.
 

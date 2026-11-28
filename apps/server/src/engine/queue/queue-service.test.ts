@@ -575,6 +575,26 @@ describe('QueueService.queue', () => {
     expect(onQueued).not.toHaveBeenCalled();
   });
 
+  it('realOnly: a real request never becomes a dry run, also when the feeder is deactivated mid-request', async () => {
+    const a = await settled(join(root, 'Show', 'a.mkv'));
+    const idle = makeWorkflow('Idle', false);
+    expect(await svc.queue(input(a, { workflowId: idle, realOnly: true }))).toEqual({
+      kind: 'no-feeding-workflow',
+    });
+    // The early check sees the active version; the feeder is deactivated before the run is written.
+    const load = workflows.loadForRun.bind(workflows);
+    const spy = vi.spyOn(workflows, 'loadForRun').mockImplementationOnce((id, version) => {
+      const loaded = load(id, version);
+      workflows.deactivate(flowId);
+      return loaded;
+    });
+    expect(await svc.queue(input(a, { realOnly: true }))).toEqual({ kind: 'no-feeding-workflow' });
+    spy.mockRestore();
+    const jobs = db.prepare('SELECT COUNT(*) AS n FROM jobs').get() as { n: number };
+    expect(jobs.n).toBe(0);
+    expect(onQueued).not.toHaveBeenCalled();
+  });
+
   it('workflow resolution: no feeder, missing, invalid', async () => {
     const a = await settled(join(root, 'Show', 'a.mkv'));
     workflows.deactivate(flowId);

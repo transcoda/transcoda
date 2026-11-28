@@ -66,6 +66,13 @@ Server-level backstops: `platform/process-guards.ts` logs an unhandled rejection
 - Publishing is a `sdk-v<version>` tag on `main` after the bump is merged; `sdk-publish.yml` publishes with provenance. Steps: [`releasing.md`](../releasing.md), "Releasing the plugin SDK".
 - Release order for an SDK feature the plugins use: core first, then the plugins repository, then the catalog rebuild. New manifest or catalog fields stay optional so either order is safe.
 
+## Triggers
+
+- A plugin's triggers (`defineTrigger`) are recorded from its `ready` message (`Installed.triggers`). `PluginService.trigger(name, id)` (`plugins/service/triggers.ts`) returns the trigger with its `auth`, or null when the plugin has no trigger by that id or announced an `auth` core does not know.
+- `apps/server/src/http/trigger.ts` serves `POST|PUT /api/triggers/:plugin/:trigger`, a plain route under `/api`, so the host check and the 2 MB body limit apply. Order: find the trigger; read the token (the declared header, else `Authorization` as Bearer or the Basic password) and check it with the token service (401, `WWW-Authenticate: Basic`); require `jobs:create` (403); only then is an unknown trigger 404, so the route does not tell an anonymous caller which plugins are installed. Sessions are never read, so there is no CSRF check.
+- The plugin gets `{ method, headers, body, settings: {} }`: headers without credentials (`triggerHeaders`), the body parsed as JSON (400 otherwise). A plugin that is not running is 503 without a call. Its answer is checked with zod (`TriggerResultSchema`: at most `TRIGGER_MAX_FILES`, 100, files; texts at most 2000 characters); an invalid answer, an error or a timeout (`triggerTimeoutMs`, 5 s) is 502 and nothing is queued.
+- Each file is queued with `QueueService.queue` as `jobs.queue` without a workflow id (`fileOnly`; `realOnly`, so a workflow without an active version, even one deactivated mid-request, is `no-feeding-workflow` instead of a dry run; never forced; created by the token's user): `checkPath` keeps it inside a library, the feeding workflow is used, the run is a `library` run (run hours apply). A relative path is refused before the lookup. The log gets one line per call with counts only, never paths or the body.
+
 ## Tests
 
 - Unit tests sit beside each module and use `fake-child.ts` instead of a real host. Tests that need a real host (`sandbox-expectations.test.ts`, `supervisor.real.test.ts`, the `service/service*.test.ts` files, `plugin-host/main.test.ts`) use the host and the fixture plugins in `plugins/testing/fixtures/`, built once per run by `plugins/testing/global-setup.ts` and started with `plugins/testing/spawn.ts`.

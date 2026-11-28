@@ -52,17 +52,21 @@ export interface FieldDef {
    * Shown only while each named setting has this value (`x-transcoda-show-when`): Encode video's
    * quality in quality mode, its target bitrate in bitrate mode. See `fieldShown`.
    */
-  showWhen?: Record<string, string>;
+  showWhen?: Record<string, ShowWhenValue>;
 }
+
+/** A value `x-transcoda-show-when` can wait for: a string, number or boolean setting. */
+type ShowWhenValue = string | number | boolean;
 
 const SHOW_WHEN = 'x-transcoda-show-when';
 
-/** A property's `x-transcoda-show-when`: setting key → value, string values only. */
-function showWhenOf(schema: JsonValue): Record<string, string> | undefined {
+/** A property's `x-transcoda-show-when`: setting key → value; other kinds of value are ignored. */
+function showWhenOf(schema: JsonValue): Record<string, ShowWhenValue> | undefined {
   const when = isObject(schema) ? schema[SHOW_WHEN] : undefined;
   if (!isObject(when)) return undefined;
   const entries = Object.entries(when).filter(
-    (e): e is [string, string] => typeof e[1] === 'string',
+    (e): e is [string, ShowWhenValue] =>
+      typeof e[1] === 'string' || typeof e[1] === 'number' || typeof e[1] === 'boolean',
   );
   return entries.length > 0 ? Object.fromEntries(entries) : undefined;
 }
@@ -74,7 +78,7 @@ function showWhenOf(schema: JsonValue): Record<string, string> | undefined {
  */
 export function fieldShown(
   def: FieldDef,
-  settings: Record<string, JsonValue>,
+  settings: Readonly<Record<string, JsonValue | undefined>>,
   fields: readonly FieldDef[],
 ): boolean {
   if (!def.showWhen) return true;
@@ -180,6 +184,37 @@ function arraySpec(s: JsonObject): FieldSpec {
   return RAW;
 }
 
+const isNullSchema = (s: JsonValue) => isObject(s) && s.type === 'null';
+const isStringConst = (s: JsonValue): s is JsonObject & { const: string } =>
+  isObject(s) && s.type === 'string' && typeof s.const === 'string';
+
+/**
+ * The schema with zod's wrappers taken off, so it reads like a plain property: a nullable one
+ * (`type: [T, 'null']`, or `anyOf` with a `{ type: 'null' }` member) as its non-null type, and a
+ * union of string literals as an enum. The outer schema's own keys (`description`, `default`,
+ * markers) are kept. Any other schema comes back as it is.
+ */
+function plainSchema(s: JsonObject): JsonObject {
+  if (Array.isArray(s.type)) {
+    const types = s.type.filter((t) => t !== 'null');
+    const only = types[0];
+    return types.length === 1 && s.type.length === 2 && typeof only === 'string'
+      ? { ...s, type: only }
+      : s;
+  }
+  if (!Array.isArray(s.anyOf) || s.oneOf !== undefined || s.allOf !== undefined) return s;
+  const { anyOf, ...outer } = s;
+  const members = anyOf.filter((m) => !isNullSchema(m));
+  const only = members[0];
+  if (members.length === 1 && isObject(only) && members.length < anyOf.length) {
+    return { ...only, ...outer };
+  }
+  if (members.length > 1 && members.every(isStringConst)) {
+    return { ...outer, type: 'string', enum: members.map((m) => m.const) };
+  }
+  return s;
+}
+
 function hasComposition(s: JsonObject): boolean {
   return (
     s.oneOf !== undefined || s.anyOf !== undefined || s.allOf !== undefined || s.$ref !== undefined
@@ -212,20 +247,22 @@ export function specFor(property: JsonValue): FieldSpec {
     const marked = transcodaSpec(property['x-transcoda']);
     if (marked) return marked;
   }
-  if (!isObject(property) || hasComposition(property)) return RAW;
-  switch (property.type) {
+  if (!isObject(property)) return RAW;
+  const plain = plainSchema(property);
+  if (hasComposition(plain)) return RAW;
+  switch (plain.type) {
     case 'boolean':
       // A core node's switch may say what it does (`.meta({ help })`: Render's Quality check).
-      return typeof property.help === 'string'
-        ? { kind: 'boolean', help: property.help }
+      return typeof plain.help === 'string'
+        ? { kind: 'boolean', help: plain.help }
         : { kind: 'boolean' };
     case 'number':
     case 'integer':
-      return numberSpec(property);
+      return numberSpec(plain);
     case 'string':
-      return stringSpec(property);
+      return stringSpec(plain);
     case 'array':
-      return arraySpec(property);
+      return arraySpec(plain);
     default:
       return RAW;
   }
@@ -393,7 +430,26 @@ export function isAdvancedPluginSetting(def: FieldDef): boolean {
  */
 export function differsFromDefault(def: FieldDef, value: JsonValue | undefined): boolean {
   if (value === undefined) return false;
-  return JSON.stringify(value) !== JSON.stringify(def.default ?? null);
+  return !jsonEquals(value, def.default ?? null);
+}
+
+/** Deep equality of two JSON values (object key order ignored). */
+export function jsonEquals(a: JsonValue | undefined, b: JsonValue | undefined): boolean {
+  if (a === b) return true;
+  if (Array.isArray(a) || Array.isArray(b)) {
+    return (
+      Array.isArray(a) &&
+      Array.isArray(b) &&
+      a.length === b.length &&
+      a.every((v, i) => jsonEquals(v, b[i]))
+    );
+  }
+  if (!isObject(a) || !isObject(b)) return false;
+  const keys = Object.keys(a);
+  return (
+    keys.length === Object.keys(b).length &&
+    keys.every((k) => Object.hasOwn(b, k) && jsonEquals(a[k], b[k]))
+  );
 }
 
 /** The Library trigger's `libraryId`: a select of libraries on the card and in the inspector. */

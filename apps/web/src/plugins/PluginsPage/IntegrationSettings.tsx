@@ -12,6 +12,7 @@ import {
   clientIssue,
   differsFromDefault,
   type FieldDef,
+  fieldShown,
   fieldsFor,
   isAdvancedPluginSetting,
 } from '../../editor/model/schema-fields.ts';
@@ -313,9 +314,14 @@ export function IntegrationSettings({
     return withActions(<p className="muted">This plugin has no settings.</p>);
 
   const lastTest = saved.lastTest;
-  // Path mappings and insecure TLS sit under a closed "Advanced" (it opens for a problem there).
-  const main = fields.filter((def) => !isAdvancedPluginSetting(def));
-  const advanced = fields.filter(isAdvancedPluginSetting);
+  // A field for another setting's value (`x-transcoda-show-when`) is hidden unless it has a
+  // message; it keeps its value. Path mappings and insecure TLS sit under a closed "Advanced"
+  // (it opens for a problem there).
+  const shown = fields.filter(
+    (def) => issues[def.key] !== undefined || fieldShown(def, values, fields),
+  );
+  const main = shown.filter((def) => !isAdvancedPluginSetting(def));
+  const advanced = shown.filter(isAdvancedPluginSetting);
   const changed = advanced.filter((def) => differsFromDefault(def, values[def.key])).length;
   const control = (def: FieldDef) =>
     def.spec.kind === 'password' && isSetMarker(values[def.key]) && !replacing.has(def.key) ? (

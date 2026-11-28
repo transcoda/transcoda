@@ -20,7 +20,7 @@
     "apps/web/src/styles/design-doc-sync.test.ts"
   ],
   "softSizeLimit": {
-    "apps/server/src/engine/queue/queue-service.ts": 1131,
+    "apps/server/src/engine/queue/queue-service.ts": 1128,
     "apps/server/src/engine/queue/scheduler.ts": 817,
     "apps/server/src/engine/walk/walk.ts": 1045,
     "apps/server/src/workflows/service.ts": 1123,
