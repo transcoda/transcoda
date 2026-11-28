@@ -1,30 +1,11 @@
 import type { Issue, JsonValue } from '@transcoda/shared';
 import { NEEDS_A_SETTING } from './issues.ts';
-import { clientIssue, type FieldDef } from './schema-fields.ts';
+import { clientIssue, type FieldDef, jsonEquals } from './schema-fields.ts';
 
 type JsonObject = { [key: string]: JsonValue };
 
 function isObject(v: JsonValue | undefined): v is JsonObject {
   return v !== null && v !== undefined && typeof v === 'object' && !Array.isArray(v);
-}
-
-/** Deep equality of two JSON values (object key order ignored). */
-export function jsonEquals(a: JsonValue | undefined, b: JsonValue | undefined): boolean {
-  if (a === b) return true;
-  if (Array.isArray(a) || Array.isArray(b)) {
-    return (
-      Array.isArray(a) &&
-      Array.isArray(b) &&
-      a.length === b.length &&
-      a.every((v, i) => jsonEquals(v, b[i]))
-    );
-  }
-  if (!isObject(a) || !isObject(b)) return false;
-  const keys = Object.keys(a);
-  return (
-    keys.length === Object.keys(b).length &&
-    keys.every((k) => Object.hasOwn(b, k) && jsonEquals(a[k], b[k]))
-  );
 }
 
 /** "languages.1" → "languages". */

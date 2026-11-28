@@ -27,7 +27,7 @@ An agent can never, whatever its scopes:
 - play, download or delete a test output (the kept output of a test-encode dry run; only a person's browser session can, on the job page);
 - read a webhook URL (graphs show only `scheme://host/…`);
 - change libraries or tokens;
-- install, update or remove plugins, enable or disable them, read or change integration settings, or read a trigger secret (a person does that on the Plugins page; the API refuses any token for it);
+- install, update or remove plugins, enable or disable them, or read or change integration settings (a person does that on the Plugins page; the API refuses any token for it);
 - read or change server settings, or change a password (a person does that under Settings; the API refuses any token for a change).
 
 Every change an agent makes is a normal workflow version in the workflow's history. The note reads `via MCP`, or `via MCP: <note>` when the agent gave one. A save never changes what runs; activating a workflow version is human-only, in the UI.
@@ -42,7 +42,7 @@ Open the UI, go to **Settings → API tokens** (`/settings/api-tokens`) and crea
 | Edit and try | `read`, `workflows:write`, `plan` | the above, plus creating and changing workflows and `dry_run` |
 | Operate | `read`, `workflows:write`, `plan`, `jobs:manage` | the above, plus pausing, resuming and canceling jobs and the queue |
 
-Scopes are exact and do not imply each other: a token that writes workflows also needs `read` to list or open them. `jobs:create` is accepted for `dry_run` but gives nothing more over MCP. `metrics` is for [Prometheus and Home Assistant](metrics.md) and unlocks no tool. A tool the token's scopes do not allow is absent from the tool list. Revoke a token on the same page.
+Scopes are exact and do not imply each other: a token that writes workflows also needs `read` to list or open them. `jobs:create` is accepted for `dry_run` but gives nothing more over MCP; outside MCP it is the scope a plugin trigger (`POST` or `PUT /api/triggers/<plugin>/<trigger>`, such as the [Sonarr and Radarr import triggers](plugins.md#sonarr)) needs, sent as the Basic auth password, in the trigger's own header or as a Bearer token. Triggers have no secret of their own. `metrics` is for [Prometheus and Home Assistant](metrics.md) and unlocks no tool. A tool the token's scopes do not allow is absent from the tool list. Revoke a token on the same page.
 
 ## Claude Code
 
