@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
-import { stylesCss } from '../../styles/css-source.ts';
+import { stylesCss } from '../../styles/testing/css-source.ts';
 import { CanvasLegend } from './CanvasLegend.tsx';
 
 afterEach(cleanup);

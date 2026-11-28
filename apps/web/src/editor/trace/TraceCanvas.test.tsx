@@ -2,7 +2,7 @@ import { act, cleanup, fireEvent, render, screen, within } from '@testing-librar
 import type { WorkflowGraph } from '@transcoda/shared';
 import { useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { stylesCss } from '../../styles/css-source.ts';
+import { stylesCss } from '../../styles/testing/css-source.ts';
 import { catalogFixture } from '../../testing/fixtures/catalog.ts';
 import {
   entry,

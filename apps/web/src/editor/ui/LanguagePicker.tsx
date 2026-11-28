@@ -1,6 +1,6 @@
 import { type KeyboardEvent, useState } from 'react';
 import { Dialog } from '../../components/Dialog.tsx';
-import { LANGUAGES } from '../../data/languages.ts';
+import { LANGUAGES } from '../../lib/languages.ts';
 
 /**
  * What `onPick` receives for "Original (from data)" (offered only with `originalOption`, off by

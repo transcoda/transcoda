@@ -22,7 +22,7 @@ vi.mock('../api/client.ts', () => ({
 }));
 vi.mock('./use-auth.ts', () => ({ useAuth: () => ({ refresh: mocks.refresh }) }));
 
-import { stylesCss } from '../styles/css-source.ts';
+import { stylesCss } from '../styles/testing/css-source.ts';
 import { LoginPage } from './LoginPage.tsx';
 
 function submit() {

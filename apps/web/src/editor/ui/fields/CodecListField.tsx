@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { codecName } from '../../../data/codecs.ts';
+import { codecName } from '../../../lib/codecs.ts';
 import { CodecPicker } from '../CodecPicker.tsx';
 import { Field, type FieldProps } from './Field.tsx';
 

@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { BP_DESKTOP_MAX, BP_PHONE_MAX, BP_TABLET_MAX } from '../lib/breakpoints.ts';
-import { stylesCss } from './css-source.ts';
+import { stylesCss } from './testing/css-source.ts';
 
 const css = stylesCss;
 const tokens = readFileSync(join(__dirname, 'tokens.css'), 'utf8');

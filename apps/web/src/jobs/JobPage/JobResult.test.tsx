@@ -2,7 +2,7 @@ import { cleanup, render, screen } from '@testing-library/react';
 import type { JobDetail } from '@transcoda/contract';
 import { afterEach, describe, expect, it } from 'vitest';
 import { fmtDate } from '../../lib/time.ts';
-import { stylesCss } from '../../styles/css-source.ts';
+import { stylesCss } from '../../styles/testing/css-source.ts';
 import { VERDICT_WORD } from '../job-text.ts';
 import { JobResult } from './JobResult.tsx';
 import { RESULT_TONE } from './job-outcome.ts';

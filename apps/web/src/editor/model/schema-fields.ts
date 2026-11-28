@@ -1,6 +1,6 @@
 import type { NodeInfo } from '@transcoda/contract';
 import type { JsonValue } from '@transcoda/shared';
-import type { CodecMedia } from '../../data/codecs.ts';
+import type { CodecMedia } from '../../lib/codecs.ts';
 
 /**
  * JSON Schema → inspector fields. The input is zod 4's `toJSONSchema` output of a `z.object`

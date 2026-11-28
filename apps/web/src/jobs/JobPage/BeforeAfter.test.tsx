@@ -1,6 +1,6 @@
 import { cleanup, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
-import { stylesCss } from '../../styles/css-source.ts';
+import { stylesCss } from '../../styles/testing/css-source.ts';
 import { source, testEncode } from '../../testing/fixtures/before-after.ts';
 import { BeforeAfter } from './BeforeAfter.tsx';
 

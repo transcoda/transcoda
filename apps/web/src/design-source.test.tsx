@@ -1,11 +1,11 @@
 // The DESIGN.md rules that live in the components rather than the stylesheet: colours come from
-// tokens, and icons from components/Icon.tsx. Exceptions: styles/design-exceptions.ts.
+// tokens, and icons from components/Icon.tsx. Exceptions: styles/testing/design-exceptions.ts.
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { cleanup, render } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { Icon } from './components/Icon.tsx';
-import { COLOUR_LITERAL_FILES_OK, SVG_FILES_OK } from './styles/design-exceptions.ts';
+import { COLOUR_LITERAL_FILES_OK, SVG_FILES_OK } from './styles/testing/design-exceptions.ts';
 
 afterEach(cleanup);
 

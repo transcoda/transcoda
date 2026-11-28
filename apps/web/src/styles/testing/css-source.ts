@@ -7,8 +7,8 @@ import { join } from 'node:path';
 import { type AtRule, list, parse, type Root, type Rule } from 'postcss';
 
 /** The stylesheet entry: a comment, then one `@import "./name.css";` per file, in cascade order. */
-export const indexCss = readFileSync(join(__dirname, 'index.css'), 'utf8');
-export const tokensCss = readFileSync(join(__dirname, 'tokens.css'), 'utf8');
+export const indexCss = readFileSync(join(__dirname, '..', 'index.css'), 'utf8');
+export const tokensCss = readFileSync(join(__dirname, '..', 'tokens.css'), 'utf8');
 
 /** The app's own stylesheets (every file index.css imports but the vendored tokens.css), in
  *  import order: the order the app's cascade sees them in. */
@@ -18,7 +18,7 @@ export const styleFiles: string[] = [...indexCss.matchAll(/@import\s+"\.\/([\w-]
 
 const parts = styleFiles.map((file) => ({
   file,
-  text: readFileSync(join(__dirname, file), 'utf8'),
+  text: readFileSync(join(__dirname, '..', file), 'utf8'),
 }));
 
 /** Every file of `styleFiles` joined in order, so a test reads the whole cascade as one source. A

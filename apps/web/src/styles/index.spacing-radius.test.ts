@@ -1,7 +1,7 @@
 // DESIGN.md › Spacing, radius, shadow: spacing and radius come from the token scale.
 import { describe, expect, it } from 'vitest';
-import { declsOf, rulesFor, spaceValues, stylesCss, where } from './css-source.ts';
-import { RADIUS_OK, SPACING_OK } from './design-exceptions.ts';
+import { declsOf, rulesFor, spaceValues, stylesCss, where } from './testing/css-source.ts';
+import { RADIUS_OK, SPACING_OK } from './testing/design-exceptions.ts';
 
 const SPACING_PROP = /^(?:padding|margin|gap|row-gap|column-gap)(?:-[a-z]+)*$/;
 const RADIUS_PROP = /^border(?:-[a-z]+)*-radius$/;
@@ -33,7 +33,7 @@ describe('spacing and radius scale', () => {
   it('puts every padding, margin and gap length on a token or a documented exception', () => {
     expect(
       spacingProblems(stylesCss),
-      'DESIGN.md › Spacing: use a --sp-* token (exceptions: styles/design-exceptions.ts SPACING_OK)',
+      'DESIGN.md › Spacing: use a --sp-* token (exceptions: styles/testing/design-exceptions.ts SPACING_OK)',
     ).toEqual([]);
   });
 
@@ -47,7 +47,7 @@ describe('spacing and radius scale', () => {
   it('uses --r-* tokens for every radius, apart from the documented exceptions', () => {
     expect(
       radiusProblems(stylesCss),
-      'DESIGN.md › Radius: use an --r-* token (exceptions: styles/design-exceptions.ts RADIUS_OK)',
+      'DESIGN.md › Radius: use an --r-* token (exceptions: styles/testing/design-exceptions.ts RADIUS_OK)',
     ).toEqual([]);
   });
 

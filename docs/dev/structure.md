@@ -40,7 +40,7 @@ Server, bottom to top:
 
 Web, bottom to top:
 
-- **shared:** `components/`, `hooks/`, `lib/`, `api/`, `data/`, `assets/`, `styles/`. Imports no feature.
+- **shared:** `components/`, `hooks/`, `lib/`, `api/`, `assets/`, `styles/`. Imports no feature.
 - **features:** `shell/`, `auth/`, `workflows/`, `editor/`, `jobs/`, `libraries/`, `plugins/`, `recycle/`, `settings/`. A feature may import another feature (Biome's `noImportCycles` keeps that acyclic); forbidding it would only grow a `shared/` dumping ground.
 - **app:** `App.tsx` and `main.tsx`.
 
@@ -122,7 +122,7 @@ plugins/            PluginsPage/ and its parts
 recycle/            RecyclePage, RestoreButton
 settings/           SettingsPage and its sections
 components/         primitives only: Dialog, Toast, Icon, Chips, Loading, NotFound, ...
-api/, hooks/, lib/, data/   shared
+api/, hooks/, lib/   shared
 styles/             every stylesheet, imported in order from styles/index.css
 testing/            test setup, render helpers, fixtures
 ```

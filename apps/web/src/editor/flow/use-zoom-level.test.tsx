@@ -1,6 +1,6 @@
 import { cleanup, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
-import { stylesCss } from '../../styles/css-source.ts';
+import { stylesCss } from '../../styles/testing/css-source.ts';
 import { renderFlow } from '../../testing/flow.tsx';
 import { iconScale, TRACE_ICON, useZoomLevel } from './use-zoom-level.ts';
 

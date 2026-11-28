@@ -1,6 +1,6 @@
 // The machine-checkable rules of DESIGN.md, held against the stylesheets (every file styles/index.css imports, in order) through a CSS parser. Each
 // failure names the rule and its DESIGN.md section; the documented exceptions are in
-// ./design-exceptions.ts.
+// ./testing/design-exceptions.ts.
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -16,7 +16,7 @@ import {
   styleFiles,
   stylesCss,
   where,
-} from './css-source.ts';
+} from './testing/css-source.ts';
 import {
   CAPS_OK,
   CH_WIDTH_OK,
@@ -28,7 +28,7 @@ import {
   TRANSITION_PROPERTY_OK,
   UNGATED_HOVER,
   Z_LAYERS,
-} from './design-exceptions.ts';
+} from './testing/design-exceptions.ts';
 
 /** The blocks that define the theme's colours: tokens and named variables live here. */
 const THEME_BLOCKS = [
@@ -588,7 +588,7 @@ describe('DESIGN.md › Layout and composition', () => {
   it('puts every z-index on a known layer, with the skip link and toasts on top', () => {
     expect(
       zIndexProblems(stylesCss),
-      'z-index: a value outside the layers in styles/design-exceptions.ts Z_LAYERS',
+      'z-index: a value outside the layers in styles/testing/design-exceptions.ts Z_LAYERS',
     ).toEqual([]);
     const top = Math.max(...Object.keys(Z_LAYERS).map(Number));
     for (const sel of ['.skip-link', '.toasts']) {

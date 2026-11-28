@@ -15,7 +15,7 @@ vi.mock('../../api/client.ts', () => ({
 }));
 
 import type { FieldDef } from '../../editor/model/schema-fields.ts';
-import { stylesCss } from '../../styles/css-source.ts';
+import { stylesCss } from '../../styles/testing/css-source.ts';
 import { mappingsHint, PathMappingsField } from './PathMappingsField.tsx';
 
 afterEach(cleanup);

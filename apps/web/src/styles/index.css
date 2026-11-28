@@ -16,7 +16,7 @@
    - assorted.css holds older late additions across pages; do not add to it, put a new rule in its
      area's file. A new area gets a new file, imported where its specificity needs it (usually just
      before utilities.css).
-   The design guard tests (css-source.ts) read these files in this order; a new file is picked up
+   The design guard tests (testing/css-source.ts) read these files in this order; a new file is picked up
    from this list. */
 
 @import "./tokens.css";

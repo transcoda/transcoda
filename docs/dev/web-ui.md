@@ -16,7 +16,7 @@ The rules in force today for `apps/web/**`. Where this page and the code disagre
 - `settings/`: `SettingsPage`, its sections (listed in `sections.ts`) and their form parts.
 - `auth/`: the auth provider, `use-auth`, and the `LoginPage`, `SetupPage` and `HostNotAllowedPage` pages.
 - `components/`: shared primitives that know no feature (`Dialog`, `Toast`, `Chips`, `Icon`, `Loading`, `NotFound`, `Headings`, `RowMenu`, `ListboxSelect`, `Disclosure`, `FilePath`, ...).
-- `api/` (client, CSRF, error mapping), `hooks/` (data and event hooks), `lib/` (formatting, page title, guarded navigation, breakpoints, theme), `data/` (codec and language tables).
+- `api/` (client, CSRF, error mapping), `hooks/` (data and event hooks), `lib/` (formatting, page title, guarded navigation, breakpoints, theme, the codec and language tables).
 - `styles/`: `tokens.css` (vendored from the design handoff, excluded from Biome, never hand-edited except the additions DESIGN.md lists), the design guard tests (each named after the stylesheet it reads, `shell.activity.test.ts`) and their one exceptions file.
 - `testing/`: setup, helpers and fixtures for the web tests.
 
@@ -64,15 +64,15 @@ The rules in force today for `apps/web/**`. Where this page and the code disagre
 
 ## Design rules that tests check
 
-- The guard tests in `apps/web/src/styles/` read the web stylesheets through a CSS parser (`styles/css-source.ts`) and hold them to DESIGN.md: tokens only for colour, font size, spacing and radius; hover only under `@media (hover: hover)`; no font-weight change on a selected state; focus rings never removed; limited shadows, transitions and z-index layers; named breakpoints only.
+- The guard tests in `apps/web/src/styles/` read the web stylesheets through a CSS parser (`styles/testing/css-source.ts`) and hold them to DESIGN.md: tokens only for colour, font size, spacing and radius; hover only under `@media (hover: hover)`; no font-weight change on a selected state; focus rings never removed; limited shadows, transitions and z-index layers; named breakpoints only.
 - `styles/design-doc-sync.test.ts` checks the values DESIGN.md quotes against the stylesheets. When they disagree, the stylesheet is right: update DESIGN.md.
 - `src/design-source.test.tsx` checks the components: no colour literal in TypeScript, icons only from `components/Icon.tsx` (stroke `ICON_STROKE`, 2.4, not a prop), inline SVG only in the icon set and the listed drawings.
-- Every exception to a design rule is in one file, `styles/design-exceptions.ts`, with its reason. Add one there only with a reason a reviewer can check. Do not add a second exceptions list.
+- Every exception to a design rule is in one file, `styles/testing/design-exceptions.ts`, with its reason. Add one there only with a reason a reviewer can check. Do not add a second exceptions list.
 - **Stylesheet layout.** `main.tsx` imports one entry, `styles/index.css`, which `@import`s every area file in a fixed cascade order, `tokens.css` first. Never reorder the imports; the comment at the top of `index.css` says where each kind of rule goes.
   - A new rule goes in its area's file (`jobs.css`, `job-page.css`, `settings.css`, the `editor-*.css` files, `buttons.css`, `forms.css`...). Values that are not tokens go in `variables.css`.
   - A new area gets a new file, imported from `index.css` at the right place in the cascade (usually just before `utilities.css`, which stays last).
   - Never add to `assorted.css`: it is a catch-all kept only to preserve the cascade order.
-  - The design tests read every imported file, in order, through `styles/css-source.ts` (`stylesCss`), and `styles/index.design-rules.test.ts` fails when a `.css` file in `styles/` is not imported.
+  - The design tests read every imported file, in order, through `styles/testing/css-source.ts` (`stylesCss`), and `styles/index.design-rules.test.ts` fails when a `.css` file in `styles/` is not imported.
   - **Specificity is linted per file only.** Biome's `noDescendingSpecificity` (an error, like every warning: `pnpm lint` runs with `--error-on-warnings`) compares selectors within one file. A rule in a later file that a more specific rule in an earlier file overrides is not flagged; when you move or add a rule across files, check the cascade yourself (the screenshot tests catch what they show). Within a file, put the general rule before the specific one; where two selectors only share their last part and never match the same element, a `biome-ignore` with that reason is fine.
 
 ## Accessibility

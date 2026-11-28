@@ -1,6 +1,6 @@
 # DESIGN.md - Transcoda web UI ("Patchbay")
 
-This file explains the Transcoda web UI's design system: what it is for, the rules it follows and why. The values themselves live in `apps/web/src/styles/tokens.css`. That file comes from the Patchbay design handoff, plus three later additions from the design audit: `--line-control`, the motion tokens and the reduced-motion rule. If this file and `tokens.css` disagree on a value, `tokens.css` is right and this file needs updating. Tests in `apps/web/src/styles/` hold the stylesheets to the rules here that a machine can check, and this file's quoted values to the stylesheet; their few exceptions, each with its reason, are in `apps/web/src/styles/design-exceptions.ts`.
+This file explains the Transcoda web UI's design system: what it is for, the rules it follows and why. The values themselves live in `apps/web/src/styles/tokens.css`. That file comes from the Patchbay design handoff, plus three later additions from the design audit: `--line-control`, the motion tokens and the reduced-motion rule. If this file and `tokens.css` disagree on a value, `tokens.css` is right and this file needs updating. Tests in `apps/web/src/styles/` hold the stylesheets to the rules here that a machine can check, and this file's quoted values to the stylesheet; their few exceptions, each with its reason, are in `apps/web/src/styles/testing/design-exceptions.ts`.
 
 ## Context
 

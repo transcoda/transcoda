@@ -1,5 +1,5 @@
 import { useId, useState } from 'react';
-import { languageName } from '../../../data/languages.ts';
+import { languageName } from '../../../lib/languages.ts';
 import { LanguagePicker } from '../LanguagePicker.tsx';
 import { Field, type FieldProps } from './Field.tsx';
 

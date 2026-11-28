@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { stylesCss } from './styles/css-source.ts';
+import { stylesCss } from './styles/testing/css-source.ts';
 
 const css = stylesCss;
 
