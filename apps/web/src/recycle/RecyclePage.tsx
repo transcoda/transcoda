@@ -13,6 +13,7 @@ import { fmtBytes } from '../lib/bytes.ts';
 import { usePageTitle } from '../lib/page-title.ts';
 import { fmtDate } from '../lib/time.ts';
 import { usePhone } from '../lib/use-phone.ts';
+import { deletesText } from './deletes-text.ts';
 import { groupRecycled } from './group-recycled.ts';
 import { RestoreButton } from './RestoreButton.tsx';
 
@@ -34,8 +35,9 @@ function kindNote(entry: RecycledEntry, grouped: boolean): string | null {
 /**
  * The Recycle folder page (#41): one library's recycle folder at a time (`?library=<id>`; without
  * one, the first library with anything in it). Its folder, size and free space, the retention
- * note, and a row per entry with where it came from, its job, when it was recycled and when
- * retention deletes it. A subtitle file sits under its video's original. Cards on a phone.
+ * note, and a row per entry, in name order, with where it came from, its job, when it was
+ * recycled and when retention deletes it. A subtitle file sits under its video's original. Cards
+ * on a phone.
  *
  * Row actions: Restore original (an original), Put Transcoda's version back (a restore's
  * set-aside output), Delete (asks first; permanent). A subtitle file under its original has none:
@@ -152,7 +154,7 @@ function LibraryFolder({
                 </span>
               ))}
               <span className="phone-card-line">
-                {`Recycled ${fmtDate(entry.recycledAt)} · Deleted on ${fmtDate(entry.deletesAt)} · `}
+                {`Recycled ${fmtDate(entry.recycledAt)} · ${deletesText(entry.deletesAt)} · `}
                 <Link href={`/jobs/${entry.jobId}`}>Job</Link>
               </span>
               <div className="phone-card-actions">
@@ -170,7 +172,7 @@ function LibraryFolder({
                 <th scope="col">Size</th>
                 <th scope="col">Job</th>
                 <th scope="col">Recycled</th>
-                <th scope="col">Deleted</th>
+                <th scope="col">Deletes</th>
                 <th scope="col">
                   <span className="sr-only">Actions</span>
                 </th>
@@ -224,7 +226,7 @@ function EntryRow({
         <Link href={`/jobs/${entry.jobId}`}>Job</Link>
       </td>
       <td className="recycle-cell">{fmtDate(entry.recycledAt)}</td>
-      <td className="recycle-cell">{`Deleted on ${fmtDate(entry.deletesAt)}`}</td>
+      <td className="recycle-cell">{deletesText(entry.deletesAt)}</td>
       <td className="recycle-cell">
         {sidecar ? null : (
           <div className="recycle-actions">
