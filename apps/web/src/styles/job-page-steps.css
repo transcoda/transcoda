@@ -1,0 +1,421 @@
+/* ---------- Job page: the steps list (screen 06b) ---------- */
+
+.job-steps {
+  overflow: hidden;
+}
+
+/* Screen 06b: heading with its step count, dry-run badge and the All / Changes pills on one line. */
+.job-steps-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2) var(--sp-3);
+  padding: var(--sp-5) var(--sp-6);
+  border-bottom: 1px solid var(--line);
+}
+
+.job-steps-head .badge-dry {
+  text-transform: uppercase;
+}
+
+/* "6 steps" is words, not a number: sans. */
+.job-steps-head .section-count {
+  font-family: var(--font-ui);
+  font-size: var(--fs-small);
+  font-weight: 500;
+  color: var(--faint);
+}
+
+.job-steps-filter {
+  margin-left: auto;
+}
+
+.job-steps-filter .filter-chip {
+  height: 32px;
+}
+
+.job-step-main:focus-visible,
+.job-step-more:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.job-steps-list {
+  margin: 0;
+  padding: var(--sp-2) 0;
+  list-style: none;
+}
+
+.job-steps-retry .group-h3 {
+  margin: var(--sp-2) var(--sp-6) 0;
+}
+
+/* One row: the kind tile on a rail that joins the rows, then the row's text. */
+.job-step {
+  position: relative;
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  padding: 0 var(--sp-6) 0 var(--sp-4);
+}
+
+.job-step::before {
+  content: "";
+  position: absolute;
+  left: 39px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--line);
+}
+
+.job-step:last-child::before {
+  display: none;
+}
+
+/* A sub-workflow's steps sit in a little (the "in <Run>" after the name says where). */
+.job-step.depth-1 {
+  padding-left: var(--sp-8);
+}
+
+.job-step.depth-2,
+.job-step.depth-3 {
+  padding-left: var(--sp-12);
+}
+
+.job-step.depth-1::before {
+  left: 55px;
+}
+
+.job-step.depth-2::before,
+.job-step.depth-3::before {
+  left: 71px;
+}
+
+.job-step-icon {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin: var(--sp-4) 0 0 var(--sp-3);
+  border-radius: var(--r-sm);
+  background: var(--raised);
+  color: var(--faint);
+  box-shadow: inset 0 0 0 1.5px currentColor;
+}
+
+.job-step-icon.kind-trigger,
+.job-step-kind.kind-trigger {
+  color: var(--kind-trigger);
+}
+
+.job-step-icon.kind-condition,
+.job-step-kind.kind-condition {
+  color: var(--kind-condition);
+}
+
+.job-step-icon.kind-action,
+.job-step-kind.kind-action {
+  color: var(--kind-action);
+}
+
+.job-step-icon.kind-finish,
+.job-step-kind.kind-finish {
+  color: var(--kind-finish);
+}
+
+.job-step-icon.kind-data,
+.job-step-kind.kind-data {
+  color: var(--kind-data);
+}
+
+.job-step-body {
+  min-width: 0;
+  padding: var(--sp-3) 0 var(--sp-3);
+  border-bottom: 1px solid var(--line);
+}
+
+.job-step:last-child .job-step-body {
+  border-bottom-color: transparent;
+}
+
+.job-step-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto var(--target-min);
+  align-items: center;
+  gap: var(--sp-4);
+}
+
+.job-step-main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  min-width: 0;
+  min-height: var(--target-min);
+  padding: var(--sp-1) var(--sp-2);
+  margin-left: -8px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  .job-step-main:hover {
+    background: var(--raised);
+  }
+}
+
+/* The row whose node is selected on the canvas. */
+.job-step-main[aria-pressed="true"] {
+  background: var(--raised);
+  box-shadow: inset 0 0 0 1px var(--accent-text);
+}
+
+.job-step-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 var(--sp-2);
+  font-size: var(--fs-body);
+}
+
+.job-step-title .icon {
+  align-self: center;
+  color: var(--muted);
+}
+
+.job-step-kind {
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.job-step-within {
+  color: var(--muted);
+  font-size: var(--fs-small);
+}
+
+.job-step-sentence {
+  font-size: var(--fs-body);
+  overflow-wrap: anywhere;
+}
+
+.job-step.is-quiet .job-step-sentence {
+  color: var(--faint);
+}
+
+/* Step badges are one chip family (convention 7): lime for a step that changed the file, red for
+   one that failed, a neutral outline for everything else. */
+.step-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  height: 28px;
+  padding: 0 var(--sp-3);
+  border-radius: var(--r-pill);
+  border: 1.5px solid var(--line-strong);
+  color: var(--muted);
+  font-size: var(--fs-small);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.step-badge.is-change {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+}
+
+/* A step that never ran: dashed, so it differs from one that ran and changed nothing. */
+.step-badge.is-not-run {
+  border-style: dashed;
+  border-color: var(--empty-link);
+}
+
+.step-badge.is-failed {
+  background: var(--st-failed-bg);
+  border-color: var(--st-failed);
+  color: var(--st-failed-text);
+}
+
+.job-step-more {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--target-min);
+  height: var(--target-min);
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--faint);
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  button.job-step-more:hover {
+    background: var(--raised);
+    color: var(--text);
+  }
+}
+
+/* An unmet precondition or a warning on the step, with where to fix it. */
+.job-step-note {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-2);
+  margin: var(--sp-2) 0 0;
+  padding: var(--sp-3) var(--sp-3);
+  border-radius: var(--r-md);
+  background: var(--st-dry-bg);
+  color: var(--st-dry);
+  font-size: var(--fs-small);
+}
+
+.job-step-note .icon {
+  flex: none;
+  margin-top: var(--sp-1);
+}
+
+.job-step-note a {
+  color: inherit;
+  font-weight: 700;
+}
+
+.step-details {
+  margin: var(--sp-2) 0 0;
+}
+
+.step-table-wrap {
+  border-radius: var(--r-md);
+  background: var(--raised);
+  overflow-x: auto;
+}
+
+.step-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-small);
+}
+
+.step-table th {
+  padding: var(--sp-2);
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  font-weight: 600;
+  color: var(--faint);
+  text-align: left;
+  text-transform: uppercase;
+}
+
+.step-table td {
+  padding: var(--sp-2);
+  border-top: 1px solid var(--node-head-line);
+}
+
+.step-table th:first-child,
+.step-table td:first-child {
+  padding-left: var(--sp-4);
+}
+
+.step-table td.is-off {
+  color: var(--faint);
+}
+
+.step-table td.is-on {
+  color: var(--accent-text);
+}
+
+.step-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
+  gap: var(--sp-3) var(--sp-6);
+  font-size: var(--fs-small);
+}
+
+/* Before, after and pixel format: label over value, apart by space, no boxes inside the card. */
+.step-tile {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  overflow-wrap: anywhere;
+}
+
+.step-tile-label {
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  color: var(--faint);
+  text-transform: uppercase;
+}
+
+/* Kept, found and dropped languages: one line of plain items, a dot between them, no fills. */
+.step-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-1) var(--sp-2);
+  padding: 0;
+  list-style: none;
+  font-size: var(--fs-small);
+}
+
+.step-chips li + li::before {
+  content: "·";
+  margin-right: var(--sp-2);
+  color: var(--faint);
+}
+
+.step-chips li.is-quiet {
+  color: var(--faint);
+}
+
+@media (max-width: 639px) {
+  .job-steps-head {
+    padding: var(--sp-4) var(--sp-4);
+  }
+  .job-steps-filter {
+    margin-left: 0;
+    width: 100%;
+  }
+  .job-step {
+    grid-template-columns: 40px minmax(0, 1fr);
+    padding: 0 var(--sp-3) 0 var(--sp-1);
+  }
+  .job-step::before {
+    left: 23px;
+  }
+  .job-step.depth-1,
+  .job-step.depth-2,
+  .job-step.depth-3 {
+    padding-left: var(--sp-3);
+  }
+  .job-step.depth-1::before,
+  .job-step.depth-2::before,
+  .job-step.depth-3::before {
+    left: 31px;
+  }
+  .job-step-icon {
+    margin-left: var(--sp-2);
+  }
+  /* The badge moves under the sentence; the chevron keeps its place at the end, by the title. */
+  .job-step-row {
+    grid-template-columns: minmax(0, 1fr) var(--target-min);
+    align-items: start;
+    gap: var(--sp-1) var(--sp-2);
+  }
+  .job-step-main {
+    grid-column: 1;
+  }
+  .step-badge {
+    grid-row: 2;
+    justify-self: start;
+  }
+  .job-step-more {
+    grid-row: 1;
+    grid-column: 2;
+  }
+}
