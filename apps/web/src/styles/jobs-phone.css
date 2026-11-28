@@ -1,0 +1,110 @@
+/* ---------- Jobs page on a phone: the running, queued and finished cards ---------- */
+.phone-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+.phone-section .section-h2 {
+  margin-top: var(--sp-2);
+}
+.phone-card {
+  padding: var(--sp-4);
+  border-radius: var(--r-md);
+  background: var(--raised);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+.phone-card-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.phone-card-head .job-name {
+  flex: 1;
+  min-width: 0;
+}
+/* The episode line sits close under the title. */
+.phone-card .job-title-sub {
+  margin-top: calc(-1 * var(--sp-2));
+}
+.phone-card-head .mono {
+  font-size: var(--fs-mono);
+  font-weight: 600;
+}
+.phone-card .progress {
+  height: 10px;
+  background: var(--bg);
+}
+.phone-card-line {
+  font-size: var(--fs-small);
+  color: var(--muted);
+}
+.phone-card-actions {
+  display: flex;
+  gap: var(--sp-2);
+}
+.phone-finished {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  min-height: 56px;
+  padding: 0 var(--sp-4);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  color: var(--text);
+  text-decoration: none;
+}
+@media (hover: hover) {
+  .phone-finished:hover {
+    color: var(--text);
+  }
+}
+.phone-finished-icon {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--r-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--st-noop);
+  color: var(--st-noop-ink);
+}
+.phone-finished-icon.is-replaced {
+  background: var(--st-replaced);
+  color: var(--st-replaced-ink);
+}
+.phone-finished-icon.is-kept,
+.phone-finished-icon.is-noop,
+.phone-finished-icon.is-skipped,
+.phone-finished-icon.is-cancelled,
+.phone-finished-icon.is-already,
+.phone-finished-icon.is-queued {
+  background: transparent;
+  border: 1.5px solid var(--line-strong);
+  color: var(--muted);
+}
+.phone-finished-icon.is-failed {
+  background: var(--st-failed);
+  color: var(--st-failed-ink);
+}
+.phone-finished-icon.is-dry {
+  background: var(--st-dry-bg);
+  color: var(--st-dry);
+  border: 1.5px dashed var(--st-dry);
+}
+.phone-finished-icon.is-noop svg {
+  stroke-dasharray: 3 3;
+}
+.phone-finished-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.phone-finished-text b {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

@@ -1,0 +1,256 @@
+/* ---------- Job page: result, before and after, a test encode's output ---------- */
+
+/* The job's Result, right under the header: a neutral panel (no coloured slab or edge bar); the
+   outcome's colour is only the icon's softly tinted circle, in the state chip's colours
+   (convention 7, 16): lime replaced, red failed, amber needs attention, neutral left alone. */
+.job-result {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  column-gap: var(--sp-3);
+  row-gap: var(--sp-2);
+  align-items: start;
+  padding: var(--sp-5) var(--sp-6);
+}
+
+.job-result > :not(.job-result-icon, h2) {
+  grid-column: 2;
+}
+
+.job-result-icon {
+  grid-column: 1;
+  grid-row: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--r-pill);
+  background: var(--raised);
+  color: var(--muted);
+}
+
+.job-result.is-ok .job-result-icon {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  color: var(--accent-text);
+}
+
+.job-result.is-error .job-result-icon {
+  background: color-mix(in srgb, var(--st-failed) 18%, transparent);
+  color: var(--st-failed-text);
+}
+
+.job-result.is-warning .job-result-icon {
+  background: var(--st-dry-bg);
+  color: var(--st-dry);
+}
+
+.job-result-head {
+  grid-row: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 var(--sp-3);
+  min-height: 28px;
+  margin: 0;
+  font-size: var(--fs-h2);
+  font-weight: 700;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.job-result-pct {
+  color: var(--accent-text);
+}
+
+.job-result-text {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.job-result-meta {
+  margin: 0;
+  font-size: var(--fs-small);
+  color: var(--faint);
+}
+
+.job-result-action {
+  justify-self: start;
+}
+
+.job-result-warnings {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--fs-small);
+  color: var(--muted);
+}
+
+.job-result-warnings li {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.job-result-problems {
+  color: var(--st-dry);
+}
+
+/* Before / after (job page, under the result): the source and the output side by side. */
+.before-after-head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  padding: var(--sp-5) var(--sp-6) var(--sp-2);
+}
+
+.ba-table-wrap {
+  overflow-x: auto;
+}
+
+.ba-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-ui);
+}
+
+.ba-table thead th {
+  width: 42%;
+  padding: var(--sp-2) var(--sp-3);
+  text-align: left;
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  font-weight: 600;
+  color: var(--faint);
+  text-transform: uppercase;
+}
+
+.ba-table tbody tr {
+  border-top: 1px solid var(--line);
+}
+
+.ba-table tbody th {
+  padding: var(--sp-3) var(--sp-3) var(--sp-3) var(--sp-5);
+  text-align: left;
+  vertical-align: top;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.ba-table td {
+  padding: var(--sp-3) var(--sp-3);
+  vertical-align: top;
+}
+
+.ba-items {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-1) var(--sp-2);
+}
+
+/* A value never breaks inside itself ("1920×1080", "≈9.6 Mbit/s"): the list wraps between values. */
+.ba-item {
+  white-space: nowrap;
+}
+
+.ba-tag {
+  color: var(--muted);
+}
+
+/* What the output loses: the needs-attention amber, with its icon and word (never colour alone). */
+.ba-loss {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  color: var(--st-dry);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* Phone: each row stacks Before over After, each with its label; the column headers stay for
+   readers only. */
+@media (max-width: 639px) {
+  .ba-table,
+  .ba-table tbody,
+  .ba-table tr,
+  .ba-table th,
+  .ba-table td {
+    display: block;
+  }
+  .ba-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .before-after-head {
+    padding: var(--sp-4) var(--sp-4) var(--sp-2);
+  }
+  .ba-table tbody tr {
+    padding: var(--sp-3) var(--sp-4);
+  }
+  .ba-table tbody th,
+  .ba-table td {
+    padding: var(--sp-1) 0;
+  }
+  .ba-table td::before {
+    content: attr(data-label);
+    display: block;
+    color: var(--faint);
+    font-family: var(--font-mono);
+    font-size: var(--fs-micro);
+    font-weight: 600;
+    text-transform: uppercase;
+  }
+}
+
+/* A test-encode's kept output (job page): until when, the size, Play / Download / Delete now. */
+.test-output {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  padding: var(--sp-4) var(--sp-5);
+}
+
+.test-output-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--sp-1) var(--sp-3);
+}
+
+.test-output-title {
+  margin: 0;
+  font-size: var(--fs-h3);
+  font-weight: 700;
+}
+
+.test-output-size {
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: var(--fs-small);
+}
+
+.test-output-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+
+.test-output-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--fs-small);
+}
+
+.test-output-video {
+  display: block;
+  width: 100%;
+  max-height: 70vh;
+  border-radius: var(--r-md);
+  background: var(--video-bg);
+}
