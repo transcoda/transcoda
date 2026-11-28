@@ -44,6 +44,7 @@ import { blockedReason, libraryCheck, messageOf, realOrSame } from './helpers.ts
 import { doInstall } from './install.ts';
 import { detailOf, missingIn, type RowParts, summaryOf, usageIn } from './listing.ts';
 import type { ServiceOps } from './ops.ts';
+import { type PluginTrigger, pluginTrigger } from './triggers.ts';
 import type {
   Installed,
   InstallResult,
@@ -518,6 +519,11 @@ export class PluginService {
   get(name: string): PluginDetail | null {
     const rec = this.record(name);
     return rec ? detailOf(rec, this.rows) : null;
+  }
+
+  /** Trigger `id` of plugin `name`, ready to call when its webhook arrives; null when none. */
+  trigger(name: string, id: string): PluginTrigger | null {
+    return pluginTrigger(this.supervisor, this.record(name), id);
   }
 
   /** The pid of the plugin's running process, null when it has none (for tests and diagnostics). */

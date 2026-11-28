@@ -194,8 +194,11 @@ export async function readEvents(
   return events;
 }
 
-/** Registers the setup and teardown every test in these files shares. */
-export function useRpcApp(): void {
+/**
+ * Registers the setup and teardown every test in these files shares. `devPlugins`: bundles started
+ * as dev plugins before each test (the plugin service is started too).
+ */
+export function useRpcApp(opts: { devPlugins?: () => string[] } = {}): void {
   vi.setConfig({ testTimeout: 30_000 });
   beforeEach(async () => {
     base = await tempDir('rpc-engine-');
@@ -215,13 +218,16 @@ export function useRpcApp(): void {
       fsOps,
       exec,
       heartbeatMs: 10,
+      ...(opts.devPlugins ? { plugins: { devPlugins: opts.devPlugins() } } : {}),
     });
     await t.deps.engine.start();
+    if (opts.devPlugins) await t.deps.plugins.start();
     s = await login(t);
   });
   afterEach(async () => {
     vi.unstubAllGlobals();
     await t.deps.engine.stop();
+    if (opts.devPlugins) await t.close();
     await rm(base, { recursive: true, force: true });
   });
 }

@@ -19,6 +19,7 @@ export const FIXTURE_NAMES = [
   'versioned',
   'versioned2',
   'roots',
+  'trigger',
 ] as const;
 export type FixtureName = (typeof FIXTURE_NAMES)[number];
 

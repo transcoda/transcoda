@@ -58,11 +58,26 @@ On a server where Sonarr and Transcoda both see the library at `/data/shows` the
 
 **Damaged files page.** Each library's page links to its damaged files: the files whose latest job found the source damaged, newest first, with what is wrong and the job. When the workflow that feeds the library has a Replace damaged file step, each file there has a **Replace** button: it runs that workflow on the file again, and if the file is still damaged, the step asks Sonarr (or Radarr) for a new copy.
 
-**Import trigger.** Starting jobs when Sonarr imports a file (a webhook) is coming in phase 3. For now start runs by hand, from a library or the API.
+**Import trigger.** Sonarr can tell Transcoda the moment it imports a file, so the file is queued at once instead of at the next library check (every 15 minutes). The trigger comes with the Sonarr plugin from version 1.2; there is nothing to build in a workflow. To set it up:
+
+1. In Transcoda, open **Settings → API tokens** and create a token with the `jobs:create` scope. It is shown once; copy it.
+2. In Sonarr, open **Settings → Connect**, add a **Webhook** and fill in:
+
+   | Field | Value |
+   | --- | --- |
+   | Notification triggers | **On File Import** and **On File Upgrade** (older versions call them On Import and On Upgrade). Leave the others off. |
+   | URL | `http://<transcoda>:8080/api/triggers/sonarr/import`, with the host and port Sonarr reaches Transcoda by, for example `http://transcoda:8080/api/triggers/sonarr/import`. |
+   | Method | `POST` |
+   | Username | Anything, for example `sonarr`. It is not checked. |
+   | Password | The token from step 1. |
+
+3. Press **Test**. Sonarr shows a green tick when Transcoda accepted the token and the plugin read the test event.
+
+The host Sonarr uses must pass the host check: add it to `TRANSCODA_ALLOWED_HOSTS` (`transcoda` in the example above), otherwise Sonarr gets `403`. The plugin maps Sonarr's path to Transcoda's with the plugin's **Path mappings**, then Transcoda queues the file only when it is inside a library, through the active workflow whose Library input names that library, by the same rules as the library check: a file outside every library, behind a symlink that leads out of its library, or in a library no active workflow feeds is not queued; a hardlinked file is skipped unless the library processes hardlinked files; the library's run hours apply. Nothing else Sonarr sends (grabs, renames, deletions) queues anything. The answer to each request lists every file with its job, or why it was not queued (`outside library root`, `no active workflow feeds this library`, …); Sonarr writes a failed request to its own log. A wrong or revoked token is `401`, a token without `jobs:create` is `403`, and a plugin that is not running is `503`.
 
 ### Radarr
 
-Nodes: **Original language (Radarr)** (`radarr:original-language`), **Rescan in Radarr** (`radarr:rescan`) and **Replace damaged file (Radarr)** (`radarr:replace-damaged`, from plugin version 1.1). Settings, path mappings and the warning work exactly as for Sonarr, with `http://radarr:7878` as the example URL, Radarr's own API key (Settings → General) and Radarr 4.0 or newer. Radarr's setting is "Unmonitor Deleted Movies" (`autoUnmonitorPreviouslyDownloadedMovies`). The node finds the movie whose file has this path, outputs `language`, `title` and `ids`, and rescans the movie after the write, verifying that the new path is listed. A failed verification is the same "needs attention" problem. **Replace damaged file** works as Sonarr's, for the movie: find the movie file, stop if a release was marked failed in the last 7 days, mark the grab failed (blocklisting the release), delete the file through Radarr (its recycle bin applies), then search for the movie; on a failed step it stops and reports the steps done. The webhook trigger for imports is also coming in phase 3.
+Nodes: **Original language (Radarr)** (`radarr:original-language`), **Rescan in Radarr** (`radarr:rescan`) and **Replace damaged file (Radarr)** (`radarr:replace-damaged`, from plugin version 1.1). Settings, path mappings and the warning work exactly as for Sonarr, with `http://radarr:7878` as the example URL, Radarr's own API key (Settings → General) and Radarr 4.0 or newer. Radarr's setting is "Unmonitor Deleted Movies" (`autoUnmonitorPreviouslyDownloadedMovies`). The node finds the movie whose file has this path, outputs `language`, `title` and `ids`, and rescans the movie after the write, verifying that the new path is listed. A failed verification is the same "needs attention" problem. **Replace damaged file** works as Sonarr's, for the movie: find the movie file, stop if a release was marked failed in the last 7 days, mark the grab failed (blocklisting the release), delete the file through Radarr (its recycle bin applies), then search for the movie; on a failed step it stops and reports the steps done. The **import trigger** (from plugin version 1.2) is set up as Sonarr's, in Radarr's **Settings → Connect → Webhook**, with the URL `http://<transcoda>:8080/api/triggers/radarr/import`.
 
 ### Jellyfin
 
