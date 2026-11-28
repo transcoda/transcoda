@@ -19,17 +19,15 @@ You need Node 26 (`>=26.13.1`, see `.node-version`), pnpm through corepack (Node
 
 ### macOS
 
-```sh
-brew install ffmpeg
-```
+Install Node 26 (see `.node-version`) with Homebrew (`brew install node`) or a version manager such as fnm, then run the corepack commands below. Install ffmpeg with `brew install ffmpeg`.
 
 ### Linux
 
-Install ffmpeg from your distribution packages (for example `sudo apt install ffmpeg` or `sudo dnf install ffmpeg`). The image's jellyfin-ffmpeg build is only needed when running via Docker.
+Install Node 26 with your distribution packages, a version manager such as fnm, or the nodejs.org installer, then run the corepack commands below. A distro ffmpeg is usually fine (`sudo apt install ffmpeg` or `sudo dnf install ffmpeg`); when the distro version is old, a static build from johnvansickle.com is an option.
 
 ### Windows
 
-Native Windows works with the Node/pnpm toolchain; WSL2 works as well. Install a static ffmpeg build (for example from gyan.dev) and put it on `PATH`. In PowerShell, run `npm install -g corepack` and `corepack enable` before the commands below.
+Use WSL2 and follow the Linux steps inside it. Native Windows is untested: parts of the workflow are POSIX shell scripts (`pnpm e2e:docker` runs `sh scripts/e2e-docker.sh`, and `pnpm test:docker` likewise).
 
 ```sh
 git clone https://github.com/<you>/transcoda.git
