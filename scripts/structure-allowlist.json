@@ -69,7 +69,6 @@
     "apps/web/src/styles/spacing-radius-css.test.ts",
     "apps/web/src/styles/theme.test.ts",
     "apps/web/src/styles/type-scale-css.test.ts",
-    "packages/contract/src/contract.test.ts",
     "packages/sdk/src/sdk.test.ts",
     "packages/shared/src/engine/engine.test.ts",
     "packages/shared/src/engine/picture.test.ts",

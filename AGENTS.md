@@ -59,7 +59,7 @@ A code comment that rests on a rule cites the topic doc, or gives the reason its
 1. Contract:
    - `packages/contract/src/routers/<area>.ts`: route, input, output, `.errors(...)`.
    - Schemas go in `packages/contract/src/schemas/<area>.ts`; a new error code in `packages/contract/src/errors.ts`.
-   - Update `packages/contract/src/contract.test.ts`.
+   - Update the router's test beside it, `packages/contract/src/routers/<area>.test.ts`.
 2. Server:
    - Implement it in `apps/server/src/rpc/procedures/<area>.ts` with a guard from `rpc/middleware.ts`, with a test beside it.
    - Register it in `createRouter()` in `apps/server/src/rpc/router.ts`.
