@@ -39,7 +39,7 @@ This file explains the Transcoda web UI's design system: what it is for, the rul
 
 - UI and display: Bricolage Grotesque, 400/500/700/800, `@fontsource/bricolage-grotesque`, OFL-1.1.
 - Mono: JetBrains Mono, 400/600, `@fontsource/jetbrains-mono`, OFL-1.1. Used for caps micro labels, paths, codecs, sizes and durations.
-- Scale: a deliberately tight scale for a dense tool. The steps are roughly 1.08 to 1.15 in the UI and open up to 1.4 to 1.57 for headings. Six steps live in `tokens.css`; four more (`--fs-micro`, `--fs-ui`, `--fs-h3`, `--fs-title`) sit in `styles/variables.css`, because `tokens.css` is vendored. Every `font-size` uses one of them; a test (`styles/type-scale-css.test.ts`) fails on a raw px size. The two exceptions are the auth hero tagline and inline code in notes.
+- Scale: a deliberately tight scale for a dense tool. The steps are roughly 1.08 to 1.15 in the UI and open up to 1.4 to 1.57 for headings. Six steps live in `tokens.css`; four more (`--fs-micro`, `--fs-ui`, `--fs-h3`, `--fs-title`) sit in `styles/variables.css`, because `tokens.css` is vendored. Every `font-size` uses one of them; a test (`styles/index.type-scale.test.ts`) fails on a raw px size. The two exceptions are the auth hero tagline and inline code in notes.
 
   | Token | Size | Weight / tracking | Use |
   |---|---|---|---|
@@ -104,7 +104,7 @@ Colours that are not tokens are named variables in `styles/variables.css`, with 
 
 ## Spacing, radius, shadow
 
-- Spacing: 4px base. `--sp-1` 4, `--sp-2` 8, `--sp-3` 12, `--sp-4` 16, `--sp-5` 20, `--sp-6` 24, `--sp-8` 32, `--sp-10` 40, `--sp-12` 48 (`--sp-5` and `--sp-10` sit in `styles/variables.css`). Tight inside a group (4 to 8), generous between sections (24 to 48). Every padding, margin and gap uses a token; a test (`styles/spacing-radius-css.test.ts`) fails on a raw length, apart from listed 1px hairlines.
+- Spacing: 4px base. `--sp-1` 4, `--sp-2` 8, `--sp-3` 12, `--sp-4` 16, `--sp-5` 20, `--sp-6` 24, `--sp-8` 32, `--sp-10` 40, `--sp-12` 48 (`--sp-5` and `--sp-10` sit in `styles/variables.css`). Tight inside a group (4 to 8), generous between sections (24 to 48). Every padding, margin and gap uses a token; a test (`styles/index.spacing-radius.test.ts`) fails on a raw length, apart from listed 1px hairlines.
 - Radius: `--r-sm` 6px for chips in dense rows, small controls and node ports; `--r-md` 12px for inputs, buttons, cards and node cards; `--r-lg` 16px for large panels only; `--r-pill` for tags, filter chips and dots. Nothing above 16px except pills. 2px only for tiny marks (swatches, port handles, highlights).
 - Shadows: defined edges, not elevation. Cards and rows are a 1px or 1.5px border plus a lightness step (bg < surface < raised). Box-shadow is used for:
   - focus rings
