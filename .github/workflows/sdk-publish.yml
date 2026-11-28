@@ -14,18 +14,18 @@ permissions:
   contents: read
 
 jobs:
-  publish:
+  # Checks the tag, tests, builds and packs the SDK. No environment and no OIDC token: the
+  # workspace install and the tests run here, away from the publish credential.
+  build:
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    environment: npm
     permissions:
       contents: read
-      # The OIDC token npm exchanges for a short-lived publish credential, also used for provenance.
-      id-token: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+          persist-credentials: false
       - name: Check the tag
         env:
           TAG: ${{ github.ref_name }}
@@ -43,15 +43,56 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .node-version
-          registry-url: https://registry.npmjs.org
+      - run: node scripts/check-lockfile.ts
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
       - run: pnpm --filter @transcoda/sdk test
       - run: pnpm --filter @transcoda/sdk build
-      # pnpm pack applies publishConfig (the built exports) and rewrites workspace: ranges;
-      # npm publishes the tarball, since npm is what speaks trusted publishing.
+      # pnpm pack applies publishConfig (the built exports) and rewrites workspace: ranges; the
+      # publish job hands this tarball to npm, since npm is what speaks trusted publishing.
+      - name: Pack
+        run: |
+          set -eu
+          mkdir "$RUNNER_TEMP/sdk"
+          pnpm --filter @transcoda/sdk pack --pack-destination "$RUNNER_TEMP/sdk"
+          ls "$RUNNER_TEMP"/sdk/transcoda-sdk-*.tgz
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: sdk-tarball
+          path: ${{ runner.temp }}/sdk/transcoda-sdk-*.tgz
+          if-no-files-found: error
+          # Longer than the npm environment's longest approval wait (30 days).
+          retention-days: 35
+
+  # Publishes the tarball the build job packed. Waits for approval in the npm environment, which
+  # npm's trusted publishing names; it installs nothing and restores no cache, so no dependency
+  # code runs next to the OIDC token.
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: npm
+    permissions:
+      contents: read
+      # The OIDC token npm exchanges for a short-lived publish credential, also used for provenance.
+      id-token: write
+    steps:
+      # Only .node-version, so npm is the same one the build job's Node ships with.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: .node-version
+          sparse-checkout-cone-mode: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: sdk-tarball
+          path: ${{ runner.temp }}/sdk
       - name: Publish
         run: |
           set -eu
-          pnpm --filter @transcoda/sdk pack --pack-destination "$RUNNER_TEMP"
-          npm publish "$RUNNER_TEMP"/transcoda-sdk-*.tgz --provenance --access public
+          npm publish "$RUNNER_TEMP"/sdk/transcoda-sdk-*.tgz --provenance --access public

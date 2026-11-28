@@ -19,11 +19,17 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .node-version
           cache: pnpm
+      # Before the install: every package comes from the npm registry or transcoda/.github's
+      # pinned tooling, so an edited lockfile cannot fetch (and run) a package from elsewhere.
+      # pnpm check runs it again. It needs nothing installed.
+      - run: node scripts/check-lockfile.ts
       - run: pnpm install --frozen-lockfile
       # typecheck + lint + knip + check-deps + check-structure + check-licences + file size + test (`pnpm ci` is reserved by pnpm 12).
       # Licence allow-list: part of pnpm check (scripts/third-party-notices.ts --check).
@@ -50,6 +56,8 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - uses: transcoda/.github/actions/file-size@690ae52154e1b41a4cbd3b33069f1e590daa011d # v1.1.1
         with:
           max-lines: 1200
@@ -70,6 +78,8 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - run: sh scripts/e2e-docker.sh
       # On a screenshot failure the results hold the actual image and the diff next to the baseline.
       - if: ${{ !cancelled() }}

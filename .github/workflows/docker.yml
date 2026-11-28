@@ -15,7 +15,35 @@ permissions:
   contents: read
 
 jobs:
+  # Only main and release tags publish an image: a run by hand from any other branch skips every
+  # job. A tag must point at a commit on main, or on a release/* branch for a patch cut from an
+  # older release (the rule release.yml applies to the same tags); otherwise the run fails here,
+  # before anything is built or pushed.
+  source:
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: The commit is on main (a tag on main or a release/* branch)
+        run: |
+          set -eu
+          case "$GITHUB_REF" in
+            refs/heads/main) allowed='origin/main' ;;
+            *) allowed='origin/(main|release/.+)' ;;
+          esac
+          if ! git branch -r --contains "$GITHUB_SHA" | grep -qE "^ *${allowed}\$"; then
+            echo "::error::$GITHUB_REF ($GITHUB_SHA) is not on main or a release/* branch"; exit 1
+          fi
+
   image:
+    needs: source
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -30,6 +58,8 @@ jobs:
       release: ${{ steps.release.outputs.release }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       # A GitHub Release exists only for the tags release.yml runs on (v[0-9]*); this builds on
       # any v* tag, so the release files are kept only for those.
       - id: release
@@ -230,6 +260,8 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
         with:
           registry: ghcr.io

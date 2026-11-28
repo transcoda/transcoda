@@ -32,7 +32,7 @@ Open `http://localhost:5173`; the first visit asks you to create the admin accou
 
 | Command | Does |
 | --- | --- |
-| `pnpm check` | typecheck, lint (warnings fail), dead-code check (knip), dependency-direction check, licence check, file-size budget (1200 lines) and tests: what CI runs (`pnpm ci` is a pnpm built-in, so the script is named `check`) |
+| `pnpm check` | typecheck, lint (warnings fail), dead-code check (knip), dependency-direction check, lockfile source check (npm registry and `transcoda/.github` only), licence check, file-size budget (1200 lines) and tests: what CI runs (`pnpm ci` is a pnpm built-in, so the script is named `check`) |
 | `pnpm test` / `pnpm typecheck` / `pnpm lint` | one step of the above |
 | `pnpm format` | Biome autofix |
 | `pnpm build` | production bundles for web and server |
